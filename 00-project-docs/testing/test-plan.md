@@ -16,32 +16,60 @@
 - [x] HTTP request/response cycle
 - [x] API health endpoint accessible
 - [x] Web app can connect to backend
+- [x] Staff dropdown functionality (race condition resolved)
+- [x] Database populated with masseuse names
 
 **Success Criteria**: ✅ ACHIEVED
 - `curl http://localhost:3000/health` returns JSON response
 - Web app loads without "failed to connect" errors
 - All API endpoints functional across all pages
+- Staff dropdown shows all 16 masseuse names correctly
 
-### Phase 2: Basic API Functionality
+### Phase 2: Basic API Functionality ✅ COMPLETED
 **Objective**: Verify core API operations
 
 **Tests**:
-- [ ] GET `/api/services` - Load service types
-- [ ] GET `/api/staff/roster` - Load staff roster
-- [ ] GET `/api/transactions/summary/today` - Get daily summary
-- [ ] GET `/api/expenses` - Load today's expenses
+- [x] GET `/api/services` - Load service types
+- [x] GET `/api/staff/roster` - Load staff roster (populated with names)
+- [x] GET `/api/reports/summary/today` - Get daily summary (endpoint added)
+- [x] GET `/api/expenses` - Load today's expenses
 
-**Success Criteria**: All endpoints return expected JSON data
+**Success Criteria**: ✅ ACHIEVED
+- All endpoints return expected JSON data with populated content
 
-### Phase 3: Transaction Workflow
+### Phase 3: Staff System Enhancement 🔄 CURRENT
+**Objective**: Implement simplified staff management system
+
+**Test Scenarios**:
+1. **Authentication System**
+   - [ ] Create login page with reception/manager roles
+   - [ ] Test role-based access control
+   - [ ] Verify session management
+
+2. **Master Staff List (Manager Only)**
+   - [ ] Create master staff management page
+   - [ ] Test adding new masseuses
+   - [ ] Test removing masseuses
+   - [ ] Verify reception cannot access
+
+3. **Simplified Queue System**
+   - [ ] Remove complex status tracking
+   - [ ] Implement "next in line" pointer
+   - [ ] Test auto-advance functionality
+   - [ ] Test manual override capability
+
+**Success Criteria**: Simplified staff system functional with role-based access
+
+### Phase 4: Transaction Workflow
 **Objective**: Complete transaction creation and management
 
 **Test Scenarios**:
 1. **Create Transaction**
-   - [ ] Fill transaction form in web app
+   - [ ] Fill transaction form with populated masseuse dropdown
    - [ ] Submit transaction
    - [ ] Verify data saved to database
    - [ ] Check transaction appears in recent list
+   - [ ] Verify queue auto-advance (if using "next in line")
 
 2. **Transaction Correction**
    - [ ] Load transaction for correction
@@ -50,26 +78,27 @@
    - [ ] Verify original marked as VOID
    - [ ] Verify corrected transaction created
 
-**Success Criteria**: Transactions persist in SQLite database
+**Success Criteria**: Transactions persist in SQLite database with enhanced staff system
 
-### Phase 4: Staff Management
-**Objective**: Staff roster and assignment functionality
+### Phase 5: Enhanced Staff Management
+**Objective**: Test simplified staff management system
 
 **Test Scenarios**:
-1. **Staff Setup**
-   - [ ] Add masseuse names to roster
-   - [ ] Set staff statuses
-   - [ ] Verify updates persist
+1. **Daily Roster Management**
+   - [ ] Setup daily roster from master staff list
+   - [ ] Reorder queue positions via UI
+   - [ ] Manually adjust "next in line" pointer
+   - [ ] Verify updates persist after page refresh
 
-2. **Serve Next Customer**
-   - [ ] Click "Serve Next Customer"
-   - [ ] Verify automatic staff assignment
-   - [ ] Check status updates (Available → Busy)
-   - [ ] Verify previous staff moved to Break
+2. **Queue Operations**
+   - [ ] Use "next in line" selection in transaction form
+   - [ ] Verify automatic queue advancement
+   - [ ] Test manual masseuse selection (override)
+   - [ ] Verify queue pointer remains unchanged on override
 
-**Success Criteria**: Staff management works through web interface
+**Success Criteria**: Simplified queue system functions as designed
 
-### Phase 5: Expense Tracking
+### Phase 6: Expense Tracking
 **Objective**: Daily expense management
 
 **Test Scenarios**:
@@ -80,7 +109,7 @@
 
 **Success Criteria**: Expense data persists correctly
 
-### Phase 6: End Day Function 🎯 CRITICAL
+### Phase 7: End Day Function 🎯 CRITICAL
 **Objective**: Database archiving replaces CSV export
 
 **Pre-conditions**:
@@ -115,7 +144,7 @@ SELECT DISTINCT status FROM staff_roster;
 - System ready for next day operations
 - Database integrity maintained
 
-### Phase 7: Data Persistence
+### Phase 8: Data Persistence
 **Objective**: Verify data survives server restarts
 
 **Test Steps**:

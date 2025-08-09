@@ -87,12 +87,17 @@ router.post('/', async (req, res) => {
     }
 
     // Get service pricing
+    console.log('🔍 LOOKING FOR SERVICE:', service_type);
     const service = await database.get(
       'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true',
       [service_type]
     );
+    console.log('🔍 FOUND SERVICE:', service);
 
     if (!service) {
+      console.log('🚨 SERVICE NOT FOUND - available services:');
+      const allServices = await database.all('SELECT service_name, active FROM services');
+      console.log('🚨 ALL SERVICES:', allServices);
       return res.status(400).json({ error: 'Invalid service type' });
     }
 

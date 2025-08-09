@@ -1,6 +1,6 @@
-# Current Phase: Ready for Full Functional Testing
+# Current Phase: Staff System Enhancement & Functional Testing
 
-## Current Status: API Connectivity RESOLVED ✅
+## Current Status: Staff Dropdown Functionality RESOLVED ✅
 
 ### ✅ Completed Tasks
 1. **Backend Setup Complete**
@@ -30,7 +30,9 @@
 - ✅ All backend endpoints functional and tested
 - ✅ Frontend successfully connects to backend APIs
 - ✅ Database operations working correctly
-- ✅ Ready for comprehensive functional testing
+- ✅ Staff roster populated with 16 masseuse names
+- ✅ Dropdown functionality working (race condition resolved)
+- 🔄 Staff system simplification in progress
 
 ### 🎯 Immediate Next Steps
 1. **✅ COMPLETED: API Connectivity**
@@ -39,10 +41,14 @@
    - All API endpoints responding correctly
    - Database operations functional
 
-2. **🔄 CURRENT: Complete Functional Testing**
+2. **🔄 CURRENT: Staff System Enhancement**
    - ✅ API connectivity verified
+   - ✅ Staff roster populated with masseuse names
+   - ✅ Dropdown functionality restored
+   - 🔄 Implement simplified "next in line" queue system
+   - 🔄 Create authentication system (reception/manager roles)
    - ⏳ Test transaction creation workflow
-   - ⏳ Test staff management and "Serve Next Customer"
+   - ⏳ Test enhanced staff management features
    - ⏳ Test expense tracking functionality
    - **⏳ TEST END DAY FUNCTION** (critical - database archiving vs CSV)
 
@@ -72,3 +78,10 @@ Successfully applied **🐛 Triage & Debugging Protocol**:
    - **Issue**: `api.js` not loaded on transaction.html, staff.html, summary.html
    - **Fix**: Added `<script src="api.js"></script>` to all HTML pages
    - **Result**: Complete API functionality restored across all pages
+
+3. **Empty Staff Dropdown** (RESOLVED):
+   - **Category**: B - Internal Logic/Data Error  
+   - **Issue**: Race condition - dropdown populated before API data loaded
+   - **Root Cause**: Database had empty masseuse names + async loading timing issue
+   - **Fix**: Populated database with 16 masseuse names + fixed async loading order in transaction.html
+   - **Result**: All masseuse names now appear in dropdown selections

@@ -110,21 +110,23 @@
     <script src="api.js"></script>
     <script src="shared.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            updateAllDisplays();
-            setInterval(updateAllDisplays, 30000);
+        document.addEventListener('DOMContentLoaded', async function() {
+            await updateAllDisplays();
+            setInterval(async () => {
+                await updateAllDisplays();
+            }, 30000);
         });
 
-        function updateAllDisplays() {
-            updateDashboard();
-            updatePaymentBreakdown();
+        async function updateAllDisplays() {
+            await updateDashboard();
+            await updatePaymentBreakdown();
             updateMasseusePerformance();
             updateAllTransactions();
             updateAllExpenses();
         }
 
-        function updateDashboard() {
-            const summary = getTodaySummary();
+        async function updateDashboard() {
+            const summary = await getTodaySummary();
             
             document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
             document.getElementById('today-transactions').textContent = `${summary.todayCount} transaction${summary.todayCount !== 1 ? 's' : ''}`;
@@ -137,8 +139,8 @@
             document.getElementById('net-profit').style.color = netProfit >= 0 ? '#34a853' : '#ea4335';
         }
 
-        function updatePaymentBreakdown() {
-            const summary = getTodaySummary();
+        async function updatePaymentBreakdown() {
+            const summary = await getTodaySummary();
             const container = document.getElementById('payment-breakdown');
             
             if (Object.keys(summary.paymentBreakdown).length === 0) {

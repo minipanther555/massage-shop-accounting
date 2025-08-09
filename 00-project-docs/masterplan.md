@@ -38,9 +38,10 @@ Complete Point-of-Sale and bookkeeping system for massage shop operations, migra
 - Real-time revenue tracking
 
 ### Staff Management
-- 20-position roster system
-- Status tracking (Available, Busy, Break, Off, Next)
-- Automatic "serve next customer" assignment
+- **Simplified Queue System**: "Next in Line" pointer only (removed complex status tracking)
+- **Master Staff List**: Manager-controlled permanent staff database (16 masseuses)
+- **Daily Staff Roster**: Reception-accessible daily queue management
+- Automatic queue advancement with manual override capability
 - Daily massage count tracking
 - Performance reporting
 
@@ -62,8 +63,11 @@ Complete Point-of-Sale and bookkeeping system for massage shop operations, migra
 - ✅ Google Sheets functionality mapped
 - ✅ Backend API complete and all endpoints functional
 - ✅ Web app connected to API (connectivity issues resolved)
-- ✅ Critical bugs resolved (API endpoints + script loading)
-- 🔄 Comprehensive functional testing (current)
+- ✅ Critical bugs resolved (API endpoints + script loading + dropdown race condition)
+- ✅ Staff roster populated with 16 masseuse names
+- 🔄 Staff system simplification (removing complex status tracking)
+- 🔄 Authentication system implementation (reception/manager roles)
+- ⏳ Comprehensive functional testing
 - ⏳ Production deployment
 
 ## Technology Stack

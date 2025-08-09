@@ -161,16 +161,28 @@
     <script src="api.js"></script>
     <script src="shared.js"></script>
     <script>
+        console.log('🚀 TRANSACTION.HTML SCRIPT LOADING...');
+        
         let correctionMode = false;
 
-        document.addEventListener('DOMContentLoaded', function() {
-            populateDropdowns();
-            updateAllDisplays();
-            handleURLParams();
+        console.log('🚀 ADDING DOM CONTENT LOADED LISTENER...');
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('🚀 DOM LOADED - Starting initialization');
+                await loadData(); // Load data from API first
+                console.log('🚀 DATA LOADED - CONFIG:', CONFIG);
+                populateDropdowns(); // Then populate dropdowns with loaded data
+                await updateAllDisplays();
+                handleURLParams();
+            } catch (error) {
+                console.error('🚨 CRITICAL ERROR in DOMContentLoaded:', error);
+            }
             
             document.getElementById('transaction-form').addEventListener('submit', handleSubmit);
             
-            setInterval(updateAllDisplays, 30000);
+            setInterval(async () => {
+                await updateAllDisplays();
+            }, 30000);
         });
 
         function handleURLParams() {
@@ -182,6 +194,11 @@
         }
 
         function populateDropdowns() {
+            console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
+            console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
+            console.log('🔍 Services:', CONFIG.settings.services);
+            console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
+            
             const masseuseSelect = document.getElementById('masseuse');
             masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
             CONFIG.settings.masseuses.forEach(name => {
@@ -199,6 +216,8 @@
             CONFIG.settings.paymentMethods.forEach(method => {
                 paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
             });
+            
+            console.log('🔍 DROPDOWNS POPULATED');
         }
 
         function updatePricing() {
@@ -230,7 +249,7 @@
             });
         }
 
-        function handleSubmit(e) {
+        async function handleSubmit(e) {
             e.preventDefault();
             
             const formData = {
@@ -242,9 +261,10 @@
                 customerContact: document.getElementById('customerContact').value
             };
 
-            if (submitTransaction(formData)) {
+            const success = await submitTransaction(formData);
+            if (success) {
                 clearForm();
-                updateAllDisplays();
+                await updateAllDisplays();
                 showToast("Transaction submitted successfully!");
             }
         }
@@ -256,7 +276,7 @@
             exitCorrectionMode();
         }
 
-        function loadCorrection() {
+        async function loadCorrection() {
             const transaction = loadTransactionForCorrection();
             if (transaction) {
                 document.getElementById('masseuse').value = transaction.masseuse;
@@ -268,7 +288,7 @@
                 
                 updatePricing();
                 enterCorrectionMode();
-                updateAllDisplays();
+                await updateAllDisplays();
             }
         }
 
@@ -286,26 +306,34 @@
             document.getElementById('correction-info').textContent = 'No recent transaction to correct';
         }
 
-        function updateAllDisplays() {
-            updateQuickSummary();
+        async function updateAllDisplays() {
+            await updateQuickSummary();
             updateRecentTransactions();
             updateExpenseDisplay();
         }
 
-        function updateQuickSummary() {
-            const summary = getTodaySummary();
-            document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
-            document.getElementById('today-count').textContent = summary.todayCount;
-            document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
+        async function updateQuickSummary() {
+            const summary = await getTodaySummary();
+            
+            // Safely handle summary data with defaults
+            const todayRevenue = (summary && typeof summary.todayRevenue === 'number') ? summary.todayRevenue : 0;
+            const todayCount = (summary && typeof summary.todayCount === 'number') ? summary.todayCount : 0;
+            const todayExpenses = (summary && typeof summary.todayExpenses === 'number') ? summary.todayExpenses : 0;
+            
+            document.getElementById('today-revenue').textContent = `฿${todayRevenue.toFixed(2)}`;
+            document.getElementById('today-count').textContent = todayCount;
+            document.getElementById('today-expenses').textContent = `฿${todayExpenses.toFixed(2)}`;
             
             // Update payment breakdown
-            updatePaymentBreakdownMini(summary);
+            if (summary) {
+                updatePaymentBreakdownMini(summary);
+            }
         }
 
         function updatePaymentBreakdownMini(summary) {
             const container = document.getElementById('payment-breakdown-mini');
             
-            if (Object.keys(summary.paymentBreakdown).length === 0) {
+            if (!summary || !summary.paymentBreakdown || Object.keys(summary.paymentBreakdown).length === 0) {
                 container.innerHTML = '<div style="text-align: center; color: #666; font-style: italic;">No payments yet today</div>';
                 return;
             }
@@ -328,9 +356,17 @@
             const container = document.getElementById('recent-transactions');
             const recentTransactions = getRecentTransactions(5);
 
-            const header = container.querySelector('.transaction-item');
-            container.innerHTML = '';
-            container.appendChild(header);
+            // Preserve the header before clearing
+            const headerHTML = `
+                <div class="transaction-item">
+                    <div>Payment</div>
+                    <div>Masseuse</div>
+                    <div>Service</div>
+                    <div>Amount</div>
+                </div>
+            `;
+            
+            container.innerHTML = headerHTML;
 
             if (recentTransactions.length === 0) {
                 const div = document.createElement('div');
@@ -371,20 +407,20 @@
             `).join('');
         }
 
-        function handleAddExpense() {
+        async function handleAddExpense() {
             const description = document.getElementById('newExpenseDesc').value.trim();
             const amount = parseFloat(document.getElementById('newExpenseAmount').value);
 
             if (addExpense(description, amount)) {
                 document.getElementById('newExpenseDesc').value = '';
                 document.getElementById('newExpenseAmount').value = '';
-                updateAllDisplays();
+                await updateAllDisplays();
             }
         }
 
-        function handleRemoveExpense(index) {
+        async function handleRemoveExpense(index) {
             if (removeExpense(index)) {
-                updateAllDisplays();
+                await updateAllDisplays();
             }
         }
     </script>

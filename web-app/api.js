@@ -80,7 +80,7 @@ class APIClient {
     }
 
     async getTodayTransactionSummary() {
-        return this.request('/transactions/summary/today');
+        return this.request('/reports/summary/today');
     }
 
     // Staff

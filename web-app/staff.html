@@ -29,18 +29,36 @@
             </div>
         </div>
 
-        <!-- Staff Roster -->
+        <!-- Add Staff Section -->
         <div class="section">
-            <div class="section-header">DAILY STAFF ROSTER</div>
+            <div class="section-header">ADD STAFF FOR TODAY</div>
+            <div class="section-content">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                    <select id="available-staff" style="flex: 1;">
+                        <option value="">Select masseuse to add...</option>
+                    </select>
+                    <button onclick="addStaffToRoster()" class="btn">Add to Roster</button>
+                    <button onclick="clearTodayRoster()" class="btn btn-secondary">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Staff Roster -->
+        <div class="section">
+            <div class="section-header">TODAY'S STAFF ROSTER</div>
             <div class="section-content">
                 <div class="roster-grid">
                     <div><strong>Position</strong></div>
                     <div><strong>Masseuse Name</strong></div>
-                    <div><strong>Status</strong></div>
+                    <div><strong>Next in Line</strong></div>
                     <div><strong>Today's Count</strong></div>
+                    <div><strong>Actions</strong></div>
                 </div>
                 <div id="roster-list">
-                    <!-- Roster items will be populated by JavaScript -->
+                    <!-- Today's roster items will be populated by JavaScript -->
+                </div>
+                <div id="empty-roster" style="text-align: center; padding: 20px; color: #666; display: none;">
+                    No staff added for today. Use the dropdown above to add masseuses to today's roster.
                 </div>
             </div>
         </div>
@@ -49,54 +67,139 @@
     <script src="api.js"></script>
     <script src="shared.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            updateRosterDisplay();
-            setInterval(updateRosterDisplay, 30000);
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadData(); // Load data from API first
+            updateAvailableStaffDropdown(); // Populate the dropdown
+            updateRosterDisplay(); // Then display the roster
+            setInterval(async () => {
+                await loadData();
+                updateAvailableStaffDropdown();
+                updateRosterDisplay();
+            }, 30000);
         });
 
-        function updateRosterDisplay() {
-            const rosterList = document.getElementById('roster-list');
-            rosterList.innerHTML = '';
+        // Today's working roster (subset of full roster)
+        let todayRoster = [];
 
-            appData.roster.forEach((masseuse, index) => {
-                const div = document.createElement('div');
-                div.className = 'roster-grid';
-                div.innerHTML = `
-                    <div>#${masseuse.position}</div>
-                    <div>
-                        <input type="text" value="${masseuse.name}" 
-                               onchange="updateMasseuseName(${index}, this.value)"
-                               class="name-input"
-                               placeholder="Enter masseuse name">
-                    </div>
-                    <div>
-                        <select onchange="updateMasseuseStatus(${index}, this.value)" 
-                                class="status-${masseuse.status.toLowerCase()}">
-                            <option value="Available" ${masseuse.status === 'Available' ? 'selected' : ''}>Available</option>
-                            <option value="Busy" ${masseuse.status === 'Busy' ? 'selected' : ''}>Busy</option>
-                            <option value="Break" ${masseuse.status === 'Break' ? 'selected' : ''}>Break</option>
-                            <option value="Off" ${masseuse.status === 'Off' ? 'selected' : ''}>Off</option>
-                            <option value="Next" ${masseuse.status === 'Next' ? 'selected' : ''}>Next</option>
-                        </select>
-                    </div>
-                    <div><strong>${masseuse.todayCount}</strong></div>
-                `;
-                rosterList.appendChild(div);
+        function updateAvailableStaffDropdown() {
+            const dropdown = document.getElementById('available-staff');
+            dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
+            
+            // Get masseuses not already in today's roster
+            const usedNames = todayRoster.map(staff => staff.name);
+            const availableStaff = CONFIG.settings.masseuses.filter(name => !usedNames.includes(name));
+            
+            availableStaff.forEach(name => {
+                dropdown.innerHTML += `<option value="${name}">${name}</option>`;
             });
         }
 
-        function updateMasseuseName(index, name) {
-            appData.roster[index].name = name;
-            saveData();
-            showToast(`Updated masseuse name: ${name}`);
+        function updateRosterDisplay() {
+            const rosterList = document.getElementById('roster-list');
+            const emptyMessage = document.getElementById('empty-roster');
+            
+            if (todayRoster.length === 0) {
+                rosterList.innerHTML = '';
+                emptyMessage.style.display = 'block';
+                return;
+            }
+            
+            emptyMessage.style.display = 'none';
+            rosterList.innerHTML = '';
+
+            todayRoster.forEach((staff, index) => {
+                const div = document.createElement('div');
+                div.className = 'roster-grid';
+                div.innerHTML = `
+                    <div>#${index + 1}</div>
+                    <div><strong>${staff.name}</strong></div>
+                    <div>
+                        <button onclick="setNextInLine(${index})" 
+                                class="btn ${staff.isNext ? 'btn-next' : 'btn-secondary'}" 
+                                style="font-size: 12px; padding: 5px 10px;">
+                            ${staff.isNext ? '👤 NEXT' : 'Set Next'}
+                        </button>
+                    </div>
+                    <div><strong>${staff.todayCount}</strong></div>
+                    <div>
+                        <button onclick="moveUp(${index})" class="btn btn-small" ${index === 0 ? 'disabled' : ''}>↑</button>
+                        <button onclick="moveDown(${index})" class="btn btn-small" ${index === todayRoster.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button onclick="removeFromRoster(${index})" class="btn btn-danger btn-small">✕</button>
+                    </div>
+                `;
+                rosterList.appendChild(div);
+            });
+            
+            updateAvailableStaffDropdown();
         }
 
-        function updateMasseuseStatus(index, status) {
-            const oldStatus = appData.roster[index].status;
-            appData.roster[index].status = status;
-            saveData();
+        function addStaffToRoster() {
+            const dropdown = document.getElementById('available-staff');
+            const selectedName = dropdown.value;
+            
+            if (!selectedName) {
+                showToast('Please select a masseuse to add', 'error');
+                return;
+            }
+            
+            // Find the staff member from the full roster data
+            const staffData = appData.roster.find(r => r.name === selectedName);
+            const todayCount = staffData ? staffData.todayCount : 0;
+            
+            todayRoster.push({
+                name: selectedName,
+                isNext: todayRoster.length === 0, // First person is automatically next
+                todayCount: todayCount
+            });
+            
             updateRosterDisplay();
-            showToast(`${appData.roster[index].name || `Position #${index + 1}`} status changed from ${oldStatus} to ${status}`);
+            showToast(`Added ${selectedName} to today's roster`);
+        }
+
+        function removeFromRoster(index) {
+            const removedStaff = todayRoster[index];
+            todayRoster.splice(index, 1);
+            
+            // If removed person was "next", set first person as next
+            if (removedStaff.isNext && todayRoster.length > 0) {
+                todayRoster[0].isNext = true;
+            }
+            
+            updateRosterDisplay();
+            showToast(`Removed ${removedStaff.name} from today's roster`);
+        }
+
+        function setNextInLine(index) {
+            // Clear all "next" flags
+            todayRoster.forEach(staff => staff.isNext = false);
+            // Set selected person as next
+            todayRoster[index].isNext = true;
+            updateRosterDisplay();
+            showToast(`${todayRoster[index].name} is now next in line`);
+        }
+
+        function moveUp(index) {
+            if (index > 0) {
+                [todayRoster[index], todayRoster[index - 1]] = [todayRoster[index - 1], todayRoster[index]];
+                updateRosterDisplay();
+                showToast(`Moved ${todayRoster[index - 1].name} up in queue`);
+            }
+        }
+
+        function moveDown(index) {
+            if (index < todayRoster.length - 1) {
+                [todayRoster[index], todayRoster[index + 1]] = [todayRoster[index + 1], todayRoster[index]];
+                updateRosterDisplay();
+                showToast(`Moved ${todayRoster[index + 1].name} down in queue`);
+            }
+        }
+
+        function clearTodayRoster() {
+            if (confirm('Clear all staff from today\'s roster?')) {
+                todayRoster = [];
+                updateRosterDisplay();
+                showToast('Today\'s roster cleared');
+            }
         }
 
         function handleServeNext() {

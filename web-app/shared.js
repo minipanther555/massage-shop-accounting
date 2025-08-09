@@ -118,6 +118,8 @@ async function loadTodayData() {
             customerContact: t.customer_contact || "",
             status: t.status
         }));
+        
+        console.log('🔍 MAPPED TRANSACTIONS:', appData.transactions);
 
         appData.expenses = expenses.map(e => ({
             id: e.id.toString(),
@@ -220,7 +222,9 @@ async function submitTransaction(formData) {
             corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null
         };
 
+        console.log('🚀 SUBMITTING TRANSACTION:', transactionData);
         const newTransaction = await api.createTransaction(transactionData);
+        console.log('✅ TRANSACTION RESPONSE:', newTransaction);
 
         // Exit correction mode
         if (appData.correctionMode) {
@@ -460,10 +464,13 @@ async function getTodaySummary() {
 
 // Get recent transactions
 function getRecentTransactions(limit = 5) {
-    return appData.transactions
-        .filter(t => t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
-        .slice(-limit)
-        .reverse();
+    console.log('🔍 ALL TRANSACTIONS:', appData.transactions);
+    const filtered = appData.transactions
+        .filter(t => t.status === 'ACTIVE' || t.status.includes('CORRECTED'));
+    console.log('🔍 FILTERED TRANSACTIONS:', filtered);
+    const recent = filtered.slice(-limit).reverse();
+    console.log('🔍 RECENT TRANSACTIONS:', recent);
+    return recent;
 }
 
 // Show toast notification
