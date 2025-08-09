@@ -28,15 +28,15 @@ router.get('/staff', async (req, res) => {
                 date('now', 'weekday 0') as next_payment_due,
                 (SELECT COUNT(*) FROM transactions t 
                  WHERE t.masseuse_name = sr.masseuse_name 
-                 AND date(t.timestamp) = date('now') 
+                 AND date(t.timestamp/1000, 'unixepoch') = date('now') 
                  AND t.status = 'ACTIVE') as today_transactions,
                 (SELECT COALESCE(SUM(t.masseuse_fee), 0) FROM transactions t 
                  WHERE t.masseuse_name = sr.masseuse_name 
-                 AND date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
+                 AND date(t.timestamp/1000, 'unixepoch') >= date('now', 'weekday 1', '-6 days')
                  AND t.status = 'ACTIVE') as this_week_fees,
                 (SELECT COUNT(*) FROM transactions t 
                  WHERE t.masseuse_name = sr.masseuse_name 
-                 AND date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
+                 AND date(t.timestamp/1000, 'unixepoch') >= date('now', 'weekday 1', '-6 days')
                  AND t.status = 'ACTIVE') as this_week_massages
             FROM staff_roster sr 
             WHERE sr.masseuse_name IS NOT NULL AND sr.masseuse_name != ''
