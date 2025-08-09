@@ -114,3 +114,13 @@ This bug was resolved using the **🐛 Triage & Debugging Protocol**:
 
 ## Status: RESOLVED ✅
 Staff dropdown now functions correctly with all masseuse names populated and available for selection.
+
+## Follow-up Issues Discovered (2025-08-09)
+
+### Additional Bugs Found During Staff System Enhancement:
+1. **Transaction Summary Display Bug** - Summary showing zeros despite successful transactions
+2. **Recent Transactions DOM Bug** - Header destruction preventing transaction display  
+3. **Async/Sync Mismatch** - `getTodaySummary()` Promise handling issues
+4. **JavaScript Syntax Error** - Script loading failure due to `await` in non-async function
+
+All follow-up issues resolved during the same session using systematic debugging approach.

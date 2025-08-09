@@ -473,6 +473,63 @@ function getRecentTransactions(limit = 5) {
     return recent;
 }
 
+// Authentication utilities
+function getCurrentUser() {
+    const userStr = localStorage.getItem('currentUser');
+    return userStr ? JSON.parse(userStr) : null;
+}
+
+function isLoggedIn() {
+    return !!localStorage.getItem('sessionToken');
+}
+
+function hasRole(requiredRole) {
+    const user = getCurrentUser();
+    if (!user) return false;
+    
+    // Manager has access to everything
+    if (user.role === 'manager') return true;
+    
+    // Check specific role
+    return user.role === requiredRole;
+}
+
+function requireAuth(requiredRole = null) {
+    if (!isLoggedIn()) {
+        console.log('❌ AUTH: Not logged in, redirecting to login');
+        window.location.href = 'login.html';
+        return false;
+    }
+    
+    if (requiredRole && !hasRole(requiredRole)) {
+        console.log('❌ AUTH: Insufficient permissions, required:', requiredRole);
+        showToast(`Access denied. ${requiredRole} role required.`, 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+async function logout() {
+    try {
+        console.log('👋 LOGOUT: Attempting logout...');
+        await api.logout();
+        
+        localStorage.removeItem('sessionToken');
+        localStorage.removeItem('currentUser');
+        
+        console.log('✅ LOGOUT: Success');
+        window.location.href = 'login.html';
+        
+    } catch (error) {
+        console.error('🚨 LOGOUT ERROR:', error);
+        // Force logout even if API call fails
+        localStorage.removeItem('sessionToken');
+        localStorage.removeItem('currentUser');
+        window.location.href = 'login.html';
+    }
+}
+
 // Show toast notification
 function showToast(message, type = 'success') {
     // Create toast if it doesn't exist

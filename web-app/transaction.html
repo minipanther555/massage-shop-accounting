@@ -17,6 +17,10 @@
             <a href="staff.html" class="nav-btn staff">👥 Staff Roster</a>
             <a href="transaction.html" class="nav-btn transaction active">💳 New Transaction</a>
             <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
+            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="current-user" style="color: #666; font-size: 14px;"></span>
+                <button onclick="logout()" class="nav-btn logout" style="background: #ff4444; color: white;">👋 Logout</button>
+            </div>
         </div>
 
         <!-- Correction Mode Banner -->
@@ -169,6 +173,18 @@
         document.addEventListener('DOMContentLoaded', async function() {
             try {
                 console.log('🚀 DOM LOADED - Starting initialization');
+                
+                // Check authentication first
+                if (!requireAuth()) {
+                    return;
+                }
+                
+                // Display current user
+                const user = getCurrentUser();
+                if (user) {
+                    document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                }
+                
                 await loadData(); // Load data from API first
                 console.log('🚀 DATA LOADED - CONFIG:', CONFIG);
                 populateDropdowns(); // Then populate dropdowns with loaded data

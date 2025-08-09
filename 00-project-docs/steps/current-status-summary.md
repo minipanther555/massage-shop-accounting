@@ -60,6 +60,25 @@
    - **Fix**: Populated database with 16 masseuse names + fixed loading order with await loadData()
    - **Impact**: All masseuse names now appear correctly in transaction form dropdown
 
+4. **Frontend Display & Transaction Workflow Bugs** (2025-08-09)
+   - **Issue A**: Recent Transactions not displaying despite successful API responses
+   - **Root Cause A**: DOM manipulation bug - header element destroyed before appendChild
+   - **Fix A**: Recreate header with static HTML instead of preserving destroyed element
+   
+   - **Issue B**: Summary data showing zeros despite transactions existing
+   - **Root Cause B**: Async/sync mismatch - `getTodaySummary()` called without await
+   - **Fix B**: Made all summary functions properly async with await chain
+   
+   - **Issue C**: JavaScript syntax error preventing page initialization
+   - **Root Cause C**: `await` used in non-async function
+   - **Fix C**: Made `loadCorrection()` async function
+   
+   - **Issue D**: CORS and rate limiting blocking development requests
+   - **Root Cause D**: Production middleware applied in development
+   - **Fix D**: Conditional middleware based on NODE_ENV
+   
+   - **Impact**: Complete transaction workflow now functional (creation, display, summaries)
+
 ### 🎯 **Immediate Next Priorities**
 
 1. **Staff System Simplification** (CURRENT)

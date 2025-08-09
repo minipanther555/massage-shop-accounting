@@ -4,11 +4,16 @@ const API_BASE_URL = 'http://localhost:3000/api';
 class APIClient {
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
+        
+        // Get session token from localStorage
+        const sessionToken = localStorage.getItem('sessionToken');
+        
         const config = {
             mode: 'cors',
             credentials: 'omit',
             headers: {
                 'Content-Type': 'application/json',
+                ...(sessionToken && { 'Authorization': `Bearer ${sessionToken}` }),
                 ...options.headers
             },
             ...options
@@ -173,6 +178,28 @@ class APIClient {
         return this.request('/reports/end-day', {
             method: 'POST'
         });
+    }
+
+    // Authentication
+    async login(username, password = '') {
+        return this.request('/auth/login', {
+            method: 'POST',
+            body: { username, password }
+        });
+    }
+
+    async logout() {
+        return this.request('/auth/logout', {
+            method: 'POST'
+        });
+    }
+
+    async checkSession() {
+        return this.request('/auth/session');
+    }
+
+    async getActiveSessions() {
+        return this.request('/auth/sessions');
     }
 }
 
