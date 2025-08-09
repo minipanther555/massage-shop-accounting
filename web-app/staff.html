@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Massage Shop POS - Staff Roster</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            STAFF ROSTER MANAGEMENT
+        </div>
+
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-btn home">🏠 Home</a>
+            <a href="staff.html" class="nav-btn staff active">👥 Staff Roster</a>
+            <a href="transaction.html" class="nav-btn transaction">💳 New Transaction</a>
+            <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
+        </div>
+
+        <!-- Serve Next Button -->
+        <div class="section">
+            <div class="section-header">
+                QUICK ACTIONS
+                <button class="btn btn-next" onclick="handleServeNext()">
+                    👤 Serve Next Customer
+                </button>
+            </div>
+        </div>
+
+        <!-- Staff Roster -->
+        <div class="section">
+            <div class="section-header">DAILY STAFF ROSTER</div>
+            <div class="section-content">
+                <div class="roster-grid">
+                    <div><strong>Position</strong></div>
+                    <div><strong>Masseuse Name</strong></div>
+                    <div><strong>Status</strong></div>
+                    <div><strong>Today's Count</strong></div>
+                </div>
+                <div id="roster-list">
+                    <!-- Roster items will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            updateRosterDisplay();
+            setInterval(updateRosterDisplay, 30000);
+        });
+
+        function updateRosterDisplay() {
+            const rosterList = document.getElementById('roster-list');
+            rosterList.innerHTML = '';
+
+            appData.roster.forEach((masseuse, index) => {
+                const div = document.createElement('div');
+                div.className = 'roster-grid';
+                div.innerHTML = `
+                    <div>#${masseuse.position}</div>
+                    <div>
+                        <input type="text" value="${masseuse.name}" 
+                               onchange="updateMasseuseName(${index}, this.value)"
+                               class="name-input"
+                               placeholder="Enter masseuse name">
+                    </div>
+                    <div>
+                        <select onchange="updateMasseuseStatus(${index}, this.value)" 
+                                class="status-${masseuse.status.toLowerCase()}">
+                            <option value="Available" ${masseuse.status === 'Available' ? 'selected' : ''}>Available</option>
+                            <option value="Busy" ${masseuse.status === 'Busy' ? 'selected' : ''}>Busy</option>
+                            <option value="Break" ${masseuse.status === 'Break' ? 'selected' : ''}>Break</option>
+                            <option value="Off" ${masseuse.status === 'Off' ? 'selected' : ''}>Off</option>
+                            <option value="Next" ${masseuse.status === 'Next' ? 'selected' : ''}>Next</option>
+                        </select>
+                    </div>
+                    <div><strong>${masseuse.todayCount}</strong></div>
+                `;
+                rosterList.appendChild(div);
+            });
+        }
+
+        function updateMasseuseName(index, name) {
+            appData.roster[index].name = name;
+            saveData();
+            showToast(`Updated masseuse name: ${name}`);
+        }
+
+        function updateMasseuseStatus(index, status) {
+            const oldStatus = appData.roster[index].status;
+            appData.roster[index].status = status;
+            saveData();
+            updateRosterDisplay();
+            showToast(`${appData.roster[index].name || `Position #${index + 1}`} status changed from ${oldStatus} to ${status}`);
+        }
+
+        function handleServeNext() {
+            const nextMasseuse = serveNextCustomer();
+            if (nextMasseuse) {
+                updateRosterDisplay();
+                setTimeout(() => {
+                    window.location.href = `transaction.html?masseuse=${encodeURIComponent(nextMasseuse)}`;
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>

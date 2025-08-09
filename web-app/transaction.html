@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Massage Shop POS - New Transaction</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            NEW TRANSACTION
+        </div>
+
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-btn home">🏠 Home</a>
+            <a href="staff.html" class="nav-btn staff">👥 Staff Roster</a>
+            <a href="transaction.html" class="nav-btn transaction active">💳 New Transaction</a>
+            <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
+        </div>
+
+        <!-- Correction Mode Banner -->
+        <div id="correction-banner" class="correction-banner" style="display: none;">
+            🔄 CORRECTION MODE: Editing previous transaction
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Column: Transaction Form -->
+            <div>
+                <div class="section">
+                    <div class="section-header">TRANSACTION DETAILS</div>
+                    <div class="section-content">
+                        <form id="transaction-form">
+                            <div class="form-group">
+                                <label for="masseuse">Masseuse Name:</label>
+                                <select id="masseuse" required>
+                                    <option value="">Select Masseuse</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="service">Service Type:</label>
+                                <select id="service" required onchange="updatePricing()">
+                                    <option value="">Select Service</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="payment">Payment Method:</label>
+                                <select id="payment" required onchange="updateTimeDropdowns()">
+                                    <option value="">Select Payment Method</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="startTime">Start Time:</label>
+                                <input type="text" id="startTime" required readonly class="readonly">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="endTime">End Time:</label>
+                                <select id="endTime" required>
+                                    <option value="">Select End Time</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="customerContact">Customer Contact (Optional):</label>
+                                <input type="text" id="customerContact" maxlength="100" placeholder="Phone or name (optional)">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Service Price:</label>
+                                <div id="servicePrice" class="summary-value">฿0.00</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Masseuse Fee:</label>
+                                <div id="masseuseeFee" class="summary-value">฿0.00</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-large" style="width: 100%; margin-top: 20px;">
+                                💳 Submit Transaction
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Correction Section -->
+                <div class="section">
+                    <div class="section-header">CORRECT MISTAKE</div>
+                    <div class="section-content">
+                        <div id="correction-info" style="margin: 10px 0; font-style: italic; color: #666;">
+                            No recent transaction to correct
+                        </div>
+                        <button class="btn btn-secondary" onclick="loadCorrection()" style="width: 100%;">
+                            🔄 Load Last Transaction for Correction
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Mini Summary and Recent Transactions -->
+            <div>
+                <!-- Quick Daily Summary -->
+                <div class="section">
+                    <div class="section-header">TODAY'S QUICK SUMMARY</div>
+                    <div class="section-content">
+                        <div class="summary-grid">
+                            <div class="summary-label">Today's Revenue:</div>
+                            <div class="summary-value" id="today-revenue">฿0.00</div>
+                        </div>
+                        <div class="summary-grid">
+                            <div class="summary-label">Today's Transactions:</div>
+                            <div class="summary-value" id="today-count">0</div>
+                        </div>
+                        <div class="summary-grid">
+                            <div class="summary-label">Today's Expenses:</div>
+                            <div class="summary-value" id="today-expenses">฿0.00</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="section">
+                    <div class="section-header">RECENT TRANSACTIONS</div>
+                    <div class="section-content">
+                        <div class="transaction-log" id="recent-transactions">
+                            <div class="transaction-item">
+                                <div>Payment</div>
+                                <div>Masseuse</div>
+                                <div>Service</div>
+                                <div>Amount</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Expenses -->
+                <div class="section">
+                    <div class="section-header">DAILY EXPENSES</div>
+                    <div class="section-content">
+                        <div id="expense-list"></div>
+                        <div style="margin-top: 15px;">
+                            <div class="expense-grid">
+                                <input type="text" id="newExpenseDesc" placeholder="Expense description">
+                                <input type="number" id="newExpenseAmount" placeholder="Amount" step="0.01" min="0">
+                                <button class="btn btn-primary" onclick="handleAddExpense()">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        let correctionMode = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            populateDropdowns();
+            updateAllDisplays();
+            handleURLParams();
+            
+            document.getElementById('transaction-form').addEventListener('submit', handleSubmit);
+            
+            setInterval(updateAllDisplays, 30000);
+        });
+
+        function handleURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            const masseuse = params.get('masseuse');
+            if (masseuse) {
+                document.getElementById('masseuse').value = masseuse;
+            }
+        }
+
+        function populateDropdowns() {
+            const masseuseSelect = document.getElementById('masseuse');
+            masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+            CONFIG.settings.masseuses.forEach(name => {
+                masseuseSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+
+            const serviceSelect = document.getElementById('service');
+            serviceSelect.innerHTML = '<option value="">Select Service</option>';
+            CONFIG.settings.services.forEach(service => {
+                serviceSelect.innerHTML += `<option value="${service.name}">${service.name}</option>`;
+            });
+
+            const paymentSelect = document.getElementById('payment');
+            paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
+            CONFIG.settings.paymentMethods.forEach(method => {
+                paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
+            });
+        }
+
+        function updatePricing() {
+            const serviceName = document.getElementById('service').value;
+            const service = CONFIG.settings.services.find(s => s.name === serviceName);
+            
+            if (service) {
+                document.getElementById('servicePrice').textContent = `฿${service.price.toFixed(2)}`;
+                document.getElementById('masseuseeFee').textContent = `฿${service.fee.toFixed(2)}`;
+            } else {
+                document.getElementById('servicePrice').textContent = '฿0.00';
+                document.getElementById('masseuseeFee').textContent = '฿0.00';
+            }
+        }
+
+        function updateTimeDropdowns() {
+            const now = new Date();
+            const currentTime = formatTime(now);
+            document.getElementById('startTime').value = currentTime;
+
+            const endTimeSelect = document.getElementById('endTime');
+            endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+
+            const durations = [30, 60, 90, 120];
+            durations.forEach(duration => {
+                const endTime = new Date(now.getTime() + duration * 60000);
+                const formattedEndTime = formatTime(endTime);
+                endTimeSelect.innerHTML += `<option value="${formattedEndTime}">${formattedEndTime}</option>`;
+            });
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            
+            const formData = {
+                masseuse: document.getElementById('masseuse').value,
+                service: document.getElementById('service').value,
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value
+            };
+
+            if (submitTransaction(formData)) {
+                clearForm();
+                updateAllDisplays();
+                showToast("Transaction submitted successfully!");
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('transaction-form').reset();
+            document.getElementById('servicePrice').textContent = '฿0.00';
+            document.getElementById('masseuseeFee').textContent = '฿0.00';
+            exitCorrectionMode();
+        }
+
+        function loadCorrection() {
+            const transaction = loadTransactionForCorrection();
+            if (transaction) {
+                document.getElementById('masseuse').value = transaction.masseuse;
+                document.getElementById('service').value = transaction.service;
+                document.getElementById('payment').value = transaction.paymentMethod;
+                document.getElementById('startTime').value = transaction.startTime;
+                document.getElementById('endTime').value = transaction.endTime;
+                document.getElementById('customerContact').value = transaction.customerContact;
+                
+                updatePricing();
+                enterCorrectionMode();
+                updateAllDisplays();
+            }
+        }
+
+        function enterCorrectionMode() {
+            correctionMode = true;
+            document.getElementById('correction-banner').style.display = 'block';
+            document.getElementById('transaction-form').classList.add('correction-mode');
+            document.getElementById('correction-info').textContent = `Correcting transaction: ${appData.originalTransactionId}`;
+        }
+
+        function exitCorrectionMode() {
+            correctionMode = false;
+            document.getElementById('correction-banner').style.display = 'none';
+            document.getElementById('transaction-form').classList.remove('correction-mode');
+            document.getElementById('correction-info').textContent = 'No recent transaction to correct';
+        }
+
+        function updateAllDisplays() {
+            updateQuickSummary();
+            updateRecentTransactions();
+            updateExpenseDisplay();
+        }
+
+        function updateQuickSummary() {
+            const summary = getTodaySummary();
+            document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
+            document.getElementById('today-count').textContent = summary.todayCount;
+            document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
+        }
+
+        function updateRecentTransactions() {
+            const container = document.getElementById('recent-transactions');
+            const recentTransactions = getRecentTransactions(5);
+
+            const header = container.querySelector('.transaction-item');
+            container.innerHTML = '';
+            container.appendChild(header);
+
+            if (recentTransactions.length === 0) {
+                const div = document.createElement('div');
+                div.className = 'empty-state';
+                div.innerHTML = '<div>No transactions yet today</div>';
+                container.appendChild(div);
+                return;
+            }
+
+            recentTransactions.forEach(transaction => {
+                const div = document.createElement('div');
+                div.className = 'transaction-item';
+                div.innerHTML = `
+                    <div>${transaction.paymentMethod}</div>
+                    <div>${transaction.masseuse}</div>
+                    <div>${transaction.service}</div>
+                    <div>฿${transaction.paymentAmount.toFixed(2)}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateExpenseDisplay() {
+            const expenseList = document.getElementById('expense-list');
+            
+            if (appData.expenses.length === 0) {
+                expenseList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No expenses recorded today</div>';
+                return;
+            }
+
+            expenseList.innerHTML = appData.expenses.map((expense, index) => `
+                <div class="expense-grid">
+                    <div>${expense.description}</div>
+                    <div>฿${expense.amount.toFixed(2)}</div>
+                    <div><button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="handleRemoveExpense(${index})">Remove</button></div>
+                    <div class="expense-time">${formatTime(expense.timestamp)}</div>
+                </div>
+            `).join('');
+        }
+
+        function handleAddExpense() {
+            const description = document.getElementById('newExpenseDesc').value.trim();
+            const amount = parseFloat(document.getElementById('newExpenseAmount').value);
+
+            if (addExpense(description, amount)) {
+                document.getElementById('newExpenseDesc').value = '';
+                document.getElementById('newExpenseAmount').value = '';
+                updateAllDisplays();
+            }
+        }
+
+        function handleRemoveExpense(index) {
+            if (removeExpense(index)) {
+                updateAllDisplays();
+            }
+        }
+    </script>
+</body>
+</html>

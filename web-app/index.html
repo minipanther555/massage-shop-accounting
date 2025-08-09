@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Massage Shop POS - Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            MASSAGE SHOP POS SYSTEM
+        </div>
+
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-btn home active">🏠 Home</a>
+            <a href="staff.html" class="nav-btn staff">👥 Staff Roster</a>
+            <a href="transaction.html" class="nav-btn transaction">💳 New Transaction</a>
+            <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
+        </div>
+
+        <!-- Dashboard Overview -->
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h3>Today's Revenue</h3>
+                <div class="big-number" id="today-revenue">฿0.00</div>
+                <div class="subtitle" id="today-transactions">0 transactions</div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Active Staff</h3>
+                <div class="big-number" id="active-staff">0</div>
+                <div class="subtitle" id="available-staff">0 available</div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Today's Expenses</h3>
+                <div class="big-number" id="today-expenses">฿0.00</div>
+                <div class="subtitle" id="expense-count">0 expenses</div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>All-Time Revenue</h3>
+                <div class="big-number" id="total-revenue">฿0.00</div>
+                <div class="subtitle">Historical total</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section">
+            <div class="section-header">QUICK ACTIONS</div>
+            <div class="section-content">
+                <div class="quick-actions">
+                    <button class="btn btn-next btn-large" onclick="handleServeNext()">
+                        👤 Serve Next Customer
+                    </button>
+                    <a href="transaction.html" class="btn btn-primary btn-large">
+                        ➕ New Transaction
+                    </a>
+                    <a href="staff.html" class="btn btn-secondary btn-large">
+                        👥 Manage Staff
+                    </a>
+                    <button class="btn btn-danger btn-large" onclick="handleEndDay()">
+                        🌙 End Day
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="section">
+            <div class="section-header">RECENT ACTIVITY</div>
+            <div class="section-content">
+                <div class="transaction-log" id="recent-activity">
+                    <div class="transaction-item">
+                        <div>Time</div>
+                        <div>Activity</div>
+                        <div>Masseuse</div>
+                        <div>Amount</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Summary -->
+        <div class="section">
+            <div class="section-header">TODAY'S BREAKDOWN</div>
+            <div class="section-content">
+                <div id="payment-breakdown"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDashboard();
+            updateRecentActivity();
+            updatePaymentBreakdown();
+            setInterval(() => {
+                updateDashboard();
+                updateRecentActivity();
+                updatePaymentBreakdown();
+            }, 30000);
+        });
+
+        function updateDashboard() {
+            const summary = getTodaySummary();
+            document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
+            document.getElementById('today-transactions').textContent = `${summary.todayCount} transaction${summary.todayCount !== 1 ? 's' : ''}`;
+            
+            const activeStaff = appData.roster.filter(m => m.name && m.status !== 'Off').length;
+            const availableStaff = appData.roster.filter(m => m.name && (m.status === 'Available' || m.status === 'Next')).length;
+            document.getElementById('active-staff').textContent = activeStaff;
+            document.getElementById('available-staff').textContent = `${availableStaff} available`;
+            
+            document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
+            document.getElementById('expense-count').textContent = `${appData.expenses.length} expense${appData.expenses.length !== 1 ? 's' : ''}`;
+            document.getElementById('total-revenue').textContent = `฿${summary.allTimeRevenue.toFixed(2)}`;
+        }
+
+        function updateRecentActivity() {
+            const container = document.getElementById('recent-activity');
+            const recentTransactions = getRecentTransactions(5);
+            const recentExpenses = appData.expenses.slice(-3).reverse();
+            
+            const allActivity = [
+                ...recentTransactions.map(t => ({
+                    type: 'transaction', timestamp: t.timestamp, description: t.service,
+                    masseuse: t.masseuse, amount: t.paymentAmount
+                })),
+                ...recentExpenses.map(e => ({
+                    type: 'expense', timestamp: e.timestamp, description: e.description,
+                    masseuse: 'Expense', amount: e.amount
+                }))
+            ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+
+            const header = container.querySelector('.transaction-item');
+            container.innerHTML = '';
+            container.appendChild(header);
+
+            if (allActivity.length === 0) {
+                const div = document.createElement('div');
+                div.className = 'empty-state';
+                div.innerHTML = '<div class="icon">📋</div><div>No activity yet today</div>';
+                container.appendChild(div);
+                return;
+            }
+
+            allActivity.forEach(activity => {
+                const div = document.createElement('div');
+                div.className = 'transaction-item';
+                const icon = activity.type === 'transaction' ? '💳' : '💰';
+                const color = activity.type === 'transaction' ? '#34a853' : '#ea4335';
+                const prefix = activity.type === 'transaction' ? '+' : '-';
+                div.innerHTML = `
+                    <div>${formatTime(activity.timestamp)}</div>
+                    <div>${icon} ${activity.description}</div>
+                    <div>${activity.masseuse}</div>
+                    <div style="color: ${color}">${prefix}฿${activity.amount.toFixed(2)}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updatePaymentBreakdown() {
+            const summary = getTodaySummary();
+            const container = document.getElementById('payment-breakdown');
+            
+            if (Object.keys(summary.paymentBreakdown).length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">💳</div><div>No payments processed today</div></div>';
+                return;
+            }
+
+            let html = '<table class="payment-table"><tr><th>Payment Method</th><th>Count</th><th class="amount">Revenue</th></tr>';
+            Object.entries(summary.paymentBreakdown)
+                .sort(([,a], [,b]) => b.revenue - a.revenue)
+                .forEach(([method, data]) => {
+                    html += `<tr><td>${method}</td><td>${data.count}</td><td class="amount">฿${data.revenue.toFixed(2)}</td></tr>`;
+                });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function handleServeNext() {
+            const nextMasseuse = serveNextCustomer();
+            if (nextMasseuse) {
+                updateDashboard();
+                setTimeout(() => {
+                    window.location.href = `transaction.html?masseuse=${encodeURIComponent(nextMasseuse)}`;
+                }, 1000);
+            }
+        }
+
+        function handleEndDay() {
+            if (endDay()) {
+                updateDashboard();
+                updateRecentActivity();
+                updatePaymentBreakdown();
+            }
+        }
+    </script>
+</body>
+</html>
