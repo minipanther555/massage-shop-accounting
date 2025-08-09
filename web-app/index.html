@@ -91,21 +91,22 @@
         </div>
     </div>
 
+    <script src="api.js"></script>
     <script src="shared.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            updateDashboard();
-            updateRecentActivity();
-            updatePaymentBreakdown();
-            setInterval(() => {
-                updateDashboard();
-                updateRecentActivity();
-                updatePaymentBreakdown();
+        document.addEventListener('DOMContentLoaded', async function() {
+            await updateDashboard();
+            await updateRecentActivity();
+            await updatePaymentBreakdown();
+            setInterval(async () => {
+                await updateDashboard();
+                await updateRecentActivity();
+                await updatePaymentBreakdown();
             }, 30000);
         });
 
-        function updateDashboard() {
-            const summary = getTodaySummary();
+        async function updateDashboard() {
+            const summary = await getTodaySummary();
             document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
             document.getElementById('today-transactions').textContent = `${summary.todayCount} transaction${summary.todayCount !== 1 ? 's' : ''}`;
             
@@ -163,8 +164,8 @@
             });
         }
 
-        function updatePaymentBreakdown() {
-            const summary = getTodaySummary();
+        async function updatePaymentBreakdown() {
+            const summary = await getTodaySummary();
             const container = document.getElementById('payment-breakdown');
             
             if (Object.keys(summary.paymentBreakdown).length === 0) {
@@ -182,21 +183,21 @@
             container.innerHTML = html;
         }
 
-        function handleServeNext() {
-            const nextMasseuse = serveNextCustomer();
+        async function handleServeNext() {
+            const nextMasseuse = await serveNextCustomer();
             if (nextMasseuse) {
-                updateDashboard();
+                await updateDashboard();
                 setTimeout(() => {
                     window.location.href = `transaction.html?masseuse=${encodeURIComponent(nextMasseuse)}`;
                 }, 1000);
             }
         }
 
-        function handleEndDay() {
-            if (endDay()) {
-                updateDashboard();
-                updateRecentActivity();
-                updatePaymentBreakdown();
+        async function handleEndDay() {
+            if (await endDay()) {
+                await updateDashboard();
+                await updateRecentActivity();
+                await updatePaymentBreakdown();
             }
         }
     </script>
