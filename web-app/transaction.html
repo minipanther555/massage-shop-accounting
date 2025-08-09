@@ -118,6 +118,10 @@
                             <div class="summary-label">Today's Expenses:</div>
                             <div class="summary-value" id="today-expenses">฿0.00</div>
                         </div>
+                        
+                        <!-- Payment Breakdown -->
+                        <h4 style="margin: 15px 0 10px 0; color: #4a86e8;">Today's Payment Breakdown:</h4>
+                        <div id="payment-breakdown-mini"></div>
                     </div>
                 </div>
 
@@ -292,6 +296,31 @@
             document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
             document.getElementById('today-count').textContent = summary.todayCount;
             document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
+            
+            // Update payment breakdown
+            updatePaymentBreakdownMini(summary);
+        }
+
+        function updatePaymentBreakdownMini(summary) {
+            const container = document.getElementById('payment-breakdown-mini');
+            
+            if (Object.keys(summary.paymentBreakdown).length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666; font-style: italic;">No payments yet today</div>';
+                return;
+            }
+
+            let html = '';
+            Object.entries(summary.paymentBreakdown)
+                .sort(([,a], [,b]) => b.revenue - a.revenue)
+                .forEach(([method, data]) => {
+                    html += `
+                        <div class="summary-grid" style="margin-bottom: 8px;">
+                            <div style="font-size: 14px;">${method}:</div>
+                            <div style="font-size: 14px; font-weight: bold; color: #34a853;">฿${data.revenue.toFixed(2)} (${data.count})</div>
+                        </div>
+                    `;
+                });
+            container.innerHTML = html;
         }
 
         function updateRecentTransactions() {
