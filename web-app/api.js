@@ -215,6 +215,60 @@ class APIClient {
     async getActiveSessions() {
         return this.request('/auth/sessions');
     }
+
+    // =============================================================================
+    // ADMIN API METHODS (Manager Only)
+    // =============================================================================
+
+    // Staff Administration
+    async getAdminStaff() {
+        return this.request('/admin/staff');
+    }
+
+    async addStaff(staffData) {
+        return this.request('/admin/staff', {
+            method: 'POST',
+            body: staffData
+        });
+    }
+
+    async updateStaff(staffId, staffData) {
+        return this.request(`/admin/staff/${staffId}`, {
+            method: 'PUT',
+            body: staffData
+        });
+    }
+
+    async removeStaff(staffId) {
+        return this.request(`/admin/staff/${staffId}`, {
+            method: 'DELETE'
+        });
+    }
+
+    // Payment Management
+    async getStaffPayments(staffId) {
+        return this.request(`/admin/staff/${staffId}/payments`);
+    }
+
+    async recordPayment(staffId, paymentData) {
+        return this.request(`/admin/staff/${staffId}/payments`, {
+            method: 'POST',
+            body: paymentData
+        });
+    }
+
+    async getOutstandingFees() {
+        return this.request('/admin/staff/outstanding-fees');
+    }
+
+    // Staff Performance
+    async getStaffPerformance(period = 'week') {
+        return this.request(`/admin/staff/performance?period=${period}`);
+    }
+
+    async getStaffRankings() {
+        return this.request('/admin/staff/rankings');
+    }
 }
 
 // Create global API instance

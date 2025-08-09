@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Administration - Massage Shop POS</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        .admin-nav {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-nav .btn {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            color: #495057;
+        }
+        
+        .admin-nav .btn.active {
+            background: #007bff;
+            border-color: #007bff;
+            color: white;
+        }
+        
+        .staff-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1fr 2fr;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+            align-items: center;
+        }
+        
+        .staff-grid.header {
+            background: #f8f9fa;
+            font-weight: bold;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .staff-grid:hover:not(.header) {
+            background: #f8f9fa;
+        }
+        
+        .payment-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .payment-status.paid {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .payment-status.due {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .payment-status.overdue {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .payment-status.never {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        .outstanding-amount {
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        
+        .summary-card .label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #aaa;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        .payment-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .payment-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Admin Header -->
+        <div class="admin-header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="margin: 0; margin-bottom: 5px;">👥 Staff Administration</h1>
+                    <p style="margin: 0; opacity: 0.9;">Manage staff, payments, and performance (Manager Only)</p>
+                </div>
+                <div class="user-info" id="user-info" style="display: flex; align-items: center; gap: 10px;">
+                    <span id="current-user" style="color: rgba(255,255,255,0.9); font-size: 14px;"></span>
+                    <button onclick="logout()" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">👋 Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Navigation -->
+        <div class="admin-nav">
+            <button class="btn active">👥 Staff Management</button>
+            <button class="btn" onclick="window.location.href='admin-services.html'">💰 Services & Pricing</button>
+            <button class="btn" onclick="window.location.href='admin-reports.html'">📊 Financial Reports</button>
+            <button class="btn" onclick="window.location.href='index.html'">🏠 Back to Dashboard</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="value" id="total-outstanding">฿0.00</div>
+                <div class="label">Total Outstanding</div>
+            </div>
+            <div class="summary-card">
+                <div class="value" id="overdue-count">0</div>
+                <div class="label">Overdue Payments</div>
+            </div>
+            <div class="summary-card">
+                <div class="value" id="this-week-fees">฿0.00</div>
+                <div class="label">This Week Fees</div>
+            </div>
+            <div class="summary-card">
+                <div class="value" id="next-payment-date">-</div>
+                <div class="label">Next Payment Due</div>
+            </div>
+        </div>
+
+        <!-- Staff Management Actions -->
+        <div class="section">
+            <div class="section-header">STAFF MANAGEMENT</div>
+            <div class="section-content">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button onclick="showAddStaffModal()" class="btn">➕ Add New Staff</button>
+                    <button onclick="refreshStaffData()" class="btn btn-secondary">🔄 Refresh Data</button>
+                    <button onclick="showOutstandingFeesModal()" class="btn" style="background: #dc3545; color: white;">💰 Outstanding Fees</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff List -->
+        <div class="section">
+            <div class="section-header">STAFF ROSTER & PAYMENT TRACKING</div>
+            <div class="section-content">
+                <div class="staff-grid header">
+                    <div>Staff Member</div>
+                    <div>Outstanding</div>
+                    <div>Payment Status</div>
+                    <div>This Week</div>
+                    <div>Last Payment</div>
+                    <div>Actions</div>
+                </div>
+                <div id="staff-list">
+                    <!-- Staff members will be populated here -->
+                </div>
+                <div id="empty-staff" style="text-align: center; padding: 20px; color: #666; display: none;">
+                    <div class="icon">👥</div>
+                    <div>No staff members found</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Staff Modal -->
+    <div id="staff-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="staff-modal-title">Add New Staff Member</h2>
+                <span class="close" onclick="closeStaffModal()">&times;</span>
+            </div>
+            <form id="staff-form">
+                <div class="form-group">
+                    <label for="staff-name">Staff Name:</label>
+                    <input type="text" id="staff-name" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="hire-date">Hire Date:</label>
+                    <input type="date" id="hire-date">
+                </div>
+                <div class="form-group">
+                    <label for="staff-notes">Notes:</label>
+                    <textarea id="staff-notes" rows="3" maxlength="500"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="closeStaffModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn">Save Staff Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="payment-modal-title">Record Payment</h2>
+                <span class="close" onclick="closePaymentModal()">&times;</span>
+            </div>
+            <div id="payment-staff-info" style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px;"></div>
+            <form id="payment-form">
+                <div class="form-group">
+                    <label for="payment-amount">Payment Amount (฿):</label>
+                    <input type="number" id="payment-amount" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="payment-type">Payment Type:</label>
+                    <select id="payment-type" required>
+                        <option value="">Select Type</option>
+                        <option value="regular">Regular Weekly Payment</option>
+                        <option value="advance">Advance Payment</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="payment-notes">Notes:</label>
+                    <textarea id="payment-notes" rows="2" maxlength="200"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="closePaymentModal()" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn">Record Payment</button>
+                </div>
+            </form>
+            
+            <!-- Payment History -->
+            <div style="margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 15px;">
+                <h4>Payment History</h4>
+                <div id="payment-history" class="payment-history">
+                    <!-- Payment history will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outstanding Fees Modal -->
+    <div id="outstanding-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Outstanding Fees Summary</h2>
+                <span class="close" onclick="closeOutstandingModal()">&times;</span>
+            </div>
+            <div id="outstanding-content">
+                <!-- Outstanding fees content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="shared.js"></script>
+    <script>
+        let currentStaffId = null;
+        let staffData = [];
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication and manager role
+            if (!requireAuth('manager')) {
+                return;
+            }
+            
+            // Display current user
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+            }
+            
+            await loadStaffData();
+            
+            // Set up form handlers
+            document.getElementById('staff-form').addEventListener('submit', handleStaffSubmit);
+            document.getElementById('payment-form').addEventListener('submit', handlePaymentSubmit);
+        });
+
+        async function loadStaffData() {
+            try {
+                const data = await api.getAdminStaff();
+                staffData = data.staff;
+                updateSummaryCards(data.summary);
+                updateStaffList(data.staff);
+            } catch (error) {
+                console.error('Error loading staff data:', error);
+                showToast('Error loading staff data: ' + error.message, 'error');
+            }
+        }
+
+        function updateSummaryCards(summary) {
+            document.getElementById('total-outstanding').textContent = `฿${(summary.total_outstanding || 0).toFixed(2)}`;
+            document.getElementById('overdue-count').textContent = summary.overdue_count || 0;
+            document.getElementById('this-week-fees').textContent = `฿${(summary.total_this_week_fees || 0).toFixed(2)}`;
+            
+            if (summary.next_payment_date) {
+                const date = new Date(summary.next_payment_date);
+                document.getElementById('next-payment-date').textContent = date.toLocaleDateString();
+            }
+        }
+
+        function updateStaffList(staff) {
+            const container = document.getElementById('staff-list');
+            const emptyMessage = document.getElementById('empty-staff');
+            
+            if (staff.length === 0) {
+                container.innerHTML = '';
+                emptyMessage.style.display = 'block';
+                return;
+            }
+            
+            emptyMessage.style.display = 'none';
+            container.innerHTML = '';
+
+            staff.forEach(member => {
+                const div = document.createElement('div');
+                div.className = 'staff-grid';
+                
+                const statusClass = getPaymentStatusClass(member.payment_status);
+                const outstandingAmount = member.outstanding_balance || 0;
+                const thisWeekInfo = `${member.this_week_massages || 0} massages, ฿${(member.this_week_fees || 0).toFixed(2)}`;
+                const lastPayment = member.last_payment_date ? 
+                    `${new Date(member.last_payment_date).toLocaleDateString()} (฿${(member.last_payment_amount || 0).toFixed(2)})` : 
+                    'Never';
+                
+                div.innerHTML = `
+                    <div>
+                        <strong>${member.masseuse_name}</strong>
+                        ${member.hire_date ? `<br><small>Hired: ${new Date(member.hire_date).toLocaleDateString()}</small>` : ''}
+                    </div>
+                    <div class="outstanding-amount">฿${outstandingAmount.toFixed(2)}</div>
+                    <div class="payment-status ${statusClass}">${member.payment_status}</div>
+                    <div><small>${thisWeekInfo}</small></div>
+                    <div><small>${lastPayment}</small></div>
+                    <div class="btn-group">
+                        <button onclick="showPaymentModal(${member.id})" class="btn btn-small">💰 Pay</button>
+                        <button onclick="editStaff(${member.id})" class="btn btn-small btn-secondary">✏️ Edit</button>
+                        <button onclick="removeStaff(${member.id})" class="btn btn-small btn-danger">❌</button>
+                    </div>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+
+        function getPaymentStatusClass(status) {
+            switch (status) {
+                case 'Paid This Week': return 'paid';
+                case 'Payment Due': return 'due';
+                case 'Overdue': return 'overdue';
+                case 'Never Paid': return 'never';
+                default: return 'never';
+            }
+        }
+
+        // Modal functions
+        function showAddStaffModal() {
+            currentStaffId = null;
+            document.getElementById('staff-modal-title').textContent = 'Add New Staff Member';
+            document.getElementById('staff-form').reset();
+            document.getElementById('staff-modal').style.display = 'block';
+        }
+
+        function editStaff(staffId) {
+            const staff = staffData.find(s => s.id === staffId);
+            if (!staff) return;
+
+            currentStaffId = staffId;
+            document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
+            document.getElementById('staff-name').value = staff.masseuse_name || '';
+            document.getElementById('hire-date').value = staff.hire_date || '';
+            document.getElementById('staff-notes').value = staff.notes || '';
+            document.getElementById('staff-modal').style.display = 'block';
+        }
+
+        function closeStaffModal() {
+            document.getElementById('staff-modal').style.display = 'none';
+        }
+
+        async function handleStaffSubmit(e) {
+            e.preventDefault();
+            
+            const staffData = {
+                masseuse_name: document.getElementById('staff-name').value.trim(),
+                hire_date: document.getElementById('hire-date').value || null,
+                notes: document.getElementById('staff-notes').value.trim() || null
+            };
+
+            try {
+                if (currentStaffId) {
+                    await api.updateStaff(currentStaffId, staffData);
+                    showToast('Staff member updated successfully');
+                } else {
+                    await api.addStaff(staffData);
+                    showToast('Staff member added successfully');
+                }
+                
+                closeStaffModal();
+                await loadStaffData();
+            } catch (error) {
+                console.error('Error saving staff:', error);
+                showToast('Error saving staff member: ' + error.message, 'error');
+            }
+        }
+
+        async function removeStaff(staffId) {
+            const staff = staffData.find(s => s.id === staffId);
+            if (!staff) return;
+
+            if (!confirm(`Are you sure you want to remove ${staff.masseuse_name} from the staff roster?`)) {
+                return;
+            }
+
+            try {
+                await api.removeStaff(staffId);
+                showToast('Staff member removed successfully');
+                await loadStaffData();
+            } catch (error) {
+                console.error('Error removing staff:', error);
+                showToast('Error removing staff member: ' + error.message, 'error');
+            }
+        }
+
+        // Payment functions
+        async function showPaymentModal(staffId) {
+            const staff = staffData.find(s => s.id === staffId);
+            if (!staff) return;
+
+            currentStaffId = staffId;
+            document.getElementById('payment-modal-title').textContent = `Record Payment - ${staff.masseuse_name}`;
+            
+            // Show staff info
+            const outstandingBalance = staff.outstanding_balance || 0;
+            document.getElementById('payment-staff-info').innerHTML = `
+                <strong>${staff.masseuse_name}</strong><br>
+                Outstanding Balance: <span style="color: #dc3545; font-weight: bold;">฿${outstandingBalance.toFixed(2)}</span><br>
+                Last Payment: ${staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never'}
+            `;
+            
+            // Pre-fill payment amount with outstanding balance
+            document.getElementById('payment-amount').value = outstandingBalance > 0 ? outstandingBalance.toFixed(2) : '';
+            document.getElementById('payment-form').reset();
+            document.getElementById('payment-amount').value = outstandingBalance > 0 ? outstandingBalance.toFixed(2) : '';
+            
+            // Load payment history
+            await loadPaymentHistory(staffId);
+            
+            document.getElementById('payment-modal').style.display = 'block';
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').style.display = 'none';
+        }
+
+        async function loadPaymentHistory(staffId) {
+            try {
+                const payments = await api.getStaffPayments(staffId);
+                const container = document.getElementById('payment-history');
+                
+                if (payments.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 10px;">No payment history</div>';
+                    return;
+                }
+                
+                container.innerHTML = payments.map(payment => `
+                    <div class="payment-item">
+                        <div>
+                            <strong>${new Date(payment.payment_date).toLocaleDateString()}</strong><br>
+                            <small>${payment.payment_type} payment</small>
+                            ${payment.notes ? `<br><small style="color: #666;">${payment.notes}</small>` : ''}
+                        </div>
+                        <div style="text-align: right;">
+                            <strong>฿${payment.amount.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading payment history:', error);
+                document.getElementById('payment-history').innerHTML = '<div style="color: #dc3545;">Error loading payment history</div>';
+            }
+        }
+
+        async function handlePaymentSubmit(e) {
+            e.preventDefault();
+            
+            const paymentData = {
+                amount: parseFloat(document.getElementById('payment-amount').value),
+                payment_type: document.getElementById('payment-type').value,
+                notes: document.getElementById('payment-notes').value.trim() || null
+            };
+
+            if (!paymentData.amount || paymentData.amount <= 0) {
+                showToast('Please enter a valid payment amount', 'error');
+                return;
+            }
+
+            try {
+                const result = await api.recordPayment(currentStaffId, paymentData);
+                showToast(`Payment recorded successfully. New outstanding balance: ฿${result.new_outstanding.toFixed(2)}`);
+                
+                closePaymentModal();
+                await loadStaffData();
+            } catch (error) {
+                console.error('Error recording payment:', error);
+                showToast('Error recording payment: ' + error.message, 'error');
+            }
+        }
+
+        // Outstanding fees modal
+        async function showOutstandingFeesModal() {
+            try {
+                const data = await api.getOutstandingFees();
+                const container = document.getElementById('outstanding-content');
+                
+                if (data.outstanding_fees.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No outstanding fees</div>';
+                } else {
+                    let html = `
+                        <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                            <strong>Total Outstanding: ฿${data.total_outstanding.toFixed(2)}</strong> (${data.staff_count} staff members)
+                        </div>
+                        <div class="staff-grid header">
+                            <div>Staff Member</div>
+                            <div>Outstanding</div>
+                            <div>Status</div>
+                            <div>Last Payment</div>
+                        </div>
+                    `;
+                    
+                    data.outstanding_fees.forEach(staff => {
+                        const statusClass = getPaymentStatusClass(staff.payment_status);
+                        html += `
+                            <div class="staff-grid">
+                                <div><strong>${staff.masseuse_name}</strong></div>
+                                <div class="outstanding-amount">฿${staff.outstanding_balance.toFixed(2)}</div>
+                                <div class="payment-status ${statusClass}">${staff.payment_status}</div>
+                                <div>${staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never'}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
+                }
+                
+                document.getElementById('outstanding-modal').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading outstanding fees:', error);
+                showToast('Error loading outstanding fees: ' + error.message, 'error');
+            }
+        }
+
+        function closeOutstandingModal() {
+            document.getElementById('outstanding-modal').style.display = 'none';
+        }
+
+        async function refreshStaffData() {
+            showToast('Refreshing staff data...');
+            await loadStaffData();
+            showToast('Staff data refreshed');
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modals = ['staff-modal', 'payment-modal', 'outstanding-modal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -506,7 +506,14 @@ function requireAuth(requiredRole = null) {
     
     if (requiredRole && !hasRole(requiredRole)) {
         console.log('❌ AUTH: Insufficient permissions, required:', requiredRole);
-        showToast(`Access denied. ${requiredRole} role required.`, 'error');
+        if (requiredRole === 'manager') {
+            showToast('Manager access required. Redirecting to dashboard...', 'error');
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        } else {
+            showToast(`Access denied. ${requiredRole} role required.`, 'error');
+        }
         return false;
     }
     

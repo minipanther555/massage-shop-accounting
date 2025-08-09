@@ -19,7 +19,6 @@
             <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                 <span id="current-user" style="color: #666; font-size: 14px;"></span>
-                <button onclick="logout()" class="nav-btn logout" style="background: #ff4444; color: white;">👋 Logout</button>
             </div>
         </div>
 
@@ -50,23 +49,20 @@
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="section">
-            <div class="section-header">QUICK ACTIONS</div>
+        <!-- Admin Access (Manager Only) -->
+        <div class="section" id="admin-section" style="display: none;">
+            <div class="section-header">ADMINISTRATION (Manager Only)</div>
             <div class="section-content">
-                <div class="quick-actions">
-                    <button class="btn btn-next btn-large" onclick="handleServeNext()">
-                        👤 Serve Next Customer
-                    </button>
-                    <a href="transaction.html" class="btn btn-primary btn-large">
-                        ➕ New Transaction
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <a href="admin-staff.html" class="btn btn-primary btn-large">
+                        👥 Staff Administration
                     </a>
-                    <a href="staff.html" class="btn btn-secondary btn-large">
-                        👥 Manage Staff
+                    <a href="admin-services.html" class="btn btn-secondary btn-large">
+                        💰 Services & Pricing
                     </a>
-                    <button class="btn btn-danger btn-large" onclick="handleEndDay()">
-                        🌙 End Day
-                    </button>
+                    <a href="admin-reports.html" class="btn btn-secondary btn-large">
+                        📊 Financial Reports
+                    </a>
                 </div>
             </div>
         </div>
@@ -104,10 +100,15 @@
                 return;
             }
             
-            // Display current user
+            // Display current user and show admin section for managers
             const user = getCurrentUser();
             if (user) {
                 document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                
+                // Show admin section only for managers
+                if (user.role === 'manager') {
+                    document.getElementById('admin-section').style.display = 'block';
+                }
             }
             
             await updateDashboard();
@@ -198,23 +199,12 @@
             container.innerHTML = html;
         }
 
-        async function handleServeNext() {
-            const nextMasseuse = await serveNextCustomer();
-            if (nextMasseuse) {
-                await updateDashboard();
-                setTimeout(() => {
-                    window.location.href = `transaction.html?masseuse=${encodeURIComponent(nextMasseuse)}`;
-                }, 1000);
-            }
-        }
-
-        async function handleEndDay() {
-            if (await endDay()) {
-                await updateDashboard();
-                await updateRecentActivity();
-                await updatePaymentBreakdown();
-            }
-        }
+        // Functions removed: handleServeNext and handleEndDay (Quick Actions deprecated)
     </script>
+    
+    <!-- Logout Button at Bottom -->
+    <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
+        <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">👋 Logout</button>
+    </div>
 </body>
 </html>

@@ -60,6 +60,13 @@ class Database {
         status TEXT,
         today_massages INTEGER DEFAULT 0,
         busy_until TEXT,
+        hire_date DATE,
+        total_fees_earned DECIMAL(10,2) DEFAULT 0,
+        total_fees_paid DECIMAL(10,2) DEFAULT 0,
+        last_payment_date DATE,
+        last_payment_amount DECIMAL(10,2),
+        last_payment_type TEXT,
+        notes TEXT,
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
@@ -122,6 +129,20 @@ class Database {
         customer_contact TEXT,
         status TEXT NOT NULL,
         archived_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      // Staff payments history
+      `CREATE TABLE IF NOT EXISTS staff_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        masseuse_name TEXT NOT NULL,
+        payment_date DATE NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        payment_type TEXT NOT NULL, -- 'regular' or 'advance'
+        fees_period_start DATE,
+        fees_period_end DATE,
+        notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (masseuse_name) REFERENCES staff_roster(masseuse_name)
       )`
     ];
 

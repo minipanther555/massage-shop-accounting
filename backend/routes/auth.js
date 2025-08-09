@@ -161,4 +161,4 @@ router.get('/sessions', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = { router, sessions };

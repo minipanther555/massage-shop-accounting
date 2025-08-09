@@ -125,6 +125,15 @@ router.post('/', async (req, res) => {
       ]
     );
 
+    // Update staff total fees earned
+    await database.run(
+      `UPDATE staff_roster 
+       SET total_fees_earned = total_fees_earned + ?,
+           last_updated = CURRENT_TIMESTAMP
+       WHERE masseuse_name = ?`,
+      [service.masseuse_fee, masseuse_name]
+    );
+
     // If this is a correction, mark original as VOID
     if (corrected_transaction_id) {
       await database.run(

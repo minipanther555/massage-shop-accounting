@@ -65,12 +65,13 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', require('./routes/auth').router);
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/staff', require('./routes/staff'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/admin', require('./routes/admin')); // Manager-only admin routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {

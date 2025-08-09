@@ -17,10 +17,9 @@
             <a href="staff.html" class="nav-btn staff">👥 Staff Roster</a>
             <a href="transaction.html" class="nav-btn transaction active">💳 New Transaction</a>
             <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
-            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-                <span id="current-user" style="color: #666; font-size: 14px;"></span>
-                <button onclick="logout()" class="nav-btn logout" style="background: #ff4444; color: white;">👋 Logout</button>
-            </div>
+                            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                    <span id="current-user" style="color: #666; font-size: 14px;"></span>
+                </div>
         </div>
 
         <!-- Correction Mode Banner -->
@@ -554,5 +553,10 @@
             }
         }
     </script>
+    
+    <!-- Logout Button at Bottom -->
+    <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
+        <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">👋 Logout</button>
+    </div>
 </body>
 </html>

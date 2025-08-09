@@ -144,16 +144,17 @@ All 4 major UI display issues successfully resolved during this session:
 
 ### 🎯 **Updated Immediate Next Priorities**
 
-1. **Performance Optimization** (CURRENT)
-   - 🔄 Debug and fix 45-second loading delays in daily summary page
-   - ⏳ Apply systematic async/await debugging approach
-   - ⏳ Verify all summary sections load within 2 seconds
+1. **Manager Administrative Pages** (CURRENT)
+   - ⏳ Create manager-only staff management page (add/remove staff, view staff salaries and stats)
+   - ⏳ Create manager-only services management page (edit services, prices, masseuse fees)
+   - ⏳ Create manager-only weekly breakdown and reporting page
+   - ⏳ Implement role-based page access control (redirect reception users)
+   - ⏳ Add last payment tracking and staff payment history
 
-2. **Staff System Simplification** (NEXT)
-   - ✅ Core database integration complete
-   - ⏳ Implement simplified "next in line" pointer system
-   - ⏳ Create master staff list for manager administration
-   - ⏳ Separate daily roster management for reception access
+2. **End Day Function** (CRITICAL ISSUE)
+   - 🚨 Fix broken End Day function - currently nothing happens when clicked
+   - ⏳ Implement database archiving to `daily_summaries` and `archived_transactions`
+   - ⏳ Verify data moves correctly and system resets for next day
 
 3. **Authentication & UI Integration** ✅ COMPLETED
    - ✅ Backend session-based authentication with in-memory store
