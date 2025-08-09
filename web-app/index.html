@@ -183,7 +183,7 @@
             const summary = await getTodaySummary();
             const container = document.getElementById('payment-breakdown');
             
-            if (Object.keys(summary.paymentBreakdown).length === 0) {
+            if (!summary || !summary.paymentBreakdown || Object.keys(summary.paymentBreakdown).length === 0) {
                 container.innerHTML = '<div class="empty-state"><div class="icon">💳</div><div>No payments processed today</div></div>';
                 return;
             }

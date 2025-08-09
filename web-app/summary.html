@@ -17,6 +17,10 @@
             <a href="staff.html" class="nav-btn staff">👥 Staff Roster</a>
             <a href="transaction.html" class="nav-btn transaction">💳 New Transaction</a>
             <a href="summary.html" class="nav-btn summary active">📊 Daily Summary</a>
+            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="current-user" style="color: #666; font-size: 14px;"></span>
+                <button onclick="logout()" class="nav-btn logout" style="background: #ff4444; color: white;">👋 Logout</button>
+            </div>
         </div>
 
         <!-- Daily Overview -->
@@ -111,8 +115,22 @@
     <script src="shared.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            if (!requireAuth()) {
+                return;
+            }
+            
+            // Display current user
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+            }
+            
+            // Load data from API first (FIX: This was missing!)
+            await loadData();
             await updateAllDisplays();
             setInterval(async () => {
+                await loadData(); // Ensure fresh data on interval
                 await updateAllDisplays();
             }, 30000);
         });
@@ -128,13 +146,19 @@
         async function updateDashboard() {
             const summary = await getTodaySummary();
             
-            document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
-            document.getElementById('today-transactions').textContent = `${summary.todayCount} transaction${summary.todayCount !== 1 ? 's' : ''}`;
-            document.getElementById('today-fees').textContent = `฿${summary.todayFees.toFixed(2)}`;
-            document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
+            // Safely handle summary data with defaults
+            const todayRevenue = (summary && typeof summary.todayRevenue === 'number') ? summary.todayRevenue : 0;
+            const todayCount = (summary && typeof summary.todayCount === 'number') ? summary.todayCount : 0;
+            const todayFees = (summary && typeof summary.todayFees === 'number') ? summary.todayFees : 0;
+            const todayExpenses = (summary && typeof summary.todayExpenses === 'number') ? summary.todayExpenses : 0;
+            
+            document.getElementById('today-revenue').textContent = `฿${todayRevenue.toFixed(2)}`;
+            document.getElementById('today-transactions').textContent = `${todayCount} transaction${todayCount !== 1 ? 's' : ''}`;
+            document.getElementById('today-fees').textContent = `฿${todayFees.toFixed(2)}`;
+            document.getElementById('today-expenses').textContent = `฿${todayExpenses.toFixed(2)}`;
             document.getElementById('expense-count').textContent = `${appData.expenses.length} expense${appData.expenses.length !== 1 ? 's' : ''}`;
             
-            const netProfit = summary.todayRevenue - summary.todayFees - summary.todayExpenses;
+            const netProfit = todayRevenue - todayFees - todayExpenses;
             document.getElementById('net-profit').textContent = `฿${netProfit.toFixed(2)}`;
             document.getElementById('net-profit').style.color = netProfit >= 0 ? '#34a853' : '#ea4335';
         }
@@ -143,7 +167,7 @@
             const summary = await getTodaySummary();
             const container = document.getElementById('payment-breakdown');
             
-            if (Object.keys(summary.paymentBreakdown).length === 0) {
+            if (!summary || !summary.paymentBreakdown || Object.keys(summary.paymentBreakdown).length === 0) {
                 container.innerHTML = '<div class="empty-state"><div class="icon">💳</div><div>No payments processed today</div></div>';
                 return;
             }

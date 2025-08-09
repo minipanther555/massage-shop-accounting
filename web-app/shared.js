@@ -38,6 +38,8 @@ async function loadData() {
 
         CONFIG.settings.services = services.map(s => ({
             name: s.service_name,
+            duration: s.duration_minutes,
+            location: s.location,
             price: s.price,
             fee: s.masseuse_fee
         }));
@@ -47,7 +49,8 @@ async function loadData() {
         appData.roster = roster.map(r => ({
             position: r.position,
             name: r.masseuse_name || "",
-            status: r.status,
+            status: r.status || null,
+            busy_until: r.busy_until || null,
             todayCount: r.today_massages || 0
         }));
 

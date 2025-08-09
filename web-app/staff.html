@@ -17,15 +17,17 @@
             <a href="staff.html" class="nav-btn staff active">👥 Staff Roster</a>
             <a href="transaction.html" class="nav-btn transaction">💳 New Transaction</a>
             <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
+            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="current-user" style="color: #666; font-size: 14px;"></span>
+                <button onclick="logout()" class="nav-btn logout" style="background: #ff4444; color: white;">👋 Logout</button>
+            </div>
         </div>
 
-        <!-- Serve Next Button -->
+        <!-- Quick Actions -->
         <div class="section">
-            <div class="section-header">
-                QUICK ACTIONS
-                <button class="btn btn-next" onclick="handleServeNext()">
-                    👤 Serve Next Customer
-                </button>
+            <div class="section-header">QUEUE MANAGEMENT</div>
+            <div class="section-content">
+                <p>The queue advances automatically when transactions are submitted. The "next in line" person is auto-selected on the New Transaction page.</p>
             </div>
         </div>
 
@@ -68,6 +70,17 @@
     <script src="shared.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            if (!requireAuth()) {
+                return;
+            }
+            
+            // Display current user
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+            }
+            
             await loadData(); // Load data from API first
             updateAvailableStaffDropdown(); // Populate the dropdown
             updateRosterDisplay(); // Then display the roster
@@ -78,15 +91,14 @@
             }, 30000);
         });
 
-        // Today's working roster (subset of full roster)
-        let todayRoster = [];
-
         function updateAvailableStaffDropdown() {
             const dropdown = document.getElementById('available-staff');
             dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
             
-            // Get masseuses not already in today's roster
-            const usedNames = todayRoster.map(staff => staff.name);
+            // Get masseuses not already in the database roster (those with names)
+            const usedNames = appData.roster
+                .filter(r => r.name && r.name.trim() !== '')
+                .map(r => r.name);
             const availableStaff = CONFIG.settings.masseuses.filter(name => !usedNames.includes(name));
             
             availableStaff.forEach(name => {
@@ -98,7 +110,10 @@
             const rosterList = document.getElementById('roster-list');
             const emptyMessage = document.getElementById('empty-roster');
             
-            if (todayRoster.length === 0) {
+            // Get staff with names from database roster
+            const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+            
+            if (activeStaff.length === 0) {
                 rosterList.innerHTML = '';
                 emptyMessage.style.display = 'block';
                 return;
@@ -107,33 +122,49 @@
             emptyMessage.style.display = 'none';
             rosterList.innerHTML = '';
 
-            todayRoster.forEach((staff, index) => {
+            activeStaff.forEach((staff, index) => {
                 const div = document.createElement('div');
                 div.className = 'roster-grid';
+                div.draggable = true;
+                div.dataset.index = index;
+                const statusText = staff.status || null;
+                const busyUntil = staff.busy_until || null;
+                const isNext = staff.status === 'Next';
+                const isBusy = staff.status && staff.status.startsWith('Busy until');
+                
                 div.innerHTML = `
-                    <div>#${index + 1}</div>
+                    <div style="cursor: grab;">#${staff.position}</div>
                     <div><strong>${staff.name}</strong></div>
                     <div>
-                        <button onclick="setNextInLine(${index})" 
-                                class="btn ${staff.isNext ? 'btn-next' : 'btn-secondary'}" 
+                        <button onclick="setNextInLine(${staff.position})" 
+                                class="btn ${isNext ? 'btn-next' : 'btn-secondary'}" 
                                 style="font-size: 12px; padding: 5px 10px;">
-                            ${staff.isNext ? '👤 NEXT' : 'Set Next'}
+                            ${isNext ? '👤 NEXT' : 'Set Next'}
                         </button>
+                        ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
+                        ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
                     </div>
                     <div><strong>${staff.todayCount}</strong></div>
                     <div>
-                        <button onclick="moveUp(${index})" class="btn btn-small" ${index === 0 ? 'disabled' : ''}>↑</button>
-                        <button onclick="moveDown(${index})" class="btn btn-small" ${index === todayRoster.length - 1 ? 'disabled' : ''}>↓</button>
-                        <button onclick="removeFromRoster(${index})" class="btn btn-danger btn-small">✕</button>
+                        <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
+                        <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
+                        <button onclick="removeFromRoster(${staff.position})" class="btn btn-danger btn-small">✕</button>
                     </div>
                 `;
+                
+                // Add drag and drop event listeners
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                div.addEventListener('dragend', handleDragEnd);
+                
                 rosterList.appendChild(div);
             });
             
             updateAvailableStaffDropdown();
         }
 
-        function addStaffToRoster() {
+        async function addStaffToRoster() {
             const dropdown = document.getElementById('available-staff');
             const selectedName = dropdown.value;
             
@@ -142,74 +173,239 @@
                 return;
             }
             
-            // Find the staff member from the full roster data
-            const staffData = appData.roster.find(r => r.name === selectedName);
-            const todayCount = staffData ? staffData.todayCount : 0;
-            
-            todayRoster.push({
-                name: selectedName,
-                isNext: todayRoster.length === 0, // First person is automatically next
-                todayCount: todayCount
-            });
-            
-            updateRosterDisplay();
-            showToast(`Added ${selectedName} to today's roster`);
-        }
-
-        function removeFromRoster(index) {
-            const removedStaff = todayRoster[index];
-            todayRoster.splice(index, 1);
-            
-            // If removed person was "next", set first person as next
-            if (removedStaff.isNext && todayRoster.length > 0) {
-                todayRoster[0].isNext = true;
-            }
-            
-            updateRosterDisplay();
-            showToast(`Removed ${removedStaff.name} from today's roster`);
-        }
-
-        function setNextInLine(index) {
-            // Clear all "next" flags
-            todayRoster.forEach(staff => staff.isNext = false);
-            // Set selected person as next
-            todayRoster[index].isNext = true;
-            updateRosterDisplay();
-            showToast(`${todayRoster[index].name} is now next in line`);
-        }
-
-        function moveUp(index) {
-            if (index > 0) {
-                [todayRoster[index], todayRoster[index - 1]] = [todayRoster[index - 1], todayRoster[index]];
+            try {
+                // Find an empty position in the database roster
+                const emptyPosition = appData.roster.find(r => !r.name || r.name.trim() === '');
+                if (!emptyPosition) {
+                    showToast('No empty positions available', 'error');
+                    return;
+                }
+                
+                // Update via API
+                await api.updateStaff(emptyPosition.position, {
+                    masseuse_name: selectedName,
+                    status: null // Will be set to Next if it's the first person
+                });
+                
+                // Check if this is the first person, set as Next
+                const currentActiveStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+                if (currentActiveStaff.length === 0) {
+                    await api.updateStaff(emptyPosition.position, {
+                        masseuse_name: selectedName,
+                        status: 'Next'
+                    });
+                }
+                
+                // Reload data and update display
+                await loadData();
                 updateRosterDisplay();
-                showToast(`Moved ${todayRoster[index - 1].name} up in queue`);
+                updateAvailableStaffDropdown();
+                showToast(`Added ${selectedName} to today's roster`);
+            } catch (error) {
+                console.error('Error adding staff:', error);
+                showToast('Error adding staff to roster', 'error');
             }
         }
 
-        function moveDown(index) {
-            if (index < todayRoster.length - 1) {
-                [todayRoster[index], todayRoster[index + 1]] = [todayRoster[index + 1], todayRoster[index]];
+        async function removeFromRoster(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name) {
+                    showToast('Staff member not found', 'error');
+                    return;
+                }
+                
+                const wasNext = staffMember.status === 'Next';
+                
+                // Remove from database by clearing the name
+                await api.updateStaff(position, {
+                    masseuse_name: '',
+                    status: null
+                });
+                
+                // If removed person was "next", set first available person as next
+                if (wasNext) {
+                    const remainingStaff = appData.roster.find(r => 
+                        r.name && r.name.trim() !== '' && r.position !== position
+                    );
+                    if (remainingStaff) {
+                        await api.updateStaff(remainingStaff.position, {
+                            masseuse_name: remainingStaff.name,
+                            status: 'Next'
+                        });
+                    }
+                }
+                
+                // Reload data and update display
+                await loadData();
                 updateRosterDisplay();
-                showToast(`Moved ${todayRoster[index + 1].name} down in queue`);
+                updateAvailableStaffDropdown();
+                showToast(`Removed ${staffMember.name} from today's roster`);
+            } catch (error) {
+                console.error('Error removing staff:', error);
+                showToast('Error removing staff from roster', 'error');
             }
         }
 
-        function clearTodayRoster() {
+        async function setNextInLine(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name) {
+                    showToast('Staff member not found', 'error');
+                    return;
+                }
+                
+                // Clear all "next" statuses
+                const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+                for (const staff of activeStaff) {
+                    if (staff.status === 'Next') {
+                        await api.updateStaff(staff.position, {
+                            masseuse_name: staff.name,
+                            status: null
+                        });
+                    }
+                }
+                
+                // Set selected person as next
+                await api.updateStaff(position, {
+                    masseuse_name: staffMember.name,
+                    status: 'Next'
+                });
+                
+                // Reload data and update display
+                await loadData();
+                updateRosterDisplay();
+                showToast(`${staffMember.name} is now next in line`);
+            } catch (error) {
+                console.error('Error setting next in line:', error);
+                showToast('Error setting next in line', 'error');
+            }
+        }
+
+        async function moveUp(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name || position === 1) {
+                    return; // Can't move up from position 1
+                }
+                
+                // Find the staff member in the previous position
+                const previousPosition = position - 1;
+                const previousStaff = appData.roster.find(r => r.position === previousPosition);
+                
+                if (previousStaff && previousStaff.name) {
+                    // Swap the two staff members
+                    await api.updateStaff(position, {
+                        masseuse_name: previousStaff.name,
+                        status: previousStaff.status
+                    });
+                    await api.updateStaff(previousPosition, {
+                        masseuse_name: staffMember.name,
+                        status: staffMember.status
+                    });
+                    
+                    await loadData();
+                    updateRosterDisplay();
+                    showToast(`Moved ${staffMember.name} up in queue`);
+                }
+            } catch (error) {
+                console.error('Error moving staff up:', error);
+                showToast('Error moving staff up', 'error');
+            }
+        }
+
+        async function moveDown(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name || position === 20) {
+                    return; // Can't move down from position 20
+                }
+                
+                // Find the staff member in the next position
+                const nextPosition = position + 1;
+                const nextStaff = appData.roster.find(r => r.position === nextPosition);
+                
+                if (nextStaff && nextStaff.name) {
+                    // Swap the two staff members
+                    await api.updateStaff(position, {
+                        masseuse_name: nextStaff.name,
+                        status: nextStaff.status
+                    });
+                    await api.updateStaff(nextPosition, {
+                        masseuse_name: staffMember.name,
+                        status: staffMember.status
+                    });
+                    
+                    await loadData();
+                    updateRosterDisplay();
+                    showToast(`Moved ${staffMember.name} down in queue`);
+                }
+            } catch (error) {
+                console.error('Error moving staff down:', error);
+                showToast('Error moving staff down', 'error');
+            }
+        }
+
+        async function clearTodayRoster() {
             if (confirm('Clear all staff from today\'s roster?')) {
-                todayRoster = [];
-                updateRosterDisplay();
-                showToast('Today\'s roster cleared');
+                try {
+                    const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+                    
+                    for (const staff of activeStaff) {
+                        await api.updateStaff(staff.position, {
+                            masseuse_name: '',
+                            status: null
+                        });
+                    }
+                    
+                    await loadData();
+                    updateRosterDisplay();
+                    updateAvailableStaffDropdown();
+                    showToast('Today\'s roster cleared');
+                } catch (error) {
+                    console.error('Error clearing roster:', error);
+                    showToast('Error clearing roster', 'error');
+                }
             }
         }
 
-        function handleServeNext() {
-            const nextMasseuse = serveNextCustomer();
-            if (nextMasseuse) {
+
+
+        // Drag and drop functionality
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+            e.target.style.cursor = 'grabbing';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedElement !== e.currentTarget) {
+                const draggedIndex = parseInt(draggedElement.dataset.index);
+                const targetIndex = parseInt(e.currentTarget.dataset.index);
+                
+                // Swap items in the array
+                const draggedItem = todayRoster[draggedIndex];
+                todayRoster.splice(draggedIndex, 1);
+                todayRoster.splice(targetIndex, 0, draggedItem);
+                
                 updateRosterDisplay();
-                setTimeout(() => {
-                    window.location.href = `transaction.html?masseuse=${encodeURIComponent(nextMasseuse)}`;
-                }, 1000);
+                showToast(`Moved ${draggedItem.name} to position ${targetIndex + 1}`);
             }
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = '';
+            e.target.style.cursor = 'grab';
+            draggedElement = null;
         }
     </script>
 </body>

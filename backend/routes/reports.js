@@ -180,7 +180,23 @@ router.get('/summary/today', async (req, res) => {
       [today]
     );
     
-    res.json(transactionSummary);
+    // Payment method breakdown
+    const paymentBreakdown = await database.all(
+      `SELECT 
+        payment_method,
+        COUNT(*) as count,
+        SUM(payment_amount) as revenue
+       FROM transactions 
+       WHERE date = ? AND status = 'ACTIVE'
+       GROUP BY payment_method
+       ORDER BY revenue DESC`,
+      [today]
+    );
+    
+    res.json({
+      ...transactionSummary,
+      payment_breakdown: paymentBreakdown
+    });
   } catch (error) {
     console.error('Error fetching today summary:', error);
     res.status(500).json({ error: 'Failed to fetch today summary' });

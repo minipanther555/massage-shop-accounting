@@ -199,13 +199,14 @@ body {
 /* Roster styles */
 .roster-grid {
     display: grid;
-    grid-template-columns: 60px 1fr 120px 80px;
-    gap: 10px;
+    grid-template-columns: 60px 1fr 120px 80px 140px;
+    gap: 8px;
     align-items: center;
-    margin-bottom: 10px;
-    padding: 15px;
+    margin-bottom: 8px;
+    padding: 8px 12px;
     background: #f9f9f9;
     border-radius: 4px;
+    min-height: 40px;
 }
 
 .roster-grid:first-child {
@@ -439,15 +440,34 @@ body {
 }
 
 /* Mobile optimizations */
+/* Button styles for compact staff cards */
+.btn-small {
+    padding: 4px 8px;
+    margin: 2px;
+    font-size: 12px;
+    min-height: 28px;
+}
+
+/* Drag and drop styles */
+.roster-grid[draggable="true"]:hover {
+    background: #e8f0fe;
+    cursor: grab;
+}
+
+.roster-grid[draggable="true"]:active {
+    cursor: grabbing;
+}
+
 @media (max-width: 768px) {
     .nav-buttons {
         grid-template-columns: 1fr 1fr;
     }
     
     .roster-grid {
-        grid-template-columns: 40px 1fr 80px 60px;
-        gap: 5px;
-        padding: 10px;
+        grid-template-columns: 40px 1fr 80px 100px;
+        gap: 4px;
+        padding: 6px 8px;
+        min-height: 36px;
     }
     
     .transaction-item {

@@ -106,6 +106,20 @@ class APIClient {
         });
     }
 
+    async advanceQueue(currentMasseuse) {
+        return this.request('/staff/advance-queue', {
+            method: 'POST',
+            body: { currentMasseuse }
+        });
+    }
+
+    async setMasseuseBusy(masseuseName, endTime) {
+        return this.request('/staff/set-busy', {
+            method: 'POST',
+            body: { masseuseName, endTime }
+        });
+    }
+
     async getTodayStaffPerformance() {
         return this.request('/staff/performance/today');
     }

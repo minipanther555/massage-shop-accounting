@@ -34,10 +34,9 @@ router.put('/roster/:position', async (req, res) => {
     const { position } = req.params;
     const { masseuse_name, status } = req.body;
     
-    // Validate status
-    const validStatuses = ['Available', 'Busy', 'Break', 'Off', 'Next'];
-    if (status && !validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
+    // Validate status - only Next and Busy until [time] allowed
+    if (status && !status.startsWith('Busy until ') && status !== 'Next') {
+      return res.status(400).json({ error: 'Invalid status. Only "Next" or "Busy until [time]" allowed' });
     }
     
     const updates = [];
@@ -81,11 +80,11 @@ router.put('/roster/:position', async (req, res) => {
 // Serve next customer (automatic assignment)
 router.post('/serve-next', async (req, res) => {
   try {
-    // Find next available masseuse
+    // Find next available masseuse (only Next status)
     const nextMasseuse = await database.get(
       `SELECT * FROM staff_roster 
        WHERE masseuse_name != '' 
-       AND status IN ('Available', 'Next') 
+       AND status = 'Next'
        ORDER BY position ASC 
        LIMIT 1`
     );
@@ -114,6 +113,108 @@ router.post('/serve-next', async (req, res) => {
   } catch (error) {
     console.error('Error serving next customer:', error);
     res.status(500).json({ error: 'Failed to serve next customer' });
+  }
+});
+
+// Advance queue (set next person in line)
+router.post('/advance-queue', async (req, res) => {
+  try {
+    const { currentMasseuse } = req.body;
+    
+    // Find current next in line person
+    const currentNext = await database.get(
+      'SELECT * FROM staff_roster WHERE status = "Next" ORDER BY position ASC LIMIT 1'
+    );
+    
+    if (currentNext && currentNext.masseuse_name === currentMasseuse) {
+      // Clear current next status
+      await database.run(
+        'UPDATE staff_roster SET status = NULL WHERE status = "Next"'
+      );
+      
+      // Find next person in roster order after current position (not busy)
+      const nextInLine = await database.get(
+        `SELECT * FROM staff_roster 
+         WHERE position > ? AND masseuse_name != '' 
+         AND (status IS NULL OR status NOT LIKE 'Busy until %')
+         ORDER BY position ASC LIMIT 1`,
+        [currentNext.position]
+      );
+      
+      if (!nextInLine) {
+        // If no one after current position, loop back to first available
+        const firstAvailable = await database.get(
+          `SELECT * FROM staff_roster 
+           WHERE masseuse_name != '' 
+           AND (status IS NULL OR status NOT LIKE 'Busy until %')
+           ORDER BY position ASC LIMIT 1`
+        );
+        
+        if (firstAvailable) {
+          await database.run(
+            'UPDATE staff_roster SET status = "Next", last_updated = CURRENT_TIMESTAMP WHERE position = ?',
+            [firstAvailable.position]
+          );
+          
+          res.json({
+            message: 'Queue advanced',
+            previousNext: currentMasseuse,
+            newNext: firstAvailable.masseuse_name
+          });
+        } else {
+          res.json({ message: 'No available staff to advance to' });
+        }
+      } else {
+        // Set next person as "Next"
+        await database.run(
+          'UPDATE staff_roster SET status = "Next", last_updated = CURRENT_TIMESTAMP WHERE position = ?',
+          [nextInLine.position]
+        );
+        
+        res.json({
+          message: 'Queue advanced',
+          previousNext: currentMasseuse,
+          newNext: nextInLine.masseuse_name
+        });
+      }
+    } else {
+      res.json({ message: 'Manual selection - queue not advanced' });
+    }
+  } catch (error) {
+    console.error('Error advancing queue:', error);
+    res.status(500).json({ error: 'Failed to advance queue' });
+  }
+});
+
+// Set masseuse as busy until end time
+router.post('/set-busy', async (req, res) => {
+  try {
+    const { masseuseName, endTime } = req.body;
+    
+    // Find the masseuse in roster
+    const masseuse = await database.get(
+      'SELECT * FROM staff_roster WHERE masseuse_name = ?',
+      [masseuseName]
+    );
+    
+    if (!masseuse) {
+      return res.status(404).json({ error: 'Masseuse not found' });
+    }
+    
+    // Set status to busy with end time
+    await database.run(
+      'UPDATE staff_roster SET status = ?, busy_until = ?, last_updated = CURRENT_TIMESTAMP WHERE position = ?',
+      [`Busy until ${endTime}`, endTime, masseuse.position]
+    );
+    
+    res.json({
+      message: 'Masseuse marked as busy',
+      masseuse: masseuseName,
+      busyUntil: endTime
+    });
+  } catch (error) {
+    console.error('Error setting masseuse busy:', error);
+    res.status(500).json({ error: 'Failed to set masseuse busy' });
   }
 });
 

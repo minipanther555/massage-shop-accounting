@@ -57,19 +57,23 @@ class Database {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         position INTEGER NOT NULL,
         masseuse_name TEXT,
-        status TEXT NOT NULL DEFAULT 'Available',
+        status TEXT,
         today_massages INTEGER DEFAULT 0,
+        busy_until TEXT,
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      // Service types and pricing (equivalent to Settings sheet)
+      // Service types and pricing with duration and location options
       `CREATE TABLE IF NOT EXISTS services (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        service_name TEXT UNIQUE NOT NULL,
+        service_name TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        location TEXT NOT NULL,
         price DECIMAL(10,2) NOT NULL,
         masseuse_fee DECIMAL(10,2) NOT NULL,
         active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(service_name, duration_minutes, location)
       )`,
 
       // Payment methods (equivalent to Settings sheet)
@@ -130,36 +134,43 @@ class Database {
   }
 
   async insertDefaultData() {
-    // Default services (from Google Sheets Settings)
-    const defaultServices = [
-      ['Thai 60', 250, 100],
-      ['Neck and Shoulder', 150, 60],
-      ['Foot', 200, 80],
-      ['Oil', 400, 150]
-    ];
+    // Skip all default data insertion - data will be inserted via external script
+    // This prevents conflicts with our clean data insertion
+    console.log('Skipping default data insertion - using external script for clean data');
+  }
 
-    for (const [name, price, fee] of defaultServices) {
-      await this.run(
-        `INSERT OR IGNORE INTO services (service_name, price, masseuse_fee) VALUES (?, ?, ?)`,
-        [name, price, fee]
-      );
-    }
-
-    // Default payment methods
-    const defaultPaymentMethods = ['Cash', 'Credit Card', 'Voucher'];
-    for (const method of defaultPaymentMethods) {
-      await this.run(
-        `INSERT OR IGNORE INTO payment_methods (method_name) VALUES (?)`,
-        [method]
-      );
-    }
-
-    // Initialize roster positions (20 positions as per CONFIG)
-    for (let i = 1; i <= 20; i++) {
-      await this.run(
-        `INSERT OR IGNORE INTO staff_roster (position, masseuse_name, status) VALUES (?, ?, ?)`,
-        [i, '', 'Available']
-      );
+  async resetDatabaseExceptStaff() {
+    try {
+      // Store current staff names
+      const currentStaff = await this.all('SELECT position, masseuse_name FROM staff_roster WHERE masseuse_name != ""');
+      
+      // Clear all tables except staff_roster structure
+      await this.run('DELETE FROM transactions');
+      await this.run('DELETE FROM expenses');
+      await this.run('DELETE FROM daily_summaries');
+      await this.run('DELETE FROM archived_transactions');
+      await this.run('DELETE FROM services');
+      await this.run('DELETE FROM payment_methods');
+      
+      // Reset staff_roster but preserve names
+      await this.run('DELETE FROM staff_roster');
+      
+      // Rebuild roster with preserved names and new schema
+      for (let i = 1; i <= 20; i++) {
+        const staffMember = currentStaff.find(s => s.position === i);
+        const name = staffMember ? staffMember.masseuse_name : '';
+        const status = (i === 1 && name) ? 'Next' : null; // Set first staff as Next, others null
+        
+        await this.run(
+          `INSERT INTO staff_roster (position, masseuse_name, status, today_massages, busy_until) VALUES (?, ?, ?, ?, ?)`,
+          [i, name, status, 0, null]
+        );
+      }
+      
+      console.log('Database reset complete - preserved staff names and updated schema');
+    } catch (error) {
+      console.error('Error resetting database:', error);
+      // If reset fails, continue with normal initialization
     }
   }
 

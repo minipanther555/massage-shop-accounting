@@ -43,9 +43,25 @@
                             </div>
 
                             <div class="form-group">
+                                <label for="location">Service Location:</label>
+                                <select id="location" required onchange="updateServiceOptions(); updatePricing(); updateTimeDropdowns();">
+                                    <option value="">Select Location</option>
+                                    <option value="In-Shop">In-Shop</option>
+                                    <option value="Home Service">Home Service</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="service">Service Type:</label>
-                                <select id="service" required onchange="updatePricing()">
+                                <select id="service" required onchange="updateDurationOptions(); updatePricing(); updateTimeDropdowns();">
                                     <option value="">Select Service</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="duration">Duration:</label>
+                                <select id="duration" required onchange="updatePricing(); updateTimeDropdowns();">
+                                    <option value="">Select Duration</option>
                                 </select>
                             </div>
 
@@ -217,15 +233,17 @@
             
             const masseuseSelect = document.getElementById('masseuse');
             masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+            
+            // Find next in line masseuse for auto-selection
+            const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
+            let nextInLineName = nextInLine ? nextInLine.name : null;
+            
             CONFIG.settings.masseuses.forEach(name => {
-                masseuseSelect.innerHTML += `<option value="${name}">${name}</option>`;
+                const isSelected = name === nextInLineName ? 'selected' : '';
+                masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
             });
 
-            const serviceSelect = document.getElementById('service');
-            serviceSelect.innerHTML = '<option value="">Select Service</option>';
-            CONFIG.settings.services.forEach(service => {
-                serviceSelect.innerHTML += `<option value="${service.name}">${service.name}</option>`;
-            });
+            // Service options are populated by updateServiceOptions() when location is selected
 
             const paymentSelect = document.getElementById('payment');
             paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
@@ -233,16 +251,68 @@
                 paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
             });
             
-            console.log('🔍 DROPDOWNS POPULATED');
+            console.log('🔍 DROPDOWNS POPULATED - Next in line:', nextInLineName);
+        }
+        
+        function getNextInLineFromStaff() {
+            // Helper function to find next in line from roster data
+            const nextStaff = appData.roster.find(r => r.status === 'Next');
+            return nextStaff ? nextStaff.name : null;
+        }
+
+        function updateServiceOptions() {
+            const location = document.getElementById('location').value;
+            const serviceSelect = document.getElementById('service');
+            const durationSelect = document.getElementById('duration');
+            
+            serviceSelect.innerHTML = '<option value="">Select Service</option>';
+            durationSelect.innerHTML = '<option value="">Select Duration</option>';
+            
+            if (location) {
+                // Find unique service names for this location
+                const locationServices = CONFIG.settings.services.filter(s => s.location === location);
+                const uniqueServices = [...new Set(locationServices.map(s => s.name))];
+                uniqueServices.forEach(serviceName => {
+                    serviceSelect.innerHTML += `<option value="${serviceName}">${serviceName}</option>`;
+                });
+            }
+        }
+
+        function updateDurationOptions() {
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            const durationSelect = document.getElementById('duration');
+            
+            durationSelect.innerHTML = '<option value="">Select Duration</option>';
+            
+            if (location && serviceName) {
+                // Find all durations for this service type and location
+                const serviceOptions = CONFIG.settings.services.filter(s => 
+                    s.name === serviceName && s.location === location
+                );
+                serviceOptions.forEach(service => {
+                    durationSelect.innerHTML += `<option value="${service.duration}">${service.duration} minutes</option>`;
+                });
+            }
         }
 
         function updatePricing() {
+            const location = document.getElementById('location').value;
             const serviceName = document.getElementById('service').value;
-            const service = CONFIG.settings.services.find(s => s.name === serviceName);
+            const duration = document.getElementById('duration').value;
             
-            if (service) {
-                document.getElementById('servicePrice').textContent = `฿${service.price.toFixed(2)}`;
-                document.getElementById('masseuseeFee').textContent = `฿${service.fee.toFixed(2)}`;
+            if (location && serviceName && duration) {
+                const service = CONFIG.settings.services.find(s => 
+                    s.name === serviceName && s.duration == duration && s.location === location
+                );
+                
+                if (service) {
+                    document.getElementById('servicePrice').textContent = `฿${service.price.toFixed(2)}`;
+                    document.getElementById('masseuseeFee').textContent = `฿${service.fee.toFixed(2)}`;
+                } else {
+                    document.getElementById('servicePrice').textContent = '฿0.00';
+                    document.getElementById('masseuseeFee').textContent = '฿0.00';
+                }
             } else {
                 document.getElementById('servicePrice').textContent = '฿0.00';
                 document.getElementById('masseuseeFee').textContent = '฿0.00';
@@ -251,15 +321,23 @@
 
         function updateTimeDropdowns() {
             const now = new Date();
-            const currentTime = formatTime(now);
-            document.getElementById('startTime').value = currentTime;
+            
+            // Get preparation delay based on service (10min default, 15min for Oil)
+            const serviceName = document.getElementById('service').value;
+            const isOilService = serviceName && serviceName.toLowerCase().includes('oil');
+            const preparationMinutes = isOilService ? 15 : 10;
+            
+            // Start time = now + preparation delay
+            const startTime = new Date(now.getTime() + preparationMinutes * 60000);
+            document.getElementById('startTime').value = formatTime(startTime);
 
             const endTimeSelect = document.getElementById('endTime');
             endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
 
+            // End time options based on start time + service duration
             const durations = [30, 60, 90, 120];
             durations.forEach(duration => {
-                const endTime = new Date(now.getTime() + duration * 60000);
+                const endTime = new Date(startTime.getTime() + duration * 60000);
                 const formattedEndTime = formatTime(endTime);
                 endTimeSelect.innerHTML += `<option value="${formattedEndTime}">${formattedEndTime}</option>`;
             });
@@ -268,9 +346,17 @@
         async function handleSubmit(e) {
             e.preventDefault();
             
+            const selectedMasseuse = document.getElementById('masseuse').value;
+            const nextInLineName = getNextInLineFromStaff();
+            const isUsingNextInLine = selectedMasseuse === nextInLineName;
+            
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            const duration = document.getElementById('duration').value;
+            
             const formData = {
-                masseuse: document.getElementById('masseuse').value,
-                service: document.getElementById('service').value,
+                masseuse: selectedMasseuse,
+                service: serviceName, // Send exact service_name, not constructed string
                 payment: document.getElementById('payment').value,
                 startTime: document.getElementById('startTime').value,
                 endTime: document.getElementById('endTime').value,
@@ -279,9 +365,37 @@
 
             const success = await submitTransaction(formData);
             if (success) {
+                // If using next in line, advance the queue
+                if (isUsingNextInLine) {
+                    await advanceQueue(selectedMasseuse);
+                }
+                
+                // Mark masseuse as busy until end time
+                await setMasseuseBusy(selectedMasseuse, formData.endTime);
+                
                 clearForm();
                 await updateAllDisplays();
-                showToast("Transaction submitted successfully!");
+                showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
+            }
+        }
+        
+        async function advanceQueue(currentMasseuse) {
+            try {
+                // Advance to next person in line
+                await api.advanceQueue(currentMasseuse);
+                console.log(`🔄 Queue advanced from ${currentMasseuse}`);
+            } catch (error) {
+                console.error('Error advancing queue:', error);
+            }
+        }
+        
+        async function setMasseuseBusy(masseuseName, endTime) {
+            try {
+                // Set masseuse as busy until end time
+                await api.setMasseuseBusy(masseuseName, endTime);
+                console.log(`🔒 ${masseuseName} marked as busy until ${endTime}`);
+            } catch (error) {
+                console.error('Error setting masseuse busy:', error);
             }
         }
 
