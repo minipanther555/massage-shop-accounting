@@ -203,6 +203,161 @@ router.get('/summary/today', async (req, res) => {
   }
 });
 
+// Financial reports endpoint for admin dashboard
+router.get('/financial', async (req, res) => {
+  try {
+    const { from_date, to_date, staff_member, service_type, location } = req.query;
+    
+    // Build WHERE clause based on filters
+    let whereClause = "WHERE t.status IN ('ACTIVE', 'CORRECTED')";
+    let params = [];
+    
+    if (from_date && to_date) {
+      whereClause += " AND t.date >= ? AND t.date <= ?";
+      params.push(from_date, to_date);
+    }
+    
+    if (staff_member && staff_member !== 'all') {
+      whereClause += " AND t.masseuse_name = ?";
+      params.push(staff_member);
+    }
+    
+    if (service_type && service_type !== 'all') {
+      whereClause += " AND t.service_type = ?";
+      params.push(service_type);
+    }
+    
+    // Get transaction summary
+    const transactionSummary = await database.get(
+      `SELECT 
+        COUNT(*) as transaction_count,
+        COALESCE(SUM(t.payment_amount), 0) as total_revenue,
+        COALESCE(SUM(t.masseuse_fee), 0) as total_fees
+       FROM transactions t
+       ${whereClause}`,
+      params
+    );
+    
+    // Get expense summary for the same period
+    let expenseWhereClause = "WHERE 1=1";
+    let expenseParams = [];
+    
+    if (from_date && to_date) {
+      expenseWhereClause += " AND date >= ? AND date <= ?";
+      expenseParams.push(from_date, to_date);
+    }
+    
+    const expenseSummary = await database.get(
+      `SELECT 
+        COUNT(*) as expense_count,
+        COALESCE(SUM(amount), 0) as total_expenses
+       FROM expenses 
+       ${expenseWhereClause}`,
+      expenseParams
+    );
+    
+    // Get payment method breakdown (like daily summary page)
+    const paymentBreakdown = await database.all(
+      `SELECT 
+        t.payment_method,
+        COUNT(*) as count,
+        SUM(t.payment_amount) as revenue
+       FROM transactions t
+       ${whereClause}
+       GROUP BY t.payment_method
+       ORDER BY revenue DESC`,
+      params
+    );
+    
+    // Get location breakdown (In-Shop vs Outcall) - nice to have
+    let locationBreakdown = [];
+    if (location && location !== 'all') {
+      // If specific location requested, filter by it
+      whereClause += " AND s.location = ?";
+      params.push(location);
+    }
+    
+    try {
+      locationBreakdown = await database.all(
+        `SELECT 
+          s.location,
+          COUNT(*) as count,
+          SUM(t.payment_amount) as revenue
+         FROM transactions t
+         JOIN services s ON t.service_type = s.service_name
+         ${whereClause}
+         GROUP BY s.location
+         ORDER BY revenue DESC`,
+        params
+      );
+    } catch (locationError) {
+      // If location join fails, just skip it - it's a nice to have
+      console.log('Location breakdown not available:', locationError.message);
+      locationBreakdown = [];
+    }
+    
+    // Calculate net profit
+    const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
+    
+    // Calculate additional metrics
+    const profitMargin = transactionSummary.total_revenue > 0 ? 
+      Number(((netProfit / transactionSummary.total_revenue) * 100).toFixed(1)) : 0;
+    
+    // Get service breakdown
+    const serviceBreakdown = await database.all(
+      `SELECT 
+        t.service_type as serviceName,
+        COUNT(*) as transactions,
+        SUM(t.payment_amount) as revenue
+       FROM transactions t
+       ${whereClause}
+       GROUP BY t.service_type
+       ORDER BY revenue DESC`,
+      params
+    );
+    
+    res.json({
+      summary: {
+        total_revenue: transactionSummary.total_revenue,
+        total_transactions: transactionSummary.transaction_count,
+        average_transaction: transactionSummary.transaction_count > 0 ? 
+          Number((transactionSummary.total_revenue / transactionSummary.transaction_count).toFixed(2)) : 0,
+        total_masseuse_fees: transactionSummary.total_fees,
+        total_expenses: expenseSummary.total_expenses,
+        net_profit: netProfit,
+        profit_margin: profitMargin,
+        // Add missing properties that frontend expects
+        serviceRevenue: transactionSummary.total_revenue, // All revenue is service revenue for now
+        otherRevenue: 0, // No other revenue sources currently
+        totalFees: transactionSummary.total_fees,
+        otherCosts: expenseSummary.total_expenses,
+        totalCosts: transactionSummary.total_fees + expenseSummary.total_expenses,
+        netProfit: netProfit // Add camelCase version
+      },
+      serviceBreakdown: serviceBreakdown,
+      dateRange: {
+        from: from_date,
+        to: to_date
+      },
+      breakdowns: {
+        by_payment_method: paymentBreakdown,
+        by_location: locationBreakdown
+      },
+      expenses: expenseSummary,
+      filters: {
+        from_date,
+        to_date,
+        staff_member,
+        service_type,
+        location
+      }
+    });
+  } catch (error) {
+    console.error('Error generating financial report:', error);
+    res.status(500).json({ error: 'Failed to generate financial report' });
+  }
+});
+
 // End day operation (archive and reset)
 router.post('/end-day', async (req, res) => {
   try {
@@ -232,25 +387,16 @@ router.post('/end-day', async (req, res) => {
       [today, dailyData.total_revenue, dailyData.total_fees, dailyData.total_transactions, expenseData.total_expenses]
     );
     
-    // Archive old transactions (older than current month)
-    const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-    
-    // Move old transactions to archive
-    await database.run(
-      `INSERT INTO archived_transactions 
-       (original_transaction_id, transaction_id, timestamp, date, masseuse_name, service_type, 
-        payment_amount, payment_method, masseuse_fee, start_time, end_time, customer_contact, status)
-       SELECT id, transaction_id, timestamp, date, masseuse_name, service_type,
-              payment_amount, payment_method, masseuse_fee, start_time, end_time, customer_contact, status
-       FROM transactions 
-       WHERE date < ?`,
-      [currentMonthStart]
+    // Clear today's transactions (now that they're saved to daily_summaries)
+    const clearedTransactions = await database.run(
+      'DELETE FROM transactions WHERE date = ?',
+      [today]
     );
     
-    // Delete old transactions
-    const archiveResult = await database.run(
-      'DELETE FROM transactions WHERE date < ?',
-      [currentMonthStart]
+    // Clear today's expenses 
+    const clearedExpenses = await database.run(
+      'DELETE FROM expenses WHERE date = ?',
+      [today]
     );
     
     // Reset staff roster to Available
@@ -261,7 +407,8 @@ router.post('/end-day', async (req, res) => {
     
     res.json({
       message: 'Day ended successfully',
-      archived_transactions: archiveResult.changes,
+      cleared_transactions: clearedTransactions.changes,
+      cleared_expenses: clearedExpenses.changes,
       daily_summary: {
         ...dailyData,
         total_expenses: expenseData.total_expenses
@@ -270,6 +417,57 @@ router.post('/end-day', async (req, res) => {
   } catch (error) {
     console.error('Error ending day:', error);
     res.status(500).json({ error: 'Failed to end day' });
+  }
+});
+
+// Get all staff members for filtering
+router.get('/staff', async (req, res) => {
+  try {
+    const staff = await database.all(
+      `SELECT DISTINCT masseuse_name 
+       FROM transactions 
+       WHERE masseuse_name IS NOT NULL AND masseuse_name != ''
+       ORDER BY masseuse_name`
+    );
+    
+    res.json(staff.map(s => s.masseuse_name));
+  } catch (error) {
+    console.error('Error fetching staff list:', error);
+    res.status(500).json({ error: 'Failed to fetch staff list' });
+  }
+});
+
+// Get all service types for filtering
+router.get('/service-types', async (req, res) => {
+  try {
+    const serviceTypes = await database.all(
+      `SELECT DISTINCT service_type 
+       FROM transactions 
+       WHERE service_type IS NOT NULL AND service_type != ''
+       ORDER BY service_type`
+    );
+    
+    res.json(serviceTypes.map(s => s.service_type));
+  } catch (error) {
+    console.error('Error fetching service types:', error);
+    res.status(500).json({ error: 'Failed to fetch service types' });
+  }
+});
+
+// Get all locations for filtering
+router.get('/locations', async (req, res) => {
+  try {
+    const locations = await database.all(
+      `SELECT DISTINCT location 
+       FROM services 
+       WHERE location IS NOT NULL AND location != ''
+       ORDER BY location`
+    );
+    
+    res.json(locations.map(l => l.location));
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
   }
 });
 

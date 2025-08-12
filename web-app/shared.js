@@ -327,18 +327,37 @@ function removeExpense(index) {
 
 // End day - API version (database archiving instead of CSV)
 async function endDay() {
+    console.log('🌙 END DAY: Function called');
+    
     if (!confirm('Are you sure you want to end the day? This will archive today\'s data to the database and reset the system for tomorrow.')) {
+        console.log('🌙 END DAY: User cancelled');
         return false;
     }
 
     try {
+        console.log('🌙 END DAY: Making API call...');
         // Call API end day function
         const result = await api.endDay();
+        console.log('🌙 END DAY: API response:', result);
 
         // Refresh all data to show reset state
         await loadData();
 
-        showToast(`Day ended successfully. ${result.archived_transactions} transactions archived. System reset for tomorrow.`);
+        console.log('🌙 END DAY: About to show toast with result:', result);
+        console.log('🌙 END DAY: daily_summary:', result.daily_summary);
+        console.log('🌙 END DAY: showToast function exists?', typeof showToast);
+        
+        const message = `Day ended successfully! 
+📊 Daily Summary: ${result.daily_summary.total_transactions} transactions, Revenue: ฿${result.daily_summary.total_revenue}
+🗑️ Cleared: ${result.cleared_transactions} transactions, ${result.cleared_expenses} expenses
+✅ System reset for tomorrow.`;
+        console.log('🌙 END DAY: Toast message:', message);
+        
+        showToast(message);
+        
+        // Backup notification in case toast doesn't work
+        alert(message);
+        
         return true;
     } catch (error) {
         showToast(`Error ending day: ${error.message}`, 'error');

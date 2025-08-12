@@ -2,12 +2,111 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 
+// Helper function to reset expired busy statuses
+async function resetExpiredBusyStatuses() {
+  try {
+    console.log('🔄 Checking for expired busy statuses...');
+    
+    // Get current time in HH:MM format
+    const now = new Date();
+    const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    console.log(`🕐 Current time: ${currentTime}`);
+    
+    // Find all staff with busy status that should be expired
+    const busyStaff = await database.all(
+      `SELECT * FROM staff_roster 
+       WHERE status LIKE 'Busy until %' 
+       AND masseuse_name != ''`
+    );
+    
+    console.log(`🔍 Found ${busyStaff.length} staff with busy status`);
+    
+    let resetCount = 0;
+    for (const staff of busyStaff) {
+      if (staff.status && staff.status.startsWith('Busy until ')) {
+        // Extract time from status (e.g., "Busy until 15:30" -> "15:30")
+        const timeMatch = staff.status.match(/Busy until (.+)/);
+        if (timeMatch) {
+          const busyUntilTime = timeMatch[1];
+          console.log(`🔍 Checking ${staff.masseuse_name}: busy until ${busyUntilTime}`);
+          
+          // Convert times to comparable format (HH:MM)
+          let normalizedBusyTime = busyUntilTime;
+          
+          // Handle different time formats
+          if (busyUntilTime.includes('PM') || busyUntilTime.includes('AM')) {
+            // Convert "8:34 PM" format to "20:34" format
+            const timeParts = busyUntilTime.match(/(\d+):(\d+)\s*(AM|PM)/);
+            if (timeParts) {
+              let hours = parseInt(timeParts[1]);
+              const minutes = timeParts[2];
+              const period = timeParts[3];
+              
+              if (period === 'PM' && hours !== 12) {
+                hours += 12;
+              } else if (period === 'AM' && hours === 12) {
+                hours = 0;
+              }
+              
+              normalizedBusyTime = hours.toString().padStart(2, '0') + ':' + minutes;
+              console.log(`🔄 Converted ${busyUntilTime} to ${normalizedBusyTime}`);
+            }
+          }
+          
+          // Compare times
+          const isExpired = normalizedBusyTime < currentTime;
+          console.log(`⏰ Time comparison: ${normalizedBusyTime} < ${currentTime} = ${isExpired}`);
+          
+          if (isExpired) {
+            console.log(`🔄 Resetting expired status for ${staff.masseuse_name}`);
+            
+            // Reset to default status (null) and clear busy_until
+            await database.run(
+              `UPDATE staff_roster 
+               SET status = NULL, 
+                   busy_until = NULL, 
+                   last_updated = CURRENT_TIMESTAMP 
+               WHERE position = ?`,
+              [staff.position]
+            );
+            
+            resetCount++;
+            console.log(`✅ Reset ${staff.masseuse_name} status from "${staff.status}" to NULL`);
+          }
+        }
+      }
+    }
+    
+    if (resetCount > 0) {
+      console.log(`🎉 Reset ${resetCount} expired busy statuses`);
+    } else {
+      console.log('✅ No expired busy statuses found');
+    }
+    
+    return resetCount;
+  } catch (error) {
+    console.error('❌ Error resetting expired busy statuses:', error);
+    return 0;
+  }
+}
+
 // Get all staff roster
 router.get('/roster', async (req, res) => {
   try {
+    console.log('📋 Fetching staff roster...');
+    
+    // First, reset any expired busy statuses
+    const resetCount = await resetExpiredBusyStatuses();
+    if (resetCount > 0) {
+      console.log(`🔄 Reset ${resetCount} expired statuses before returning roster`);
+    }
+    
+    // Now fetch the updated roster
     const roster = await database.all(
       'SELECT * FROM staff_roster ORDER BY position ASC'
     );
+    
+    console.log(`📋 Retrieved ${roster.length} staff members from roster`);
     
     // Update today's massage counts
     const today = new Date().toISOString().split('T')[0];
@@ -21,9 +120,10 @@ router.get('/roster', async (req, res) => {
       }
     }
     
+    console.log('✅ Staff roster fetched and processed successfully');
     res.json(roster);
   } catch (error) {
-    console.error('Error fetching staff roster:', error);
+    console.error('❌ Error fetching staff roster:', error);
     res.status(500).json({ error: 'Failed to fetch staff roster' });
   }
 });
@@ -191,6 +291,8 @@ router.post('/set-busy', async (req, res) => {
   try {
     const { masseuseName, endTime } = req.body;
     
+    console.log(`🔒 Setting ${masseuseName} as busy until ${endTime}`);
+    
     // Find the masseuse in roster
     const masseuse = await database.get(
       'SELECT * FROM staff_roster WHERE masseuse_name = ?',
@@ -198,23 +300,51 @@ router.post('/set-busy', async (req, res) => {
     );
     
     if (!masseuse) {
+      console.log(`❌ Masseuse ${masseuseName} not found in roster`);
       return res.status(404).json({ error: 'Masseuse not found' });
     }
     
+    console.log(`🔍 Found masseuse ${masseuseName} at position ${masseuse.position}`);
+    console.log(`📝 Previous status: ${masseuse.status || 'NULL'}`);
+    console.log(`📝 Previous busy_until: ${masseuse.busy_until || 'NULL'}`);
+    
     // Set status to busy with end time
+    const newStatus = `Busy until ${endTime}`;
     await database.run(
       'UPDATE staff_roster SET status = ?, busy_until = ?, last_updated = CURRENT_TIMESTAMP WHERE position = ?',
-      [`Busy until ${endTime}`, endTime, masseuse.position]
+      [newStatus, endTime, masseuse.position]
     );
+    
+    console.log(`✅ Updated ${masseuseName} status to: ${newStatus}`);
+    console.log(`✅ Set busy_until to: ${endTime}`);
     
     res.json({
       message: 'Masseuse marked as busy',
       masseuse: masseuseName,
-      busyUntil: endTime
+      busyUntil: endTime,
+      newStatus: newStatus
     });
   } catch (error) {
-    console.error('Error setting masseuse busy:', error);
+    console.error('❌ Error setting masseuse busy:', error);
     res.status(500).json({ error: 'Failed to set masseuse busy' });
+  }
+});
+
+// Manual status reset endpoint (for testing and manual cleanup)
+router.post('/reset-expired-statuses', async (req, res) => {
+  try {
+    console.log('🔄 Manual status reset triggered');
+    
+    const resetCount = await resetExpiredBusyStatuses();
+    
+    res.json({
+      message: 'Status reset completed',
+      resetCount: resetCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error in manual status reset:', error);
+    res.status(500).json({ error: 'Failed to reset expired statuses' });
   }
 });
 

@@ -99,6 +99,24 @@
         }
         
         .role-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .role-info code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .role-info {
             background: #e3f2fd;
             padding: 15px;
             border-radius: 5px;
@@ -148,12 +166,12 @@
                 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Leave empty for now">
+                    <input type="password" id="password" placeholder="Enter your password" required>
                 </div>
                 
                 <div class="role-info">
-                    <strong>Reception:</strong> Access to transactions, daily roster, basic reporting<br>
-                    <strong>Manager:</strong> All reception features + staff management, advanced settings
+                    <strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br>
+                    <strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings
                 </div>
                 
                 <button type="submit" class="login-btn" id="login-btn">
@@ -213,6 +231,11 @@
             // Validate form
             if (!username) {
                 showError('Please select your role');
+                return;
+            }
+            
+            if (!password) {
+                showError('Please enter your password');
                 return;
             }
             
@@ -292,11 +315,11 @@
             const roleInfo = document.querySelector('.role-info');
             
             if (username === 'reception') {
-                roleInfo.innerHTML = '<strong>Reception Access:</strong> Create transactions, manage daily staff roster, view basic reports, track expenses';
+                roleInfo.innerHTML = '<strong>Reception Access:</strong> Password: <code>reception123</code><br>Create transactions, manage daily staff roster, view basic reports, track expenses';
             } else if (username === 'manager') {
-                roleInfo.innerHTML = '<strong>Manager Access:</strong> All reception features + master staff management, advanced reporting, system settings, end day operations';
+                roleInfo.innerHTML = '<strong>Manager Access:</strong> Password: <code>manager456</code><br>All reception features + master staff management, advanced reporting, system settings, end day operations';
             } else {
-                roleInfo.innerHTML = '<strong>Reception:</strong> Access to transactions, daily roster, basic reporting<br><strong>Manager:</strong> All reception features + staff management, advanced settings';
+                roleInfo.innerHTML = '<strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br><strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings';
             }
         });
     </script>

@@ -4,6 +4,18 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// Import our custom security middleware
+const securityHeaders = require('./middleware/security-headers');
+const { validateInput } = require('./middleware/input-validation');
+const { validateCSRFToken, addCSRFToken } = require('./middleware/csrf-protection');
+const { 
+  requestSizeLimits, 
+  errorHandler, 
+  notFoundHandler, 
+  requestTimeout, 
+  requestLogger 
+} = require('./middleware/request-limits');
+
 const database = require('./models/database');
 
 const app = express();
@@ -51,9 +63,17 @@ if (process.env.NODE_ENV === 'production') {
   console.log('🔓 Rate limiting disabled for development');
 }
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware with reasonable limits
+app.use(express.json({ limit: '1mb' })); // Reduced from 10mb for security
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Apply our custom security middleware
+app.use(requestLogger);           // Log all requests for monitoring
+app.use(requestTimeout(30000));   // 30 second timeout for requests
+app.use(requestSizeLimits);       // Check request size limits
+app.use(securityHeaders);         // Add security headers
+app.use(validateInput);           // Validate and sanitize input
+app.use(addCSRFToken);           // Add CSRF tokens to responses
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -64,36 +84,21 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
-app.use('/api/auth', require('./routes/auth').router);
-app.use('/api/transactions', require('./routes/transactions'));
-app.use('/api/staff', require('./routes/staff'));
-app.use('/api/services', require('./routes/services'));
-app.use('/api/expenses', require('./routes/expenses'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/admin', require('./routes/admin')); // Manager-only admin routes
+// API routes with CSRF protection
+app.use('/api/auth', require('./routes/auth').router); // No CSRF for login
+app.use('/api/transactions', validateCSRFToken, require('./routes/transactions'));
+app.use('/api/staff', validateCSRFToken, require('./routes/staff'));
+app.use('/api/services', validateCSRFToken, require('./routes/services'));
+app.use('/api/expenses', validateCSRFToken, require('./routes/expenses'));
+app.use('/api/reports', validateCSRFToken, require('./routes/reports'));
+app.use('/api/admin', validateCSRFToken, require('./routes/admin')); // Manager-only admin routes
+app.use('/api/payment-types', validateCSRFToken, require('./routes/payment-types')); // Payment types CRUD management
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'Invalid JSON in request body' });
-  }
-  
-  if (err.code === 'SQLITE_CONSTRAINT') {
-    return res.status(400).json({ error: 'Database constraint violation' });
-  }
-  
-  res.status(500).json({ 
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
+// Enhanced error handling middleware
+app.use(errorHandler);
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
+// 404 handler for unmatched routes
+app.use('*', notFoundHandler);
 
 // Initialize database and start server
 async function startServer() {

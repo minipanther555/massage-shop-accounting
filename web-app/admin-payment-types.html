@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Types Management - Massage Shop POS</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            PAYMENT TYPES MANAGEMENT
+        </div>
+
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-btn home">🏠 Home</a>
+            <a href="admin-staff.html" class="nav-btn staff">👥 Staff</a>
+            <a href="admin-services.html" class="nav-btn services">💰 Services</a>
+            <a href="admin-reports.html" class="nav-btn reports">📊 Reports</a>
+            <a href="admin-payment-types.html" class="nav-btn payment-types active">💳 Payment Types</a>
+            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="current-user" style="color: #666; font-size: 14px;"></span>
+            </div>
+        </div>
+
+        <!-- Page Header -->
+        <div class="section">
+            <div class="section-header">
+                <h2>Payment Types Management</h2>
+                <button class="btn btn-primary" onclick="showAddModal()">➕ Add New Payment Type</button>
+            </div>
+            <div class="section-content">
+                <p>Manage payment methods accepted by your business. Add new payment types, edit existing ones, or deactivate those no longer in use.</p>
+            </div>
+        </div>
+
+        <!-- Payment Types List -->
+        <div class="section">
+            <div class="section-header">PAYMENT TYPES</div>
+            <div class="section-content">
+                <div class="payment-types-grid" id="payment-types-grid">
+                    <!-- Payment types will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Payment Type Modal -->
+    <div id="payment-type-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Add New Payment Type</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="payment-type-form">
+                    <div class="form-group">
+                        <label for="method-name">Payment Method Name *</label>
+                        <input type="text" id="method-name" name="method-name" required 
+                               placeholder="e.g., Cash, Credit Card, Bank Transfer">
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description (Optional)</label>
+                        <textarea id="description" name="description" rows="3" 
+                                  placeholder="Additional details about this payment method"></textarea>
+                    </div>
+                    <div class="form-group" id="active-toggle-group" style="display: none;">
+                        <label>
+                            <input type="checkbox" id="active" name="active" checked>
+                            Active (Available for transactions)
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">Save Payment Type</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Deletion</h3>
+                <span class="close" onclick="closeDeleteModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to deactivate the payment type "<span id="delete-payment-name"></span>"?</p>
+                <p><strong>Note:</strong> This will only deactivate the payment type. It cannot be deleted if it's being used in existing transactions.</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">Deactivate</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="shared.js"></script>
+    <script>
+        let currentPaymentTypes = [];
+        let editingPaymentType = null;
+        let deletingPaymentType = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            if (!requireAuth()) {
+                return;
+            }
+            
+            // Display current user
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+            }
+            
+            // Load payment types
+            await loadPaymentTypes();
+        });
+
+        async function loadPaymentTypes() {
+            try {
+                const response = await fetch('http://localhost:3000/api/payment-types');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch payment types');
+                }
+                
+                currentPaymentTypes = await response.json();
+                displayPaymentTypes();
+            } catch (error) {
+                console.error('Error loading payment types:', error);
+                showToast('Error loading payment types', 'error');
+            }
+        }
+
+        function displayPaymentTypes() {
+            const grid = document.getElementById('payment-types-grid');
+            
+            if (currentPaymentTypes.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <p>No payment types found. Click "Add New Payment Type" to create your first one.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = currentPaymentTypes.map(paymentType => `
+                <div class="payment-type-card ${!paymentType.active ? 'inactive' : ''}">
+                    <div class="payment-type-header">
+                        <h4>${paymentType.method_name}</h4>
+                        <span class="status-badge ${paymentType.active ? 'active' : 'inactive'}">
+                            ${paymentType.active ? 'Active' : 'Inactive'}
+                        </span>
+                    </div>
+                    ${paymentType.description ? `<p class="description">${paymentType.description}</p>` : ''}
+                    <div class="payment-type-actions">
+                        <button class="btn btn-small btn-secondary" onclick="editPaymentType(${paymentType.id})">
+                            ✏️ Edit
+                        </button>
+                        <button class="btn btn-small btn-danger" onclick="deletePaymentType(${paymentType.id})">
+                            🗑️ Deactivate
+                        </button>
+                    </div>
+                    <div class="payment-type-meta">
+                        <small>Created: ${new Date(paymentType.created_at).toLocaleDateString()}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showAddModal() {
+            editingPaymentType = null;
+            document.getElementById('modal-title').textContent = 'Add New Payment Type';
+            document.getElementById('payment-type-form').reset();
+            document.getElementById('active-toggle-group').style.display = 'none';
+            document.getElementById('submit-btn').textContent = 'Save Payment Type';
+            document.getElementById('payment-type-modal').style.display = 'block';
+        }
+
+        function editPaymentType(id) {
+            const paymentType = currentPaymentTypes.find(pt => pt.id === id);
+            if (!paymentType) return;
+
+            editingPaymentType = paymentType;
+            document.getElementById('modal-title').textContent = 'Edit Payment Type';
+            document.getElementById('method-name').value = paymentType.method_name;
+            document.getElementById('description').value = paymentType.description || '';
+            document.getElementById('active').checked = paymentType.active;
+            document.getElementById('active-toggle-group').style.display = 'block';
+            document.getElementById('submit-btn').textContent = 'Update Payment Type';
+            document.getElementById('payment-type-modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('payment-type-modal').style.display = 'none';
+            editingPaymentType = null;
+        }
+
+        function deletePaymentType(id) {
+            const paymentType = currentPaymentTypes.find(pt => pt.id === id);
+            if (!paymentType) return;
+
+            deletingPaymentType = paymentType;
+            document.getElementById('delete-payment-name').textContent = paymentType.method_name;
+            document.getElementById('delete-modal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').style.display = 'none';
+            deletingPaymentType = null;
+        }
+
+        async function confirmDelete() {
+            if (!deletingPaymentType) return;
+
+            try {
+                const response = await fetch(`http://localhost:3000/api/payment-types/${deletingPaymentType.id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token') // TODO: Implement proper auth
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to deactivate payment type');
+                }
+
+                showToast('Payment type deactivated successfully', 'success');
+                closeDeleteModal();
+                await loadPaymentTypes();
+            } catch (error) {
+                console.error('Error deleting payment type:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        document.getElementById('payment-type-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = {
+                method_name: document.getElementById('method-name').value.trim(),
+                description: document.getElementById('description').value.trim() || null
+            };
+
+            if (editingPaymentType) {
+                formData.active = document.getElementById('active').checked;
+            }
+
+            try {
+                const url = editingPaymentType 
+                    ? `http://localhost:3000/api/payment-types/${editingPaymentType.id}`
+                    : 'http://localhost:3000/api/payment-types';
+                
+                const method = editingPaymentType ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token') // TODO: Implement proper auth
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to save payment type');
+                }
+
+                showToast(
+                    editingPaymentType 
+                        ? 'Payment type updated successfully' 
+                        : 'Payment type created successfully', 
+                    'success'
+                );
+                
+                closeModal();
+                await loadPaymentTypes();
+            } catch (error) {
+                console.error('Error saving payment type:', error);
+                showToast(error.message, 'error');
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('payment-type-modal');
+            const deleteModal = document.getElementById('delete-modal');
+            
+            if (event.target === modal) {
+                closeModal();
+            }
+            if (event.target === deleteModal) {
+                closeDeleteModal();
+            }
+        }
+    </script>
+</body>
+</html>

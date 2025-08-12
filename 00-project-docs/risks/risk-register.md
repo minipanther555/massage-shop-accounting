@@ -12,7 +12,18 @@
 - Issue 2: Missing script tags - Added `api.js` to all HTML pages
 **Result**: All API connectivity working perfectly across all pages
 
-### RISK-002: Data Loss During End Day Operations
+### RISK-002: Bulk Update Data Corruption
+**Status**: RESOLVED ✅  
+**Probability**: N/A  
+**Impact**: N/A  
+**Description**: Bulk update functionality was storing multiplier strings instead of calculated values
+**Resolution Summary**:
+- Issue: Logic flow mixing between multiplier and direct update approaches
+- Root Cause: Code continued executing after multiplier detection, storing invalid data
+- Fix: Complete separation of logic paths with early returns
+- Result: Bulk pricing operations now work correctly, storing proper numeric values
+
+### RISK-003: Data Loss During End Day Operations
 **Status**: MITIGATED  
 **Probability**: Medium  
 **Impact**: Critical  
@@ -22,7 +33,7 @@
 - Backup verification before deletion
 - Error handling with rollback capability
 
-### RISK-003: Production Deployment Failure
+### RISK-004: Production Deployment Failure
 **Status**: PENDING  
 **Probability**: Medium  
 **Impact**: High  
@@ -34,14 +45,14 @@
 
 ## Medium Priority Risks
 
-### RISK-004: Browser Compatibility Issues
+### RISK-005: Browser Compatibility Issues
 **Status**: MONITORING  
 **Probability**: Medium  
 **Impact**: Medium  
 **Description**: Tablet browsers may have different API support
 **Mitigation**: Test on target tablet devices before deployment
 
-### RISK-005: Database Corruption
+### RISK-006: Database Corruption
 **Status**: MITIGATED  
 **Probability**: Low  
 **Impact**: High  
@@ -51,7 +62,7 @@
 - Export capabilities maintained
 - Database integrity checks
 
-### RISK-006: Performance Degradation
+### RISK-007: Performance Degradation
 **Status**: MONITORING  
 **Probability**: Medium  
 **Impact**: Medium  
@@ -63,14 +74,14 @@
 
 ## Low Priority Risks
 
-### RISK-007: Staff Training Requirements
+### RISK-008: Staff Training Requirements
 **Status**: ACCEPTED  
 **Probability**: High  
 **Impact**: Low  
 **Description**: Staff need training on new interface vs Google Sheets
 **Mitigation**: Familiar workflow design, gradual transition
 
-### RISK-008: Feature Gaps from Google Sheets
+### RISK-009: Feature Gaps from Google Sheets
 **Status**: MONITORING  
 **Probability**: Low  
 **Impact**: Medium  

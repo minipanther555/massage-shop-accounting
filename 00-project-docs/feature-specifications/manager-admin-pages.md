@@ -323,8 +323,11 @@ if (!hasRole('manager')) {
 ## Success Criteria
 - ✅ Manager can add/remove staff members with proper validation
 - ✅ Manager can adjust service prices and masseuse fees
-- ✅ Manager can view comprehensive financial reports and staff analytics
+- ✅ Manager can perform bulk price updates with percentage-based multipliers
+- ✅ Manager can view and manage all services (active and inactive)
 - ✅ Reception users cannot access any admin functionality
 - ✅ All admin changes are logged with audit trail
-- ✅ Reports are accurate and match database calculations
 - ✅ System maintains data integrity during admin operations
+- ✅ Manager can view comprehensive financial reports and staff analytics
+- ✅ Financial reports include filtering by date, staff, service type, and location
+- ✅ Reports show revenue, transactions, fees, expenses, and net profit breakdowns

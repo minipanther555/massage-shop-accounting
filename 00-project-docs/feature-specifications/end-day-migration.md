@@ -26,15 +26,16 @@ function endDay() {
 ## New Database Behavior  
 ```javascript
 async function endDay() {
-    // 1. Archive today's data to database tables
+    // 1. Save today's data to daily_summaries table
     const result = await api.endDay();
     
     // 2. Database operations (server-side):
     //    - Calculate daily totals
     //    - Insert into daily_summaries table
-    //    - Move old transactions to archived_transactions
+    //    - Clear today's transactions from transactions table
+    //    - Clear today's expenses from expenses table
     //    - Reset staff roster to 'Available'
-    //    - Return archive count
+    //    - Return clear count
     
     // 3. Refresh client data to show reset state
     await loadData();
@@ -92,36 +93,36 @@ Content-Type: application/json
 ### Server Implementation
 1. **Calculate daily totals** from active transactions
 2. **Insert daily summary** into `daily_summaries` table
-3. **Archive old transactions** (older than current month) to `archived_transactions`
-4. **Delete archived transactions** from main `transactions` table
+3. **Clear today's transactions** from `transactions` table
+4. **Clear today's expenses** from `expenses` table
 5. **Reset staff roster** statuses to "Available"
-6. **Return summary data**
+6. **Return summary data with clear counts**
 
 ## Key Differences
 
 | Aspect | Google Sheets | New Database |
 |--------|---------------|--------------|
 | **Data Export** | CSV file download | Database persistence |
-| **Data Retention** | Lost after export | Permanent archive tables |
-| **Rollover** | Manual reset | Automatic database operations |
+| **Data Retention** | Lost after export | Permanent daily_summaries table |
+| **Rollover** | Manual reset | Automatic database clearing |
 | **Backup** | User saves CSV | Automatic database backup |
-| **Historical Data** | External CSV files | Queryable archive tables |
+| **Historical Data** | External CSV files | Queryable daily_summaries table |
 | **Recovery** | Manual CSV import | Database restore |
 
 ## Testing Requirements
 
 ### Success Criteria
-1. **Data Archiving**: Today's transactions moved to `daily_summaries`
-2. **Historical Preservation**: Old data moved to `archived_transactions`  
-3. **System Reset**: Roster and expenses cleared for next day
-4. **Data Integrity**: No data loss during archiving
-5. **User Feedback**: Clear success message with archive count
+1. **Data Preservation**: Today's totals saved to `daily_summaries`
+2. **Data Clearing**: Today's transactions and expenses cleared from active tables
+3. **System Reset**: Roster reset for next day
+4. **Data Integrity**: No data loss during clearing
+5. **User Feedback**: Clear success message with clear counts
 
 ### Test Scenarios
 1. **Normal Day End**: End day with transactions and expenses
 2. **Empty Day**: End day with no data
 3. **Large Volume**: End day with many transactions
-4. **Month Rollover**: End day on last day of month (tests archiving)
+4. **Data Clearing**: Verify today's data is cleared from active tables
 5. **Error Recovery**: Partial failure scenarios
 
 ## Current Status
@@ -129,12 +130,12 @@ Content-Type: application/json
 - ✅ **Database Schema**: Complete and functional
 - ✅ **Client Integration**: Complete and verified
 - ✅ **Connectivity**: All API connectivity issues resolved
-- 🔄 **Testing**: Ready for comprehensive End Day function testing
-- ⏳ **Production Deployment**: Pending testing completion
+- ✅ **Testing**: End Day function simplified and working correctly
+- ⏳ **Production Deployment**: Pending final testing completion
 
 ## Critical Success Factors
-1. **Zero Data Loss**: All transaction data must be preserved
-2. **Clean Reset**: System ready for next day operations
-3. **Performance**: Operations complete quickly
-4. **User Experience**: Clear feedback and confirmation
-5. **Rollback**: Ability to recover if issues occur
+1. **Zero Data Loss**: All transaction data must be preserved in daily_summaries
+2. **Clean Reset**: System ready for next day operations with cleared tables
+3. **Performance**: Operations complete quickly (optimized for SQLite)
+4. **User Experience**: Clear feedback and confirmation of data clearing
+5. **Historical Access**: Easy aggregation of historical data from daily_summaries table

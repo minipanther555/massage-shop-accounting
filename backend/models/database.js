@@ -87,8 +87,10 @@ class Database {
       `CREATE TABLE IF NOT EXISTS payment_methods (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         method_name TEXT UNIQUE NOT NULL,
+        description TEXT,
         active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
       // Daily expenses (new feature from v14)

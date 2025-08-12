@@ -100,9 +100,6 @@
         <div class="section">
             <div class="section-header">END DAY OPERATIONS</div>
             <div class="section-content" style="text-align: center;">
-                <button class="btn btn-secondary btn-large" onclick="handleExport()" style="margin-right: 20px;">
-                    💾 Export Today's Data (CSV)
-                </button>
                 <button class="btn btn-danger btn-large" onclick="handleEndDay()">
                     🌙 End Day & Reset
                 </button>
@@ -125,7 +122,8 @@
                 document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
             }
             
-            // Load data from API first (FIX: This was missing!)
+            // Load data from API first
+            
             await loadData();
             await updateAllDisplays();
             setInterval(async () => {
@@ -287,12 +285,15 @@
             container.innerHTML = html;
         }
 
-        function handleExport() {
-            exportToCSV();
-        }
-
-        function handleEndDay() {
-            if (endDay()) {
+        async function handleEndDay() {
+            if (typeof endDay === 'undefined') {
+                console.error('❌ endDay function not found in scope!');
+                alert('Error: endDay function not found. Check console for details.');
+                return;
+            }
+            
+            const success = await endDay();
+            if (success) {
                 updateAllDisplays();
             }
         }
