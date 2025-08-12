@@ -13,7 +13,7 @@ APP_DIR="/opt/massage-shop"
 SERVICE_NAME="massage-shop"
 USER_NAME="massage-shop"
 LOG_DIR="/var/log/massage-shop"
-DATA_DIR="/opt/massage-shop/data"
+DATA_DIR="/opt/massage-shop/backend/data"
 
 # Colors for output
 RED='\033[0;31m'
@@ -34,14 +34,16 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if running as root
-if [[ $EUID -eq 0 ]]; then
-   print_error "This script should not be run as root"
-   exit 1
+# Check if running as root (required for deployment)
+if [[ $EUID -ne 0 ]]; then
+    print_error "This script must be run as root for initial deployment"
+    print_error "Please run: sudo ./scripts/deploy.sh"
+    exit 1
 fi
 
+print_status "Running as root - proceeding with system setup..."
+
 # Check if we're on the production server
-# Removed problematic hostname check - this script is designed for production deployment
 print_status "Production deployment script detected"
 print_status "Make sure you're on the correct VPS server"
 print_status "Continuing with deployment..."
@@ -50,36 +52,36 @@ print_status "Setting up production environment..."
 
 # Create application directory (only if it doesn't exist)
 if [ ! -d "$APP_DIR" ]; then
-    sudo mkdir -p $APP_DIR
+    mkdir -p $APP_DIR
 fi
-sudo mkdir -p $LOG_DIR
-sudo mkdir -p $DATA_DIR
+mkdir -p $LOG_DIR
+mkdir -p $DATA_DIR
 
 # Create system user for the application
 if ! id "$USER_NAME" &>/dev/null; then
     print_status "Creating system user: $USER_NAME"
-    sudo useradd -r -s /bin/false -d $APP_DIR $USER_NAME
+    useradd -r -s /bin/false -d $APP_DIR $USER_NAME
 else
     print_status "User $USER_NAME already exists"
 fi
 
 # Set ownership
-sudo chown -R $USER_NAME:$USER_NAME $APP_DIR
-sudo chown -R $USER_NAME:$USER_NAME $LOG_DIR
-sudo chown -R $USER_NAME:$USER_NAME $DATA_DIR
+chown -R $USER_NAME:$USER_NAME $APP_DIR
+chown -R $USER_NAME:$USER_NAME $LOG_DIR
+chown -R $USER_NAME:$USER_NAME $DATA_DIR
 
 # Set proper permissions
-sudo chmod 755 $APP_DIR
-sudo chmod 755 $LOG_DIR
-sudo chmod 700 $DATA_DIR
+chmod 755 $APP_DIR
+chmod 755 $LOG_DIR
+chmod 700 $DATA_DIR
 
 print_status "Installing Node.js and npm..."
 
 # Install Node.js (Ubuntu/Debian)
 if ! command -v node &> /dev/null; then
     print_status "Installing Node.js..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+    apt-get install -y nodejs
 else
     print_status "Node.js already installed: $(node --version)"
 fi
@@ -87,7 +89,7 @@ fi
 # Install PM2 for process management
 if ! command -v pm2 &> /dev/null; then
     print_status "Installing PM2..."
-    sudo npm install -g pm2
+    npm install -g pm2
 else
     print_status "PM2 already installed: $(pm2 --version)"
 fi
@@ -96,7 +98,7 @@ print_status "Setting up application files..."
 
 # Note: Application files are already in place from git clone
 # Just ensure proper ownership and permissions
-sudo chown -R $USER_NAME:$USER_NAME $APP_DIR
+chown -R $USER_NAME:$USER_NAME $APP_DIR
 
 # Install dependencies
 print_status "Installing Node.js dependencies..."
@@ -145,7 +147,7 @@ EOF
 print_status "Setting up systemd service..."
 
 # Create systemd service file
-sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<EOF
+tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<EOF
 [Unit]
 Description=EIW Massage Shop Bookkeeping System
 After=network.target
@@ -177,10 +179,10 @@ print_status "Setting up firewall..."
 
 # Configure UFW firewall
 if command -v ufw &> /dev/null; then
-    sudo ufw allow 22/tcp    # SSH
-    sudo ufw allow 80/tcp    # HTTP (for reverse proxy)
-    sudo ufw allow 443/tcp   # HTTPS
-    sudo ufw --force enable
+    ufw allow 22/tcp    # SSH
+    ufw allow 80/tcp    # HTTP (for reverse proxy)
+    ufw allow 443/tcp   # HTTPS
+    ufw --force enable
     print_status "Firewall configured and enabled"
 else
     print_warning "UFW not found. Please configure firewall manually."
@@ -190,12 +192,12 @@ print_status "Setting up Nginx reverse proxy..."
 
 # Install Nginx
 if ! command -v nginx &> /dev/null; then
-    sudo apt-get update
-    sudo apt-get install -y nginx
+    apt-get update
+    apt-get install -y nginx
 fi
 
 # Create Nginx configuration
-sudo tee /etc/nginx/sites-available/$SERVICE_NAME > /dev/null <<EOF
+tee /etc/nginx/sites-available/$SERVICE_NAME > /dev/null <<EOF
 server {
     listen 80;
     server_name _;  # Will accept any domain - update with your actual domain later
@@ -223,16 +225,16 @@ server {
 EOF
 
 # Enable the site
-sudo ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default  # Remove default site
+ln -sf /etc/nginx/sites-available/$SERVICE_NAME /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default  # Remove default site
 
 # Test Nginx configuration
-sudo nginx -t
+nginx -t
 
 print_status "Setting up log rotation..."
 
 # Create logrotate configuration
-sudo tee /etc/logrotate.d/$SERVICE_NAME > /dev/null <<EOF
+tee /etc/logrotate.d/$SERVICE_NAME > /dev/null <<EOF
 $LOG_DIR/*.log {
     daily
     missingok
@@ -250,16 +252,16 @@ EOF
 print_status "Starting services..."
 
 # Reload systemd and enable service
-sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_NAME
+systemctl daemon-reload
+systemctl enable $SERVICE_NAME
 
 # Start the application service
-sudo systemctl start $SERVICE_NAME
-sudo systemctl status $SERVICE_NAME
+systemctl start $SERVICE_NAME
+systemctl status $SERVICE_NAME
 
 # Start Nginx
-sudo systemctl start nginx
-sudo systemctl enable nginx
+systemctl start nginx
+systemctl enable nginx
 
 print_status "Deployment completed successfully!"
 echo
@@ -276,3 +278,6 @@ echo "  View app status: sudo systemctl status $SERVICE_NAME"
 echo "  View Nginx logs: sudo tail -f /var/log/nginx/access.log"
 echo
 echo "The application is now running as a system service and will start automatically on boot."
+echo
+echo "SECURITY NOTE: The application is now running as user '$USER_NAME' with minimal privileges."
+echo "The deployment script ran as root but the application runs securely as a non-root user."
