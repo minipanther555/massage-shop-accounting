@@ -41,20 +41,17 @@ if [[ $EUID -eq 0 ]]; then
 fi
 
 # Check if we're on the production server
-if [[ "$(hostname)" != *"your-vps-hostname"* ]]; then
-    print_warning "This script is designed for production deployment"
-    print_warning "Make sure you're on the correct VPS server"
-    read -p "Continue anyway? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
+# Removed problematic hostname check - this script is designed for production deployment
+print_status "Production deployment script detected"
+print_status "Make sure you're on the correct VPS server"
+print_status "Continuing with deployment..."
 
 print_status "Setting up production environment..."
 
-# Create application directory
-sudo mkdir -p $APP_DIR
+# Create application directory (only if it doesn't exist)
+if [ ! -d "$APP_DIR" ]; then
+    sudo mkdir -p $APP_DIR
+fi
 sudo mkdir -p $LOG_DIR
 sudo mkdir -p $DATA_DIR
 
@@ -97,19 +94,19 @@ fi
 
 print_status "Setting up application files..."
 
-# Copy application files (assuming you're running this from the project directory)
-sudo cp -r . $APP_DIR/
+# Note: Application files are already in place from git clone
+# Just ensure proper ownership and permissions
 sudo chown -R $USER_NAME:$USER_NAME $APP_DIR
 
 # Install dependencies
 print_status "Installing Node.js dependencies..."
-cd $APP_DIR
+cd $APP_DIR/backend
 sudo -u $USER_NAME npm install --production
 
 print_status "Setting up environment configuration..."
 
 # Create production .env file
-sudo -u $USER_NAME tee $APP_DIR/.env > /dev/null <<EOF
+sudo -u $USER_NAME tee $APP_DIR/backend/.env > /dev/null <<EOF
 # Production Environment Configuration
 NODE_ENV=production
 PORT=3000
@@ -156,7 +153,7 @@ After=network.target
 [Service]
 Type=simple
 User=$USER_NAME
-WorkingDirectory=$APP_DIR
+WorkingDirectory=$APP_DIR/backend
 Environment=NODE_ENV=production
 Environment=PATH=/usr/bin:/usr/local/bin
 ExecStart=/usr/bin/node server.js
@@ -175,10 +172,6 @@ ReadWritePaths=$APP_DIR $LOG_DIR $DATA_DIR
 [Install]
 WantedBy=multi-user.target
 EOF
-
-# Reload systemd and enable service
-sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_NAME
 
 print_status "Setting up firewall..."
 
@@ -205,27 +198,9 @@ fi
 sudo tee /etc/nginx/sites-available/$SERVICE_NAME > /dev/null <<EOF
 server {
     listen 80;
-    server_name your-domain.com www.your-domain.com;  # Update with your domain
+    server_name _;  # Will accept any domain - update with your actual domain later
 
-    # Redirect HTTP to HTTPS
-    return 301 https://\$server_name\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com www.your-domain.com;  # Update with your domain
-
-    # SSL configuration (you'll need to set up SSL certificates)
-    # ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-
-    # Security headers
-    add_header X-Frame-Options "DENY" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # Proxy to Node.js application
+    # For now, just proxy to the Node.js app (no HTTPS redirect yet)
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -238,7 +213,7 @@ server {
         proxy_cache_bypass \$http_upgrade;
     }
 
-    # Static files (if you serve them through Nginx)
+    # Static files
     location /static/ {
         alias $APP_DIR/web-app/;
         expires 1y;
@@ -274,6 +249,10 @@ EOF
 
 print_status "Starting services..."
 
+# Reload systemd and enable service
+sudo systemctl daemon-reload
+sudo systemctl enable $SERVICE_NAME
+
 # Start the application service
 sudo systemctl start $SERVICE_NAME
 sudo systemctl status $SERVICE_NAME
@@ -285,10 +264,10 @@ sudo systemctl enable nginx
 print_status "Deployment completed successfully!"
 echo
 echo "Next steps:"
-echo "1. Update the domain name in Nginx configuration"
-echo "2. Set up SSL certificates with Let's Encrypt"
+echo "1. Update the domain name in Nginx configuration: /etc/nginx/sites-available/$SERVICE_NAME"
+echo "2. Set up SSL certificates with Let's Encrypt when you have a domain"
 echo "3. Configure your domain's DNS to point to this server"
-echo "4. Test the application at http://your-domain.com"
+echo "4. Test the application at http://$(curl -s ifconfig.me)"
 echo
 echo "Useful commands:"
 echo "  View logs: sudo journalctl -u $SERVICE_NAME -f"
