@@ -81,7 +81,7 @@ const baseConfig = {
   cors: {
     allowedOrigins: process.env.ALLOWED_ORIGINS 
       ? process.env.ALLOWED_ORIGINS.split(',')
-      : ['http://localhost:3000', 'http://localhost:8080'],
+      : ['http://109.123.238.197', 'http://localhost:3000', 'http://localhost:8080'],
     credentials: true
   }
 };
@@ -132,7 +132,7 @@ const productionConfig = {
     ...baseConfig.cors,
     allowedOrigins: process.env.ALLOWED_ORIGINS 
       ? process.env.ALLOWED_ORIGINS.split(',')
-      : ['https://yourdomain.com', 'https://www.yourdomain.com'] // Production domains
+      : ['http://109.123.238.197', 'http://localhost:3000', 'http://localhost:8080'] // Production domains
   }
 };
 

@@ -1,5 +1,5 @@
 // API client for backend communication
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://109.123.238.197/api';
 
 class APIClient {
     async request(endpoint, options = {}) {
