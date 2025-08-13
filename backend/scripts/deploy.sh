@@ -202,8 +202,19 @@ server {
     listen 80;
     server_name _;  # Will accept any domain - update with your actual domain later
 
-    # For now, just proxy to the Node.js app (no HTTPS redirect yet)
+    # Serve frontend files for root path
     location / {
+        root /opt/massage-shop/web-app;
+        try_files \$uri \$uri/ /index.html;
+        
+        # Add security headers
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+
+    # Proxy API calls to Node.js backend
+    location /api/ {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
@@ -215,9 +226,16 @@ server {
         proxy_cache_bypass \$http_upgrade;
     }
 
-    # Static files
+    # Health check endpoint
+    location /health {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+    }
+
+    # Static files with caching
     location /static/ {
-        alias $APP_DIR/web-app/;
+        alias /opt/massage-shop/web-app/;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
