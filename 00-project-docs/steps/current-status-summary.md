@@ -95,6 +95,19 @@ The Production Deployment & Live Operations phase has been **COMPLETED SUCCESSFU
 
 ## Current System Status
 
+### ❗️ ATTENTION: Codebase Reset and CSRF Re-evaluation
+**Date**: August 15, 2025
+**Status**: 🟡 PENDING FIX - The codebase has been reset to a known-good state on the `testing03` branch to address a series of regressions.
+**Reasoning**: A persistent CSRF token issue was being debugged using a flawed model of the production environment, leading to multiple incorrect fixes and regressions. The core issues were:
+1.  **Environmental Conflict**: An operator error (running `pm2` on a `systemd`-managed server) created a process management conflict, making the server unstable and invalidating all tests. This has been documented in `environmental-process-management-conflict.md`.
+2.  **Application Bug**: The true root cause of the CSRF issue was identified as a Node.js anti-pattern (`require()` calls inside `app.use()`), which caused modules to be reloaded on every request.
+
+**Go-Forward Plan**:
+1.  The codebase has been reverted to commit `9cf7381` on the `testing03` branch.
+2.  The documentation from the latest commit (`1fe142e`) has been preserved.
+3.  The next step is to apply the single, correct fix: hoisting the `require()` statements in `backend/server.js` to the top level.
+4.  This will be followed by a final, comprehensive validation.
+
 ### ✅ Complete System Status - FULLY OPERATIONAL
 **Date**: August 13, 2025
 **Status**: ✅ RESOLVED - System is 100% functional and ready for business operations
