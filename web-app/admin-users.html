@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - EIW Massage Shop</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .user-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .user-role {
+            background: #007bff;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .user-location {
+            background: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .user-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .status-active {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-inactive {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .location-filter {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .add-user-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .add-user-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>User Management</h1>
+            <nav>
+                <a href="admin-staff.html">Staff</a>
+                <a href="admin-services.html">Services</a>
+                <a href="admin-reports.html">Reports</a>
+                <a href="admin-payment-types.html">Payment Types</a>
+                <a href="admin-users.html" class="active">Users</a>
+                <a href="index.html">Dashboard</a>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </nav>
+        </header>
+
+        <main>
+            <div class="location-filter">
+                <label for="locationFilter">Filter by Location:</label>
+                <select id="locationFilter" onchange="filterUsersByLocation()">
+                    <option value="">All Locations</option>
+                    <option value="1">Main Branch</option>
+                    <option value="2">Downtown</option>
+                    <option value="3">Suburban</option>
+                </select>
+                <button class="add-user-btn" onclick="showAddUserModal()">Add New User</button>
+            </div>
+
+            <div id="usersContainer" class="user-grid">
+                <!-- Users will be loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="addUserModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddUserModal()">&times;</span>
+            <h2>Add New User</h2>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role" name="role" required>
+                        <option value="reception">Reception</option>
+                        <option value="manager">Manager</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="location">Location:</label>
+                    <select id="location" name="location" required>
+                        <option value="1">Main Branch</option>
+                        <option value="2">Downtown</option>
+                        <option value="3">Suburban</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="displayName">Display Name:</label>
+                    <input type="text" id="displayName" name="displayName" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Add User</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="shared.js"></script>
+    <script>
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadUsers();
+        });
+
+        // Load all users
+        async function loadUsers() {
+            try {
+                const response = await apiCall('/api/auth/users', 'GET');
+                if (response.success) {
+                    displayUsers(response.users);
+                } else {
+                    showToast('Failed to load users', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showToast('Error loading users', 'error');
+            }
+        }
+
+        // Display users in the grid
+        function displayUsers(users) {
+            const container = document.getElementById('usersContainer');
+            container.innerHTML = '';
+
+            users.forEach(user => {
+                const userCard = createUserCard(user);
+                container.appendChild(userCard);
+            });
+        }
+
+        // Create a user card element
+        function createUserCard(user) {
+            const card = document.createElement('div');
+            card.className = 'user-card';
+            
+            const statusClass = user.active ? 'status-active' : 'status-inactive';
+            const statusText = user.active ? 'Active' : 'Inactive';
+            
+            card.innerHTML = `
+                <div class="user-header">
+                    <h3>${user.displayName}</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <span class="user-role">${user.role}</span>
+                        <span class="user-location">${user.location_name}</span>
+                    </div>
+                </div>
+                <p><strong>Username:</strong> ${user.username}</p>
+                <p><strong>Location ID:</strong> ${user.location_id}</p>
+                <div class="user-status">
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Filter users by location
+        function filterUsersByLocation() {
+            const locationId = document.getElementById('locationFilter').value;
+            
+            if (!locationId) {
+                loadUsers(); // Show all users
+                return;
+            }
+            
+            loadUsersByLocation(locationId);
+        }
+
+        // Load users by specific location
+        async function loadUsersByLocation(locationId) {
+            try {
+                const response = await apiCall(`/api/auth/users/location/${locationId}`, 'GET');
+                if (response.success) {
+                    displayUsers(response.users);
+                } else {
+                    showToast('Failed to load location users', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading location users:', error);
+                showToast('Error loading location users', 'error');
+            }
+        }
+
+        // Show add user modal
+        function showAddUserModal() {
+            document.getElementById('addUserModal').style.display = 'block';
+        }
+
+        // Close add user modal
+        function closeAddUserModal() {
+            document.getElementById('addUserModal').style.display = 'none';
+            document.getElementById('addUserForm').reset();
+        }
+
+        // Handle add user form submission
+        document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const userData = {
+                username: formData.get('username'),
+                password: formData.get('password'),
+                role: formData.get('role'),
+                location_id: parseInt(formData.get('location')),
+                displayName: formData.get('displayName')
+            };
+            
+            try {
+                // Note: This would need a backend endpoint to actually create users
+                // For now, we'll just show a success message
+                showToast('User creation endpoint not yet implemented', 'info');
+                closeAddUserModal();
+            } catch (error) {
+                console.error('Error adding user:', error);
+                showToast('Error adding user', 'error');
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('addUserModal');
+            if (event.target === modal) {
+                closeAddUserModal();
+            }
+        }
+    </script>
+</body>
+</html>

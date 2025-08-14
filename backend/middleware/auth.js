@@ -34,6 +34,8 @@ function authenticateToken(req, res, next) {
         username: session.username,
         role: session.role,
         displayName: session.displayName,
+        location_id: session.location_id,
+        location_name: session.location_name,
         permissions: session.permissions
     };
     
@@ -116,10 +118,78 @@ function requireReceptionOrManager(req, res, next) {
     return res.status(403).json({ error: 'Reception or Manager access required' });
 }
 
+/**
+ * Location-based access control middleware
+ * Ensures users can only access data from their assigned location
+ */
+function requireLocationAccess(req, res, next) {
+    if (!req.user) {
+        console.log('❌ AUTH: No user data in request');
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    // Managers can access all locations
+    if (req.user.role === 'manager') {
+        console.log(`✅ AUTH: Manager access granted for all locations: ${req.user.username}`);
+        return next();
+    }
+    
+    // Reception users can only access their assigned location
+    const requestedLocationId = req.body.location_id || req.query.location_id || req.params.location_id;
+    
+    if (!requestedLocationId) {
+        console.log('❌ AUTH: No location specified in request');
+        return res.status(400).json({ error: 'Location ID required' });
+    }
+    
+    if (parseInt(requestedLocationId) !== req.user.location_id) {
+        console.log(`❌ AUTH: Location access denied. User location: ${req.user.location_id}, Requested: ${requestedLocationId}`);
+        return res.status(403).json({ error: 'Access denied to this location' });
+    }
+    
+    console.log(`✅ AUTH: Location access granted for user: ${req.user.username} to location: ${requestedLocationId}`);
+    next();
+}
+
+/**
+ * Manager with location restriction middleware
+ * Ensures managers can only access their assigned location (unless they have cross-location permissions)
+ */
+function requireManagerLocationAccess(req, res, next) {
+    if (!req.user) {
+        console.log('❌ AUTH: No user data in request');
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    if (req.user.role !== 'manager') {
+        console.log(`❌ AUTH: Manager role required. User role: ${req.user.role}`);
+        return res.status(403).json({ error: 'Manager access required' });
+    }
+    
+    // For now, managers are restricted to their assigned location
+    // This can be enhanced later with cross-location permissions
+    const requestedLocationId = req.body.location_id || req.query.location_id || req.params.location_id;
+    
+    if (!requestedLocationId) {
+        console.log('❌ AUTH: No location specified in request');
+        return res.status(400).json({ error: 'Location ID required' });
+    }
+    
+    if (parseInt(requestedLocationId) !== req.user.location_id) {
+        console.log(`❌ AUTH: Location access denied. Manager location: ${req.user.location_id}, Requested: ${requestedLocationId}`);
+        return res.status(403).json({ error: 'Access denied to this location' });
+    }
+    
+    console.log(`✅ AUTH: Manager location access granted: ${req.user.username} to location: ${requestedLocationId}`);
+    next();
+}
+
 module.exports = {
     authenticateToken,
     authorizeRole,
     authorizePermission,
     requireManagerAuth,
-    requireReceptionOrManager
+    requireReceptionOrManager,
+    requireLocationAccess,
+    requireManagerLocationAccess
 };
