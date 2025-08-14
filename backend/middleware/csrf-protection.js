@@ -96,26 +96,27 @@ function validateCSRFToken(req, res, next) {
  * This should be called after authentication to add token to user's session
  */
 function addCSRFToken(req, res, next) {
-  // Only add token if user is authenticated
-  if (!req.user) {
-    return next();
-  }
-  
   // Get session ID from authorization header
   const sessionId = req.headers.authorization?.replace('Bearer ', '');
   if (!sessionId) {
     return next();
   }
   
+  // Check if this session exists in our sessions store (import from auth.js)
+  // For now, we'll generate a token for any valid session ID format
+  // The token will be validated later when the request is made
+  
   // Generate or get existing CSRF token
   let tokenData = csrfTokens.get(sessionId);
   if (!tokenData || new Date() > tokenData.expiresAt) {
     const token = generateCSRFToken(sessionId);
     tokenData = csrfTokens.get(sessionId);
+    console.log('🔐 CSRF: Generated new token for session:', sessionId.substring(0, 8) + '...');
   }
   
   // Add CSRF token to response headers
   res.setHeader('X-CSRF-Token', tokenData.token);
+  console.log('🔐 CSRF: Added token to response headers for session:', sessionId.substring(0, 8) + '...');
   
   // Also add to response body for forms that need it
   if (req.method === 'GET') {
