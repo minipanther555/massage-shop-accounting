@@ -10,6 +10,8 @@
 ## Issue Description
 During the debugging and deployment process, we encountered persistent terminal escaping issues when trying to use complex command chaining with pipes, quotes, and grep commands. These issues were preventing efficient testing and validation of our fixes.
 
+**Important Context**: The user reported that "there was a lot of commands that were failing for escaping issues, but then i switched models and the commands started working." This suggests the issues may have been related to the AI model's command generation rather than purely technical shell problems. The specific nature of the escaping problems could not be determined, but the model switch resolved the issues.
+
 ## Symptoms
 - **Command hanging**: Terminal commands would hang indefinitely with `cmdor dquote>` prompts
 - **Pipe failures**: Complex pipe operations with grep would fail unexpectedly
@@ -26,11 +28,14 @@ During the debugging and deployment process, we encountered persistent terminal 
 ### Root Cause
 The terminal escaping problems occurred due to:
 
-1. **Complex command chaining** with pipes (`|`), quotes, and grep
-2. **Shell interpretation conflicts** between different quote types
-3. **Mac terminal quirks** with certain shell constructs
-4. **Nested command substitution** causing parsing issues
-5. **Escape sequence confusion** where the shell saw `\"` as literal quotes
+1. **AI Model Command Generation**: The user reported that commands were failing due to escaping issues, but after switching models, the commands started working correctly
+2. **Complex command chaining** with pipes (`|`), quotes, and grep
+3. **Shell interpretation conflicts** between different quote types
+4. **Mac terminal quirks** with certain shell constructs
+5. **Nested command substitution** causing parsing issues
+6. **Escape sequence confusion** where the shell saw `\"` as literal quotes
+
+**Note**: The exact nature of the escaping problems could not be fully determined, as the issue was resolved when the user switched AI models, suggesting the problem may have been in command generation rather than execution.
 
 ### Specific Examples of Failed Commands
 ```bash
