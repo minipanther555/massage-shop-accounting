@@ -606,6 +606,41 @@
                 </div>
             `;
 
+            // Add payment type breakdown section - NEW FEATURE
+            if (currentReports.breakdowns && currentReports.breakdowns.by_payment_method && currentReports.breakdowns.by_payment_method.length > 0) {
+                reportsHTML += `
+                    <div class="reports-container">
+                        <h3>💳 Payment Type Breakdown - Account Verification</h3>
+                        <p style="color: #6c757d; margin-bottom: 15px; font-style: italic;">Verify your accounts by checking the expected amounts below:</p>
+                        <div class="report-grid">
+                `;
+                
+                currentReports.breakdowns.by_payment_method.forEach(paymentType => {
+                    reportsHTML += `
+                        <div class="report-section">
+                            <h4>${paymentType.payment_method}</h4>
+                            <div class="report-item">
+                                <span class="label">Revenue:</span>
+                                <span class="value positive">฿${(paymentType.revenue || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item">
+                                <span class="label">Transactions:</span>
+                                <span class="value">${paymentType.count || 0}</span>
+                            </div>
+                            <div class="report-item">
+                                <span class="label">Percentage:</span>
+                                <span class="value">${currentReports.summary.total_revenue > 0 ? ((paymentType.revenue / currentReports.summary.total_revenue) * 100).toFixed(1) : '0'}%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                reportsHTML += `
+                        </div>
+                    </div>
+                `;
+            }
+
             // Add service breakdown if available
             if (currentReports.serviceBreakdown && currentReports.serviceBreakdown.length > 0) {
                 reportsHTML += `
