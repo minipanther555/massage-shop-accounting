@@ -421,7 +421,7 @@
         // Load all services
         async function loadServices() {
             try {
-                const response = await fetch('http://localhost:3000/api/services?includeInactive=true');
+                const response = await fetch('http://109.123.238.197/api/services?includeInactive=true');
                 if (response.ok) {
                     allServices = await response.json();
                     filteredServices = [...allServices];
@@ -556,7 +556,7 @@
 
             if (confirm(`Are you sure you want to ${action} "${service.service_name}"?`)) {
                 try {
-                    const response = await fetch(`http://localhost:3000/api/services/${serviceId}`, {
+                    const response = await fetch(`http://109.123.238.197/api/services/${serviceId}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ active: newStatus })
@@ -610,7 +610,7 @@
 
             if (confirm(`Are you sure you want to delete "${service.service_name}"? This action cannot be undone.`)) {
                 try {
-                    const response = await fetch(`http://localhost:3000/api/services/${serviceId}`, {
+                    const response = await fetch(`http://109.123.238.197/api/services/${serviceId}`, {
                         method: 'DELETE'
                     });
 
@@ -650,14 +650,14 @@
                 let response;
                 if (serviceId) {
                     // Update existing service
-                    response = await fetch(`http://localhost:3000/api/services/${serviceId}`, {
+                    response = await fetch(`http://109.123.238.197/api/services/${serviceId}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(serviceData)
                     });
                 } else {
                     // Add new service
-                    response = await fetch('http://localhost:3000/api/services', {
+                    response = await fetch('http://109.123.238.197/api/services', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(serviceData)

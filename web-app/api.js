@@ -55,7 +55,7 @@ class APIClient {
             // Check for network connectivity issues
             if (error instanceof TypeError && error.message.includes('fetch')) {
                 console.error('🚨 NETWORK ERROR: TypeError with fetch - throwing connection error');
-                throw new Error('Cannot connect to server. Please ensure the backend is running on port 3000.');
+                throw new Error('Cannot connect to server. Please ensure the backend is running.');
             }
             
             console.error('🚨 RETHROWING ERROR:', error.message);

@@ -372,7 +372,7 @@
         async function initializeFilters() {
             try {
                 // Load staff members
-                const staffResponse = await fetch('http://localhost:3000/api/reports/staff');
+                const staffResponse = await fetch('http://109.123.238.197/api/reports/staff');
                 if (staffResponse.ok) {
                     const staff = await staffResponse.json();
                     const staffSelect = document.getElementById('filter-staff');
@@ -385,7 +385,7 @@
                 }
 
                 // Load service types
-                const servicesResponse = await fetch('http://localhost:3000/api/services');
+                const servicesResponse = await fetch('http://109.123.238.197/api/services');
                 if (servicesResponse.ok) {
                     const services = await servicesResponse.json();
                     const serviceSelect = document.getElementById('filter-service');
