@@ -1,0 +1,18 @@
+[Unit]
+Description=EIW Massage Shop Bookkeeping System
+After=network.target
+
+[Service]
+Type=simple
+User=massage-shop
+WorkingDirectory=/opt/massage-shop
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node backend/server.js
+Restart=always
+RestartSec=10
+StandardOutput=file:/var/log/massage-shop/output.log
+StandardError=file:/var/log/massage-shop/error.log
+SyslogIdentifier=massage-shop
+
+[Install]
+WantedBy=multi-user.target
