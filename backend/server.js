@@ -5,8 +5,16 @@ require('dotenv').config();
 
 const database = require('./models/database');
 const { validateCSRFToken, addCSRFToken } = require('./middleware/csrf-protection');
+
+// Route imports
 const adminRoutes = require('./routes/admin');
 const authRoutes = require('./routes/auth');
+const expenseRoutes = require('./routes/expenses');
+const paymentTypeRoutes = require('./routes/payment-types');
+const reportRoutes = require('./routes/reports');
+const serviceRoutes = require('./routes/services');
+const staffRoutes = require('./routes/staff');
+const transactionRoutes = require('./routes/transactions');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +32,12 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/payment-types', paymentTypeRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // Initialize database and start server
 async function startServer() {
