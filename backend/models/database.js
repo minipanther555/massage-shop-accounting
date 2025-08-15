@@ -152,8 +152,33 @@ class Database {
       await this.run(table);
     }
 
+    // --- SCHEMA MIGRATION ---
+    console.log('[DB LOG] Checking for necessary schema migrations...');
+    await this.runMigration_addHireDateToStaffRoster();
+    console.log('[DB LOG] Schema migrations checked.');
+
+
     // Insert default data
     await this.insertDefaultData();
+  }
+
+  async runMigration_addHireDateToStaffRoster() {
+    try {
+      // Check if the column already exists
+      const columns = await this.all("PRAGMA table_info(staff_roster);");
+      const hasHireDate = columns.some(col => col.name === 'hire_date');
+
+      if (!hasHireDate) {
+        console.log('[DB LOG] MIGRATING: Adding "hire_date" column to "staff_roster" table...');
+        await this.run("ALTER TABLE staff_roster ADD COLUMN hire_date DATE;");
+        console.log('[DB LOG] MIGRATION SUCCESS: "hire_date" column added.');
+      } else {
+        console.log('[DB LOG] SKIPPING MIGRATION: "hire_date" column already exists.');
+      }
+    } catch (error) {
+      console.error('[DB LOG] MIGRATION FAILED for hire_date:', error);
+      // We don't re-throw here to allow the app to start, but the error is logged.
+    }
   }
 
   async insertDefaultData() {

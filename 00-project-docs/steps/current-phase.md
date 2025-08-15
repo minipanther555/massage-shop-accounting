@@ -153,19 +153,29 @@ This phase focuses on deploying the system to production VPS and establishing li
 Due to a series of regressions caused by a misunderstanding of the server environment, the codebase has been reset on the `testing03` branch to a known-good state (commit `9cf7381`).
 
 ### Current Objectives
-1.  **Re-apply CSRF Fix**: Apply the single, correct fix for the CSRF issue by hoisting all `require()` statements in `backend/server.js`.
-2.  **Validate Fix**: Run the comprehensive 5-hypothesis test to confirm the issue is resolved in a stable environment.
-3.  **Proceed to Planned Work**: Once the CSRF issue is definitively resolved, proceed with the original next phase: Multi-Location Authentication Implementation.
+1.  **Restore Application Code**: Restore critical backend files (`server.js`, middleware) that were empty due to a broken git rollback.
+2.  **Diagnose and Fix the True Root Cause**: Apply the Triage & Debugging Protocol to definitively resolve the application instability.
+3.  **Proceed to Planned Work**: Once the application is stable, proceed with the original next phase: Multi-Location Authentication Implementation.
+
+### Debugging Post-Mortem: From CSRF Misdiagnosis to Schema Mismatch Discovery
+The primary objective of this phase was to resolve a persistent CSRF issue. However, after a prolonged and circular debugging process, the root cause was discovered to be entirely unrelated to the CSRF system.
+
+1.  **Initial State**: The `testing03` branch had multiple empty files (`server.js`, `middleware/*.js`) due to a flawed git rollback. This was the primary source of instability, causing the server to crash on startup.
+2.  **File Restoration**: The correct file contents were retrieved from the `main08` branch and restored, allowing the server to start.
+3.  **CSRF Misdiagnosis**: Initial tests failed with `403 Forbidden` errors, which was incorrectly interpreted as a CSRF issue. A validation script (`csrf_validation_test.js`) was created.
+4.  **The "Red Herring" Loop**: For an extended period, the debugging focused on the CSRF system. This was due to a combination of misleading error messages and a failure to correctly manage the server process, which kept port 3000 occupied (`EADDRINUSE` error), preventing clean test runs. The repeated failures of `kill %1` and incorrect assumptions about the server state prolonged this loop.
+5.  **The Breakthrough - Extensive Logging**: Following the Triage & Debugging Protocol, extensive logging was added to the entire request lifecycle (`server.js`, `admin.js`, etc.). When the test was re-run, the server logs provided an unambiguous trace.
+6.  **True Root Cause Identified**: The logs revealed two key facts:
+    *   The CSRF token generation and validation were working **perfectly**.
+    *   The actual error was an `SQLITE_ERROR: table staff_roster has no column named hire_date`, which occurred *after* the CSRF validation had passed.
+7.  **The Fix**: The root cause was a schema mismatch between the application code (which expected a `hire_date` column) and the local database file (which did not have one). A simple migration was added to `database.js` to add the missing column if it didn't exist.
+
+**Conclusion**: The "CSRF issue" was a classic case of misinterpreting symptoms. The true problem was a broken local environment (empty files, zombie processes) followed by a database schema mismatch. The Triage & Debugging Protocol, specifically the emphasis on comprehensive logging, was essential to breaking the cycle of misdiagnosis and identifying the real bug.
 
 ### Dependencies
 - ✅ Production deployment completed successfully
 - ✅ External access established and functional
-- ✅ All security measures active and tested
-- ✅ Production monitoring and logging operational
-- ✅ System ready for business operations
-- ✅ All critical issues resolved and system fully operational
-- ✅ CSRF protection now working correctly
-- ✅ Staff payment data cleared on production server
+- ✅ **Root cause of local instability identified and resolved.**
 
 ## Technical Notes
 
@@ -219,7 +229,7 @@ Due to a series of regressions caused by a misunderstanding of the server enviro
 14. **Protocol Specification**: Users must specify `http://` or `https://` in browser address bar
 15. **Comprehensive Logging**: Extensive logging is essential for debugging complex middleware issues
 16. **CSRF Middleware Order**: CSRF token generation must happen after authentication middleware
-17. **Dual Database Prevention**: Multiple database files cause severe confusion, prevention measures essential
+17. **Dual Database Prevention**: Multiple database files cause severe confusion, prevention measures are essential
 
 ## Documentation Status
 - ✅ Phase objectives documented

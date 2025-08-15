@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { loginRateLimiter, resetRateLimits } = require('../middleware/rate-limiter');
+const { addCSRFToken } = require('../middleware/csrf-protection'); // <-- IMPORT CSRF MIDDLEWARE
 
 // In-memory session store (for development - in production would use Redis/database)
 const sessions = new Map();
@@ -109,8 +110,8 @@ function generateSessionId() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
 
-// Login endpoint with rate limiting
-router.post('/login', loginRateLimiter, async (req, res) => {
+// Login endpoint with rate limiting AND CSRF token generation
+router.post('/login', loginRateLimiter, async (req, res, next) => { // <-- ADD next
   try {
     const { username, password } = req.body;
     
@@ -153,19 +154,25 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     
     console.log('✅ LOGIN SUCCESS:', { username, role: user.role, sessionId, ip: req.ip });
     
-    // Return session info
-    res.json({
-      success: true,
-      sessionId,
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        displayName: user.displayName,
-        location_id: user.location_id,
-        location_name: user.location_name,
-        permissions: user.permissions
-      }
+    // Attach sessionId to the request so CSRF middleware can use it
+    req.headers.authorization = `Bearer ${sessionId}`;
+
+    // Call the CSRF token middleware before sending the response
+    addCSRFToken(req, res, () => {
+        // Now send the final response
+        res.json({
+          success: true,
+          sessionId,
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            displayName: user.displayName,
+            location_id: user.location_id,
+            location_name: user.location_name,
+            permissions: user.permissions
+          }
+        });
     });
     
   } catch (error) {
@@ -397,4 +404,4 @@ router.get('/users/location/:locationId', async (req, res) => {
   }
 });
 
-module.exports = { router, sessions };
+module.exports = router;

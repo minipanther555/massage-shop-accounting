@@ -2,10 +2,15 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
+const { validateCSRFToken } = require('../middleware/csrf-protection'); // <-- IMPORT CSRF VALIDATION
 
-// Apply authentication and manager authorization to all admin routes
+// --- HYPOTHESIS TESTING: Log middleware application ---
 router.use(authenticateToken);
+
 router.use(authorizeRole('manager'));
+
+router.use(validateCSRFToken); // <-- APPLY CSRF VALIDATION MIDDLEWARE
+
 
 // =============================================================================
 // STAFF ADMINISTRATION ENDPOINTS
@@ -87,7 +92,7 @@ router.post('/staff', async (req, res) => {
 
         res.status(201).json(newStaff);
     } catch (error) {
-        console.error('Error adding staff:', error);
+        console.error('Error adding staff member:', error);
         if (error.message.includes('UNIQUE constraint failed')) {
             res.status(400).json({ error: 'Staff member already exists' });
         } else {
