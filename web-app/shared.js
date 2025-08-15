@@ -1,3 +1,132 @@
+// Shared utility functions for the massage shop application
+
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] SHARED.JS FILE LOADING - TESTING ALL 5 HYPOTHESES');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] shared.js file loaded at:', new Date().toISOString());
+console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
+console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
+console.log('🔍 [HYPOTHESIS TEST] Script loading order check...');
+
+// Test Hypothesis 1: Environment Variable Missing
+console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+console.log('🔍 [HYPOTHESIS 1] Global window.API_BASE_URL:', window.API_BASE_URL);
+console.log('🔍 [HYPOTHESIS 1] Global window.apiBaseUrl:', window.apiBaseUrl);
+console.log('🔍 [HYPOTHESIS 1] Global window.config:', window.config);
+console.log('🔍 [HYPOTHESIS 1] Global window.CONFIG:', window.CONFIG);
+
+// Test Hypothesis 2: Configuration File Loading Issue
+console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+console.log('🔍 [HYPOTHESIS 2] All script tags in document:', Array.from(document.scripts).map(s => s.src || 'inline'));
+console.log('🔍 [HYPOTHESIS 2] Scripts loaded count:', document.scripts.length);
+console.log('🔍 [HYPOTHESIS 2] Head section scripts:', Array.from(document.head.querySelectorAll('script')).map(s => s.src || 'inline'));
+console.log('🔍 [HYPOTHESIS 2] Body section scripts:', Array.from(document.body.querySelectorAll('script')).map(s => s.src || 'inline'));
+
+// Test Hypothesis 3: Script Loading Order Problem
+console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+console.log('🔍 [HYPOTHESIS 3] Current script execution time:', performance.now());
+console.log('🔍 [HYPOTHESIS 3] DOM ready state:', document.readyState);
+console.log('🔍 [HYPOTHESIS 3] Window load event fired:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
+console.log('🔍 [HYPOTHESIS 3] DOMContentLoaded fired:', document.readyState === 'interactive' || document.readyState === 'complete');
+
+// Test Hypothesis 4: Browser Caching Issue
+console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+console.log('🔍 [HYPOTHESIS 4] Script src:', document.currentScript?.src || 'inline script');
+console.log('🔍 [HYPOTHESIS 4] Cache control headers check (if available)');
+console.log('🔍 [HYPOTHESIS 4] Last modified check (if available)');
+
+// Test Hypothesis 5: Configuration Override Problem
+console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+console.log('🔍 [HYPOTHESIS 5] Global variables state in shared.js:');
+console.log('🔍 [HYPOTHESIS 5] - window.API_BASE_URL:', window.API_BASE_URL);
+console.log('🔍 [HYPOTHESIS 5] - window.apiBaseUrl:', window.apiBaseUrl);
+console.log('🔍 [HYPOTHESIS 5] - window.config:', window.config);
+console.log('🔍 [HYPOTHESIS 5] - window.CONFIG:', window.CONFIG);
+
+// Check for global objects
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] GLOBAL OBJECT CHECK - TESTING ALL 5 HYPOTHESES');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+
+console.log('🔍 [HYPOTHESIS TEST] Global api object exists:', typeof window.api !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] Global api object type:', typeof window.api);
+console.log('🔍 [HYPOTHESIS TEST] Global api object constructor:', window.api?.constructor?.name);
+
+console.log('🔍 [HYPOTHESIS TEST] Global CONFIG object exists:', typeof window.CONFIG !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] Global CONFIG object type:', typeof window.CONFIG);
+console.log('🔍 [HYPOTHESIS TEST] Global CONFIG object keys:', window.CONFIG ? Object.keys(window.CONFIG) : 'N/A');
+
+console.log('🔍 [HYPOTHESIS TEST] Global appData object exists:', typeof window.appData !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] Global appData object type:', typeof window.appData);
+
+console.log('🔍 [HYPOTHESIS TEST] Global showToast function exists:', typeof window.showToast !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] Global showToast function type:', typeof window.showToast);
+
+// Test Hypothesis 1: Environment Variable Missing
+console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+console.log('🔍 [HYPOTHESIS 1] API_BASE_URL from global api object:', window.api?.API_BASE_URL);
+console.log('🔍 [HYPOTHESIS 1] API_BASE_URL type:', typeof window.api?.API_BASE_URL);
+console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === undefined:', window.api?.API_BASE_URL === undefined);
+console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === null:', window.api?.API_BASE_URL === null);
+console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === "":', window.api?.API_BASE_URL === '');
+
+// Test Hypothesis 2: Configuration File Loading Issue
+console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+console.log('🔍 [HYPOTHESIS 2] Global api object loaded:', window.api !== undefined);
+console.log('🔍 [HYPOTHESIS 2] Global api object is APIClient instance:', window.api instanceof (window.APIClient || Object));
+console.log('🔍 [HYPOTHESIS 2] APIClient class available:', typeof window.APIClient !== 'undefined');
+
+// Test Hypothesis 3: Script Loading Order Problem
+console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+console.log('🔍 [HYPOTHESIS 3] Document readyState at shared.js load:', document.readyState);
+console.log('🔍 [HYPOTHESIS 3] Window load event fired at shared.js load:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
+console.log('🔍 [HYPOTHESIS 3] Script execution order check:', performance.now());
+
+// Test Hypothesis 4: Browser Caching Issue
+console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+console.log('🔍 [HYPOTHESIS 4] Current script execution time:', performance.now());
+console.log('🔍 [HYPOTHESIS 4] Script modification check (if available)');
+
+// Test Hypothesis 5: Configuration Override Problem
+console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+console.log('🔍 [HYPOTHESIS 5] Has global api object been modified since creation?');
+console.log('🔍 [HYPOTHESIS 5] Current global api object:', window.api);
+console.log('🔍 [HYPOTHESIS 5] Expected api object type:', 'APIClient instance');
+
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] FUNCTION DEFINITIONS - TESTING ALL 5 HYPOTHESES');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+
+// Check if functions are defined
+console.log('🔍 [HYPOTHESIS TEST] loadData function exists:', typeof loadData !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] loadData function type:', typeof loadData);
+console.log('🔍 [HYPOTHESIS TEST] showToast function exists:', typeof showToast !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] showToast function type:', typeof showToast);
+
+// Test Hypothesis 1: Environment Variable Missing
+console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+console.log('🔍 [HYPOTHESIS 1] Functions defined before API_BASE_URL check:', typeof loadData !== 'undefined' && typeof showToast !== 'undefined');
+
+// Test Hypothesis 2: Configuration File Loading Issue
+console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+console.log('🔍 [HYPOTHESIS 2] All required functions loaded:', typeof loadData !== 'undefined' && typeof showToast !== 'undefined');
+
+// Test Hypothesis 3: Script Loading Order Problem
+console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+console.log('🔍 [HYPOTHESIS 3] Functions defined at time:', performance.now());
+
+// Test Hypothesis 4: Browser Caching Issue
+console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+console.log('🔍 [HYPOTHESIS 4] Functions loaded successfully');
+
+// Test Hypothesis 5: Configuration Override Problem
+console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+console.log('🔍 [HYPOTHESIS 5] Functions not overridden:', typeof loadData === 'function' && typeof showToast === 'function');
+
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] SHARED.JS LOADING COMPLETED - ALL HYPOTHESES TESTED');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+
 // **HYPOTHESIS 5 TESTING: JavaScript module loading verification**
 console.log('🔍 [HYPOTHESIS TEST] shared.js file loaded successfully');
 console.log('🔍 [HYPOTHESIS TEST] Current timestamp:', new Date().toISOString());

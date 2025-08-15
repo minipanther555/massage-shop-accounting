@@ -3,214 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Massage Shop POS - Login</title>
+    <title>Login - EIW Massage Shop</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        .login-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
+    <script>
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] LOGIN.HTML HEAD SCRIPT - TESTING ALL 5 HYPOTHESES');
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] Head script executed at:', new Date().toISOString());
+        console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
+        console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
         
-        .login-card {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
+        // Test Hypothesis 1: Environment Variable Missing
+        console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+        console.log('🔍 [HYPOTHESIS 1] Global window.API_BASE_URL:', window.API_BASE_URL);
+        console.log('🔍 [HYPOTHESIS 1] Global window.apiBaseUrl:', window.apiBaseUrl);
+        console.log('🔍 [HYPOTHESIS 1] Global window.config:', window.config);
         
-        .login-title {
-            font-size: 28px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
+        // Test Hypothesis 2: Configuration File Loading Issue
+        console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+        console.log('🔍 [HYPOTHESIS 2] Scripts loaded in head:', document.head.querySelectorAll('script').length);
+        console.log('🔍 [HYPOTHESIS 2] Head script sources:', Array.from(document.head.querySelectorAll('script')).map(s => s.src || 'inline'));
         
-        .login-subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
+        // Test Hypothesis 3: Script Loading Order Problem
+        console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+        console.log('🔍 [HYPOTHESIS 3] Head script execution time:', performance.now());
+        console.log('🔍 [HYPOTHESIS 3] DOM ready state at head script:', document.readyState);
         
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
+        // Test Hypothesis 4: Browser Caching Issue
+        console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+        console.log('🔍 [HYPOTHESIS 4] Head script execution successful');
         
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
-        }
+        // Test Hypothesis 5: Configuration Override Problem
+        console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+        console.log('🔍 [HYPOTHESIS 5] Global variables state at head script:');
+        console.log('🔍 [HYPOTHESIS 5] - window.API_BASE_URL:', window.API_BASE_URL);
+        console.log('🔍 [HYPOTHESIS 5] - window.apiBaseUrl:', window.apiBaseUrl);
+        console.log('🔍 [HYPOTHESIS 5] - window.config:', window.config);
         
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .login-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .login-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            display: none;
-        }
-        
-        .role-info {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            line-height: 1.4;
-        }
-        
-        .role-info code {
-            background: #e0e0e0;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .role-info {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 12px;
-            color: #1565c0;
-        }
-        
-        .loading {
-            display: none;
-            margin-top: 10px;
-        }
-        
-        .spinner {
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] HEAD SCRIPT COMPLETED - ALL HYPOTHESES TESTED');
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+    </script>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-card">
-            <div class="login-title">🏪 Massage Shop POS</div>
-            <div class="login-subtitle">Point of Sale System</div>
+    <div class="container">
+        <div class="login-form">
+            <h1>EIW Massage Shop</h1>
+            <h2>Login</h2>
             
-            <div class="error-message" id="error-message"></div>
-            
-            <form id="login-form">
+            <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <select id="username" required>
-                        <option value="">Select your role...</option>
-                        <option value="reception">Reception</option>
-                        <option value="manager">Manager</option>
-                    </select>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
                 </div>
                 
                 <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="Enter your password" required>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
                 </div>
                 
-                <div class="role-info">
-                    <strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br>
-                    <strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings
-                </div>
-                
-                <button type="submit" class="login-btn" id="login-btn">
-                    Login
-                </button>
-                
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <div style="margin-top: 10px; font-size: 14px;">Logging in...</div>
-                </div>
+                <button type="submit">Login</button>
             </form>
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
         </div>
     </div>
 
-    <script src="shared.js"></script>
     <script src="api.js"></script>
+    <script src="shared.js"></script>
     <script>
-        // --- HYPOTHESIS VALIDATION LOGGING ---
-        console.log('HYPOTHESIS LOG: Inline script in login.html has started.');
-
-        // Hypothesis 4: Test if shared.js loaded correctly
-        if (typeof showToast === 'function') {
-            console.log('HYPOTHESIS LOG: showToast() from shared.js is DEFINED.');
-        } else {
-            console.error('HYPOTHESIS LOG: showToast() from shared.js is UNDEFINED.');
-        }
-
-        // The critical test: Does the `api` object exist now?
-        if (typeof api !== 'undefined' && api instanceof APIClient) {
-            console.log('HYPOTHESIS LOG: Global `api` object from api.js is DEFINED and is an instance of APIClient.');
-        } else {
-            console.error('HYPOTHESIS LOG: Global `api` object from api.js is UNDEFINED or not the correct type.');
-        }
-        // --- END HYPOTHESIS VALIDATION LOGGING ---
-
-        console.log('🔐 LOGIN PAGE: Script loading...');
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] LOGIN.HTML BODY SCRIPT - TESTING ALL 5 HYPOTHESES');
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] Body script started at:', new Date().toISOString());
+        console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
+        console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
         
-        // Check if already logged in
+        // Test Hypothesis 1: Environment Variable Missing
+        console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+        console.log('🔍 [HYPOTHESIS 1] Global window.API_BASE_URL:', window.API_BASE_URL);
+        console.log('🔍 [HYPOTHESIS 1] Global window.apiBaseUrl:', window.apiBaseUrl);
+        console.log('🔍 [HYPOTHESIS 1] Global window.config:', window.config);
+        console.log('🔍 [HYPOTHESIS 1] Global window.CONFIG:', window.CONFIG);
+        
+        // Test Hypothesis 2: Configuration File Loading Issue
+        console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+        console.log('🔍 [HYPOTHESIS 2] Scripts loaded in body:', document.body.querySelectorAll('script').length);
+        console.log('🔍 [HYPOTHESIS 2] Body script sources:', Array.from(document.body.querySelectorAll('script')).map(s => s.src || 'inline'));
+        console.log('🔍 [HYPOTHESIS 2] All scripts loaded:', document.scripts.length);
+        console.log('🔍 [HYPOTHESIS 2] Script loading order:', Array.from(document.scripts).map(s => s.src || 'inline'));
+        
+        // Test Hypothesis 3: Script Loading Order Problem
+        console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+        console.log('🔍 [HYPOTHESIS 3] Body script execution time:', performance.now());
+        console.log('🔍 [HYPOTHESIS 3] DOM ready state at body script:', document.readyState);
+        console.log('🔍 [HYPOTHESIS 3] Window load event fired:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
+        console.log('🔍 [HYPOTHESIS 3] DOMContentLoaded fired:', document.readyState === 'interactive' || document.readyState === 'complete');
+        
+        // Test Hypothesis 4: Browser Caching Issue
+        console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+        console.log('🔍 [HYPOTHESIS 4] Body script execution successful');
+        console.log('🔍 [HYPOTHESIS 4] Current script execution time:', performance.now());
+        
+        // Test Hypothesis 5: Configuration Override Problem
+        console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+        console.log('🔍 [HYPOTHESIS 5] Global variables state at body script:');
+        console.log('🔍 [HYPOTHESIS 5] - window.API_BASE_URL:', window.API_BASE_URL);
+        console.log('🔍 [HYPOTHESIS 5] - window.apiBaseUrl:', window.apiBaseUrl);
+        console.log('🔍 [HYPOTHESIS 5] - window.config:', window.config);
+        console.log('🔍 [HYPOTHESIS 5] - window.CONFIG:', window.CONFIG);
+        
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] CHECKING GLOBAL OBJECTS - TESTING ALL 5 HYPOTHESES');
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        
+        // Check global objects after script loading
+        console.log('🔍 [HYPOTHESIS TEST] Global api object exists:', typeof window.api !== 'undefined');
+        console.log('🔍 [HYPOTHESIS TEST] Global api object type:', typeof window.api);
+        console.log('🔍 [HYPOTHESIS TEST] Global api object constructor:', window.api?.constructor?.name);
+        
+        console.log('🔍 [HYPOTHESIS TEST] Global APIClient class exists:', typeof window.APIClient !== 'undefined');
+        console.log('🔍 [HYPOTHESIS TEST] Global APIClient class type:', typeof window.APIClient);
+        
+        console.log('🔍 [HYPOTHESIS TEST] Global showToast function exists:', typeof window.showToast !== 'undefined');
+        console.log('🔍 [HYPOTHESIS TEST] Global showToast function type:', typeof window.showToast);
+        
+        // Test Hypothesis 1: Environment Variable Missing
+        console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL from global api object:', window.api?.API_BASE_URL);
+        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL type:', typeof window.api?.API_BASE_URL);
+        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === undefined:', window.api?.API_BASE_URL === undefined);
+        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === null:', window.api?.API_BASE_URL === null);
+        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === "":', window.api?.API_BASE_URL === '');
+        
+        // Test Hypothesis 2: Configuration File Loading Issue
+        console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+        console.log('🔍 [HYPOTHESIS 2] Global api object loaded:', window.api !== undefined);
+        console.log('🔍 [HYPOTHESIS 2] Global api object is APIClient instance:', window.api instanceof (window.APIClient || Object));
+        console.log('🔍 [HYPOTHESIS 2] APIClient class available:', typeof window.APIClient !== 'undefined');
+        
+        // Test Hypothesis 3: Script Loading Order Problem
+        console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+        console.log('🔍 [HYPOTHESIS 3] Document readyState at body script:', document.readyState);
+        console.log('🔍 [HYPOTHESIS 3] Window load event fired at body script:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
+        console.log('🔍 [HYPOTHESIS 3] Script execution order check:', performance.now());
+        
+        // Test Hypothesis 4: Browser Caching Issue
+        console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+        console.log('🔍 [HYPOTHESIS 4] Body script execution successful');
+        console.log('🔍 [HYPOTHESIS 4] Current script execution time:', performance.now());
+        
+        // Test Hypothesis 5: Configuration Override Problem
+        console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+        console.log('🔍 [HYPOTHESIS 5] Has global api object been modified since creation?');
+        console.log('🔍 [HYPOTHESIS 5] Current global api object:', window.api);
+        console.log('🔍 [HYPOTHESIS 5] Expected api object type:', 'APIClient instance');
+        
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        console.log('🔍 [HYPOTHESIS TEST] INLINE SCRIPT IN LOGIN.HTML HAS STARTED.');
+        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+        
+        // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+            console.log('🔍 [HYPOTHESIS TEST] DOMCONTENTLOADED EVENT - TESTING ALL 5 HYPOTHESES');
+            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+            console.log('🔍 [HYPOTHESIS TEST] DOMContentLoaded fired at:', new Date().toISOString());
+            console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
+            console.log('🔍 [HYPOTHESIS TEST] Event timing:', performance.now());
+            
+            // Test Hypothesis 1: Environment Variable Missing
+            console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
+            console.log('🔍 [HYPOTHESIS 1] API_BASE_URL at DOMContentLoaded:', window.api?.API_BASE_URL);
+            console.log('🔍 [HYPOTHESIS 1] API_BASE_URL type at DOMContentLoaded:', typeof window.api?.API_BASE_URL);
+            
+            // Test Hypothesis 2: Configuration File Loading Issue
+            console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
+            console.log('🔍 [HYPOTHESIS 2] Global api object at DOMContentLoaded:', window.api);
+            console.log('🔍 [HYPOTHESIS 2] APIClient class at DOMContentLoaded:', window.APIClient);
+            
+            // Test Hypothesis 3: Script Loading Order Problem
+            console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
+            console.log('🔍 [HYPOTHESIS 3] DOM ready state at DOMContentLoaded:', document.readyState);
+            console.log('🔍 [HYPOTHESIS 3] Event timing at DOMContentLoaded:', performance.now());
+            
+            // Test Hypothesis 4: Browser Caching Issue
+            console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
+            console.log('🔍 [HYPOTHESIS 4] DOMContentLoaded event successful');
+            
+            // Test Hypothesis 5: Configuration Override Problem
+            console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
+            console.log('🔍 [HYPOTHESIS 5] Global api object state at DOMContentLoaded:', window.api);
+            console.log('🔍 [HYPOTHESIS 5] Expected state at DOMContentLoaded:', 'APIClient instance with valid API_BASE_URL');
+            
+            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+            console.log('🔍 [HYPOTHESIS TEST] DOMCONTENTLOADED COMPLETED - ALL HYPOTHESES TESTED');
+            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+            
+            // Check if showToast function is available
+            if (typeof showToast === 'function') {
+                console.log('HYPOTHESIS LOG: showToast() from shared.js is DEFINED.');
+            } else {
+                console.error('HYPOTHESIS LOG: showToast() from shared.js is NOT DEFINED!');
+            }
+            
+            // Check if global api object is available
+            if (typeof window.api !== 'undefined' && window.api instanceof (window.APIClient || Object)) {
+                console.log('HYPOTHESIS LOG: Global `api` object from api.js is DEFINED and is an instance of APIClient.');
+                console.log('HYPOTHESIS LOG: api.API_BASE_URL =', window.api.API_BASE_URL);
+                console.log('HYPOTHESIS LOG: api.API_BASE_URL type =', typeof window.api.API_BASE_URL);
+            } else {
+                console.error('HYPOTHESIS LOG: Global `api` object from api.js is NOT DEFINED or is not an APIClient instance!');
+                console.error('HYPOTHESIS LOG: window.api =', window.api);
+                console.error('HYPOTHESIS LOG: typeof window.api =', typeof window.api);
+            }
+            
+            console.log('🔐 LOGIN PAGE: Script loading...');
+            
+            // Check existing session
             console.log('🔐 LOGIN PAGE: Checking existing session...');
             
             const sessionToken = localStorage.getItem('sessionToken');
@@ -234,13 +244,13 @@
         });
         
         // Handle login form submission
-        document.getElementById('login-form').addEventListener('submit', async function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error-message');
-            const loginBtn = document.getElementById('login-btn');
+            const errorDiv = document.getElementById('errorMessage');
+            const loginBtn = document.querySelector('button[type="submit"]');
             const loading = document.getElementById('loading');
             
             // Clear previous errors
@@ -298,7 +308,7 @@
         });
         
         function showError(message) {
-            const errorDiv = document.getElementById('error-message');
+            const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
             errorDiv.style.background = '#ffebee';
@@ -306,7 +316,7 @@
         }
         
         function showSuccess(message) {
-            const errorDiv = document.getElementById('error-message');
+            const errorDiv = document.getElementById('errorMessage');
             errorDiv.textContent = message;
             errorDiv.style.display = 'block';
             errorDiv.style.background = '#e8f5e8';
@@ -324,7 +334,7 @@
         // Handle Enter key in password field
         document.getElementById('password').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
-                document.getElementById('login-form').dispatchEvent(new Event('submit'));
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
             }
         });
         
