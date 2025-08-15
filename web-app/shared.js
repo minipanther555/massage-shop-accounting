@@ -33,8 +33,23 @@ async function loadData() {
         
         console.log('🚀 DEBUG: Promise.all completed successfully');
         console.log('🚀 DEBUG: Services received:', services);
+        console.log('🚀 DEBUG: Services type:', typeof services);
+        console.log('🚀 DEBUG: Services constructor:', services?.constructor?.name);
+        console.log('🚀 DEBUG: Services isArray:', Array.isArray(services));
         console.log('🚀 DEBUG: Payment methods received:', paymentMethods);
+        console.log('🚀 DEBUG: Payment methods type:', typeof paymentMethods);
+        console.log('🚀 DEBUG: Payment methods isArray:', Array.isArray(paymentMethods));
         console.log('🚀 DEBUG: Roster received:', roster);
+        console.log('🚀 DEBUG: Roster type:', typeof roster);
+        console.log('🚀 DEBUG: Roster isArray:', Array.isArray(roster));
+
+        // Validate that services is an array before calling .map()
+        if (!Array.isArray(services)) {
+            console.error('🚨 CRITICAL: services is not an array!');
+            console.error('🚨 services value:', services);
+            console.error('🚨 services type:', typeof services);
+            throw new Error(`Services is not an array. Received: ${typeof services} - ${JSON.stringify(services)}`);
+        }
 
         CONFIG.settings.services = services.map(s => ({
             name: s.service_name,
