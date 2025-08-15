@@ -4,11 +4,25 @@ const database = require('../models/database');
 
 // Get all services (admin view - includes inactive)
 router.get('/', async (req, res) => {
-  console.log('🔍 [HYPOTHESIS TEST] /api/services route hit');
+  console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+  console.log('🔍 [HYPOTHESIS TEST] SERVICES ROUTE HIT - TESTING HYPOTHESIS 3');
+  console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+  console.log('🔍 [HYPOTHESIS TEST] Route: /api/services');
+  console.log('🔍 [HYPOTHESIS TEST] Method: GET');
+  console.log('🔍 [HYPOTHESIS TEST] Timestamp:', new Date().toISOString());
   console.log('🔍 [HYPOTHESIS TEST] Request URL:', req.url);
-  console.log('🔍 [HYPOTHESIS TEST] Request method:', req.method);
-  console.log('🔍 [HYPOTHESIS TEST] Request headers:', req.headers);
+  console.log('🔍 [HYPOTHESIS TEST] Request path:', req.path);
+  console.log('🔍 [HYPOTHESIS TEST] Request originalUrl:', req.originalUrl);
+  console.log('🔍 [HYPOTHESIS TEST] Request baseUrl:', req.baseUrl);
+  console.log('🔍 [HYPOTHESIS TEST] Request headers:', JSON.stringify(req.headers, null, 2));
   console.log('🔍 [HYPOTHESIS TEST] Request query:', req.query);
+  console.log('🔍 [HYPOTHESIS TEST] Request IP:', req.ip);
+  console.log('🔍 [HYPOTHESIS TEST] Request hostname:', req.hostname);
+  console.log('🔍 [HYPOTHESIS TEST] Request protocol:', req.protocol);
+  console.log('🔍 [HYPOTHESIS TEST] Request origin:', req.get('Origin'));
+  console.log('🔍 [HYPOTHESIS TEST] Request referer:', req.get('Referer'));
+  console.log('🔍 [HYPOTHESIS TEST] Request user-agent:', req.get('User-Agent'));
+  console.log('🔍 [HYPOTHESIS TEST] ==========================================');
   
   try {
     const { includeInactive = 'false' } = req.query;
@@ -39,6 +53,7 @@ router.get('/', async (req, res) => {
     console.log('🔍 [HYPOTHESIS TEST] Sending JSON response...');
     res.json(services);
     console.log('🔍 [HYPOTHESIS TEST] Response sent successfully');
+    console.log('🔍 [HYPOTHESIS TEST] ==========================================');
   } catch (error) {
     console.error('🔍 [HYPOTHESIS TEST] Error in /api/services route:', error);
     console.error('🔍 [HYPOTHESIS TEST] Error type:', typeof error);

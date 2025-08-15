@@ -4,6 +4,18 @@ const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 
+// **HYPOTHESIS 5 TESTING: Version identifier to verify server code updates**
+const SERVER_VERSION = 'v2.0.0-HYPOTHESIS-TESTING-' + new Date().toISOString();
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] SERVER STARTING - TESTING HYPOTHESIS 5');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] Server Version:', SERVER_VERSION);
+console.log('🔍 [HYPOTHESIS TEST] Timestamp:', new Date().toISOString());
+console.log('🔍 [HYPOTHESIS TEST] Node.js version:', process.version);
+console.log('🔍 [HYPOTHESIS TEST] Process ID:', process.pid);
+console.log('🔍 [HYPOTHESIS TEST] Working directory:', process.cwd());
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+
 // EXTENSIVE STARTUP LOGGING - TESTING ALL HYPOTHESES
 console.log('=== STARTUP DIAGNOSTIC LOGGING STARTED ===');
 console.log('Timestamp:', new Date().toISOString());
@@ -282,54 +294,87 @@ try {
     throw error;
 }
 
-// Add request logging middleware for Hypothesis 4 testing
+// Add comprehensive request logging middleware for all 5 hypotheses testing
 app.use((req, res, next) => {
-  console.log('🔍 [HYPOTHESIS TEST] Incoming request received');
+  console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+  console.log('🔍 [HYPOTHESIS TEST] REQUEST RECEIVED - TESTING ALL HYPOTHESES');
+  console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+  console.log('🔍 [HYPOTHESIS TEST] Timestamp:', new Date().toISOString());
   console.log('🔍 [HYPOTHESIS TEST] Request URL:', req.url);
   console.log('🔍 [HYPOTHESIS TEST] Request method:', req.method);
-  console.log('🔍 [HYPOTHESIS TEST] Request headers:', req.headers);
+  console.log('🔍 [HYPOTHESIS TEST] Request path:', req.path);
+  console.log('🔍 [HYPOTHESIS TEST] Request originalUrl:', req.originalUrl);
+  console.log('🔍 [HYPOTHESIS TEST] Request baseUrl:', req.baseUrl);
   console.log('🔍 [HYPOTHESIS TEST] Request IP:', req.ip);
   console.log('🔍 [HYPOTHESIS TEST] Request hostname:', req.hostname);
   console.log('🔍 [HYPOTHESIS TEST] Request protocol:', req.protocol);
-  console.log('🔍 [HYPOTHESIS TEST] Request path:', req.path);
+  console.log('🔍 [HYPOTHESIS TEST] Request headers:', JSON.stringify(req.headers, null, 2));
   console.log('🔍 [HYPOTHESIS TEST] Request query:', req.query);
   console.log('🔍 [HYPOTHESIS TEST] Request body:', req.body);
   console.log('🔍 [HYPOTHESIS TEST] Request origin:', req.get('Origin'));
   console.log('🔍 [HYPOTHESIS TEST] Request referer:', req.get('Referer'));
   console.log('🔍 [HYPOTHESIS TEST] Request user-agent:', req.get('User-Agent'));
+  console.log('🔍 [HYPOTHESIS TEST] Request accept:', req.get('Accept'));
+  console.log('🔍 [HYPOTHESIS TEST] Request content-type:', req.get('Content-Type'));
+  console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+  
+  // Test Hypothesis 2: Check if this is an API call
+  if (req.path.startsWith('/api/')) {
+    console.log('🔍 [HYPOTHESIS TEST] ✅ This is an API call - should reach backend routes');
+  } else {
+    console.log('🔍 [HYPOTHESIS TEST] ❌ This is NOT an API call - should go to static/SPA routing');
+  }
+  
   next();
 });
-
-console.log('=== SETTING UP STATIC FILE SERVING ===');
-try {
-    // Serve static files from the web-app directory
-    app.use(express.static(path.join(__dirname, '..', 'web-app'), {
-        setHeaders: (res, path) => {
-            if (path.endsWith('.js') || path.endsWith('.css')) {
-                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-                res.setHeader('Pragma', 'no-cache');
-                res.setHeader('Expires', '0');
-            }
-        }
-    }));
-    console.log('Static file serving middleware added successfully');
-    console.log('Serving frontend files from:', path.join(__dirname, '..', 'web-app'));
-} catch (error) {
-    console.error('ERROR setting up static file serving:', error.message);
-    console.error('ERROR stack:', error.stack);
-    throw error;
-}
 
 console.log('=== SETTING UP ROUTES ===');
 // Health check endpoint
 try {
     app.get('/health', (req, res) => {
       console.log('Health check endpoint hit');
-      res.json({ status: 'OK' });
+      res.json({ 
+        status: 'OK', 
+        version: SERVER_VERSION,
+        timestamp: new Date().toISOString(),
+        hypothesis: 'Testing all 5 hypotheses simultaneously'
+      });
     });
     console.log('Health check route added successfully');
 } catch (error) {
     console.error('ERROR setting up health check route:', error.message);
+    console.error('ERROR stack:', error.stack);
+    throw error;
+}
+
+// **HYPOTHESIS TESTING ENDPOINT - Test all 5 hypotheses at once**
+try {
+    app.get('/api/test-hypotheses', (req, res) => {
+        console.log('🔍 [HYPOTHESIS TEST] Test endpoint hit - testing all hypotheses');
+        res.json({
+            message: 'Testing all 5 hypotheses simultaneously',
+            version: SERVER_VERSION,
+            timestamp: new Date().toISOString(),
+            hypotheses: [
+                'Hypothesis 1: Browser Caching Issue',
+                'Hypothesis 2: Nginx Still Serving Frontend for API Calls',
+                'Hypothesis 3: Middleware Order Still Wrong',
+                'Hypothesis 4: Frontend URL Construction Issue',
+                'Hypothesis 5: Server Code Not Updated'
+            ],
+            request: {
+                url: req.url,
+                path: req.path,
+                method: req.method,
+                headers: req.headers,
+                ip: req.ip,
+                hostname: req.hostname
+            }
+        });
+    });
+    console.log('Hypothesis testing endpoint added successfully');
+} catch (error) {
+    console.error('ERROR setting up hypothesis testing endpoint:', error.message);
     console.error('ERROR stack:', error.stack);
     throw error;
 }
@@ -411,6 +456,26 @@ try {
     console.log('Transaction routes added successfully');
 } catch (error) {
     console.error('ERROR adding transaction routes:', error.message);
+    console.error('ERROR stack:', error.stack);
+    throw error;
+}
+
+console.log('=== SETTING UP STATIC FILE SERVING ===');
+try {
+    // Serve static files from the web-app directory AFTER API routes
+    app.use(express.static(path.join(__dirname, '..', 'web-app'), {
+        setHeaders: (res, path) => {
+            if (path.endsWith('.js') || path.endsWith('.css')) {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+            }
+        }
+    }));
+    console.log('Static file serving middleware added successfully');
+    console.log('Serving frontend files from:', path.join(__dirname, '..', 'web-app'));
+} catch (error) {
+    console.error('ERROR setting up static file serving:', error.message);
     console.error('ERROR stack:', error.stack);
     throw error;
 }
