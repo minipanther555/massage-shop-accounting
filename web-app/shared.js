@@ -1,3 +1,24 @@
+// **HYPOTHESIS 5 TESTING: JavaScript module loading verification**
+console.log('🔍 [HYPOTHESIS TEST] shared.js file loaded successfully');
+console.log('🔍 [HYPOTHESIS TEST] Current timestamp:', new Date().toISOString());
+console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
+console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
+console.log('🔍 [HYPOTHESIS TEST] Global api object exists:', typeof api !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] Global api object type:', typeof api);
+console.log('🔍 [HYPOTHESIS TEST] Global api object constructor:', api?.constructor?.name);
+console.log('🔍 [HYPOTHESIS TEST] Global api object methods:', Object.getOwnPropertyNames(api));
+
+// **HYPOTHESIS 5 TESTING: Function definition verification**
+console.log('🔍 [HYPOTHESIS TEST] loadData function exists:', typeof loadData !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] loadData function type:', typeof loadData);
+console.log('🔍 [HYPOTHESIS TEST] loadData function name:', loadData.name);
+console.log('🔍 [HYPOTHESIS TEST] loadData function toString:', loadData.toString().substring(0, 200));
+
+// **HYPOTHESIS 5 TESTING: Module dependencies verification**
+console.log('🔍 [HYPOTHESIS TEST] CONFIG object exists:', typeof CONFIG !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] appData object exists:', typeof appData !== 'undefined');
+console.log('🔍 [HYPOTHESIS TEST] showToast function exists:', typeof showToast !== 'undefined');
+
 // Shared JavaScript for Massage Shop POS (API-backed version)
 // Configuration - loaded from backend API
 let CONFIG = {

@@ -282,10 +282,36 @@ try {
     throw error;
 }
 
+// Add request logging middleware for Hypothesis 4 testing
+app.use((req, res, next) => {
+  console.log('🔍 [HYPOTHESIS TEST] Incoming request received');
+  console.log('🔍 [HYPOTHESIS TEST] Request URL:', req.url);
+  console.log('🔍 [HYPOTHESIS TEST] Request method:', req.method);
+  console.log('🔍 [HYPOTHESIS TEST] Request headers:', req.headers);
+  console.log('🔍 [HYPOTHESIS TEST] Request IP:', req.ip);
+  console.log('🔍 [HYPOTHESIS TEST] Request hostname:', req.hostname);
+  console.log('🔍 [HYPOTHESIS TEST] Request protocol:', req.protocol);
+  console.log('🔍 [HYPOTHESIS TEST] Request path:', req.path);
+  console.log('🔍 [HYPOTHESIS TEST] Request query:', req.query);
+  console.log('🔍 [HYPOTHESIS TEST] Request body:', req.body);
+  console.log('🔍 [HYPOTHESIS TEST] Request origin:', req.get('Origin'));
+  console.log('🔍 [HYPOTHESIS TEST] Request referer:', req.get('Referer'));
+  console.log('🔍 [HYPOTHESIS TEST] Request user-agent:', req.get('User-Agent'));
+  next();
+});
+
 console.log('=== SETTING UP STATIC FILE SERVING ===');
 try {
     // Serve static files from the web-app directory
-    app.use(express.static(path.join(__dirname, '..', 'web-app')));
+    app.use(express.static(path.join(__dirname, '..', 'web-app'), {
+        setHeaders: (res, path) => {
+            if (path.endsWith('.js') || path.endsWith('.css')) {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+            }
+        }
+    }));
     console.log('Static file serving middleware added successfully');
     console.log('Serving frontend files from:', path.join(__dirname, '..', 'web-app'));
 } catch (error) {

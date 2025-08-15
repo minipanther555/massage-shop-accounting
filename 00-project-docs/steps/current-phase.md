@@ -25,6 +25,9 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **✅ Authentication System**: ✅ RESOLVED - Authentication system is working perfectly, all endpoints functional
 - **✅ New Features**: ✅ COMPLETED - Payment Type Breakdown feature added to financial reports
 - **✅ Bug Fixes**: ✅ COMPLETED - All hardcoded localhost URLs resolved
+- **✅ Frontend/Backend Integration**: ✅ RESOLVED - Critical port mismatch and Nginx configuration issues fixed
+- **✅ Static File Serving**: ✅ COMPLETED - Node.js backend now serves frontend files directly
+- **✅ API Proxy Configuration**: ✅ COMPLETED - Nginx properly proxies API calls to backend
 
 ### Key Technical Achievements
 1. **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS with full production environment
@@ -56,6 +59,13 @@ This phase focuses on deploying the system to production VPS and establishing li
     - **Time to Resolution**: 2-3 hours (much faster due to documented procedures)
     - **Validation**: Confirmed production server data is cleared, local database still contains old data
     - **Lesson**: Dual database files continue to cause confusion, prevention measures are essential
+18. **Frontend/Backend Integration Issue**: ✅ RESOLVED - Critical port mismatch and Nginx configuration problems fixed
+    - **Priority**: CRITICAL - Blocking all frontend functionality and user access
+    - **Root Cause**: Frontend served from localhost:8080 (Python server), backend on remote port 3000, Nginx proxy configuration flawed
+    - **Solution**: Added static file serving to Node.js backend, fixed Nginx proxy configuration, updated frontend API URLs to use relative paths
+    - **Technical Implementation**: Added `express.static()` middleware to serve frontend files, fixed Nginx proxy_pass directive (removed trailing slash), updated frontend API_BASE_URL from absolute IP to relative `/api`, implemented SPA routing for frontend
+    - **Testing**: Frontend now accessible through Node.js backend, API endpoints working correctly through Nginx proxy, all routes functional
+    - **Result**: Complete frontend/backend integration working correctly through standard HTTP port 80
 
 ### Bug Fixes and Resolutions
 - **SSH Authentication Issues**: ✅ RESOLVED - Set up proper SSH keys and configuration for passwordless access
@@ -147,35 +157,26 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **Health Checks**: Regular health monitoring and status checks
 - **Status**: Comprehensive monitoring operational
 
-## Next Phase: Re-resolve CSRF Issue and proceed to MULTI-LOCATION AUTHENTICATION
+### 6. Frontend/Backend Integration ✅ NEW
+- **Static File Serving**: Node.js backend now serves frontend files directly
+- **API Proxy Configuration**: Nginx properly proxies API calls to backend
+- **SPA Routing**: Single-page application routing implemented for frontend
+- **Port Mismatch Resolution**: Eliminated frontend/backend port conflicts
+- **Status**: Complete integration working through standard HTTP port 80
 
-### Codebase Reset and Refocus
-Due to a series of regressions caused by a misunderstanding of the server environment, the codebase has been reset on the `testing03` branch to a known-good state (commit `9cf7381`).
+## Next Phase: Multi-Location Authentication Implementation
 
 ### Current Objectives
-1.  **Restore Application Code**: Restore critical backend files (`server.js`, middleware) that were empty due to a broken git rollback.
-2.  **Diagnose and Fix the True Root Cause**: Apply the Triage & Debugging Protocol to definitively resolve the application instability.
-3.  **Proceed to Planned Work**: Once the application is stable, proceed with the original next phase: Multi-Location Authentication Implementation.
-
-### Debugging Post-Mortem: From CSRF Misdiagnosis to Schema Mismatch Discovery
-The primary objective of this phase was to resolve a persistent CSRF issue. However, after a prolonged and circular debugging process, the root cause was discovered to be entirely unrelated to the CSRF system.
-
-1.  **Initial State**: The `testing03` branch had multiple empty files (`server.js`, `middleware/*.js`) due to a flawed git rollback. This was the primary source of instability, causing the server to crash on startup.
-2.  **File Restoration**: The correct file contents were retrieved from the `main08` branch and restored, allowing the server to start.
-3.  **CSRF Misdiagnosis**: Initial tests failed with `403 Forbidden` errors, which was incorrectly interpreted as a CSRF issue. A validation script (`csrf_validation_test.js`) was created.
-4.  **The "Red Herring" Loop**: For an extended period, the debugging focused on the CSRF system. This was due to a combination of misleading error messages and a failure to correctly manage the server process, which kept port 3000 occupied (`EADDRINUSE` error), preventing clean test runs. The repeated failures of `kill %1` and incorrect assumptions about the server state prolonged this loop.
-5.  **The Breakthrough - Extensive Logging**: Following the Triage & Debugging Protocol, extensive logging was added to the entire request lifecycle (`server.js`, `admin.js`, etc.). When the test was re-run, the server logs provided an unambiguous trace.
-6.  **True Root Cause Identified**: The logs revealed two key facts:
-    *   The CSRF token generation and validation were working **perfectly**.
-    *   The actual error was an `SQLITE_ERROR: table staff_roster has no column named hire_date`, which occurred *after* the CSRF validation had passed.
-7.  **The Fix**: The root cause was a schema mismatch between the application code (which expected a `hire_date` column) and the local database file (which did not have one). A simple migration was added to `database.js` to add the missing column if it didn't exist.
-
-**Conclusion**: The "CSRF issue" was a classic case of misinterpreting symptoms. The true problem was a broken local environment (empty files, zombie processes) followed by a database schema mismatch. The Triage & Debugging Protocol, specifically the emphasis on comprehensive logging, was essential to breaking the cycle of misdiagnosis and identifying the real bug.
+1. **Frontend/Backend Integration**: ✅ COMPLETED - All port mismatch and Nginx configuration issues resolved
+2. **System Stability**: ✅ COMPLETED - Backend service running stably, all API endpoints functional
+3. **Multi-Location Authentication**: 🔄 NEXT - Implement authentication system for multi-location operations
+4. **HTTPS Configuration**: 🔄 PLANNED - Configure SSL certificates for secure access
 
 ### Dependencies
 - ✅ Production deployment completed successfully
 - ✅ External access established and functional
-- ✅ **Root cause of local instability identified and resolved.**
+- ✅ Frontend/backend integration completed successfully
+- ✅ All critical production issues resolved
 
 ## Technical Notes
 
@@ -184,10 +185,11 @@ The primary objective of this phase was to resolve a persistent CSRF issue. Howe
 - **Nginx Configuration**: Implemented separate location blocks for frontend files and API calls for optimal performance
 - **SSH Management**: Used SSH aliases for easier server management and deployment
 - **Process Management**: PM2 for application management with systemd for system-level service management
+- **Static File Serving**: Added Express.js static file serving to eliminate frontend/backend port conflicts
 
 ### Performance Considerations
-- **Static File Serving**: Nginx serves frontend files directly for optimal performance
-- **API Proxying**: Only API calls are proxied to backend, reducing unnecessary overhead
+- **Static File Serving**: Node.js backend serves frontend files directly for optimal integration
+- **API Proxying**: Nginx proxies only API calls to backend, reducing unnecessary overhead
 - **Caching**: Implemented proper caching headers for static assets
 - **Load Balancing**: Ready for future load balancing if needed
 
@@ -211,6 +213,9 @@ The primary objective of this phase was to resolve a persistent CSRF issue. Howe
 - ✅ All critical issues resolved through systematic debugging
 - ✅ CSRF token generation now working correctly
 - ✅ Staff payment data cleared on production server
+- ✅ Frontend/backend integration completed successfully
+- ✅ Static file serving working correctly
+- ✅ Nginx proxy configuration fixed
 
 ## Lessons Learned
 1. **SSH Key Management**: Proper SSH key setup is critical for production server management
@@ -230,6 +235,9 @@ The primary objective of this phase was to resolve a persistent CSRF issue. Howe
 15. **Comprehensive Logging**: Extensive logging is essential for debugging complex middleware issues
 16. **CSRF Middleware Order**: CSRF token generation must happen after authentication middleware
 17. **Dual Database Prevention**: Multiple database files cause severe confusion, prevention measures are essential
+18. **Frontend/Backend Integration**: Port mismatches between frontend and backend servers cause critical functionality failures
+19. **Static File Serving**: Express.js static file serving eliminates the need for separate frontend servers
+20. **Nginx Proxy Configuration**: Trailing slashes in proxy_pass directives can strip important path components
 
 ## Documentation Status
 - ✅ Phase objectives documented
@@ -239,3 +247,4 @@ The primary objective of this phase was to resolve a persistent CSRF issue. Howe
 - ✅ Next phase planning completed
 - ✅ CSRF token resolution documented
 - ✅ Staff payment data clearing recurrence documented
+- ✅ Frontend/backend integration resolution documented

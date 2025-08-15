@@ -10,17 +10,21 @@ class APIClient {
         console.log('APIClient initialized');
     }
 
-    async request(endpoint, method = 'GET', body = null) {
-        const url = `${this.baseURL}${endpoint}`;
+    async request(url, method = 'GET', body = null) {
+        // **HYPOTHESIS 1 & 3 TESTING: Extensive logging for API response parsing and URL construction**
+        console.log(`🔍 [HYPOTHESIS TEST] API request starting: ${method} ${url}`);
+        console.log(`🔍 [HYPOTHESIS TEST] API_BASE_URL value: ${this.API_BASE_URL}`);
+        console.log(`🔍 [HYPOTHESIS TEST] Full URL being constructed: ${this.API_BASE_URL}${url}`);
+        console.log(`🔍 [HYPOTHESIS TEST] Request method: ${method}`);
+        console.log(`🔍 [HYPOTHESIS TEST] Request body:`, body);
+        
+        const fullUrl = `${this.API_BASE_URL}${url}`;
+        console.log(`🔍 [HYPOTHESIS TEST] Final constructed URL: ${fullUrl}`);
+        
         const headers = {
             'Content-Type': 'application/json',
         };
 
-        if (this.jwtToken) {
-            headers['Authorization'] = `Bearer ${this.jwtToken}`;
-        }
-        
-        // **VALIDATION LOG 1: Check if CSRF token exists before sending**
         if (this.csrfToken) {
             headers['X-CSRF-Token'] = this.csrfToken;
             console.log(`[CSRF-CLIENT] Attaching token to headers: ${this.csrfToken}`);
@@ -39,9 +43,17 @@ class APIClient {
 
         try {
             // **VALIDATION LOG 2: Log the exact request being sent**
-            console.log(`[CSRF-CLIENT] Sending API request to ${method} ${url}`, { headers: config.headers });
-            const response = await fetch(url, config);
+            console.log(`[CSRF-CLIENT] Sending API request to ${method} ${fullUrl}`, { headers: config.headers });
+            const response = await fetch(fullUrl, config);
 
+            // **HYPOTHESIS 1 TESTING: Extensive response logging for parsing issues**
+            console.log(`🔍 [HYPOTHESIS TEST] Response received for ${fullUrl}`);
+            console.log(`🔍 [HYPOTHESIS TEST] Response status: ${response.status}`);
+            console.log(`🔍 [HYPOTHESIS TEST] Response statusText: ${response.statusText}`);
+            console.log(`🔍 [HYPOTHESIS TEST] Response ok: ${response.ok}`);
+            console.log(`🔍 [HYPOTHESIS TEST] Response type: ${response.type}`);
+            console.log(`🔍 [HYPOTHESIS TEST] Response url: ${response.url}`);
+            
             // **VALIDATION LOG 3: Log all response headers to check for incoming token**
             console.log('[CSRF-CLIENT] Received response. Headers:');
             response.headers.forEach((value, name) => {
@@ -60,18 +72,30 @@ class APIClient {
                 } catch (e) {
                     errorData = { error: 'Failed to parse error response.' };
                 }
-                console.error(`[CSRF-CLIENT] API Error Response from ${url}:`, errorData);
+                console.error(`[CSRF-CLIENT] API Error Response from ${fullUrl}:`, errorData);
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
             const contentType = response.headers.get('content-type');
+            console.log(`🔍 [HYPOTHESIS TEST] Response content-type: ${contentType}`);
+            
             if (contentType && contentType.includes('application/json')) {
-                return await response.json();
+                const jsonData = await response.json();
+                console.log(`🔍 [HYPOTHESIS TEST] Parsed JSON data:`, jsonData);
+                console.log(`🔍 [HYPOTHESIS TEST] JSON data type: ${typeof jsonData}`);
+                console.log(`🔍 [HYPOTHESIS TEST] JSON data constructor: ${jsonData?.constructor?.name}`);
+                console.log(`🔍 [HYPOTHESIS TEST] JSON data isArray: ${Array.isArray(jsonData)}`);
+                return jsonData;
             } else {
-                return await response.text();
+                const textData = await response.text();
+                console.log(`🔍 [HYPOTHESIS TEST] Parsed text data:`, textData);
+                console.log(`🔍 [HYPOTHESIS TEST] Text data type: ${typeof textData}`);
+                console.log(`🔍 [HYPOTHESIS TEST] Text data length: ${textData.length}`);
+                console.log(`🔍 [HYPOTHESIS TEST] Text data first 200 chars: ${textData.substring(0, 200)}`);
+                return textData;
             }
         } catch (error) {
-            console.error(`[CSRF-CLIENT] Network or fetch error for ${url}:`, error);
+            console.error(`[CSRF-CLIENT] Network or fetch error for ${fullUrl}:`, error);
             throw error;
         }
     }

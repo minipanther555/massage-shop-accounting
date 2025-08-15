@@ -4,8 +4,15 @@ const database = require('../models/database');
 
 // Get all services (admin view - includes inactive)
 router.get('/', async (req, res) => {
+  console.log('🔍 [HYPOTHESIS TEST] /api/services route hit');
+  console.log('🔍 [HYPOTHESIS TEST] Request URL:', req.url);
+  console.log('🔍 [HYPOTHESIS TEST] Request method:', req.method);
+  console.log('🔍 [HYPOTHESIS TEST] Request headers:', req.headers);
+  console.log('🔍 [HYPOTHESIS TEST] Request query:', req.query);
+  
   try {
     const { includeInactive = 'false' } = req.query;
+    console.log('🔍 [HYPOTHESIS TEST] includeInactive parameter:', includeInactive);
     
     let sql = 'SELECT * FROM services';
     let params = [];
@@ -15,11 +22,29 @@ router.get('/', async (req, res) => {
     }
     
     sql += ' ORDER BY service_name ASC, duration_minutes ASC';
+    console.log('🔍 [HYPOTHESIS TEST] SQL query:', sql);
+    console.log('🔍 [HYPOTHESIS TEST] SQL parameters:', params);
     
+    console.log('🔍 [HYPOTHESIS TEST] Calling database.all()...');
     const services = await database.all(sql, params);
+    console.log('🔍 [HYPOTHESIS TEST] Database query completed');
+    console.log('🔍 [HYPOTHESIS TEST] Services returned from DB:', services);
+    console.log('🔍 [HYPOTHESIS TEST] Services type:', typeof services);
+    console.log('🔍 [HYPOTHESIS TEST] Services constructor:', services?.constructor?.name);
+    console.log('🔍 [HYPOTHESIS TEST] Services isArray:', Array.isArray(services));
+    console.log('🔍 [HYPOTHESIS TEST] Services length:', services?.length);
+    
+    console.log('🔍 [HYPOTHESIS TEST] Setting response headers...');
+    res.setHeader('Content-Type', 'application/json');
+    console.log('🔍 [HYPOTHESIS TEST] Sending JSON response...');
     res.json(services);
+    console.log('🔍 [HYPOTHESIS TEST] Response sent successfully');
   } catch (error) {
-    console.error('Error fetching services:', error);
+    console.error('🔍 [HYPOTHESIS TEST] Error in /api/services route:', error);
+    console.error('🔍 [HYPOTHESIS TEST] Error type:', typeof error);
+    console.error('🔍 [HYPOTHESIS TEST] Error constructor:', error?.constructor?.name);
+    console.error('🔍 [HYPOTHESIS TEST] Error message:', error.message);
+    console.error('🔍 [HYPOTHESIS TEST] Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to fetch services' });
   }
 });
