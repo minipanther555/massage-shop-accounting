@@ -186,8 +186,27 @@
         </div>
     </div>
 
+    <script src="shared.js"></script>
     <script src="api.js"></script>
     <script>
+        // --- HYPOTHESIS VALIDATION LOGGING ---
+        console.log('HYPOTHESIS LOG: Inline script in login.html has started.');
+
+        // Hypothesis 4: Test if shared.js loaded correctly
+        if (typeof showToast === 'function') {
+            console.log('HYPOTHESIS LOG: showToast() from shared.js is DEFINED.');
+        } else {
+            console.error('HYPOTHESIS LOG: showToast() from shared.js is UNDEFINED.');
+        }
+
+        // The critical test: Does the `api` object exist now?
+        if (typeof api !== 'undefined' && api instanceof APIClient) {
+            console.log('HYPOTHESIS LOG: Global `api` object from api.js is DEFINED and is an instance of APIClient.');
+        } else {
+            console.error('HYPOTHESIS LOG: Global `api` object from api.js is UNDEFINED or not the correct type.');
+        }
+        // --- END HYPOTHESIS VALIDATION LOGGING ---
+
         console.log('🔐 LOGIN PAGE: Script loading...');
         
         // Check if already logged in

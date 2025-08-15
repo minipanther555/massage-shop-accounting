@@ -2,5 +2,9 @@
   "dependencies": {
     "axios": "^1.11.0",
     "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.33.0",
+    "globals": "^16.3.0"
   }
 }

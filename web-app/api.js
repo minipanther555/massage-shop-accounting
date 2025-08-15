@@ -224,7 +224,7 @@ class APIClient {
     }
 
     async recordPayment(staffId, paymentData) {
-        return this.request(`/admin/staff/${staffId}/payments', 'POST', paymentData);
+        return this.request(`/admin/staff/${staffId}/payments`, 'POST', paymentData);
     }
 
     async getOutstandingFees() {
