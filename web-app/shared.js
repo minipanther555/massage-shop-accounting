@@ -1,171 +1,18 @@
-// Shared utility functions for the massage shop application
+// Shared utility functions for the Massage Shop POS system
 
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-console.log('🔍 [HYPOTHESIS TEST] SHARED.JS FILE LOADING - TESTING ALL 5 HYPOTHESES');
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-console.log('🔍 [HYPOTHESIS TEST] shared.js file loaded at:', new Date().toISOString());
-console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
-console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
-console.log('🔍 [HYPOTHESIS TEST] Script loading order check...');
-
-// Test Hypothesis 1: Environment Variable Missing
-console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-console.log('🔍 [HYPOTHESIS 1] Global window.API_BASE_URL:', window.API_BASE_URL);
-console.log('🔍 [HYPOTHESIS 1] Global window.apiBaseUrl:', window.apiBaseUrl);
-console.log('🔍 [HYPOTHESIS 1] Global window.config:', window.config);
-console.log('🔍 [HYPOTHESIS 1] Global window.CONFIG:', window.CONFIG);
-
-// Test Hypothesis 2: Configuration File Loading Issue
-console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-console.log('🔍 [HYPOTHESIS 2] All script tags in document:', Array.from(document.scripts).map(s => s.src || 'inline'));
-console.log('🔍 [HYPOTHESIS 2] Scripts loaded count:', document.scripts.length);
-console.log('🔍 [HYPOTHESIS 2] Head section scripts:', Array.from(document.head.querySelectorAll('script')).map(s => s.src || 'inline'));
-console.log('🔍 [HYPOTHESIS 2] Body section scripts:', Array.from(document.body.querySelectorAll('script')).map(s => s.src || 'inline'));
-
-// Test Hypothesis 3: Script Loading Order Problem
-console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-console.log('🔍 [HYPOTHESIS 3] Current script execution time:', performance.now());
-console.log('🔍 [HYPOTHESIS 3] DOM ready state:', document.readyState);
-console.log('🔍 [HYPOTHESIS 3] Window load event fired:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
-console.log('🔍 [HYPOTHESIS 3] DOMContentLoaded fired:', document.readyState === 'interactive' || document.readyState === 'complete');
-
-// Test Hypothesis 4: Browser Caching Issue
-console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-console.log('🔍 [HYPOTHESIS 4] Script src:', document.currentScript?.src || 'inline script');
-console.log('🔍 [HYPOTHESIS 4] Cache control headers check (if available)');
-console.log('🔍 [HYPOTHESIS 4] Last modified check (if available)');
-
-// Test Hypothesis 5: Configuration Override Problem
-console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-console.log('🔍 [HYPOTHESIS 5] Global variables state in shared.js:');
-console.log('🔍 [HYPOTHESIS 5] - window.API_BASE_URL:', window.API_BASE_URL);
-console.log('🔍 [HYPOTHESIS 5] - window.apiBaseUrl:', window.apiBaseUrl);
-console.log('🔍 [HYPOTHESIS 5] - window.config:', window.config);
-console.log('🔍 [HYPOTHESIS 5] - window.CONFIG:', window.CONFIG);
-
-// Check for global objects
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-console.log('🔍 [HYPOTHESIS TEST] GLOBAL OBJECT CHECK - TESTING ALL 5 HYPOTHESES');
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-
-console.log('🔍 [HYPOTHESIS TEST] Global api object exists:', typeof window.api !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] Global api object type:', typeof window.api);
-console.log('🔍 [HYPOTHESIS TEST] Global api object constructor:', window.api?.constructor?.name);
-
-console.log('🔍 [HYPOTHESIS TEST] Global CONFIG object exists:', typeof window.CONFIG !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] Global CONFIG object type:', typeof window.CONFIG);
-console.log('🔍 [HYPOTHESIS TEST] Global CONFIG object keys:', window.CONFIG ? Object.keys(window.CONFIG) : 'N/A');
-
-console.log('🔍 [HYPOTHESIS TEST] Global appData object exists:', typeof window.appData !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] Global appData object type:', typeof window.appData);
-
-console.log('🔍 [HYPOTHESIS TEST] Global showToast function exists:', typeof window.showToast !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] Global showToast function type:', typeof window.showToast);
-
-// Test Hypothesis 1: Environment Variable Missing
-console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-console.log('🔍 [HYPOTHESIS 1] API_BASE_URL from global api object:', window.api?.API_BASE_URL);
-console.log('🔍 [HYPOTHESIS 1] API_BASE_URL type:', typeof window.api?.API_BASE_URL);
-console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === undefined:', window.api?.API_BASE_URL === undefined);
-console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === null:', window.api?.API_BASE_URL === null);
-console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === "":', window.api?.API_BASE_URL === '');
-
-// Test Hypothesis 2: Configuration File Loading Issue
-console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-console.log('🔍 [HYPOTHESIS 2] Global api object loaded:', window.api !== undefined);
-console.log('🔍 [HYPOTHESIS 2] Global api object is APIClient instance:', window.api instanceof (window.APIClient || Object));
-console.log('🔍 [HYPOTHESIS 2] APIClient class available:', typeof window.APIClient !== 'undefined');
-
-// Test Hypothesis 3: Script Loading Order Problem
-console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-console.log('🔍 [HYPOTHESIS 3] Document readyState at shared.js load:', document.readyState);
-console.log('🔍 [HYPOTHESIS 3] Window load event fired at shared.js load:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
-console.log('🔍 [HYPOTHESIS 3] Script execution order check:', performance.now());
-
-// Test Hypothesis 4: Browser Caching Issue
-console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-console.log('🔍 [HYPOTHESIS 4] Current script execution time:', performance.now());
-console.log('🔍 [HYPOTHESIS 4] Script modification check (if available)');
-
-// Test Hypothesis 5: Configuration Override Problem
-console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-console.log('🔍 [HYPOTHESIS 5] Has global api object been modified since creation?');
-console.log('🔍 [HYPOTHESIS 5] Current global api object:', window.api);
-console.log('🔍 [HYPOTHESIS 5] Expected api object type:', 'APIClient instance');
-
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-console.log('🔍 [HYPOTHESIS TEST] FUNCTION DEFINITIONS - TESTING ALL 5 HYPOTHESES');
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-
-// Check if functions are defined
-console.log('🔍 [HYPOTHESIS TEST] loadData function exists:', typeof loadData !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] loadData function type:', typeof loadData);
-console.log('🔍 [HYPOTHESIS TEST] showToast function exists:', typeof showToast !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] showToast function type:', typeof showToast);
-
-// Test Hypothesis 1: Environment Variable Missing
-console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-console.log('🔍 [HYPOTHESIS 1] Functions defined before API_BASE_URL check:', typeof loadData !== 'undefined' && typeof showToast !== 'undefined');
-
-// Test Hypothesis 2: Configuration File Loading Issue
-console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-console.log('🔍 [HYPOTHESIS 2] All required functions loaded:', typeof loadData !== 'undefined' && typeof showToast !== 'undefined');
-
-// Test Hypothesis 3: Script Loading Order Problem
-console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-console.log('🔍 [HYPOTHESIS 3] Functions defined at time:', performance.now());
-
-// Test Hypothesis 4: Browser Caching Issue
-console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-console.log('🔍 [HYPOTHESIS 4] Functions loaded successfully');
-
-// Test Hypothesis 5: Configuration Override Problem
-console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-console.log('🔍 [HYPOTHESIS 5] Functions not overridden:', typeof loadData === 'function' && typeof showToast === 'function');
-
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-console.log('🔍 [HYPOTHESIS TEST] SHARED.JS LOADING COMPLETED - ALL HYPOTHESES TESTED');
-console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-
-// **HYPOTHESIS 5 TESTING: JavaScript module loading verification**
-console.log('🔍 [HYPOTHESIS TEST] shared.js file loaded successfully');
-console.log('🔍 [HYPOTHESIS TEST] Current timestamp:', new Date().toISOString());
-console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
-console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
-console.log('🔍 [HYPOTHESIS TEST] Global api object exists:', typeof api !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] Global api object type:', typeof api);
-console.log('🔍 [HYPOTHESIS TEST] Global api object constructor:', api?.constructor?.name);
-console.log('🔍 [HYPOTHESIS TEST] Global api object methods:', Object.getOwnPropertyNames(api));
-
-// **HYPOTHESIS 5 TESTING: Function definition verification**
-console.log('🔍 [HYPOTHESIS TEST] loadData function exists:', typeof loadData !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] loadData function type:', typeof loadData);
-console.log('🔍 [HYPOTHESIS TEST] loadData function name:', loadData.name);
-console.log('🔍 [HYPOTHESIS TEST] loadData function toString:', loadData.toString().substring(0, 200));
-
-// **HYPOTHESIS 5 TESTING: Module dependencies verification**
-console.log('🔍 [HYPOTHESIS TEST] CONFIG object exists:', typeof CONFIG !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] appData object exists:', typeof appData !== 'undefined');
-console.log('🔍 [HYPOTHESIS TEST] showToast function exists:', typeof showToast !== 'undefined');
-
-// Shared JavaScript for Massage Shop POS (API-backed version)
-// Configuration - loaded from backend API
-let CONFIG = {
-    rosterSize: 20,
-    settings: {
-        masseuses: [],
-        services: [],
-        paymentMethods: []
-    }
+// Global data storage
+let appData = {
+    services: [],
+    staff: [],
+    transactions: [],
+    expenses: []
 };
 
-// Application state
-let appData = {
-    transactions: [],
-    roster: [],
-    expenses: [],
-    correctionMode: false,
-    originalTransactionId: null
+// Configuration object
+const CONFIG = {
+    API_BASE_URL: '/api',
+    APP_NAME: 'EIW Massage Shop POS',
+    VERSION: '1.0.0'
 };
 
 // Load data from API
@@ -174,580 +21,187 @@ async function loadData() {
         console.log('🚀 DEBUG: Starting loadData() - loading configuration from API');
         
         // Load configuration from API
-        console.log('🚀 DEBUG: Calling Promise.all for services, paymentMethods, roster');
-        const [services, paymentMethods, roster] = await Promise.all([
-            api.getServices(),
-            api.getPaymentMethods(),
-            api.getStaffRoster()
-        ]);
+        console.log('🚀 DEBUG: Loading services...');
+        const servicesResponse = await api.getServices();
+        appData.services = servicesResponse.services || [];
+        console.log('🚀 DEBUG: Services loaded:', appData.services.length);
         
-        console.log('🚀 DEBUG: Promise.all completed successfully');
-        console.log('🚀 DEBUG: Services received:', services);
-        console.log('🚀 DEBUG: Services type:', typeof services);
-        console.log('🚀 DEBUG: Services constructor:', services?.constructor?.name);
-        console.log('🚀 DEBUG: Services isArray:', Array.isArray(services));
-        console.log('🚀 DEBUG: Payment methods received:', paymentMethods);
-        console.log('🚀 DEBUG: Payment methods type:', typeof paymentMethods);
-        console.log('🚀 DEBUG: Payment methods isArray:', Array.isArray(paymentMethods));
-        console.log('🚀 DEBUG: Roster received:', roster);
-        console.log('🚀 DEBUG: Roster type:', typeof roster);
-        console.log('🚀 DEBUG: Roster isArray:', Array.isArray(roster));
-
-        // Validate that services is an array before calling .map()
-        if (!Array.isArray(services)) {
-            console.error('🚨 CRITICAL: services is not an array!');
-            console.error('🚨 services value:', services);
-            console.error('🚨 services type:', typeof services);
-            throw new Error(`Services is not an array. Received: ${typeof services} - ${JSON.stringify(services)}`);
-        }
-
-        CONFIG.settings.services = services.map(s => ({
-            name: s.service_name,
-            duration: s.duration_minutes,
-            location: s.location,
-            price: s.price,
-            fee: s.masseuse_fee
-        }));
-        CONFIG.settings.paymentMethods = paymentMethods.map(p => p.method_name);
+        console.log('🚀 DEBUG: Loading staff...');
+        const staffResponse = await api.getStaffRoster();
+        appData.staff = staffResponse.staff || [];
+        console.log('🚀 DEBUG: Staff loaded:', appData.staff.length);
         
-        // Load roster
-        appData.roster = roster.map(r => ({
-            position: r.position,
-            name: r.masseuse_name || "",
-            status: r.status || null,
-            busy_until: r.busy_until || null,
-            todayCount: r.today_massages || 0
-        }));
-
-        // Extract unique masseuse names for CONFIG
-        CONFIG.settings.masseuses = [...new Set(roster
-            .filter(r => r.masseuse_name)
-            .map(r => r.masseuse_name)
-        )];
-
-        // Load today's data
-        await loadTodayData();
+        console.log('🚀 DEBUG: Loading recent transactions...');
+        const transactionsResponse = await api.getRecentTransactions(10);
+        appData.transactions = transactionsResponse.transactions || [];
+        console.log('🚀 DEBUG: Transactions loaded:', appData.transactions.length);
         
-        console.log('Data loaded from API successfully');
+        console.log('🚀 DEBUG: loadData() completed successfully');
+        return appData;
+        
     } catch (error) {
-        console.error('🚨 ERROR in loadData():', error);
-        console.error('🚨 ERROR TYPE:', error.constructor.name);
-        console.error('🚨 ERROR MESSAGE:', error.message);
-        console.error('🚨 ERROR STACK:', error.stack);
-        
-        console.log('🚨 SHOWING ERROR TOAST: Failed to connect to server');
-        showToast('Failed to connect to server', 'error');
-        // Fallback to localStorage if API fails
-        console.log('🚀 DEBUG: Attempting fallback to localStorage');
-        loadDataFromLocalStorage();
+        console.error('❌ ERROR in loadData():', error);
+        throw error;
     }
 }
 
-// Fallback localStorage function
-function loadDataFromLocalStorage() {
-    const saved = localStorage.getItem('massageShopData');
-    if (saved) {
-        appData = JSON.parse(saved);
-        // Convert date strings back to Date objects
-        appData.transactions.forEach(t => {
-            if (typeof t.timestamp === 'string') t.timestamp = new Date(t.timestamp);
-            if (typeof t.date === 'string') t.date = new Date(t.date);
-        });
-        appData.expenses.forEach(e => {
-            if (typeof e.timestamp === 'string') e.timestamp = new Date(e.timestamp);
-        });
-    }
-    // Ensure all required arrays exist
-    if (!appData.transactions) appData.transactions = [];
-    if (!appData.roster) appData.roster = [];
-    if (!appData.expenses) appData.expenses = [];
-}
-
-// Load today's transactions and expenses
-async function loadTodayData() {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const [recentTransactions, expenses] = await Promise.all([
-            api.getRecentTransactions(50), // Get more for today's view
-            api.getExpenses(today)
-        ]);
-
-        appData.transactions = recentTransactions.map(t => ({
-            id: t.transaction_id,
-            timestamp: new Date(t.timestamp),
-            date: new Date(t.date),
-            masseuse: t.masseuse_name,
-            service: t.service_type,
-            paymentAmount: t.payment_amount,
-            paymentMethod: t.payment_method,
-            masseuseeFee: t.masseuse_fee,
-            startTime: t.start_time,
-            endTime: t.end_time,
-            customerContact: t.customer_contact || "",
-            status: t.status
-        }));
-        
-        console.log('🔍 MAPPED TRANSACTIONS:', appData.transactions);
-
-        appData.expenses = expenses.map(e => ({
-            id: e.id.toString(),
-            description: e.description,
-            amount: e.amount,
-            timestamp: new Date(e.timestamp)
-        }));
-    } catch (error) {
-        console.error('Failed to load today\'s data:', error);
-        appData.transactions = [];
-        appData.expenses = [];
-    }
-}
-
-// Save data to API (no-op since API handles persistence)
-function saveData() {
-    // Data is automatically saved to API on each operation
-    // Keep this function for compatibility with existing code
-}
-
-// Initialize roster with default masseuses
-function initializeRoster() {
-    if (appData.roster.length === 0) {
-        for (let i = 0; i < CONFIG.rosterSize; i++) {
-            appData.roster.push({
-                position: i + 1,
-                name: i < CONFIG.settings.masseuses.length ? CONFIG.settings.masseuses[i] : "",
-                status: "Available",
-                todayCount: 0
-            });
-        }
-    }
-    // Recalculate today's counts
-    calculateTodayCounts();
-}
-
-// Calculate today's massage counts for each masseuse
-function calculateTodayCounts() {
-    const today = new Date().toDateString();
+// Toast notification system
+function showToast(message, type = 'info', duration = 3000) {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.toast');
+    existingToasts.forEach(toast => toast.remove());
     
-    // Reset all counts
-    appData.roster.forEach(masseuse => {
-        masseuse.todayCount = 0;
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    // Style the toast
+    Object.assign(toast.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        padding: '12px 20px',
+        borderRadius: '4px',
+        color: 'white',
+        fontWeight: 'bold',
+        zIndex: '10000',
+        maxWidth: '300px',
+        wordWrap: 'break-word',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        transform: 'translateX(100%)',
+        transition: 'transform 0.3s ease-in-out'
     });
     
-    // Count today's transactions
-    appData.transactions.forEach(transaction => {
-        if (transaction.date && transaction.date.toDateString() === today && 
-            (transaction.status === 'ACTIVE' || transaction.status.includes('CORRECTED'))) {
-            const masseuse = appData.roster.find(m => m.name === transaction.masseuse);
-            if (masseuse) {
-                masseuse.todayCount++;
+    // Set background color based on type
+    const colors = {
+        success: '#4caf50',
+        error: '#f44336',
+        warning: '#ff9800',
+        info: '#2196f3'
+    };
+    toast.style.backgroundColor = colors[type] || colors.info;
+    
+    // Add to page
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Auto-remove
+    setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
             }
-        }
+        }, 300);
+    }, duration);
+}
+
+// Format currency
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(amount);
+}
+
+// Format date
+function formatDate(date) {
+    if (!date) return '';
+    const d = new Date(date);
+    return d.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
     });
 }
 
-// Format time as h:mm AM/PM
-function formatTime(date) {
-    return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
+// Format time
+function formatTime(time) {
+    if (!time) return '';
+    const d = new Date(`2000-01-01T${time}`);
+    return d.toLocaleTimeString('en-US', {
+        hour: '2-digit',
         minute: '2-digit',
         hour12: true
     });
 }
 
-// Serve next customer - API version
-async function serveNextCustomer() {
-    try {
-        const result = await api.serveNextCustomer();
-        showToast(`${result.masseuse} is now serving the next customer`);
-        
-        // Refresh roster data
-        await loadData();
-        
-        // Return the masseuse name for auto-selection in forms
-        return result.masseuse;
-    } catch (error) {
-        showToast(error.message || "No masseuse is available", 'error');
-        return null;
-    }
+// Validate email format
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
 }
 
-// Submit transaction - API version
-async function submitTransaction(formData) {
-    // Validation
-    if (!formData.masseuse || !formData.service || !formData.payment || !formData.startTime || !formData.endTime) {
-        showToast("Masseuse, Service, Payment, and Times are required", 'error');
-        return false;
-    }
+// Validate phone number format
+function isValidPhone(phone) {
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+}
 
-    try {
-        const transactionData = {
-            masseuse_name: formData.masseuse,
-            service_type: formData.service,
-            payment_method: formData.payment,
-            start_time: formData.startTime,
-            end_time: formData.endTime,
-            customer_contact: formData.customerContact || "",
-            corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null
+// Debounce function for search inputs
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
         };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
-        console.log('🚀 SUBMITTING TRANSACTION:', transactionData);
-        const newTransaction = await api.createTransaction(transactionData);
-        console.log('✅ TRANSACTION RESPONSE:', newTransaction);
-
-        // Exit correction mode
-        if (appData.correctionMode) {
-            exitCorrectionMode();
+// Throttle function for scroll events
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
         }
-
-        // Refresh data
-        await loadTodayData();
-
-        showToast("Transaction logged successfully");
-        return true;
-    } catch (error) {
-        showToast(`Failed to create transaction: ${error.message}`, 'error');
-        return false;
-    }
+    };
 }
 
-// Load transaction for correction - API version
-async function loadTransactionForCorrection() {
-    try {
-        const transaction = await api.getLatestTransactionForCorrection();
-        
-        // Enter correction mode
-        appData.correctionMode = true;
-        appData.originalTransactionId = transaction.transaction_id;
-
-        showToast(`Transaction ${transaction.transaction_id} is VOID and loaded for correction`);
-        
-        // Convert API format to local format for form population
-        return {
-            id: transaction.transaction_id,
-            timestamp: new Date(transaction.timestamp),
-            date: new Date(transaction.date),
-            masseuse: transaction.masseuse_name,
-            service: transaction.service_type,
-            paymentAmount: transaction.payment_amount,
-            paymentMethod: transaction.payment_method,
-            masseuseeFee: transaction.masseuse_fee,
-            startTime: transaction.start_time,
-            endTime: transaction.end_time,
-            customerContact: transaction.customer_contact || "",
-            status: transaction.status
-        };
-    } catch (error) {
-        showToast(error.message || "No recent transactions found to correct", 'error');
-        return null;
-    }
+// Generate unique ID
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// Enter/exit correction mode
-function enterCorrectionMode() {
-    appData.correctionMode = true;
-}
-
-function exitCorrectionMode() {
-    appData.correctionMode = false;
-    appData.originalTransactionId = null;
-}
-
-// Add expense - API version
-async function addExpense(description, amount) {
-    if (!description || !amount || amount <= 0) {
-        showToast("Please enter both description and valid amount", 'error');
-        return false;
-    }
-
-    try {
-        const expenseData = {
-            description: description,
-            amount: amount
-        };
-
-        await api.createExpense(expenseData);
-        
-        // Refresh expenses
-        await loadTodayData();
-        
-        showToast(`Expense added: ${description} - ฿${amount.toFixed(2)}`);
-        return true;
-    } catch (error) {
-        showToast(`Failed to add expense: ${error.message}`, 'error');
-        return false;
-    }
-}
-
-// Remove expense
-function removeExpense(index) {
-    const expense = appData.expenses[index];
-    if (confirm(`Remove expense: ${expense.description} - ฿${expense.amount.toFixed(2)}?`)) {
-        appData.expenses.splice(index, 1);
-        saveData();
-        showToast('Expense removed');
-        return true;
-    }
-    return false;
-}
-
-// End day - API version (database archiving instead of CSV)
-async function endDay() {
-    console.log('🌙 END DAY: Function called');
-    
-    if (!confirm('Are you sure you want to end the day? This will archive today\'s data to the database and reset the system for tomorrow.')) {
-        console.log('🌙 END DAY: User cancelled');
-        return false;
-    }
-
-    try {
-        console.log('🌙 END DAY: Making API call...');
-        // Call API end day function
-        const result = await api.endDay();
-        console.log('🌙 END DAY: API response:', result);
-
-        // Refresh all data to show reset state
-        await loadData();
-
-        console.log('🌙 END DAY: About to show toast with result:', result);
-        console.log('🌙 END DAY: daily_summary:', result.daily_summary);
-        console.log('🌙 END DAY: showToast function exists?', typeof showToast);
-        
-        const message = `Day ended successfully! 
-📊 Daily Summary: ${result.daily_summary.total_transactions} transactions, Revenue: ฿${result.daily_summary.total_revenue}
-🗑️ Cleared: ${result.cleared_transactions} transactions, ${result.cleared_expenses} expenses
-✅ System reset for tomorrow.`;
-        console.log('🌙 END DAY: Toast message:', message);
-        
-        showToast(message);
-        
-        // Backup notification in case toast doesn't work
-        alert(message);
-        
-        return true;
-    } catch (error) {
-        showToast(`Error ending day: ${error.message}`, 'error');
-        return false;
-    }
-}
-
-// Export to CSV
-function exportToCSV() {
-    const today = new Date().toDateString();
-    const todayTransactions = appData.transactions.filter(t => 
-        t.date && t.date.toDateString && t.date.toDateString() === today
-    );
-
-    if (todayTransactions.length === 0 && appData.expenses.length === 0) {
-        showToast('No data to export today', 'error');
-        return;
-    }
-
-    let csv = 'Type,Timestamp,Description,Amount,Details\n';
-    
-    // Add transactions
-    todayTransactions.forEach(t => {
-        csv += `Transaction,"${t.timestamp}","${t.service} - ${t.masseuse}",${t.paymentAmount},"${t.paymentMethod} | ${t.startTime}-${t.endTime} | ${t.status}"\n`;
-    });
-
-    // Add expenses
-    appData.expenses.forEach(e => {
-        csv += `Expense,"${e.timestamp}","${e.description}",${e.amount},"Daily Expense"\n`;
-    });
-
-    // Download file
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `massage-shop-data-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-
-    showToast('Data exported successfully');
-}
-
-// Get today's summary data - API enhanced version
-async function getTodaySummary() {
-    try {
-        // Get summary from API for accuracy
-        const [transactionSummary, expenseSummary] = await Promise.all([
-            api.getTodayTransactionSummary(),
-            api.getTodayExpenseSummary()
-        ]);
-
-        // Get all-time revenue from transactions
-        const allTimeRevenue = appData.transactions
-            .filter(t => t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
-            .reduce((sum, t) => sum + t.paymentAmount, 0);
-
-        // Local data for payment breakdown
-        const today = new Date().toDateString();
-        const todayTransactions = appData.transactions.filter(t => 
-            t.date && t.date.toDateString && t.date.toDateString() === today && 
-            (t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
-        );
-
-        // Convert API payment breakdown to local format
-        const paymentBreakdown = {};
-        if (transactionSummary.payment_breakdown) {
-            transactionSummary.payment_breakdown.forEach(p => {
-                paymentBreakdown[p.payment_method] = {
-                    revenue: p.revenue,
-                    count: p.count
-                };
-            });
-        }
-
-        return {
-            todayRevenue: transactionSummary.total_revenue || 0,
-            todayCount: transactionSummary.transaction_count || 0,
-            todayFees: transactionSummary.total_fees || 0,
-            todayExpenses: expenseSummary.total_expenses || 0,
-            allTimeRevenue,
-            paymentBreakdown,
-            transactions: todayTransactions
-        };
-    } catch (error) {
-        console.error('Failed to get summary from API, using local data:', error);
-        
-        // Fallback to local calculation
-        const today = new Date().toDateString();
-        const todayTransactions = appData.transactions.filter(t => 
-            t.date && t.date.toDateString && t.date.toDateString() === today && 
-            (t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
-        );
-
-        const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.paymentAmount, 0);
-        const todayCount = todayTransactions.length;
-        const todayFees = todayTransactions.reduce((sum, t) => sum + t.masseuseeFee, 0);
-        const todayExpenses = appData.expenses.reduce((sum, e) => sum + e.amount, 0);
-
-        const allTimeRevenue = appData.transactions
-            .filter(t => t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
-            .reduce((sum, t) => sum + t.paymentAmount, 0);
-
-        const paymentBreakdown = {};
-        todayTransactions.forEach(t => {
-            if (!paymentBreakdown[t.paymentMethod]) {
-                paymentBreakdown[t.paymentMethod] = { revenue: 0, count: 0 };
+// Deep clone object
+function deepClone(obj) {
+    if (obj === null || typeof obj !== 'object') return obj;
+    if (obj instanceof Date) return new Date(obj.getTime());
+    if (obj instanceof Array) return obj.map(item => deepClone(item));
+    if (typeof obj === 'object') {
+        const clonedObj = {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                clonedObj[key] = deepClone(obj[key]);
             }
-            paymentBreakdown[t.paymentMethod].revenue += t.paymentAmount;
-            paymentBreakdown[t.paymentMethod].count++;
-        });
-
-        return {
-            todayRevenue,
-            todayCount,
-            todayFees,
-            todayExpenses,
-            allTimeRevenue,
-            paymentBreakdown,
-            transactions: todayTransactions
-        };
-    }
-}
-
-// Get recent transactions
-function getRecentTransactions(limit = 5) {
-    console.log('🔍 ALL TRANSACTIONS:', appData.transactions);
-    const filtered = appData.transactions
-        .filter(t => t.status === 'ACTIVE' || t.status.includes('CORRECTED'));
-    console.log('🔍 FILTERED TRANSACTIONS:', filtered);
-    const recent = filtered.slice(-limit).reverse();
-    console.log('🔍 RECENT TRANSACTIONS:', recent);
-    return recent;
-}
-
-// Authentication utilities
-function getCurrentUser() {
-    const userStr = localStorage.getItem('currentUser');
-    return userStr ? JSON.parse(userStr) : null;
-}
-
-function isLoggedIn() {
-    return !!localStorage.getItem('sessionToken');
-}
-
-function hasRole(requiredRole) {
-    const user = getCurrentUser();
-    if (!user) return false;
-    
-    // Manager has access to everything
-    if (user.role === 'manager') return true;
-    
-    // Check specific role
-    return user.role === requiredRole;
-}
-
-function requireAuth(requiredRole = null) {
-    if (!isLoggedIn()) {
-        console.log('❌ AUTH: Not logged in, redirecting to login');
-        window.location.href = 'login.html';
-        return false;
-    }
-    
-    if (requiredRole && !hasRole(requiredRole)) {
-        console.log('❌ AUTH: Insufficient permissions, required:', requiredRole);
-        if (requiredRole === 'manager') {
-            showToast('Manager access required. Redirecting to dashboard...', 'error');
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 2000);
-        } else {
-            showToast(`Access denied. ${requiredRole} role required.`, 'error');
         }
-        return false;
-    }
-    
-    return true;
-}
-
-async function logout() {
-    try {
-        console.log('👋 LOGOUT: Attempting logout...');
-        await api.logout();
-        
-        localStorage.removeItem('sessionToken');
-        localStorage.removeItem('currentUser');
-        
-        console.log('✅ LOGOUT: Success');
-        window.location.href = 'login.html';
-        
-    } catch (error) {
-        console.error('🚨 LOGOUT ERROR:', error);
-        // Force logout even if API call fails
-        localStorage.removeItem('sessionToken');
-        localStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
+        return clonedObj;
     }
 }
 
-// Show toast notification
-function showToast(message, type = 'success') {
-    // Create toast if it doesn't exist
-    let toast = document.getElementById('toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'toast';
-        toast.className = 'toast';
-        document.body.appendChild(toast);
-    }
-    
-    toast.textContent = message;
-    toast.className = `toast ${type} show`;
-    
-    setTimeout(() => {
-        toast.className = 'toast';
-    }, 3000);
-}
-
-// Auto-save periodically
-setInterval(saveData, 30000); // Save every 30 seconds
-
-// Initialize data when any page loads
-document.addEventListener('DOMContentLoaded', async function() {
-    await loadData();
-    // Don't call initializeRoster - data comes from API now
-});
+// Export functions to global scope
+window.loadData = loadData;
+window.showToast = showToast;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+window.formatTime = formatTime;
+window.isValidEmail = isValidEmail;
+window.isValidPhone = isValidPhone;
+window.debounce = debounce;
+window.throttle = throttle;
+window.generateId = generateId;
+window.deepClone = deepClone;
+window.CONFIG = CONFIG;
+window.appData = appData;

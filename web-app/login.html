@@ -3,58 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - EIW Massage Shop</title>
+    <title>Login - EIW Massage Shop POS</title>
     <link rel="stylesheet" href="styles.css">
-    <script>
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] LOGIN.HTML HEAD SCRIPT - TESTING ALL 5 HYPOTHESES');
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] Head script executed at:', new Date().toISOString());
-        console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
-        console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
-        
-        // Test Hypothesis 1: Environment Variable Missing
-        console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-        console.log('🔍 [HYPOTHESIS 1] Global window.API_BASE_URL:', window.API_BASE_URL);
-        console.log('🔍 [HYPOTHESIS 1] Global window.apiBaseUrl:', window.apiBaseUrl);
-        console.log('🔍 [HYPOTHESIS 1] Global window.config:', window.config);
-        
-        // Test Hypothesis 2: Configuration File Loading Issue
-        console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-        console.log('🔍 [HYPOTHESIS 2] Scripts loaded in head:', document.head.querySelectorAll('script').length);
-        console.log('🔍 [HYPOTHESIS 2] Head script sources:', Array.from(document.head.querySelectorAll('script')).map(s => s.src || 'inline'));
-        
-        // Test Hypothesis 3: Script Loading Order Problem
-        console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-        console.log('🔍 [HYPOTHESIS 3] Head script execution time:', performance.now());
-        console.log('🔍 [HYPOTHESIS 3] DOM ready state at head script:', document.readyState);
-        
-        // Test Hypothesis 4: Browser Caching Issue
-        console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-        console.log('🔍 [HYPOTHESIS 4] Head script execution successful');
-        
-        // Test Hypothesis 5: Configuration Override Problem
-        console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-        console.log('🔍 [HYPOTHESIS 5] Global variables state at head script:');
-        console.log('🔍 [HYPOTHESIS 5] - window.API_BASE_URL:', window.API_BASE_URL);
-        console.log('🔍 [HYPOTHESIS 5] - window.apiBaseUrl:', window.apiBaseUrl);
-        console.log('🔍 [HYPOTHESIS 5] - window.config:', window.config);
-        
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] HEAD SCRIPT COMPLETED - ALL HYPOTHESES TESTED');
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-    </script>
 </head>
 <body>
     <div class="container">
         <div class="login-form">
             <h1>EIW Massage Shop</h1>
-            <h2>Login</h2>
+            <h2>Point of Sale System</h2>
             
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="username">Role:</label>
+                    <select id="username" name="username" required>
+                        <option value="">Select your role</option>
+                        <option value="reception">Reception</option>
+                        <option value="manager">Manager</option>
+                    </select>
                 </div>
                 
                 <div class="form-group">
@@ -62,294 +27,156 @@
                     <input type="password" id="password" name="password" required>
                 </div>
                 
-                <button type="submit">Login</button>
+                <button type="submit" id="loginBtn">Login</button>
             </form>
             
             <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="loading" class="loading" style="display: none;">Logging in...</div>
+            
+            <!-- Role Information Section -->
+            <div class="role-info">
+                <strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br>
+                <strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings
+            </div>
         </div>
     </div>
 
     <script src="api.js"></script>
     <script src="shared.js"></script>
     <script>
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] LOGIN.HTML BODY SCRIPT - TESTING ALL 5 HYPOTHESES');
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] Body script started at:', new Date().toISOString());
-        console.log('🔍 [HYPOTHESIS TEST] Window location:', window.location.href);
-        console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
-        
-        // Test Hypothesis 1: Environment Variable Missing
-        console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-        console.log('🔍 [HYPOTHESIS 1] Global window.API_BASE_URL:', window.API_BASE_URL);
-        console.log('🔍 [HYPOTHESIS 1] Global window.apiBaseUrl:', window.apiBaseUrl);
-        console.log('🔍 [HYPOTHESIS 1] Global window.config:', window.config);
-        console.log('🔍 [HYPOTHESIS 1] Global window.CONFIG:', window.CONFIG);
-        
-        // Test Hypothesis 2: Configuration File Loading Issue
-        console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-        console.log('🔍 [HYPOTHESIS 2] Scripts loaded in body:', document.body.querySelectorAll('script').length);
-        console.log('🔍 [HYPOTHESIS 2] Body script sources:', Array.from(document.body.querySelectorAll('script')).map(s => s.src || 'inline'));
-        console.log('🔍 [HYPOTHESIS 2] All scripts loaded:', document.scripts.length);
-        console.log('🔍 [HYPOTHESIS 2] Script loading order:', Array.from(document.scripts).map(s => s.src || 'inline'));
-        
-        // Test Hypothesis 3: Script Loading Order Problem
-        console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-        console.log('🔍 [HYPOTHESIS 3] Body script execution time:', performance.now());
-        console.log('🔍 [HYPOTHESIS 3] DOM ready state at body script:', document.readyState);
-        console.log('🔍 [HYPOTHESIS 3] Window load event fired:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
-        console.log('🔍 [HYPOTHESIS 3] DOMContentLoaded fired:', document.readyState === 'interactive' || document.readyState === 'complete');
-        
-        // Test Hypothesis 4: Browser Caching Issue
-        console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-        console.log('🔍 [HYPOTHESIS 4] Body script execution successful');
-        console.log('🔍 [HYPOTHESIS 4] Current script execution time:', performance.now());
-        
-        // Test Hypothesis 5: Configuration Override Problem
-        console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-        console.log('🔍 [HYPOTHESIS 5] Global variables state at body script:');
-        console.log('🔍 [HYPOTHESIS 5] - window.API_BASE_URL:', window.API_BASE_URL);
-        console.log('🔍 [HYPOTHESIS 5] - window.apiBaseUrl:', window.apiBaseUrl);
-        console.log('🔍 [HYPOTHESIS 5] - window.config:', window.config);
-        console.log('🔍 [HYPOTHESIS 5] - window.CONFIG:', window.CONFIG);
-        
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] CHECKING GLOBAL OBJECTS - TESTING ALL 5 HYPOTHESES');
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        
-        // Check global objects after script loading
-        console.log('🔍 [HYPOTHESIS TEST] Global api object exists:', typeof window.api !== 'undefined');
-        console.log('🔍 [HYPOTHESIS TEST] Global api object type:', typeof window.api);
-        console.log('🔍 [HYPOTHESIS TEST] Global api object constructor:', window.api?.constructor?.name);
-        
-        console.log('🔍 [HYPOTHESIS TEST] Global APIClient class exists:', typeof window.APIClient !== 'undefined');
-        console.log('🔍 [HYPOTHESIS TEST] Global APIClient class type:', typeof window.APIClient);
-        
-        console.log('🔍 [HYPOTHESIS TEST] Global showToast function exists:', typeof window.showToast !== 'undefined');
-        console.log('🔍 [HYPOTHESIS TEST] Global showToast function type:', typeof window.showToast);
-        
-        // Test Hypothesis 1: Environment Variable Missing
-        console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL from global api object:', window.api?.API_BASE_URL);
-        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL type:', typeof window.api?.API_BASE_URL);
-        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === undefined:', window.api?.API_BASE_URL === undefined);
-        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === null:', window.api?.API_BASE_URL === null);
-        console.log('🔍 [HYPOTHESIS 1] API_BASE_URL === "":', window.api?.API_BASE_URL === '');
-        
-        // Test Hypothesis 2: Configuration File Loading Issue
-        console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-        console.log('🔍 [HYPOTHESIS 2] Global api object loaded:', window.api !== undefined);
-        console.log('🔍 [HYPOTHESIS 2] Global api object is APIClient instance:', window.api instanceof (window.APIClient || Object));
-        console.log('🔍 [HYPOTHESIS 2] APIClient class available:', typeof window.APIClient !== 'undefined');
-        
-        // Test Hypothesis 3: Script Loading Order Problem
-        console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-        console.log('🔍 [HYPOTHESIS 3] Document readyState at body script:', document.readyState);
-        console.log('🔍 [HYPOTHESIS 3] Window load event fired at body script:', window.performance.getEntriesByType('navigation')[0]?.loadEventEnd > 0);
-        console.log('🔍 [HYPOTHESIS 3] Script execution order check:', performance.now());
-        
-        // Test Hypothesis 4: Browser Caching Issue
-        console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-        console.log('🔍 [HYPOTHESIS 4] Body script execution successful');
-        console.log('🔍 [HYPOTHESIS 4] Current script execution time:', performance.now());
-        
-        // Test Hypothesis 5: Configuration Override Problem
-        console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-        console.log('🔍 [HYPOTHESIS 5] Has global api object been modified since creation?');
-        console.log('🔍 [HYPOTHESIS 5] Current global api object:', window.api);
-        console.log('🔍 [HYPOTHESIS 5] Expected api object type:', 'APIClient instance');
-        
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        console.log('🔍 [HYPOTHESIS TEST] INLINE SCRIPT IN LOGIN.HTML HAS STARTED.');
-        console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-        
-        // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', async function() {
-            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-            console.log('🔍 [HYPOTHESIS TEST] DOMCONTENTLOADED EVENT - TESTING ALL 5 HYPOTHESES');
-            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-            console.log('🔍 [HYPOTHESIS TEST] DOMContentLoaded fired at:', new Date().toISOString());
-            console.log('🔍 [HYPOTHESIS TEST] Document readyState:', document.readyState);
-            console.log('🔍 [HYPOTHESIS TEST] Event timing:', performance.now());
-            
-            // Test Hypothesis 1: Environment Variable Missing
-            console.log('🔍 [HYPOTHESIS 1] Testing: Environment Variable Missing');
-            console.log('🔍 [HYPOTHESIS 1] API_BASE_URL at DOMContentLoaded:', window.api?.API_BASE_URL);
-            console.log('🔍 [HYPOTHESIS 1] API_BASE_URL type at DOMContentLoaded:', typeof window.api?.API_BASE_URL);
-            
-            // Test Hypothesis 2: Configuration File Loading Issue
-            console.log('🔍 [HYPOTHESIS 2] Testing: Configuration File Loading Issue');
-            console.log('🔍 [HYPOTHESIS 2] Global api object at DOMContentLoaded:', window.api);
-            console.log('🔍 [HYPOTHESIS 2] APIClient class at DOMContentLoaded:', window.APIClient);
-            
-            // Test Hypothesis 3: Script Loading Order Problem
-            console.log('🔍 [HYPOTHESIS 3] Testing: Script Loading Order Problem');
-            console.log('🔍 [HYPOTHESIS 3] DOM ready state at DOMContentLoaded:', document.readyState);
-            console.log('🔍 [HYPOTHESIS 3] Event timing at DOMContentLoaded:', performance.now());
-            
-            // Test Hypothesis 4: Browser Caching Issue
-            console.log('🔍 [HYPOTHESIS 4] Testing: Browser Caching Issue');
-            console.log('🔍 [HYPOTHESIS 4] DOMContentLoaded event successful');
-            
-            // Test Hypothesis 5: Configuration Override Problem
-            console.log('🔍 [HYPOTHESIS 5] Testing: Configuration Override Problem');
-            console.log('🔍 [HYPOTHESIS 5] Global api object state at DOMContentLoaded:', window.api);
-            console.log('🔍 [HYPOTHESIS 5] Expected state at DOMContentLoaded:', 'APIClient instance with valid API_BASE_URL');
-            
-            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-            console.log('🔍 [HYPOTHESIS TEST] DOMCONTENTLOADED COMPLETED - ALL HYPOTHESES TESTED');
-            console.log('🔍 [HYPOTHESIS TEST] ==========================================');
-            
-            // Check if showToast function is available
-            if (typeof showToast === 'function') {
-                console.log('HYPOTHESIS LOG: showToast() from shared.js is DEFINED.');
-            } else {
-                console.error('HYPOTHESIS LOG: showToast() from shared.js is NOT DEFINED!');
-            }
-            
-            // Check if global api object is available
-            if (typeof window.api !== 'undefined' && window.api instanceof (window.APIClient || Object)) {
-                console.log('HYPOTHESIS LOG: Global `api` object from api.js is DEFINED and is an instance of APIClient.');
-                console.log('HYPOTHESIS LOG: api.API_BASE_URL =', window.api.API_BASE_URL);
-                console.log('HYPOTHESIS LOG: api.API_BASE_URL type =', typeof window.api.API_BASE_URL);
-            } else {
-                console.error('HYPOTHESIS LOG: Global `api` object from api.js is NOT DEFINED or is not an APIClient instance!');
-                console.error('HYPOTHESIS LOG: window.api =', window.api);
-                console.error('HYPOTHESIS LOG: typeof window.api =', typeof window.api);
-            }
-            
             console.log('🔐 LOGIN PAGE: Script loading...');
             
-            // Check existing session
+            // Check for existing session
             console.log('🔐 LOGIN PAGE: Checking existing session...');
-            
             const sessionToken = localStorage.getItem('sessionToken');
-            if (sessionToken) {
+            const currentUser = localStorage.getItem('currentUser');
+            
+            if (sessionToken && currentUser) {
                 try {
-                    const session = await api.checkSession();
-                    if (session.valid) {
-                        console.log('✅ EXISTING SESSION FOUND:', session.user);
-                        redirectToApp(session.user.role);
-                        return;
-                    }
+                    const user = JSON.parse(currentUser);
+                    console.log('🔐 LOGIN PAGE: Found existing session for user:', user.role);
+                    
+                    // Redirect to main app
+                    window.location.href = 'index.html';
+                    return;
                 } catch (error) {
-                    console.log('❌ EXISTING SESSION INVALID, clearing...');
+                    console.error('🔐 LOGIN PAGE: Error parsing stored user data:', error);
                     localStorage.removeItem('sessionToken');
                     localStorage.removeItem('currentUser');
                 }
             }
             
-            // Focus on username field
-            document.getElementById('username').focus();
-        });
-        
-        // Handle login form submission
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('errorMessage');
-            const loginBtn = document.querySelector('button[type="submit"]');
+            // Get form elements
+            const loginForm = document.getElementById('loginForm');
+            const username = document.getElementById('username');
+            const password = document.getElementById('password');
+            const loginBtn = document.getElementById('loginBtn');
             const loading = document.getElementById('loading');
+            const errorDiv = document.getElementById('errorMessage');
             
-            // Clear previous errors
-            errorDiv.style.display = 'none';
-            errorDiv.textContent = '';
-            
-            // Validate form
-            if (!username) {
-                showError('Please select your role');
-                return;
-            }
-            
-            if (!password) {
-                showError('Please enter your password');
-                return;
-            }
-            
-            // Show loading state
-            loginBtn.disabled = true;
-            loading.style.display = 'block';
-            
-            try {
-                console.log('🔐 ATTEMPTING LOGIN:', { username, passwordProvided: password !== '' });
+            // Handle form submission
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                const response = await api.login(username, password);
+                const usernameValue = username.value;
+                const passwordValue = password.value;
                 
-                if (response.success) {
-                    console.log('✅ LOGIN SUCCESS:', response.user);
-                    
-                    // Store session data
-                    localStorage.setItem('sessionToken', response.sessionId);
-                    localStorage.setItem('currentUser', JSON.stringify(response.user));
-                    
-                    // Show success message briefly
-                    showSuccess(`Welcome ${response.user.role}!`);
-                    
-                    // Redirect after brief delay
-                    setTimeout(() => {
-                        redirectToApp(response.user.role);
-                    }, 1000);
-                    
-                } else {
-                    console.log('❌ LOGIN FAILED:', response);
-                    showError('Login failed. Please check your credentials.');
+                // Clear previous errors
+                errorDiv.textContent = '';
+                
+                // Validate form
+                if (!usernameValue) {
+                    showError('Please select your role');
+                    return;
                 }
                 
-            } catch (error) {
-                console.error('🚨 LOGIN ERROR:', error);
-                showError(error.message || 'Login failed. Please try again.');
-            } finally {
-                // Hide loading state
-                loginBtn.disabled = false;
-                loading.style.display = 'none';
-            }
-        });
-        
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            errorDiv.style.background = '#ffebee';
-            errorDiv.style.color = '#c62828';
-        }
-        
-        function showSuccess(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            errorDiv.style.background = '#e8f5e8';
-            errorDiv.style.color = '#2e7d32';
-        }
-        
-        function redirectToApp(role) {
-            console.log('🚀 REDIRECTING USER:', { role });
+                if (!passwordValue) {
+                    showError('Please enter your password');
+                    return;
+                }
+                
+                // Show loading state
+                loginBtn.disabled = true;
+                loading.style.display = 'block';
+                
+                try {
+                    console.log('🔐 ATTEMPTING LOGIN:', { username: usernameValue, passwordProvided: passwordValue !== '' });
+                    
+                    const response = await api.login(usernameValue, passwordValue);
+                    
+                    if (response.success) {
+                        console.log('✅ LOGIN SUCCESS:', response.user);
+                        
+                        // Store session data
+                        localStorage.setItem('sessionToken', response.sessionId);
+                        localStorage.setItem('currentUser', JSON.stringify(response.user));
+                        
+                        // Show success message briefly
+                        showSuccess(`Welcome ${response.user.role}!`);
+                        
+                        // Redirect after brief delay
+                        setTimeout(() => {
+                            redirectToApp(response.user.role);
+                        }, 1000);
+                        
+                    } else {
+                        console.log('❌ LOGIN FAILED:', response);
+                        showError('Login failed. Please check your credentials.');
+                    }
+                    
+                } catch (error) {
+                    console.error('🚨 LOGIN ERROR:', error);
+                    showError(error.message || 'Login failed. Please try again.');
+                } finally {
+                    // Hide loading state
+                    loginBtn.disabled = false;
+                    loading.style.display = 'none';
+                }
+            });
             
-            // Both roles go to main app initially
-            // Later: manager could go to admin dashboard
-            window.location.href = 'index.html';
-        }
-        
-        // Handle Enter key in password field
-        document.getElementById('password').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            function showError(message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                errorDiv.style.background = '#ffebee';
+                errorDiv.style.color = '#c62828';
             }
-        });
-        
-        // Update role info when username changes
-        document.getElementById('username').addEventListener('change', function() {
-            const username = this.value;
-            const roleInfo = document.querySelector('.role-info');
             
-            if (username === 'reception') {
-                roleInfo.innerHTML = '<strong>Reception Access:</strong> Password: <code>reception123</code><br>Create transactions, manage daily staff roster, view basic reports, track expenses';
-            } else if (username === 'manager') {
-                roleInfo.innerHTML = '<strong>Manager Access:</strong> Password: <code>manager456</code><br>All reception features + master staff management, advanced reporting, system settings, end day operations';
-            } else {
-                roleInfo.innerHTML = '<strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br><strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings';
+            function showSuccess(message) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                errorDiv.style.background = '#e8f5e8';
+                errorDiv.style.color = '#2e7d32';
             }
+            
+            function redirectToApp(role) {
+                console.log('🚀 REDIRECTING USER:', { role });
+                
+                // Both roles go to main app initially
+                // Later: manager could go to admin dashboard
+                window.location.href = 'index.html';
+            }
+            
+            // Handle Enter key in password field
+            password.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loginForm.dispatchEvent(new Event('submit'));
+                }
+            });
+            
+            // Update role info when username changes
+            username.addEventListener('change', function() {
+                const usernameValue = this.value;
+                const roleInfo = document.querySelector('.role-info');
+                
+                if (usernameValue === 'reception') {
+                    roleInfo.innerHTML = '<strong>Reception Access:</strong> Password: <code>reception123</code><br>Create transactions, manage daily staff roster, view basic reports, track expenses';
+                } else if (usernameValue === 'manager') {
+                    roleInfo.innerHTML = '<strong>Manager Access:</strong> Password: <code>manager456</code><br>All reception features + master staff management, advanced reporting, system settings, end day operations';
+                } else {
+                    roleInfo.innerHTML = '<strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br><strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings';
+                }
+            });
         });
     </script>
 </body>
