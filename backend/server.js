@@ -282,6 +282,18 @@ try {
     throw error;
 }
 
+console.log('=== SETTING UP STATIC FILE SERVING ===');
+try {
+    // Serve static files from the web-app directory
+    app.use(express.static(path.join(__dirname, '..', 'web-app')));
+    console.log('Static file serving middleware added successfully');
+    console.log('Serving frontend files from:', path.join(__dirname, '..', 'web-app'));
+} catch (error) {
+    console.error('ERROR setting up static file serving:', error.message);
+    console.error('ERROR stack:', error.stack);
+    throw error;
+}
+
 console.log('=== SETTING UP ROUTES ===');
 // Health check endpoint
 try {
@@ -373,6 +385,27 @@ try {
     console.log('Transaction routes added successfully');
 } catch (error) {
     console.error('ERROR adding transaction routes:', error.message);
+    console.error('ERROR stack:', error.stack);
+    throw error;
+}
+
+console.log('=== SETTING UP FRONTEND ROUTING ===');
+try {
+    // Catch-all route for SPA - serve index.html for any non-API routes
+    app.get('*', (req, res) => {
+        // Don't serve HTML for API routes
+        if (req.path.startsWith('/api/')) {
+            return res.status(404).json({ error: 'API endpoint not found' });
+        }
+        
+        // Serve index.html for all other routes (SPA routing)
+        const indexPath = path.join(__dirname, '..', 'web-app', 'index.html');
+        console.log('Serving frontend route:', req.path, '->', indexPath);
+        res.sendFile(indexPath);
+    });
+    console.log('Frontend SPA routing middleware added successfully');
+} catch (error) {
+    console.error('ERROR setting up frontend routing:', error.message);
     console.error('ERROR stack:', error.stack);
     throw error;
 }

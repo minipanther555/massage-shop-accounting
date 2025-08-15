@@ -1,5 +1,5 @@
 // API client for backend communication
-const API_BASE_URL = 'http://109.123.238.197/api';
+const API_BASE_URL = '/api'; // Use relative path since frontend and backend are served from same origin
 
 class APIClient {
     constructor(baseURL = '') {
