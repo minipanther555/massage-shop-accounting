@@ -150,9 +150,13 @@ const { validateCSRFToken, addCSRFToken } = require('./middleware/csrf-protectio
 console.log('CSRF middleware loaded successfully');
 
 console.log('=== LOADING ROUTE MODULES ===');
+
+// Declare route variables in outer scope
+let adminRoutes, authRoutes, expenseRoutes, paymentTypeRoutes, reportRoutes, serviceRoutes, staffRoutes, transactionRoutes;
+
 console.log('Loading admin routes...');
 try {
-    const adminRoutes = require('./routes/admin');
+    adminRoutes = require('./routes/admin');
     console.log('Admin routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading admin routes:', error.message);
@@ -162,7 +166,7 @@ try {
 
 console.log('Loading auth routes...');
 try {
-    const authRoutes = require('./routes/auth');
+    authRoutes = require('./routes/auth');
     console.log('Auth routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading auth routes:', error.message);
@@ -172,7 +176,7 @@ try {
 
 console.log('Loading expense routes...');
 try {
-    const expenseRoutes = require('./routes/expenses');
+    expenseRoutes = require('./routes/expenses');
     console.log('Expense routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading expense routes:', error.message);
@@ -182,7 +186,7 @@ try {
 
 console.log('Loading payment type routes...');
 try {
-    const paymentTypeRoutes = require('./routes/payment-types');
+    paymentTypeRoutes = require('./routes/payment-types');
     console.log('Payment type routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading payment type routes:', error.message);
@@ -192,7 +196,7 @@ try {
 
 console.log('Loading report routes...');
 try {
-    const reportRoutes = require('./routes/reports');
+    reportRoutes = require('./routes/reports');
     console.log('Report routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading report routes:', error.message);
@@ -202,7 +206,7 @@ try {
 
 console.log('Loading service routes...');
 try {
-    const serviceRoutes = require('./routes/services');
+    serviceRoutes = require('./routes/services');
     console.log('Service routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading service routes:', error.message);
@@ -212,7 +216,7 @@ try {
 
 console.log('Loading staff routes...');
 try {
-    const staffRoutes = require('./routes/staff');
+    staffRoutes = require('./routes/staff');
     console.log('Staff routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading staff routes:', error.message);
@@ -222,7 +226,7 @@ try {
 
 console.log('Loading transaction routes...');
 try {
-    const transactionRoutes = require('./routes/transactions');
+    transactionRoutes = require('./routes/transactions');
     console.log('Transaction routes loaded successfully');
 } catch (error) {
     console.error('ERROR loading transaction routes:', error.message);
