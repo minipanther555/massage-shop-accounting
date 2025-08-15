@@ -28,6 +28,7 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **✅ Frontend/Backend Integration**: ✅ RESOLVED - Critical port mismatch and Nginx configuration issues fixed
 - **✅ Static File Serving**: ✅ COMPLETED - Node.js backend now serves frontend files directly
 - **✅ API Proxy Configuration**: ✅ COMPLETED - Nginx properly proxies API calls to backend
+- **✅ Critical API Routing Issue**: ✅ RESOLVED - Middleware order corrected, all API calls now return JSON instead of HTML
 
 ### Key Technical Achievements
 1. **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS with full production environment
@@ -66,6 +67,13 @@ This phase focuses on deploying the system to production VPS and establishing li
     - **Technical Implementation**: Added `express.static()` middleware to serve frontend files, fixed Nginx proxy_pass directive (removed trailing slash), updated frontend API_BASE_URL from absolute IP to relative `/api`, implemented SPA routing for frontend
     - **Testing**: Frontend now accessible through Node.js backend, API endpoints working correctly through Nginx proxy, all routes functional
     - **Result**: Complete frontend/backend integration working correctly through standard HTTP port 80
+19. **Critical API Routing Middleware Order Issue**: ✅ RESOLVED - Fixed critical bug causing all API calls to return HTML instead of JSON
+    - **Priority**: CRITICAL - Blocking all business operations and frontend functionality
+    - **Root Cause**: Incorrect middleware order in Express.js server - `express.static()` was registered before API routes
+    - **Solution**: Corrected middleware order to ensure API routes handle requests before static file serving
+    - **Technical Implementation**: Moved `express.static()` middleware after all API routes, added comprehensive logging and debugging, created automated test suite for validation
+    - **Testing**: Comprehensive test suite (6 tests) - all PASSED, confirming fix resolves the `services.map is not a function` error
+    - **Result**: All API endpoints now return proper JSON arrays, frontend receives correct data types, system fully operational
 
 ### Bug Fixes and Resolutions
 - **SSH Authentication Issues**: ✅ RESOLVED - Set up proper SSH keys and configuration for passwordless access
@@ -164,19 +172,28 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **Port Mismatch Resolution**: Eliminated frontend/backend port conflicts
 - **Status**: Complete integration working through standard HTTP port 80
 
+### 7. Critical API Routing Issue Resolution ✅ NEW
+- **Middleware Order Correction**: Fixed Express.js middleware execution order
+- **API Response Validation**: All API endpoints now return JSON instead of HTML
+- **Frontend Data Type Fix**: Resolved `services.map is not a function` error
+- **Comprehensive Testing**: Automated test suite validates fix (6 tests passed)
+- **Status**: All business functionality restored and operational
+
 ## Next Phase: Multi-Location Authentication Implementation
 
 ### Current Objectives
 1. **Frontend/Backend Integration**: ✅ COMPLETED - All port mismatch and Nginx configuration issues resolved
 2. **System Stability**: ✅ COMPLETED - Backend service running stably, all API endpoints functional
-3. **Multi-Location Authentication**: 🔄 NEXT - Implement authentication system for multi-location operations
-4. **HTTPS Configuration**: 🔄 PLANNED - Configure SSL certificates for secure access
+3. **Critical API Routing**: ✅ COMPLETED - Middleware order corrected, all API calls return JSON correctly
+4. **Multi-Location Authentication**: 🔄 NEXT - Implement authentication system for multi-location operations
+5. **HTTPS Configuration**: 🔄 PLANNED - Configure SSL certificates for secure access
 
 ### Dependencies
 - ✅ Production deployment completed successfully
 - ✅ External access established and functional
 - ✅ Frontend/backend integration completed successfully
 - ✅ All critical production issues resolved
+- ✅ Critical API routing middleware order issue resolved
 
 ## Technical Notes
 
@@ -186,12 +203,14 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **SSH Management**: Used SSH aliases for easier server management and deployment
 - **Process Management**: PM2 for application management with systemd for system-level service management
 - **Static File Serving**: Added Express.js static file serving to eliminate frontend/backend port conflicts
+- **Middleware Order**: Critical importance of Express.js middleware execution order for proper API routing
 
 ### Performance Considerations
 - **Static File Serving**: Node.js backend serves frontend files directly for optimal integration
 - **API Proxying**: Nginx proxies only API calls to backend, reducing unnecessary overhead
 - **Caching**: Implemented proper caching headers for static assets
 - **Load Balancing**: Ready for future load balancing if needed
+- **Middleware Optimization**: Correct middleware order ensures optimal request handling
 
 ### Security Implementation
 - **Firewall Configuration**: UFW properly configured with minimal required ports
@@ -216,6 +235,8 @@ This phase focuses on deploying the system to production VPS and establishing li
 - ✅ Frontend/backend integration completed successfully
 - ✅ Static file serving working correctly
 - ✅ Nginx proxy configuration fixed
+- ✅ Critical API routing middleware order issue resolved
+- ✅ All business functionality restored and operational
 
 ## Lessons Learned
 1. **SSH Key Management**: Proper SSH key setup is critical for production server management
@@ -238,6 +259,10 @@ This phase focuses on deploying the system to production VPS and establishing li
 18. **Frontend/Backend Integration**: Port mismatches between frontend and backend servers cause critical functionality failures
 19. **Static File Serving**: Express.js static file serving eliminates the need for separate frontend servers
 20. **Nginx Proxy Configuration**: Trailing slashes in proxy_pass directives can strip important path components
+21. **Express.js Middleware Order**: Critical importance of middleware execution order for proper API routing
+22. **API Response Validation**: Always verify API endpoints return expected data types, not HTML content
+23. **Systematic Testing**: Automated test suites essential for validating complex fixes and preventing regressions
+24. **Deployment Verification**: Git push updates repository but not running application - server restart required
 
 ## Documentation Status
 - ✅ Phase objectives documented
@@ -248,3 +273,4 @@ This phase focuses on deploying the system to production VPS and establishing li
 - ✅ CSRF token resolution documented
 - ✅ Staff payment data clearing recurrence documented
 - ✅ Frontend/backend integration resolution documented
+- ✅ Critical API routing middleware order issue documented
