@@ -2,63 +2,76 @@
 const API_BASE_URL = 'http://109.123.238.197/api';
 
 class APIClient {
-    async request(endpoint, options = {}) {
-        const url = `${API_BASE_URL}${endpoint}`;
-        
-        // Get session token from localStorage
-        const sessionToken = localStorage.getItem('sessionToken');
-        
-        const config = {
-            mode: 'cors',
-            credentials: 'omit',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(sessionToken && { 'Authorization': `Bearer ${sessionToken}` }),
-                ...options.headers
-            },
-            ...options
+    constructor(baseURL = '') {
+        this.baseURL = baseURL;
+        this.jwtToken = localStorage.getItem('jwtToken');
+        this.csrfToken = null; // Initialize CSRF token
+        this.user = JSON.parse(localStorage.getItem('user'));
+        console.log('APIClient initialized');
+    }
+
+    async request(endpoint, method = 'GET', body = null) {
+        const url = `${this.baseURL}${endpoint}`;
+        const headers = {
+            'Content-Type': 'application/json',
         };
 
-        if (config.body && typeof config.body === 'object') {
-            config.body = JSON.stringify(config.body);
+        if (this.jwtToken) {
+            headers['Authorization'] = `Bearer ${this.jwtToken}`;
+        }
+        
+        // **VALIDATION LOG 1: Check if CSRF token exists before sending**
+        if (this.csrfToken) {
+            headers['X-CSRF-Token'] = this.csrfToken;
+            console.log(`[CSRF-CLIENT] Attaching token to headers: ${this.csrfToken}`);
+        } else {
+            console.log('[CSRF-CLIENT] No CSRF token available to attach.');
+        }
+
+        const config = {
+            method,
+            headers,
+        };
+
+        if (body) {
+            config.body = JSON.stringify(body);
         }
 
         try {
-            console.log(`🚀 DEBUG: Starting API request: ${config.method || 'GET'} ${url}`);
-            console.log(`🚀 DEBUG: Request config:`, config);
-            
+            // **VALIDATION LOG 2: Log the exact request being sent**
+            console.log(`[CSRF-CLIENT] Sending API request to ${method} ${url}`, { headers: config.headers });
             const response = await fetch(url, config);
-            
-            console.log(`🚀 DEBUG: Response received - Status: ${response.status} ${response.statusText}`);
-            console.log(`🚀 DEBUG: Response headers:`, [...response.headers.entries()]);
-            
+
+            // **VALIDATION LOG 3: Log all response headers to check for incoming token**
+            console.log('[CSRF-CLIENT] Received response. Headers:');
+            response.headers.forEach((value, name) => {
+                console.log(`[CSRF-CLIENT]   ${name}: ${value}`);
+                // **VALIDATION LOG 4: Check if the specific CSRF header is present and store it**
+                if (name.toLowerCase() === 'x-csrf-token') {
+                    this.csrfToken = value;
+                    console.log(`[CSRF-CLIENT] SUCCESS: Captured and stored new CSRF token: ${this.csrfToken}`);
+                }
+            });
+
             if (!response.ok) {
-                console.log(`🚀 DEBUG: Response not OK, attempting to parse error`);
-                const error = await response.json().catch(() => ({ error: `HTTP ${response.status} - ${response.statusText}` }));
-                console.error('🚨 API Error Response:', error);
-                throw new Error(error.error || `HTTP ${response.status} - ${response.statusText}`);
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (e) {
+                    errorData = { error: 'Failed to parse error response.' };
+                }
+                console.error(`[CSRF-CLIENT] API Error Response from ${url}:`, errorData);
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
 
-            console.log(`🚀 DEBUG: Attempting to parse response as JSON`);
-            const data = await response.json();
-            console.log(`✅ API SUCCESS for ${endpoint}:`, data);
-            return data;
-        } catch (error) {
-            console.error('🚨 API Request FAILED:', {
-                url,
-                method: config.method || 'GET',
-                error: error.message,
-                errorType: error.constructor.name,
-                stack: error.stack
-            });
-            
-            // Check for network connectivity issues
-            if (error instanceof TypeError && error.message.includes('fetch')) {
-                console.error('🚨 NETWORK ERROR: TypeError with fetch - throwing connection error');
-                throw new Error('Cannot connect to server. Please ensure the backend is running.');
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return await response.json();
+            } else {
+                return await response.text();
             }
-            
-            console.error('🚨 RETHROWING ERROR:', error.message);
+        } catch (error) {
+            console.error(`[CSRF-CLIENT] Network or fetch error for ${url}:`, error);
             throw error;
         }
     }
@@ -74,10 +87,7 @@ class APIClient {
     }
 
     async createTransaction(transactionData) {
-        return this.request('/transactions', {
-            method: 'POST',
-            body: transactionData
-        });
+        return this.request('/transactions', 'POST', transactionData);
     }
 
     async getLatestTransactionForCorrection() {
@@ -94,30 +104,19 @@ class APIClient {
     }
 
     async updateStaff(position, data) {
-        return this.request(`/staff/roster/${position}`, {
-            method: 'PUT',
-            body: data
-        });
+        return this.request(`/staff/roster/${position}`, 'PUT', data);
     }
 
     async serveNextCustomer() {
-        return this.request('/staff/serve-next', {
-            method: 'POST'
-        });
+        return this.request('/staff/serve-next', 'POST');
     }
 
     async advanceQueue(currentMasseuse) {
-        return this.request('/staff/advance-queue', {
-            method: 'POST',
-            body: { currentMasseuse }
-        });
+        return this.request('/staff/advance-queue', 'POST', { currentMasseuse });
     }
 
     async setMasseuseBusy(masseuseName, endTime) {
-        return this.request('/staff/set-busy', {
-            method: 'POST',
-            body: { masseuseName, endTime }
-        });
+        return this.request('/staff/set-busy', 'POST', { masseuseName, endTime });
     }
 
     async getTodayStaffPerformance() {
@@ -134,17 +133,11 @@ class APIClient {
     }
 
     async createService(serviceData) {
-        return this.request('/services', {
-            method: 'POST',
-            body: serviceData
-        });
+        return this.request('/services', 'POST', serviceData);
     }
 
     async createPaymentMethod(methodData) {
-        return this.request('/services/payment-methods', {
-            method: 'POST',
-            body: methodData
-        });
+        return this.request('/services/payment-methods', 'POST', methodData);
     }
 
     // Expenses
@@ -154,16 +147,11 @@ class APIClient {
     }
 
     async createExpense(expenseData) {
-        return this.request('/expenses', {
-            method: 'POST',
-            body: expenseData
-        });
+        return this.request('/expenses', 'POST', expenseData);
     }
 
     async deleteExpense(expenseId) {
-        return this.request(`/expenses/${expenseId}`, {
-            method: 'DELETE'
-        });
+        return this.request(`/expenses/${expenseId}`, 'DELETE');
     }
 
     async getTodayExpenseSummary() {
@@ -189,23 +177,16 @@ class APIClient {
     }
 
     async endDay() {
-        return this.request('/reports/end-day', {
-            method: 'POST'
-        });
+        return this.request('/reports/end-day', 'POST');
     }
 
     // Authentication
     async login(username, password = '') {
-        return this.request('/auth/login', {
-            method: 'POST',
-            body: { username, password }
-        });
+        return this.request('/auth/login', 'POST', { username, password });
     }
 
     async logout() {
-        return this.request('/auth/logout', {
-            method: 'POST'
-        });
+        return this.request('/auth/logout', 'POST');
     }
 
     async checkSession() {
@@ -226,23 +207,15 @@ class APIClient {
     }
 
     async addStaff(staffData) {
-        return this.request('/admin/staff', {
-            method: 'POST',
-            body: staffData
-        });
+        return this.request('/admin/staff', 'POST', staffData);
     }
 
     async updateStaff(staffId, staffData) {
-        return this.request(`/admin/staff/${staffId}`, {
-            method: 'PUT',
-            body: staffData
-        });
+        return this.request(`/admin/staff/${staffId}`, 'PUT', staffData);
     }
 
     async removeStaff(staffId) {
-        return this.request(`/admin/staff/${staffId}`, {
-            method: 'DELETE'
-        });
+        return this.request(`/admin/staff/${staffId}`, 'DELETE');
     }
 
     // Payment Management
@@ -251,10 +224,7 @@ class APIClient {
     }
 
     async recordPayment(staffId, paymentData) {
-        return this.request(`/admin/staff/${staffId}/payments`, {
-            method: 'POST',
-            body: paymentData
-        });
+        return this.request(`/admin/staff/${staffId}/payments', 'POST', paymentData);
     }
 
     async getOutstandingFees() {
