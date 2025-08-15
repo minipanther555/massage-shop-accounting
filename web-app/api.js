@@ -815,3 +815,23 @@ console.log('🔍 [HYPOTHESIS 5] Instance API_BASE_URL matches expected:', api.A
 console.log('🔍 [HYPOTHESIS TEST] ==========================================');
 console.log('🔍 [HYPOTHESIS TEST] ALL HYPOTHESES TESTED - GLOBAL INSTANCE READY');
 console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+
+// CRITICAL FIX: Assign to global window object
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] GLOBAL ASSIGNMENT FIX - TESTING ALL 5 HYPOTHESES');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] Assigning api instance to window.api');
+console.log('🔍 [HYPOTHESIS TEST] Before assignment - window.api:', window.api);
+console.log('🔍 [HYPOTHESIS TEST] Before assignment - typeof window.api:', typeof window.api);
+console.log('🔍 [HYPOTHESIS TEST] Before assignment - window.api === undefined:', window.api === undefined);
+
+window.api = api;
+
+console.log('🔍 [HYPOTHESIS TEST] After assignment - window.api:', window.api);
+console.log('🔍 [HYPOTHESIS TEST] After assignment - typeof window.api:', typeof window.api);
+console.log('🔍 [HYPOTHESIS TEST] After assignment - window.api === api:', window.api === api);
+console.log('🔍 [HYPOTHESIS TEST] After assignment - window.api.API_BASE_URL:', window.api.API_BASE_URL);
+console.log('🔍 [HYPOTHESIS TEST] After assignment - window.api.API_BASE_URL === "/api":', window.api.API_BASE_URL === "/api");
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
+console.log('🔍 [HYPOTHESIS TEST] GLOBAL ASSIGNMENT COMPLETED - ALL HYPOTHESES TESTED');
+console.log('🔍 [HYPOTHESIS TEST] ==========================================');
