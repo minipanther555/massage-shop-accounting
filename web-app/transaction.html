@@ -826,50 +826,80 @@
                     payment: !!paymentSelect
                 });
                 
+                console.log('🔍 ABOUT TO ADD LOCATION EVENT LISTENER...');
                 if (locationSelect) {
-                    locationSelect.addEventListener('change', function() {
-                        console.log('🔍 LOCATION CHANGED TO:', this.value);
-                        updateServiceOptions();
-                        updatePricing();
-                        updateTimeDropdowns();
-                    });
-                    console.log('✅ Location event listener added');
+                    console.log('🔍 LOCATION ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        locationSelect.addEventListener('change', function() {
+                            console.log('🔍 LOCATION CHANGED TO:', this.value);
+                            updateServiceOptions();
+                            updatePricing();
+                            updateTimeDropdowns();
+                        });
+                        console.log('✅ Location event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding location event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
                 } else {
                     console.log('❌ Location element not found');
                 }
                 
+                console.log('🔍 ABOUT TO ADD SERVICE EVENT LISTENER...');
                 if (serviceSelect) {
-                    serviceSelect.addEventListener('change', function() {
-                        console.log('🔍 SERVICE CHANGED TO:', this.value);
-                        updateDurationOptions();
-                        updatePricing();
-                        updateTimeDropdowns();
-                    });
-                    console.log('✅ Service event listener added');
+                    console.log('🔍 SERVICE ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        serviceSelect.addEventListener('change', function() {
+                            console.log('🔍 SERVICE CHANGED TO:', this.value);
+                            updateDurationOptions();
+                            updatePricing();
+                            updateTimeDropdowns();
+                        });
+                        console.log('✅ Service event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding service event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
                 } else {
                     console.log('❌ Service element not found');
                 }
                 
+                console.log('🔍 ABOUT TO ADD DURATION EVENT LISTENER...');
                 if (durationSelect) {
-                    durationSelect.addEventListener('change', function() {
-                        console.log('🔍 DURATION CHANGED TO:', this.value);
-                        updatePricing();
-                        updateTimeDropdowns();
-                    });
-                    console.log('✅ Duration event listener added');
+                    console.log('🔍 DURATION ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        durationSelect.addEventListener('change', function() {
+                            console.log('🔍 DURATION CHANGED TO:', this.value);
+                            updatePricing();
+                            updateTimeDropdowns();
+                        });
+                        console.log('✅ Duration event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding duration event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
                 } else {
                     console.log('❌ Duration element not found');
                 }
                 
+                console.log('🔍 ABOUT TO ADD PAYMENT EVENT LISTENER...');
                 if (paymentSelect) {
-                    paymentSelect.addEventListener('change', function() {
-                        console.log('🔍 PAYMENT CHANGED TO:', this.value);
-                        updateTimeDropdowns();
-                    });
-                    console.log('✅ Payment event listener added');
+                    console.log('🔍 PAYMENT ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        paymentSelect.addEventListener('change', function() {
+                            console.log('🔍 PAYMENT CHANGED TO:', this.value);
+                            updateTimeDropdowns();
+                        });
+                        console.log('✅ Payment event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding payment event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
                 } else {
                     console.log('❌ Payment element not found');
                 }
+                
+                console.log('🔍 ALL EVENT LISTENERS PROCESSED - FUNCTION COMPLETING...');
             } catch (error) {
                 console.error('❌ ERROR in populateDropdowns:', error);
             }
