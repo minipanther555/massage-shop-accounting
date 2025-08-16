@@ -332,6 +332,8 @@
             } else {
                 console.log('❌ Payment element not found');
             }
+        } catch (error) {
+            console.error('❌ ERROR in populateDropdowns:', error);
         }
         
         function getNextInLineFromStaff() {
