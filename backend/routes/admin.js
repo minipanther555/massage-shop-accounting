@@ -100,7 +100,11 @@ router.post('/staff', async (req, res) => {
         if (error.message.includes('UNIQUE constraint failed')) {
             res.status(400).json({ error: 'Staff member already exists' });
         } else {
-            res.status(500).json({ error: 'Failed to add staff member' });
+            // Return the specific error message for debugging
+            res.status(500).json({ 
+                error: 'Failed to add staff member due to a server error.',
+                debug_error: error.message 
+            });
         }
     }
 });
