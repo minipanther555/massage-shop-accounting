@@ -24,16 +24,17 @@ const PORT = process.env.PORT || 3000;
 // Security middleware - simplified for development
 if (process.env.NODE_ENV === 'production') {
   app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
+    contentSecurityPolicy: false // Temporarily disable CSP for Puppeteer testing
+    // contentSecurityPolicy: {
+    //   directives: {
+    //     defaultSrc: ["'self'"],
+    //     styleSrc: ["'self'", "'unsafe-inline'"],
+    //     scriptSrc: ["'self'"],
+    //     imgSrc: ["'self'", "data:", "https:"],
+    //   },
+    // },
   }));
-  console.log('🛡️ Security headers enabled for production');
+  console.log('🛡️ Security headers enabled for production (CSP TEMPORARILY DISABLED)');
 } else {
   // Minimal security for development
   app.use(helmet({ contentSecurityPolicy: false }));
