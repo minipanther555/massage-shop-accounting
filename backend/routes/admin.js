@@ -13,18 +13,31 @@ router.use(authorizeRole('manager'));
 // Serve the admin-staff.html page through the backend
 // This ensures that authentication and CSRF middleware are applied
 router.get('/staff-page', addCSRFToken, (req, res) => {
+    console.log(`[ADMIN.JS STAFF-PAGE] Route handler started for ${req.originalUrl}.`);
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
+    console.log(`[ADMIN.JS STAFF-PAGE] Reading file from path: ${filePath}`);
     
     // Read the HTML file, inject the CSRF token, and send it.
     fs.readFile(filePath, 'utf8', (err, data) => {
+        console.log(`[ADMIN.JS STAFF-PAGE] fs.readFile callback initiated.`);
         if (err) {
-            console.error('Error reading admin-staff.html:', err);
+            console.error('[ADMIN.JS STAFF-PAGE] Error reading admin-staff.html:', err);
             return res.status(500).send('Error loading the page.');
         }
         // ---> DIAGNOSTIC LOG <---
-        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
-        // The addCSRFToken middleware adds the token to res.locals.csrfToken
+        console.log(`[ADMIN.JS STAFF-PAGE] CSRF token from res.locals: ${res.locals.csrfToken}`);
+        if (typeof res.locals.csrfToken !== 'string' || res.locals.csrfToken.length < 10) {
+            console.error(`[ADMIN.JS STAFF-PAGE] CRITICAL: Invalid CSRF token found in res.locals.`);
+        }
+        
         const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
+        
+        if (!modifiedHtml.includes(res.locals.csrfToken)) {
+            console.error(`[ADMIN.JS STAFF-PAGE] CRITICAL: HTML modification failed. Token was not injected.`);
+        } else {
+            console.log(`[ADMIN.JS STAFF-PAGE] HTML modification successful. Sending to browser.`);
+        }
+        
         res.send(modifiedHtml);
     });
 });
@@ -37,7 +50,7 @@ router.get('/services-page', addCSRFToken, (req, res) => {
             console.error('Error reading admin-services.html:', err);
             return res.status(500).send('Error loading the page.');
         }
-        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
+        console.log(`[ADMIN.JS SERVICES-PAGE] CSRF token from res.locals: ${res.locals.csrfToken}`);
         const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
     });
@@ -51,7 +64,7 @@ router.get('/reports-page', addCSRFToken, (req, res) => {
             console.error('Error reading admin-reports.html:', err);
             return res.status(500).send('Error loading the page.');
         }
-        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
+        console.log(`[ADMIN.JS REPORTS-PAGE] CSRF token from res.locals: ${res.locals.csrfToken}`);
         const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
     });
@@ -65,7 +78,7 @@ router.get('/payment-types-page', addCSRFToken, (req, res) => {
             console.error('Error reading admin-payment-types.html:', err);
             return res.status(500).send('Error loading the page.');
         }
-        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
+        console.log(`[ADMIN.JS PAYMENT-TYPES-PAGE] CSRF token from res.locals: ${res.locals.csrfToken}`);
         const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
     });

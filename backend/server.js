@@ -75,6 +75,12 @@ app.use(securityHeaders);         // Add security headers
 app.use(validateInput);           // Validate and sanitize input
 app.use(addCSRFToken);           // Add CSRF tokens to responses
 
+// --- DIAGNOSTIC LOGGING ---
+app.use((req, res, next) => {
+    console.log(`[SERVER.JS ENTRY] Request received for: ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
@@ -91,7 +97,13 @@ app.use('/api/staff', validateCSRFToken, require('./routes/staff'));
 app.use('/api/services', validateCSRFToken, require('./routes/services'));
 app.use('/api/expenses', validateCSRFToken, require('./routes/expenses'));
 app.use('/api/reports', validateCSRFToken, require('./routes/reports'));
-app.use('/api/admin', validateCSRFToken, require('./routes/admin')); // Manager-only admin routes
+
+// --- DIAGNOSTIC LOGGING ---
+app.use('/api/admin', (req, res, next) => {
+    console.log(`[SERVER.JS ADMIN ROUTE] Request is being routed to admin.js for: ${req.method} ${req.originalUrl}`);
+    next();
+}, validateCSRFToken, require('./routes/admin')); // Manager-only admin routes
+
 app.use('/api/payment-types', validateCSRFToken, require('./routes/payment-types')); // Payment types CRUD management
 
 // Enhanced error handling middleware
