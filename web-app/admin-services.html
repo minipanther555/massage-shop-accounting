@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ an_actual_token }}">
     <title>Services & Pricing Management - Massage Shop POS</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/styles.css">
     <style>
         .admin-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -244,12 +244,12 @@
 
         <!-- Admin Navigation -->
         <div class="admin-nav">
-            <a href="index.html" class="btn active">🏠 Home</a>
+            <a href="/index.html" class="btn active">🏠 Home</a>
             <a href="/api/admin/staff-page" class="btn">👥 Staff Admin</a>
             <a href="/api/admin/services-page" class="btn active">💰 Services Admin</a>
             <a href="/api/admin/reports-page" class="btn">📊 Reports Admin</a>
             <a href="/api/admin/payment-types-page" class="btn">💳 Payment Types</a>
-            <a href="admin-users.html" class="btn">👤 Users</a>
+            <a href="/api/admin/users-page" class="btn">👤 Users</a>
         </div>
 
         <!-- Summary Cards -->
@@ -402,8 +402,8 @@
         </div>
     </div>
 
-    <script src="api.js"></script>
-    <script src="shared.js"></script>
+    <script src="/api.js"></script>
+    <script src="/shared.js"></script>
     <script>
         let allServices = [];
         let filteredServices = [];

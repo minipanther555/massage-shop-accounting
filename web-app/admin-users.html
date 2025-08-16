@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - EIW Massage Shop</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/styles.css">
     <style>
         .user-grid {
             display: grid;
@@ -95,12 +95,12 @@
         <header>
             <h1>User Management</h1>
             <nav>
-                <a href="admin-staff.html">Staff</a>
-                <a href="admin-services.html">Services</a>
-                <a href="admin-reports.html">Reports</a>
-                <a href="admin-payment-types.html">Payment Types</a>
-                <a href="admin-users.html" class="active">Users</a>
-                <a href="index.html">Dashboard</a>
+                        <a href="/api/admin/staff-page">Staff</a>
+        <a href="/api/admin/services-page">Services</a>
+        <a href="/api/admin/reports-page">Reports</a>
+        <a href="/api/admin/payment-types-page">Payment Types</a>
+        <a href="/api/admin/users-page" class="active">Users</a>
+        <a href="/index.html">Dashboard</a>
                 <button onclick="logout()" class="logout-btn">Logout</button>
             </nav>
         </header>
@@ -161,8 +161,8 @@
         </div>
     </div>
 
-    <script src="api.js"></script>
-    <script src="shared.js"></script>
+    <script src="/api.js"></script>
+    <script src="/shared.js"></script>
     <script>
         // Check authentication on page load
         document.addEventListener('DOMContentLoaded', function() {
