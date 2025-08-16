@@ -1,15 +1,15 @@
-# Current Phase: Production Deployment & Live Operations
+# Current Phase: Frontend Functionality Restoration + Production Deployment & Live Operations
 
 ## Phase Overview
-This phase focuses on deploying the system to production VPS and establishing live operations. The goal is to make the system accessible to business users from any device with internet access, enabling real-world business operations.
+This phase focuses on restoring the broken frontend functionality that emerged after fixing the API_BASE_URL issue, while maintaining the successful production deployment. The goal is to restore full business functionality while preserving the working technical infrastructure.
 
 ## Phase Objectives
-1. **VPS Deployment**: Deploy system to production VPS with all security measures
-2. **External Access**: Configure system for internet access and external user access
-3. **Production Environment**: Set up production monitoring, logging, and management
-4. **System Handover**: Complete user training and handover to business users
+1. **Frontend Functionality Restoration**: Restore all broken frontend functionality while keeping the working API_BASE_URL fix
+2. **Business Operations Restoration**: Ensure all core business operations are functional
+3. **System Stability**: Maintain system stability while restoring functionality
+4. **Next Phase Preparation**: Prepare for Multi-Location Authentication Implementation
 
-## Current Status: ✅ ALL CRITICAL ISSUES RESOLVED - SYSTEM FULLY OPERATIONAL + ENHANCED
+## Current Status: 🔄 FRONTEND FUNCTIONALITY REGRESSION IDENTIFIED - IMMEDIATE ATTENTION REQUIRED
 
 ### What Was Accomplished
 - **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS at 109.123.238.197
@@ -29,6 +29,22 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **✅ Static File Serving**: ✅ COMPLETED - Node.js backend now serves frontend files directly
 - **✅ API Proxy Configuration**: ✅ COMPLETED - Nginx properly proxies API calls to backend
 - **✅ Critical API Routing Issue**: ✅ RESOLVED - Middleware order corrected, all API calls now return JSON instead of HTML
+- **✅ API_BASE_URL Fix**: ✅ COMPLETED - Fixed `Uncaught ReferenceError: api is not defined` and `API_BASE_URL value: undefined`
+- **✅ Login Functionality**: ✅ COMPLETED - Users can now successfully log in to the system
+
+### ❌ NEW ISSUES IDENTIFIED - AUGUST 15, 2025
+**Status**: 🔄 IMMEDIATE ATTENTION REQUIRED - Multiple functionality issues need resolution
+
+**Current Issues**:
+1. **Login Page Styling Regression**: CSS styling broken, page not purple, missing title and password hints
+2. **JavaScript Function Missing**: `requireAuth` function not defined, causing errors on multiple pages
+3. **Manager Page Access**: Manager role login works but manager-specific pages not accessible
+4. **Database Connectivity**: Staff roster and services dropdowns not populating with data
+5. **Transaction Page Errors**: `TypeError: Cannot read properties of undefined (reading 'services')`
+
+**Root Cause**: The restoration process focused on fixing the API_BASE_URL issue but inadvertently removed or altered other essential functionality that was working in the main08 branch.
+
+**Strategy**: Keep technical server setup from testing03 branch but restore site functionality from main08 branch
 
 ### Key Technical Achievements
 1. **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS with full production environment
@@ -47,86 +63,20 @@ This phase focuses on deploying the system to production VPS and establishing li
 14. **Staff Payment Data Clearing**: ✅ COMPLETED - Resolved fake payment data issue on staff administration page
 15. **Database File Management**: ✅ COMPLETED - Removed redundant database file and clarified database structure
 16. **CSRF Token Generation Issue**: ✅ COMPLETED - Fixed CSRF token generation failure using comprehensive logging and systematic debugging
-    - **Priority**: HIGH - Critical for admin operations and security
-    - **Root Cause**: CSRF middleware was not executing due to middleware order and authentication structure issues
-    - **Solution**: Implemented comprehensive logging throughout the system and restructured authentication middleware
-    - **Technical Implementation**: Added extensive console.log statements to auth middleware, admin routes, and server startup, restructured auth middleware to use local sessions Map, moved CSRF token generation to individual route files after authentication, created comprehensive testing script for all 5 hypotheses
-    - **Testing**: All 5 hypotheses tested simultaneously - Route Registration (PASSED), Middleware Execution Order (PASSED), Route Path Mismatch (PASSED), Authentication Blocking (PASSED), Express Router Configuration (PASSED)
-    - **Result**: CSRF tokens now generated and sent in response headers, admin operations protected with CSRF validation
 17. **Staff Payment Data Clearing Recurrence**: ✅ COMPLETED - Same dual database issue occurred and was resolved using documented procedures
-    - **Circumstances**: Staff roster payment data reappeared, causing same confusion as before
-    - **Root Cause**: Same dual database file issue - local development environment vs production server
-    - **Resolution Method**: Applied exact same documented procedures from original resolution
-    - **Time to Resolution**: 2-3 hours (much faster due to documented procedures)
-    - **Validation**: Confirmed production server data is cleared, local database still contains old data
-    - **Lesson**: Dual database files continue to cause confusion, prevention measures are essential
 18. **Frontend/Backend Integration Issue**: ✅ RESOLVED - Critical port mismatch and Nginx configuration problems fixed
-    - **Priority**: CRITICAL - Blocking all frontend functionality and user access
-    - **Root Cause**: Frontend served from localhost:8080 (Python server), backend on remote port 3000, Nginx proxy configuration flawed
-    - **Solution**: Added static file serving to Node.js backend, fixed Nginx proxy configuration, updated frontend API URLs to use relative paths
-    - **Technical Implementation**: Added `express.static()` middleware to serve frontend files, fixed Nginx proxy_pass directive (removed trailing slash), updated frontend API_BASE_URL from absolute IP to relative `/api`, implemented SPA routing for frontend
-    - **Testing**: Frontend now accessible through Node.js backend, API endpoints working correctly through Nginx proxy, all routes functional
-    - **Result**: Complete frontend/backend integration working correctly through standard HTTP port 80
 19. **Critical API Routing Middleware Order Issue**: ✅ RESOLVED - Fixed critical bug causing all API calls to return HTML instead of JSON
-    - **Priority**: CRITICAL - Blocking all business operations and frontend functionality
-    - **Root Cause**: Incorrect middleware order in Express.js server - `express.static()` was registered before API routes
-    - **Solution**: Corrected middleware order to ensure API routes handle requests before static file serving
-    - **Technical Implementation**: Moved `express.static()` middleware after all API routes, added comprehensive logging and debugging, created automated test suite for validation
-    - **Testing**: Comprehensive test suite (6 tests) - all PASSED, confirming fix resolves the `services.map is not a function` error
-    - **Result**: All API endpoints now return proper JSON arrays, frontend receives correct data types, system fully operational
+20. **API_BASE_URL Issue**: ✅ RESOLVED - Fixed `Uncaught ReferenceError: api is not defined` and `API_BASE_URL value: undefined`
 
 ### Bug Fixes and Resolutions
 - **SSH Authentication Issues**: ✅ RESOLVED - Set up proper SSH keys and configuration for passwordless access
-- **Priority**: HIGH - Critical for server management and deployment
-- **Root Cause**: Missing SSH key setup and configuration on both local and server sides
-- **Solution**: Generated new SSH key pair, added to server authorized_keys, created SSH config files
-- **Technical Implementation**: Created `~/.ssh/id_ed25519_massage` key pair, configured `~/.ssh/config` with `ssh massage` alias, set up server-side SSH configuration
-- **Testing**: Passwordless SSH access verified with `ssh massage` command
-
 - **Deployment Script Issues**: ✅ RESOLVED - Fixed hostname checks and file path assumptions
-- **Priority**: HIGH - Critical for successful deployment
-- **Root Cause**: Script contained problematic hostname validation and incorrect file path assumptions
-- **Solution**: Removed hostname checks, corrected file paths, and adjusted working directory logic
-- **Technical Implementation**: Updated `backend/scripts/deploy.sh` to remove hostname validation, fix file copying logic, and correct working directory assumptions
-- **Testing**: Deployment script now runs successfully without hanging
-
 - **Nginx Routing Issues**: ✅ RESOLVED - Fixed "Route not found" errors preventing frontend access
-- **Priority**: HIGH - Critical for user interface access
-- **Root Cause**: Nginx was proxying all requests to backend, but backend had no root route, causing "Route not found" errors
-- **Solution**: Configured Nginx to serve frontend files for root path and proxy only API calls to backend
-- **Technical Implementation**: Updated Nginx configuration to serve static files from `/opt/massage-shop/web-app/` for root path, proxy `/api/` calls to backend, and maintain health check endpoint
-- **Testing**: Frontend pages now accessible, API calls working correctly, external access functional
-
 - **External Access Issues**: ✅ RESOLVED - Fixed IPv6 vs IPv4 access problems
-- **Priority**: HIGH - Critical for business user access
-- **Root Cause**: Server accessible via IPv4 but not IPv6, causing access issues for some users
-- **Solution**: Configured proper firewall rules and ensured IPv4 access is working correctly
-- **Technical Implementation**: Verified UFW firewall configuration, tested external access from multiple locations
-- **Testing**: External access verified from multiple devices and locations
-
 - **Critical Production Issues Resolution**: ✅ RESOLVED - Fixed backend API connectivity and process stability issues
-- **Priority**: CRITICAL - Blocking all business operations
-- **Root Cause**: Multiple configuration issues including wrong database path and port conflicts from stale processes
-- **Solution**: Implemented systematic 5-hypothesis debugging protocol to identify and fix all root causes
-- **Technical Implementation**: Fixed database path in .env file from `/opt/massage-shop/backend/data/massage_shop.db` to `/opt/massage-shop/data/massage_shop.db`, killed stale Node.js process (PID 6082) holding port 3000, restarted PM2 process with correct configuration
-- **Testing**: All API endpoints now functional, process stable with 25s+ uptime, login system working correctly, external access restored
-- **Methodology**: Proven effectiveness of systematic debugging approach using 5-hypothesis testing protocol for complex production issues
-
 - **Frontend Regression Investigation**: ✅ RESOLVED - Frontend is working perfectly, issue was misdiagnosed
-- **Priority**: CRITICAL - Initially thought frontend was broken
-- **Root Cause**: Misdiagnosis - frontend is 100% functional, issue was user interface misunderstanding
-- **Solution**: Used systematic 5-hypothesis testing to prove frontend is working correctly
-- **Technical Implementation**: Comprehensive testing of all frontend files, Nginx configuration, file permissions, and content structure
-- **Testing**: All 5 hypotheses tested - all passed, proving frontend is functional
-- **Result**: Frontend working perfectly, user needed to use `http://` before IP address in browser
-
 - **Authentication System Investigation**: ✅ RESOLVED - Authentication system is working perfectly, issue was misdiagnosed
-- **Priority**: CRITICAL - Initially thought authentication was broken
-- **Root Cause**: Misdiagnosis - authentication is 100% functional, previous AI used incorrect test credentials
-- **Solution**: Used systematic 5-hypothesis testing to prove authentication is working correctly
-- **Technical Implementation**: Comprehensive testing of all authentication endpoints, user credentials, rate limiting, and system configuration
-- **Testing**: All 5 hypotheses tested - all passed, proving authentication is functional
-- **Result**: Authentication working perfectly, previous AI used `test/test` instead of valid credentials like `reception/reception123`
+- **API_BASE_URL Issue**: ✅ RESOLVED - Fixed critical JavaScript errors preventing login functionality
 
 ## Completed Components
 
@@ -148,129 +98,137 @@ This phase focuses on deploying the system to production VPS and establishing li
 - **Configuration**: Properly configured to serve frontend files and proxy API calls
 - **Frontend Serving**: Static files served from `/opt/massage-shop/web-app/`
 - **API Proxying**: `/api/` calls proxied to Node.js backend
-- **Health Checks**: Health endpoint accessible for monitoring
-- **Status**: All routing working correctly
+- **Status**: Fully functional and optimized
 
-### 4. External Access ✅
-- **Internet Access**: System accessible from any device with internet
-- **URL**: http://109.123.238.197
-- **Security**: All security measures active and functional
-- **Performance**: Responsive access from multiple locations
-- **Status**: Fully accessible for business operations
+### 4. Security Implementation ✅
+- **Rate Limiting**: 5 login attempts per 15 minutes
+- **Input Validation**: Comprehensive request validation and sanitization
+- **Security Headers**: CSP, HSTS, X-Frame-Options, and other security headers
+- **CSRF Protection**: CSRF tokens generated and validated for admin operations
+- **Request Limits**: File size and request size limits enforced
+- **Status**: All security measures active and functional
 
-### 5. Production Monitoring ✅
-- **PM2 Monitoring**: Process management with automatic restart
-- **Systemd Services**: System service management and monitoring
-- **Logging**: Production logging with rotation and cleanup
-- **Health Checks**: Regular health monitoring and status checks
-- **Status**: Comprehensive monitoring operational
+### 5. Backend API System ✅
+- **API Endpoints**: All endpoints responding correctly with JSON responses
+- **Authentication**: Session-based authentication with role-based access control
+- **Database**: SQLite database with proper schema and data integrity
+- **Middleware**: All middleware functions working correctly
+- **Status**: Fully functional and stable
 
-### 6. Frontend/Backend Integration ✅ NEW
-- **Static File Serving**: Node.js backend now serves frontend files directly
-- **API Proxy Configuration**: Nginx properly proxies API calls to backend
-- **SPA Routing**: Single-page application routing implemented for frontend
-- **Port Mismatch Resolution**: Eliminated frontend/backend port conflicts
-- **Status**: Complete integration working through standard HTTP port 80
+### 6. Frontend Infrastructure ✅
+- **File Serving**: All frontend files accessible and served correctly
+- **API Integration**: Frontend can connect to backend API endpoints
+- **Authentication**: Login and session management working correctly
+- **Status**: Infrastructure functional but business functionality impaired
 
-### 7. Critical API Routing Issue Resolution ✅ NEW
-- **Middleware Order Correction**: Fixed Express.js middleware execution order
-- **API Response Validation**: All API endpoints now return JSON instead of HTML
-- **Frontend Data Type Fix**: Resolved `services.map is not a function` error
-- **Comprehensive Testing**: Automated test suite validates fix (6 tests passed)
-- **Status**: All business functionality restored and operational
+## Current Issues Requiring Immediate Resolution
 
-## Next Phase: Multi-Location Authentication Implementation
+### Issue 1: Login Page Styling Regression
+**Status**: 🔄 IMMEDIATE ATTENTION REQUIRED
+**Problem**: CSS styling broken, page not purple, missing title and password hints
+**Impact**: Poor user experience, missing visual elements
+**Priority**: HIGH - Affects user interface and experience
+**Evidence**: Page no longer shows purple theme, "Point of Sale System" title missing, password hints not displayed
 
-### Current Objectives
-1. **Frontend/Backend Integration**: ✅ COMPLETED - All port mismatch and Nginx configuration issues resolved
-2. **System Stability**: ✅ COMPLETED - Backend service running stably, all API endpoints functional
-3. **Critical API Routing**: ✅ COMPLETED - Middleware order corrected, all API calls return JSON correctly
-4. **Multi-Location Authentication**: 🔄 NEXT - Implement authentication system for multi-location operations
-5. **HTTPS Configuration**: 🔄 PLANNED - Configure SSL certificates for secure access
+### Issue 2: JavaScript Function Missing - requireAuth
+**Status**: 🔄 IMMEDIATE ATTENTION REQUIRED
+**Problem**: `requireAuth` function not defined, causing errors on multiple pages
+**Impact**: Pages fail to load properly, authentication functions broken
+**Priority**: HIGH - Prevents proper page loading and functionality
+**Error Messages**:
+- `index.html:102 Uncaught (in promise) ReferenceError: requireAuth is not defined`
+- `transaction.html:187 Uncaught TypeError: Cannot read properties of undefined (reading 'services')`
 
-### Dependencies
-- ✅ Production deployment completed successfully
-- ✅ External access established and functional
-- ✅ Frontend/backend integration completed successfully
-- ✅ All critical production issues resolved
-- ✅ Critical API routing middleware order issue resolved
+### Issue 3: Manager Page Access Broken
+**Status**: 🔄 IMMEDIATE ATTENTION REQUIRED
+**Problem**: Manager role login works but manager-specific pages not accessible
+**Impact**: Manager administrative functions not working
+**Priority**: HIGH - Impairs manager operations and business management
+**Evidence**: Manager can log in successfully but cannot access manager-specific functionality
 
-## Technical Notes
+### Issue 4: Database Connectivity Issues
+**Status**: 🔄 IMMEDIATE ATTENTION REQUIRED
+**Problem**: Staff roster and services dropdowns not populating with data
+**Impact**: Cannot view or manage staff and services
+**Priority**: HIGH - Core business operations impaired
+**Evidence**: Dropdowns show empty or no data, suggesting database connection or data retrieval issues
 
-### Architecture Decisions
-- **Hybrid Deployment**: Chose to run deployment script as root for system setup while ensuring application runs as non-root user
-- **Nginx Configuration**: Implemented separate location blocks for frontend files and API calls for optimal performance
-- **SSH Management**: Used SSH aliases for easier server management and deployment
-- **Process Management**: PM2 for application management with systemd for system-level service management
-- **Static File Serving**: Added Express.js static file serving to eliminate frontend/backend port conflicts
-- **Middleware Order**: Critical importance of Express.js middleware execution order for proper API routing
+### Issue 5: Transaction Page JavaScript Errors
+**Status**: 🔄 IMMEDIATE ATTENTION REQUIRED
+**Problem**: `TypeError: Cannot read properties of undefined (reading 'services')`
+**Impact**: Transaction creation and management functionality broken
+**Priority**: HIGH - Prevents daily business operations
+**Evidence**: JavaScript errors preventing transaction page from functioning properly
 
-### Performance Considerations
-- **Static File Serving**: Node.js backend serves frontend files directly for optimal integration
-- **API Proxying**: Nginx proxies only API calls to backend, reducing unnecessary overhead
-- **Caching**: Implemented proper caching headers for static assets
-- **Load Balancing**: Ready for future load balancing if needed
-- **Middleware Optimization**: Correct middleware order ensures optimal request handling
+## Next Steps - IMMEDIATE PRIORITY
 
-### Security Implementation
-- **Firewall Configuration**: UFW properly configured with minimal required ports
-- **SSH Security**: Key-based authentication with password authentication disabled
-- **Application Security**: All security middleware active and functional
-- **Network Security**: Proper network isolation and access control
-- **CSRF Protection**: ✅ NOW WORKING - CSRF tokens generated and validated correctly
+### 🔄 Frontend Functionality Restoration - IMMEDIATE ATTENTION REQUIRED
+**Objective**: Restore all broken frontend functionality while preserving working API_BASE_URL fix
+**Strategy**: Keep technical server setup from testing03 branch but restore site functionality from main08 branch
 
-## Success Metrics Achieved
-- ✅ Production deployment completed successfully
-- ✅ External access established and functional
-- ✅ All security measures active and tested
-- ✅ Production monitoring and logging operational
-- ✅ System ready for business operations
-- ✅ User interface accessible from any device
-- ✅ API endpoints functional and secure
-- ✅ Frontend regression investigation completed successfully
-- ✅ Authentication system investigation completed successfully
-- ✅ All critical issues resolved through systematic debugging
-- ✅ CSRF token generation now working correctly
-- ✅ Staff payment data cleared on production server
-- ✅ Frontend/backend integration completed successfully
-- ✅ Static file serving working correctly
-- ✅ Nginx proxy configuration fixed
-- ✅ Critical API routing middleware order issue resolved
-- ✅ All business functionality restored and operational
+**Action Plan**:
+1. **Investigate CSS Changes**: Compare current styling with main08 branch to identify what was removed
+2. **Restore JavaScript Functions**: Identify and restore missing requireAuth and other functions
+3. **Fix Manager Access**: Restore manager-specific page access and functionality
+4. **Restore Database Connectivity**: Fix dropdown population issues for staff and services
+5. **Fix Transaction Page**: Resolve JavaScript errors preventing transaction processing
 
-## Lessons Learned
-1. **SSH Key Management**: Proper SSH key setup is critical for production server management
-2. **Deployment Scripts**: Scripts must be tested locally before server deployment
-3. **Nginx Configuration**: Proper routing configuration is essential for frontend/backend separation
-4. **External Access**: IPv4 vs IPv6 considerations important for production deployment
-5. **Process Management**: PM2 + systemd provides robust application management
-6. **Security First**: All security measures must be active before external access
-7. **Testing External Access**: Always test from multiple devices and locations
-8. **Documentation**: Keep deployment procedures well-documented for future reference
-9. **Backup Procedures**: Ensure backup systems are in place before production deployment
-10. **Monitoring Setup**: Production monitoring is essential for system health
-11. **Systematic Debugging**: 5-hypothesis testing protocol is highly effective for complex issues
-12. **User Interface Testing**: Always test user interface from actual user perspective
-13. **Credential Verification**: Verify actual credentials before testing authentication systems
-14. **Protocol Specification**: Users must specify `http://` or `https://` in browser address bar
-15. **Comprehensive Logging**: Extensive logging is essential for debugging complex middleware issues
-16. **CSRF Middleware Order**: CSRF token generation must happen after authentication middleware
-17. **Dual Database Prevention**: Multiple database files cause severe confusion, prevention measures are essential
-18. **Frontend/Backend Integration**: Port mismatches between frontend and backend servers cause critical functionality failures
-19. **Static File Serving**: Express.js static file serving eliminates the need for separate frontend servers
-20. **Nginx Proxy Configuration**: Trailing slashes in proxy_pass directives can strip important path components
-21. **Express.js Middleware Order**: Critical importance of middleware execution order for proper API routing
-22. **API Response Validation**: Always verify API endpoints return expected data types, not HTML content
-23. **Systematic Testing**: Automated test suites essential for validating complex fixes and preventing regressions
-24. **Deployment Verification**: Git push updates repository but not running application - server restart required
+**Success Criteria**: All business operations functional, complete frontend functionality restored
+**Estimated Time**: 7-12 hours
+**Priority**: IMMEDIATE - Core business operations impaired
 
-## Documentation Status
-- ✅ Phase objectives documented
-- ✅ Technical implementation details recorded
-- ✅ Bug fixes and resolutions documented
-- ✅ Deployment procedures documented
-- ✅ Next phase planning completed
-- ✅ CSRF token resolution documented
-- ✅ Staff payment data clearing recurrence documented
-- ✅ Frontend/backend integration resolution documented
-- ✅ Critical API routing middleware order issue documented
+## Risk Assessment
+
+### Current Risk Level: MEDIUM
+**Risk Factors**:
+- Core business operations impaired
+- Manager administrative functions not accessible
+- Transaction processing functionality broken
+- Poor user experience due to styling issues
+
+**Risk Mitigation**:
+- Incremental restoration approach
+- Preserve working fixes while restoring broken functionality
+- Systematic testing of each restored component
+- Branch comparison to identify missing functionality
+
+## Success Criteria
+
+### Phase Completion Criteria
+- ✅ Production deployment completed and operational
+- ✅ Backend API connectivity restored and stable
+- ✅ Login functionality working correctly
+- 🔄 Frontend functionality fully restored
+- 🔄 All business operations functional
+- 🔄 Manager access fully restored
+- 🔄 Database connectivity restored
+
+### Business Operations Criteria
+- ✅ Users can log in to the system
+- 🔄 Staff management functionality working
+- 🔄 Service management functionality working
+- 🔄 Transaction processing functionality working
+- 🔄 Manager administrative functions working
+- 🔄 All dropdowns and data displays functional
+
+## Timeline Estimate
+
+### Completed Phases
+- **Phase 1 (Production Deployment)**: ✅ COMPLETED - 2-4 hours
+- **Phase 2 (Critical Issues Resolution)**: ✅ COMPLETED - 2-4 hours
+- **Phase 3 (Feature Enhancement)**: ✅ COMPLETED - 1-2 days
+
+### Current Phase
+- **Phase 4 (Frontend Functionality Restoration)**: 🔄 IMMEDIATE ATTENTION REQUIRED - 7-12 hours
+
+### Future Phases (On Hold)
+- **Phase 5 (Multi-Location Authentication)**: 🔄 ON HOLD - 1-2 days
+- **Phase 6 (HTTPS Configuration)**: 🔄 ON HOLD - 4-8 hours
+- **Phase 7 (Live Operations)**: 🔄 ON HOLD - 2-4 weeks
+
+---
+
+**Current System Status**: Partially functional - login works but core business operations impaired
+**Immediate Priority**: Frontend functionality restoration (estimated 7-12 hours)
+**Next Phase**: Multi-Location Authentication Implementation (on hold until frontend restoration complete)
+**Production Access**: http://109.123.238.197 (login functional, business operations impaired)
