@@ -73,11 +73,9 @@ function validateCSRFToken(req, res, next) {
     return next();
   }
   
-  // Get session ID from authorization header
-  const authHeader = req.headers.authorization;
-  console.log('🔐 [CSRF-VALIDATE-AUTH-RAW]:', authHeader);
-  const sessionId = authHeader?.replace('Bearer ', '');
-  console.log('🔐 [CSRF-VALIDATE-SESSION] Extracted session ID:', sessionId);
+  // Get session ID from cookies
+  const sessionId = req.cookies?.sessionId;
+  console.log('🔐 [CSRF-VALIDATE-COOKIE-SESSION] Extracted session ID from cookies:', sessionId);
   console.log('🔐 [CSRF-VALIDATE-SESSION-LENGTH]:', sessionId?.length);
   console.log('🔐 [CSRF-VALIDATE-SESSION-TYPE]:', typeof sessionId);
   
@@ -168,14 +166,9 @@ function addCSRFToken(req, res, next) {
   console.log('🔐 [CSRF-ADD-USER-AGENT]:', req.headers['user-agent']);
   console.log('🔐 [CSRF-ADD-REFERER]:', req.headers.referer);
   
-  // Get session ID from authorization header
-  const authHeader = req.headers.authorization;
-  console.log('🔐 [CSRF-ADD-AUTH-RAW]:', authHeader);
-  console.log('🔐 [CSRF-ADD-AUTH-LENGTH]:', authHeader?.length);
-  console.log('🔐 [CSRF-ADD-AUTH-TYPE]:', typeof authHeader);
-  
-  const sessionId = authHeader?.replace('Bearer ', '');
-  console.log('🔐 [CSRF-ADD-SESSION] Extracted session ID:', sessionId);
+  // Get session ID from cookies
+  const sessionId = req.cookies?.sessionId;
+  console.log('🔐 [CSRF-ADD-COOKIE-SESSION] Extracted session ID from cookies:', sessionId);
   console.log('🔐 [CSRF-ADD-SESSION-LENGTH]:', sessionId?.length);
   console.log('🔐 [CSRF-ADD-SESSION-TYPE]:', typeof sessionId);
   console.log('🔐 [CSRF-ADD-SESSION-EXACT]:', JSON.stringify(sessionId));
