@@ -834,11 +834,29 @@
                 // Add event listeners for dropdown changes after elements are populated
                 console.log('🔍 ADDING EVENT LISTENERS...');
                 
+                console.log('🔍 CHECKING IF LOCATION ELEMENT EXISTS...');
                 const locationSelect = document.getElementById('location');
+                console.log('🔍 Location element found:', !!locationSelect);
+                if (locationSelect) {
+                    console.log('🔍 Location element properties:', {
+                        tagName: locationSelect.tagName,
+                        id: locationSelect.id,
+                        innerHTML: locationSelect.innerHTML.substring(0, 100) + '...'
+                    });
+                }
+                
+                console.log('🔍 CHECKING IF SERVICE ELEMENT EXISTS...');
                 // Reassign existing variables (don't redeclare)
                 serviceSelect = document.getElementById('service');
+                console.log('🔍 Service element found:', !!serviceSelect);
+                
+                console.log('🔍 CHECKING IF DURATION ELEMENT EXISTS...');
                 durationSelect = document.getElementById('duration');
+                console.log('🔍 Duration element found:', !!durationSelect);
+                
+                console.log('🔍 CHECKING IF PAYMENT ELEMENT EXISTS...');
                 paymentSelect = document.getElementById('payment');
+                console.log('🔍 Payment element found:', !!paymentSelect);
                 
                 console.log('🔍 Elements found:', {
                     location: !!locationSelect,
