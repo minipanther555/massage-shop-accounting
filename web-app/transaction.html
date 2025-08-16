@@ -248,8 +248,8 @@
             });
 
             // Initialize service and duration dropdowns with default state
-            const serviceSelect = document.getElementById('service');
-            const durationSelect = document.getElementById('duration');
+            let serviceSelect = document.getElementById('service');
+            let durationSelect = document.getElementById('duration');
             
             if (serviceSelect) {
                 serviceSelect.innerHTML = '<option value="">Select Service</option>';
