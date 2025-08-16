@@ -234,114 +234,6 @@
             return nextStaff ? nextStaff.name : null;
         }
 
-        function populateDropdowns() {
-            try {
-                console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
-                console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
-                console.log('🔍 Services:', CONFIG.settings.services);
-                console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
-            
-            const masseuseSelect = document.getElementById('masseuse');
-            masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
-            
-            // Find next in line masseuse for auto-selection
-            const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
-            let nextInLineName = nextInLine ? nextInLine.name : null;
-            
-            CONFIG.settings.masseuses.forEach(name => {
-                const isSelected = name === nextInLineName ? 'selected' : '';
-                masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
-            });
-
-            // Initialize service and duration dropdowns with default state
-            let serviceSelect = document.getElementById('service');
-            let durationSelect = document.getElementById('duration');
-            
-            if (serviceSelect) {
-                serviceSelect.innerHTML = '<option value="">Select Service</option>';
-                console.log('✅ Service dropdown initialized');
-            } else {
-                console.log('❌ Service dropdown element not found');
-            }
-            
-            if (durationSelect) {
-                durationSelect.innerHTML = '<option value="">Select Duration</option>';
-                console.log('✅ Duration dropdown initialized');
-            } else {
-                console.log('❌ Duration dropdown element not found');
-            }
-
-            const paymentSelect = document.getElementById('payment');
-            paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
-            CONFIG.settings.paymentMethods.forEach(method => {
-                paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
-            });
-            
-            console.log('🔍 DROPDOWNS POPULATED - Next in line:', nextInLineName);
-            
-            // Add event listeners for dropdown changes after elements are populated
-            console.log('🔍 ADDING EVENT LISTENERS...');
-            
-            const locationSelect = document.getElementById('location');
-            serviceSelect = document.getElementById('service');
-            durationSelect = document.getElementById('duration');
-            paymentSelect = document.getElementById('payment');
-            
-            console.log('🔍 Elements found:', {
-                location: !!locationSelect,
-                service: !!serviceSelect,
-                duration: !!durationSelect,
-                payment: !!paymentSelect
-            });
-            
-            if (locationSelect) {
-                locationSelect.addEventListener('change', function() {
-                    console.log('🔍 LOCATION CHANGED TO:', this.value);
-                    updateServiceOptions();
-                    updatePricing();
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Location event listener added');
-            } else {
-                console.log('❌ Location element not found');
-            }
-            
-            if (serviceSelect) {
-                serviceSelect.addEventListener('change', function() {
-                    console.log('🔍 SERVICE CHANGED TO:', this.value);
-                    updateDurationOptions();
-                    updatePricing();
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Service event listener added');
-            } else {
-                console.log('❌ Service element not found');
-            }
-            
-            if (durationSelect) {
-                durationSelect.addEventListener('change', function() {
-                    console.log('🔍 DURATION CHANGED TO:', this.value);
-                    updatePricing();
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Duration event listener added');
-            } else {
-                console.log('❌ Duration element not found');
-            }
-            
-            if (paymentSelect) {
-                paymentSelect.addEventListener('change', function() {
-                    console.log('🔍 PAYMENT CHANGED TO:', this.value);
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Payment event listener added');
-            } else {
-                console.log('❌ Payment element not found');
-            }
-        } catch (error) {
-            console.error('❌ ERROR in populateDropdowns:', error);
-        }
-
         function updateServiceOptions() {
             const location = document.getElementById('location').value;
             serviceSelect = document.getElementById('service');
@@ -548,6 +440,115 @@
             
             console.log('🔍 STEP 15: Function completed successfully');
         }
+
+        function populateDropdowns() {
+            try {
+                console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
+                console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
+                console.log('🔍 Services:', CONFIG.settings.services);
+                console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
+            
+            const masseuseSelect = document.getElementById('masseuse');
+            masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+            
+            // Find next in line masseuse for auto-selection
+            const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
+            let nextInLineName = nextInLine ? nextInLine.name : null;
+            
+            CONFIG.settings.masseuses.forEach(name => {
+                const isSelected = name === nextInLineName ? 'selected' : '';
+                masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
+            });
+
+            // Initialize service and duration dropdowns with default state
+            let serviceSelect = document.getElementById('service');
+            let durationSelect = document.getElementById('duration');
+            
+            if (serviceSelect) {
+                serviceSelect.innerHTML = '<option value="">Select Service</option>';
+                console.log('✅ Service dropdown initialized');
+            } else {
+                console.log('❌ Service dropdown element not found');
+            }
+            
+            if (durationSelect) {
+                durationSelect.innerHTML = '<option value="">Select Duration</option>';
+                console.log('✅ Duration dropdown initialized');
+            } else {
+                console.log('❌ Duration dropdown element not found');
+            }
+
+            const paymentSelect = document.getElementById('payment');
+            paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
+            CONFIG.settings.paymentMethods.forEach(method => {
+                paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
+            });
+            
+            console.log('🔍 DROPDOWNS POPULATED - Next in line:', nextInLineName);
+            
+            // Add event listeners for dropdown changes after elements are populated
+            console.log('🔍 ADDING EVENT LISTENERS...');
+            
+            const locationSelect = document.getElementById('location');
+            serviceSelect = document.getElementById('service');
+            durationSelect = document.getElementById('duration');
+            paymentSelect = document.getElementById('payment');
+            
+            console.log('🔍 Elements found:', {
+                location: !!locationSelect,
+                service: !!serviceSelect,
+                duration: !!durationSelect,
+                payment: !!paymentSelect
+            });
+            
+            if (locationSelect) {
+                locationSelect.addEventListener('change', function() {
+                    console.log('🔍 LOCATION CHANGED TO:', this.value);
+                    updateServiceOptions();
+                    updatePricing();
+                    updateTimeDropdowns();
+                });
+                console.log('✅ Location event listener added');
+            } else {
+                console.log('❌ Location element not found');
+            }
+            
+            if (serviceSelect) {
+                serviceSelect.addEventListener('change', function() {
+                    console.log('🔍 SERVICE CHANGED TO:', this.value);
+                    updateDurationOptions();
+                    updatePricing();
+                    updateTimeDropdowns();
+                });
+                console.log('✅ Service event listener added');
+            } else {
+                console.log('❌ Service element not found');
+            }
+            
+            if (durationSelect) {
+                durationSelect.addEventListener('change', function() {
+                    console.log('🔍 DURATION CHANGED TO:', this.value);
+                    updatePricing();
+                    updateTimeDropdowns();
+                });
+                console.log('✅ Duration event listener added');
+            } else {
+                console.log('❌ Duration element not found');
+            }
+            
+            if (paymentSelect) {
+                paymentSelect.addEventListener('change', function() {
+                    console.log('🔍 PAYMENT CHANGED TO:', this.value);
+                    updateTimeDropdowns();
+                });
+                console.log('✅ Payment event listener added');
+            } else {
+                console.log('❌ Payment element not found');
+            }
+        } catch (error) {
+            console.error('❌ ERROR in populateDropdowns:', error);
+        }
+
 
         async function handleSubmit(e) {
             e.preventDefault();
