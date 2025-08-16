@@ -772,22 +772,33 @@
                 console.log('🔍 Services:', CONFIG.settings.services);
                 console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
             
+                console.log('🔍 STEP 1: Getting masseuse select element...');
                 const masseuseSelect = document.getElementById('masseuse');
-                masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+                console.log('🔍 STEP 1a: Masseuse select element found:', !!masseuseSelect);
                 
+                console.log('🔍 STEP 2: Setting masseuse innerHTML...');
+                masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+                console.log('🔍 STEP 2a: Masseuse innerHTML set successfully');
+                
+                console.log('🔍 STEP 3: Finding next in line masseuse...');
                 // Find next in line masseuse for auto-selection
                 const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
                 let nextInLineName = nextInLine ? nextInLine.name : null;
+                console.log('🔍 STEP 3a: Next in line found:', nextInLineName);
                 
+                console.log('🔍 STEP 4: Adding masseuse options...');
                 CONFIG.settings.masseuses.forEach(name => {
                     const isSelected = name === nextInLineName ? 'selected' : '';
                     masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
                 });
+                console.log('🔍 STEP 4a: Masseuse options added successfully');
 
+                console.log('🔍 STEP 5: Initializing service and duration dropdowns...');
                 // Initialize service and duration dropdowns with default state
                 let serviceSelect = document.getElementById('service');
                 let durationSelect = document.getElementById('duration');
                 
+                console.log('🔍 STEP 5a: Service select element found:', !!serviceSelect);
                 if (serviceSelect) {
                     serviceSelect.innerHTML = '<option value="">Select Service</option>';
                     console.log('✅ Service dropdown initialized');
@@ -795,6 +806,7 @@
                     console.log('❌ Service dropdown element not found');
                 }
                 
+                console.log('🔍 STEP 5b: Duration select element found:', !!durationSelect);
                 if (durationSelect) {
                     durationSelect.innerHTML = '<option value="">Select Duration</option>';
                     console.log('✅ Duration dropdown initialized');
@@ -802,13 +814,22 @@
                     console.log('❌ Duration dropdown element not found');
                 }
 
+                console.log('🔍 STEP 6: Setting up payment methods...');
                 const paymentSelect = document.getElementById('payment');
-                paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
-                CONFIG.settings.paymentMethods.forEach(method => {
-                    paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
-                });
+                console.log('🔍 STEP 6a: Payment select element found:', !!paymentSelect);
                 
-                console.log('🔍 DROPDOWNS POPULATED - Next in line:', nextInLineName);
+                if (paymentSelect) {
+                    paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
+                    console.log('🔍 STEP 6b: Payment options cleared, adding methods...');
+                    CONFIG.settings.paymentMethods.forEach(method => {
+                        paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
+                    });
+                    console.log('🔍 STEP 6c: Payment methods added successfully');
+                } else {
+                    console.log('❌ Payment select element not found');
+                }
+                
+                console.log('🔍 STEP 7: DROPDOWNS POPULATED - Next in line:', nextInLineName);
                 
                 // Add event listeners for dropdown changes after elements are populated
                 console.log('🔍 ADDING EVENT LISTENERS...');
