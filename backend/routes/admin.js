@@ -21,6 +21,8 @@ router.get('/staff-page', addCSRFToken, (req, res) => {
             console.error('Error reading admin-staff.html:', err);
             return res.status(500).send('Error loading the page.');
         }
+        // ---> DIAGNOSTIC LOG <---
+        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
         // The addCSRFToken middleware adds the token to res.locals.csrfToken
         const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
