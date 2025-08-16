@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
-const { authenticateToken, authorizeRole } = require('../middleware/auth');
-const { addCSRFToken } = require('../middleware/csrf-protection');
+const { authenticateToken, authorizeRole, isAuthenticated, hasRole } = require('../middleware/auth');
+const { addCSRFToken, validateCSRFToken } = require('../middleware/csrf-protection');
 const path = require('path');
 
 // Apply authentication and manager authorization to all admin routes
@@ -12,8 +12,13 @@ router.use(authorizeRole('manager'));
 // Serve the admin-staff.html page through the backend
 // This ensures that authentication and CSRF middleware are applied
 router.get('/staff-page', isAuthenticated, hasRole(['Manager', 'Admin']), addCSRFToken, (req, res) => {
-    const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
-    res.sendFile(filePath);
+    try {
+        const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
+        res.sendFile(filePath);
+    } catch (error) {
+        console.error('Error serving staff page:', error);
+        res.status(500).json({ error: 'Failed to serve staff page' });
+    }
 });
 
 // =============================================================================
