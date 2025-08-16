@@ -236,8 +236,8 @@
 
         function updateServiceOptions() {
             const location = document.getElementById('location').value;
-            serviceSelect = document.getElementById('service');
-            durationSelect = document.getElementById('duration');
+            let serviceSelect = document.getElementById('service');
+            let durationSelect = document.getElementById('duration');
             
             // Defensive programming: check if elements exist
             if (!serviceSelect || !durationSelect) {
@@ -261,7 +261,7 @@
         function updateDurationOptions() {
             const location = document.getElementById('location').value;
             const serviceName = document.getElementById('service').value;
-            const durationSelect = document.getElementById('duration');
+            let durationSelect = document.getElementById('duration');
             
             // Defensive programming: check if element exists
             if (!durationSelect) {
