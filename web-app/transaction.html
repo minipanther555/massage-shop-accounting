@@ -891,12 +891,17 @@
                 if (locationSelect) {
                     console.log('🔍 LOCATION ELEMENT FOUND, ADDING EVENT LISTENER...');
                     try {
-                        locationSelect.addEventListener('change', function() {
+                        console.log('🔍 Creating location event listener function...');
+                        const locationChangeHandler = function() {
                             console.log('🔍 LOCATION CHANGED TO:', this.value);
                             updateServiceOptions();
                             updatePricing();
                             updateTimeDropdowns();
-                        });
+                        };
+                        console.log('🔍 Location event listener function created successfully');
+                        
+                        console.log('🔍 Adding location event listener to DOM...');
+                        locationSelect.addEventListener('change', locationChangeHandler);
                         console.log('✅ Location event listener added');
                     } catch (e) {
                         console.error('❌ ERROR adding location event listener:', e.message);
@@ -910,12 +915,17 @@
                 if (serviceSelect) {
                     console.log('🔍 SERVICE ELEMENT FOUND, ADDING EVENT LISTENER...');
                     try {
-                        serviceSelect.addEventListener('change', function() {
+                        console.log('🔍 Creating service event listener function...');
+                        const serviceChangeHandler = function() {
                             console.log('🔍 SERVICE CHANGED TO:', this.value);
                             updateDurationOptions();
                             updatePricing();
                             updateTimeDropdowns();
-                        });
+                        };
+                        console.log('🔍 Service event listener function created successfully');
+                        
+                        console.log('🔍 Adding service event listener to DOM...');
+                        serviceSelect.addEventListener('change', serviceChangeHandler);
                         console.log('✅ Service event listener added');
                     } catch (e) {
                         console.error('❌ ERROR adding service event listener:', e.message);
@@ -929,11 +939,16 @@
                 if (durationSelect) {
                     console.log('🔍 DURATION ELEMENT FOUND, ADDING EVENT LISTENER...');
                     try {
-                        durationSelect.addEventListener('change', function() {
+                        console.log('🔍 Creating duration event listener function...');
+                        const durationChangeHandler = function() {
                             console.log('🔍 DURATION CHANGED TO:', this.value);
                             updatePricing();
                             updateTimeDropdowns();
-                        });
+                        };
+                        console.log('🔍 Duration event listener function created successfully');
+                        
+                        console.log('🔍 Adding duration event listener to DOM...');
+                        durationSelect.addEventListener('change', durationChangeHandler);
                         console.log('✅ Duration event listener added');
                     } catch (e) {
                         console.error('❌ ERROR adding duration event listener:', e.message);
@@ -947,10 +962,15 @@
                 if (paymentSelect) {
                     console.log('🔍 PAYMENT ELEMENT FOUND, ADDING EVENT LISTENER...');
                     try {
-                        paymentSelect.addEventListener('change', function() {
+                        console.log('🔍 Creating payment event listener function...');
+                        const paymentChangeHandler = function() {
                             console.log('🔍 PAYMENT CHANGED TO:', this.value);
                             updateTimeDropdowns();
-                        });
+                        };
+                        console.log('🔍 Payment event listener function created successfully');
+                        
+                        console.log('🔍 Adding payment event listener to DOM...');
+                        paymentSelect.addEventListener('change', paymentChangeHandler);
                         console.log('✅ Payment event listener added');
                     } catch (e) {
                         console.error('❌ ERROR adding payment event listener:', e.message);
