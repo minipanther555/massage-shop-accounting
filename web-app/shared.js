@@ -180,12 +180,13 @@ function calculateTodayCounts() {
     });
 }
 
-// Format time as h:mm AM/PM
+// Format time as h:mm AM/PM in Bangkok timezone
 function formatTime(date) {
     return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
+        timeZone: 'Asia/Bangkok'
     });
 }
 

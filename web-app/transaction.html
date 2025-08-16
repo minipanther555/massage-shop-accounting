@@ -348,15 +348,19 @@
         }
 
         function updateTimeDropdowns() {
+            // Get Bangkok time (UTC+7) instead of device time
             const now = new Date();
+            const bangkokOffset = 7 * 60; // UTC+7 in minutes
+            const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const bangkokTime = new Date(utcTime + (bangkokOffset * 60000));
             
             // Get preparation delay based on service (10min default, 15min for Oil)
             const serviceName = document.getElementById('service').value;
             const isOilService = serviceName && serviceName.toLowerCase().includes('oil');
             const preparationMinutes = isOilService ? 15 : 10;
             
-            // Start time = now + preparation delay
-            const startTime = new Date(now.getTime() + preparationMinutes * 60000);
+            // Start time = Bangkok time + preparation delay
+            const startTime = new Date(bangkokTime.getTime() + preparationMinutes * 60000);
             document.getElementById('startTime').value = formatTime(startTime);
 
             const endTimeSelect = document.getElementById('endTime');
