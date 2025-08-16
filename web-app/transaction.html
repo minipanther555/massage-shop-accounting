@@ -228,6 +228,12 @@
             }
         }
 
+        function getNextInLineFromStaff() {
+            // Helper function to find next in line from roster data
+            const nextStaff = appData.roster.find(r => r.status === 'Next');
+            return nextStaff ? nextStaff.name : null;
+        }
+
         function populateDropdowns() {
             try {
                 console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
@@ -334,12 +340,6 @@
             }
         } catch (error) {
             console.error('❌ ERROR in populateDropdowns:', error);
-        }
-        
-        function getNextInLineFromStaff() {
-            // Helper function to find next in line from roster data
-            const nextStaff = appData.roster.find(r => r.status === 'Next');
-            return nextStaff ? nextStaff.name : null;
         }
 
         function updateServiceOptions() {
