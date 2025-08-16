@@ -11,7 +11,7 @@ router.use(authorizeRole('manager'));
 
 // Serve the admin-staff.html page through the backend
 // This ensures that authentication and CSRF middleware are applied
-router.get('/staff-page', isAuthenticated, hasRole(['Manager', 'Admin']), addCSRFToken, (req, res) => {
+router.get('/staff-page', addCSRFToken, (req, res) => {
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
     res.sendFile(filePath);
 });
