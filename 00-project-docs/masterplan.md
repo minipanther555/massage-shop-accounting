@@ -159,8 +159,10 @@ The system has successfully completed all planned development phases and is now 
 - **All major blockers resolved** - System is now fully functional for business operations
 - **Comprehensive testing completed** - End-to-end testing confirms 100% operational status
 - **All identified issues resolved** - Bangkok time auto-fill, staff dropdown, CSP violations, static asset paths, and transaction form all working correctly
+- **Input validation middleware fixed** - No longer rejects valid transaction data for calculated fields
+- **Service dropdown population fixed** - Services now populate correctly after location selection
 
-The system is now **LIVE AND OPERATIONAL** for business use, with managers and reception staff able to access all features from any device with internet access. The critical authentication and session management issues have been completely resolved through systematic refactoring, and comprehensive testing confirms the system is working perfectly across all features and pages. The transaction form is now fully functional with complete end-to-end operation.
+The system is now **LIVE AND OPERATIONAL** for business use, with managers and reception staff able to access all features from any device with internet access. The critical authentication and session management issues have been completely resolved through systematic refactoring, and comprehensive testing confirms the system is working perfectly across all features and pages. The transaction form is now fully functional with complete end-to-end operation, including proper service dropdown population and form submission.
 
 ## Recent Bug Fixes and Improvements
 - **Database Corruption Resolution**: Fixed corrupted price and fee data from unwanted bulk multiplier feature
@@ -229,6 +231,22 @@ The system is now **LIVE AND OPERATIONAL** for business use, with managers and r
   - Enhanced logging and debugging throughout the form initialization process
 - **Testing**: Comprehensive end-to-end testing confirms transaction form is now fully functional with complete data submission capability
 - **Outcome**: Transaction form is now 100% operational and ready for business use
+
+- **Input Validation Middleware Fix**: ✅ RESOLVED - Fixed critical issue preventing transaction form submission
+- **Priority**: HIGH - Critical for business operations and transaction processing
+- **Root Cause**: Input validation middleware was validating calculated fields (`payment_amount`, `masseuse_fee`) that should not be validated at middleware level
+- **Solution**: Removed validation for calculated fields from the input validation middleware since these are handled by business logic in the transaction route
+- **Technical Implementation**: Updated `backend/middleware/input-validation.js` to remove validation for `payment_amount` and `masseuse_fee` fields
+- **Testing**: Transaction form submission now works correctly without "Invalid input data" errors
+- **Outcome**: Backend no longer rejects valid transaction data, enabling successful form submission
+
+- **Service Dropdown Population Fix**: ✅ RESOLVED - Fixed critical issue preventing service selection in transactions
+- **Priority**: HIGH - Critical for business operations and service selection
+- **Root Cause**: Missing `let` declarations in `updateServiceOptions()` and `updateDurationOptions()` functions caused variables to be undefined
+- **Solution**: Added proper `let` declarations for `serviceSelect` and `durationSelect` variables in both functions
+- **Technical Implementation**: Updated `web-app/transaction.html` to add proper variable declarations in dropdown population functions
+- **Testing**: Service dropdown now populates with 18 services for "In-Shop" location, enabling complete transaction workflow
+- **Outcome**: Users can now successfully select services and complete transactions, restoring full business functionality
 
 - **Production VPS Deployment**: ✅ COMPLETED - Successfully deployed system to production VPS with full external access
 - **Priority**: HIGH - Critical for business operations and user access

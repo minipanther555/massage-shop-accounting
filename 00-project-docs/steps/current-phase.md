@@ -18,6 +18,11 @@ This phase has been **SUCCESSFULLY COMPLETED**. The critical, blocking bug in th
 - **Solution Applied**: Moved all helper functions (`getNextInLineFromStaff`, `updateServiceOptions`, `updateDurationOptions`, `updatePricing`, `formatTime`, `updateTimeDropdowns`, `handleSubmit`, and others) to appear before `populateDropdowns`
 - **Status**: ✅ Function hoisting issues resolved, variable declaration conflicts fixed, form field names added, transaction form now fully functional
 
+### Additional Issues Resolved (2025-08-16)
+- **Input Validation Middleware Issue**: ✅ RESOLVED - Backend was rejecting valid transaction data because input validation middleware was validating calculated fields (`payment_amount`, `masseuse_fee`) that should not be validated at middleware level
+- **Service Dropdown Population Issue**: ✅ RESOLVED - Service dropdown was not populating due to missing `let` declarations in `updateServiceOptions()` and `updateDurationOptions()` functions
+- **Form Submission Failure**: ✅ RESOLVED - Transaction form now submits successfully with proper service selection
+
 ### What Was Implemented
 1. **✅ cookie-parser middleware** - Added to handle HTTP cookies
 2. **✅ Login endpoint refactored** - Now sets secure session cookies instead of returning sessionId in JSON
@@ -27,6 +32,8 @@ This phase has been **SUCCESSFULLY COMPLETED**. The critical, blocking bug in th
 6. **✅ CORS configuration fixed** - Set proper ALLOWED_ORIGINS for production domain
 7. **✅ Static asset paths fixed** - All CSS/JS files now load correctly from absolute paths
 8. **✅ CSP violations resolved** - System now uses HTTPS consistently throughout
+9. **✅ Input validation middleware fixed** - Removed validation for calculated fields
+10. **✅ Service dropdown population fixed** - Added proper variable declarations
 
 ## Current Status: ✅ COMPLETED - Transaction Form Functionality
 
@@ -49,16 +56,20 @@ This phase has been **SUCCESSFULLY COMPLETED**. The critical, blocking bug in th
 - ✅ **Form field names added** - All required form fields now have proper `name` attributes
 - ✅ **Event listeners working** - All dropdown event listeners properly attached and functional
 - ✅ **Form submission functional** - Transaction form can now submit data successfully
+- ✅ **Input validation middleware fixed** - No longer rejects valid transaction data
+- ✅ **Service dropdown population fixed** - Services now populate correctly after location selection
 
 ### Issues Resolved
 - ✅ **Bangkok Time Auto-Fill** - Confirmed working when transaction parameters are selected
 - ✅ **Staff Dropdown** - Confirmed working correctly (was a data issue, not functionality)
 - ✅ **CSP Violations** - All resolved, system now uses HTTPS consistently
 - ✅ **Static Asset Paths** - All resolved, CSS/JS files now load correctly
+- ✅ **Input Validation Middleware** - Fixed validation for calculated fields
+- ✅ **Service Dropdown Population** - Fixed variable declaration issues
 
 ## Next Phase: Live Operations & Optimization
 
-The system has successfully resolved the critical authentication blocker, function hoisting issues, and transaction form functionality. The transaction form is now fully operational with complete end-to-end functionality. The system is ready for live business operations.
+The system has successfully resolved the critical authentication blocker, function hoisting issues, input validation middleware issues, and service dropdown population issues. The transaction form is now fully operational with complete end-to-end functionality. The system is ready for live business operations.
 
 ### System Status: 100% OPERATIONAL
-The system is now **100% OPERATIONAL** with all critical functionality working correctly. The transaction form runtime error has been completely resolved, and comprehensive testing confirms full end-to-end functionality.
+The system is now **100% OPERATIONAL** with all critical functionality working correctly. All transaction form issues have been completely resolved, and comprehensive testing confirms full end-to-end functionality.
