@@ -75,8 +75,8 @@ async function runDiagnosticTest() {
         console.log(`   🔑 Successfully authenticated. Session ID: ${sessionId.substring(0, 10)}...`);
 
         // --- Step 2: Load staff page and capture CSRF token from headers ---
-        console.log('\n--- STEP 2: Loading /api/admin/staff-page to get CSRF token ---');
-        const pageLoadResponse = await makeRequest('/api/admin/staff-page', 'GET', {
+        console.log('\n--- STEP 2: Loading /admin-staff.html to get CSRF token ---');
+        const pageLoadResponse = await makeRequest('/admin-staff.html', 'GET', {
             'Authorization': `Bearer ${sessionId}`,
             'Accept': 'text/html',
         });

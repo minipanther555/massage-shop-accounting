@@ -11,7 +11,7 @@ router.use(authorizeRole('manager'));
 
 // Serve the admin-staff.html page through the backend
 // This ensures that authentication and CSRF middleware are applied
-router.get('/staff-page', authenticateToken, authorizeRole('manager'), addCSRFToken, (req, res) => {
+router.get('/staff-page', isAuthenticated, hasRole(['Manager', 'Admin']), addCSRFToken, (req, res) => {
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
     res.sendFile(filePath);
 });
@@ -91,7 +91,7 @@ router.post('/staff', async (req, res) => {
 
         const newStaff = await database.get(
             'SELECT * FROM staff_roster WHERE id = ?',
-            [result.lastID]
+            [result.id]
         );
 
         res.status(201).json(newStaff);
@@ -100,11 +100,7 @@ router.post('/staff', async (req, res) => {
         if (error.message.includes('UNIQUE constraint failed')) {
             res.status(400).json({ error: 'Staff member already exists' });
         } else {
-            // Return the specific error message for debugging
-            res.status(500).json({ 
-                error: 'Failed to add staff member due to a server error.',
-                debug_error: error.message 
-            });
+            res.status(500).json({ error: 'Failed to add staff member' });
         }
     }
 });

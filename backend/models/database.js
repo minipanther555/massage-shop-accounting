@@ -245,7 +245,7 @@ class Database {
           console.error('Database run error:', err);
           reject(err);
         } else {
-          resolve({ lastID: this.lastID, changes: this.changes });
+          resolve({ id: this.lastID, changes: this.changes });
         }
       });
     });
