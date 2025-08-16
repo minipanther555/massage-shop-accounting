@@ -110,12 +110,13 @@ function validateEndpoint(req) {
     if (!body.service_type || body.service_type.length < 1 || body.service_type.length > 100) {
       throw new Error('Service type must be between 1 and 100 characters');
     }
-    if (!isValidDecimal(body.payment_amount, 0.01, 9999.99)) {
-      throw new Error('Payment amount must be a valid number between $0.01 and $9,999.99');
-    }
-    if (!isValidDecimal(body.masseuse_fee, 0, 9999.99)) {
-      throw new Error('Masseuse fee must be a valid number between $0 and $9,999.99');
-    }
+    // Remove validation for calculated fields - these are handled by business logic
+    // if (!isValidDecimal(body.payment_amount, 0.01, 9999.99)) {
+    //   throw new Error('Payment amount must be a valid number between $0.01 and $9,999.99');
+    // }
+    // if (!isValidDecimal(body.masseuse_fee, 0, 9999.99)) {
+    //   throw new Error('Masseuse fee must be a valid number between $0 and $9,999.99');
+    // }
     if (!body.start_time || !body.end_time) {
       throw new Error('Start time and end time are required');
     }
