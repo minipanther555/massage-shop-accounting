@@ -3,20 +3,17 @@
 ## Project Overview
 EIW Massage Shop Bookkeeping System - A comprehensive web-based management system for massage shop operations, replacing Google Sheets with a modern, scalable solution.
 
-## Current Phase: ✅ COMPLETED - Production Deployment & Live Operations + Feature Enhancement
+## Current Phase: 🔴 STALLED - Resolving Critical CSRF Authentication Bug
 
-### Phase Status: COMPLETED + ENHANCED
-The Production Deployment & Live Operations phase has been **COMPLETED SUCCESSFULLY** and **ENHANCED** with new features:
-- **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS at 109.123.238.197
-- **Production Environment**: Full production setup with PM2, systemd, and monitoring
-- **External Access**: System accessible from internet at http://109.123.238.197
-- **Nginx Configuration**: Proper reverse proxy setup serving frontend files and proxying API calls
-- **Security Implementation**: All security measures active and functional
-- **✅ Frontend Status**: ✅ RESOLVED - Frontend is 100% functional and working perfectly
-- **✅ Authentication System**: ✅ RESOLVED - Authentication system is 100% functional and working perfectly
-- **✅ Complete System**: ✅ RESOLVED - Entire system is fully operational and ready for business operations
-- **✅ New Feature**: ✅ COMPLETED - Payment Type Breakdown feature added to financial reports
-- **✅ Bug Fixes**: ✅ COMPLETED - All hardcoded localhost URLs resolved
+### Phase Status: STALLED
+The project is currently blocked by a critical CSRF bug that prevents administrative actions. While a significant regression (`500 Internal Server Error`) has been resolved, the original CSRF issue persists and is the primary focus.
+
+- **`500 Internal Server Error` on `/api/admin/staff`**: ✅ RESOLVED.
+    - **Root Cause**: Incomplete database schema on the production server.
+    - **Resolution**: A database migration script was executed on the server to add all required columns to the `staff_roster` table.
+- **`403 Forbidden: CSRF token required`**: 🔴 ACTIVE BLOCKER.
+    - **Root Cause**: Nginx serves admin pages as static files, bypassing the Node.js backend and the necessary `addCSRFToken` middleware.
+    - **Status**: The root cause has been definitively identified, and a resolution plan is in place.
 
 ## Completed Phases
 
@@ -79,29 +76,21 @@ The Production Deployment & Live Operations phase has been **COMPLETED SUCCESSFU
 
 ## Current System Status
 
-### ✅ Complete System Status - FULLY OPERATIONAL + NEW INSIGHTS
-**Date**: August 13, 2025
-**Status**: ✅ RESOLVED - System is 100% functional and ready for business operations
-**Evidence**: 
-- Login page at http://109.123.238.197/login.html loads correctly with 200 status
-- All CSS, JavaScript, and HTML files accessible with 200 status
-- Nginx serving frontend files correctly
-- File permissions and paths all working properly
-- Authentication system working correctly with valid credentials
-- All API endpoints functional and responding correctly
-- External access established and working from any device
+### 🔴 Critical CSRF Bug - ACTIVE
+**Date**: August 16, 2025
+**Status**: 🔴 STALLED
+**Root Cause**: Nginx static file serving for `/admin-staff.html` bypasses the Node.js backend, preventing the `addCSRFToken` middleware from executing. The client never receives a token, causing all state-changing API calls to fail with `403 Forbidden`.
 
-**Root Cause Analysis Completed**:
-1. ✅ Frontend file deployment issues - PASSED (all files accessible)
-2. ✅ Nginx configuration problems - PASSED (file serving working)
-3. ✅ File permissions and path issues - PASSED (no permission errors)
-4. ✅ Frontend build/deployment process failure - PASSED (files properly deployed)
-5. ✅ Environment configuration mismatch - PASSED (frontend working, auth working)
+**Resolution Plan**:
+1.  **Create a backend route** (`/api/admin/staff-page`) to serve the HTML page.
+2.  **Apply middleware** to this route to ensure the CSRF token is injected.
+3.  **Update frontend links** to point to the new backend route.
 
-**NEW DISCOVERY - Authentication System Investigation**:
-6. ✅ Authentication system investigation - PASSED (system working perfectly)
-7. 🔍 Session management script issue - IDENTIFIED (test script format mismatch)
-8. 🔍 Browser-side 500 error - IDENTIFIED (not server issue)
+### ✅ Recently Resolved: 500 Internal Server Error
+**Date Resolved**: August 16, 2025
+**Status**: ✅ RESOLVED
+**Root Cause**: The `staff_roster` table in the production database was missing the `last_payment_date`, `last_payment_amount`, and `last_payment_type` columns.
+**Resolution**: A standalone migration script (`fix_database.js`) was created, deployed, and executed on the server to add the missing columns. This has fixed the application crash.
 
 ### **Authentication System Status - WORKING PERFECTLY** ✅
 **Date**: August 13, 2025

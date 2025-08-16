@@ -9,107 +9,34 @@ This phase focuses on deploying the system to production VPS and establishing li
 3. **Production Environment**: Set up production monitoring, logging, and management
 4. **System Handover**: Complete user training and handover to business users
 
-## Current Status: ✅ ALL CRITICAL ISSUES RESOLVED - SYSTEM FULLY OPERATIONAL + ENHANCED
+## Current Status: 🔴 STALLED - Resolving Critical CSRF Authentication Bug
 
 ### What Was Accomplished
-- **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS at 109.123.238.197
-- **External Access**: System now accessible from internet at http://109.123.238.197
-- **Production Environment**: Full production setup with PM2, systemd, and monitoring
-- **Nginx Configuration**: Proper reverse proxy setup serving frontend files and proxying API calls
-- **Security Implementation**: All security measures active and functional
-- **SSH Access**: Configured `ssh massage` alias with passwordless access
-- **Critical Production Issues Resolution**: ✅ RESOLVED - Backend API connectivity fully restored and stable
-- **Process Stability**: ✅ RESOLVED - PM2 process running stably with 25s+ uptime
-- **Database Configuration**: ✅ RESOLVED - Database path corrected and connections stable
-- **✅ Frontend Status**: ✅ RESOLVED - Frontend is working perfectly, all files accessible
-- **✅ Authentication System**: ✅ RESOLVED - Authentication system is working perfectly, all endpoints functional
-- **✅ New Features**: ✅ COMPLETED - Payment Type Breakdown feature added to financial reports
-- **✅ Bug Fixes**: ✅ COMPLETED - All hardcoded localhost URLs resolved
+- **`500 Internal Server Error` on `/api/admin/staff`**: ✅ RESOLVED.
+    - **Root Cause**: Incomplete database schema. The `staff_roster` table was missing `last_payment_date`, `last_payment_amount`, and `last_payment_type` columns.
+    - **Resolution**: Created and executed a migration script (`fix_database.js`) directly on the server to add the missing columns, resolving the application crash.
+
+### Current Blocker: CSRF Token Failure
+- **Symptom**: All state-changing actions on administrative pages (e.g., adding staff) fail with a `403 Forbidden: CSRF token required` error.
+- **Root Cause Identified**: The Nginx server is configured to serve `.html` files (like `admin-staff.html`) as static assets. This bypasses the Node.js backend entirely. As a result, the `addCSRFToken` middleware is never executed, and the frontend never receives the necessary token to perform authenticated actions.
+- **Status**: This is the original bug reported, which was previously masked by the `500 Internal Server Error` regression. The investigation is now correctly focused on this root cause.
 
 ### Key Technical Achievements
-1. **VPS Deployment**: Successfully deployed to Ubuntu 24.04 LTS VPS with full production environment
-2. **SSH Configuration**: Set up passwordless SSH access with `ssh massage` alias for easy server management
-3. **Nginx Reverse Proxy**: Configured Nginx to serve frontend files and proxy API calls correctly
-4. **Production Environment**: Implemented PM2 process management, systemd services, and production monitoring
-5. **External Access**: Established internet access with proper firewall configuration and security measures
-6. **Critical Issues Resolution**: Implemented systematic 5-hypothesis debugging protocol to resolve production issues
-7. **Process Stabilization**: Fixed database path configuration and port conflicts for stable operation
-8. **API Connectivity Restoration**: Restored all backend API endpoints to full functionality
-9. **Frontend Investigation**: ✅ COMPLETED - Used systematic debugging to prove frontend is 100% functional
-10. **Authentication System Investigation**: ✅ COMPLETED - Used systematic debugging to prove authentication is 100% functional
-11. **Payment Type Breakdown Feature**: ✅ COMPLETED - Added automatic payment type breakdown to financial reports page
-12. **Localhost URL Bug Fixes**: ✅ COMPLETED - Resolved all hardcoded localhost URLs in admin pages
-13. **Terminal Escaping Issues**: ✅ RESOLVED - Documented and resolved shell command problems
-14. **Session Management Investigation**: 🔍 IN PROGRESS - Identified test script implementation issue
-15. **Browser-Side Error Investigation**: 🔍 IDENTIFIED - 500 error is browser-side, not server-side
+1.  **Systematic Debugging**: Successfully diagnosed and resolved a `500 Internal Server Error` by creating targeted schema verification and migration scripts.
+2.  **Definitive CSRF Diagnosis**: Created a specialized diagnostic script (`debug_csrf_post_workflow.js`) that replicated the full authentication and form submission workflow, successfully isolating the root cause to the missing token on page load.
+3.  **Log Configuration Confirmed**: Verified that application logs are managed by `systemd` and are being written to `/var/log/massage-shop/`.
 
 ### Bug Fixes and Resolutions
-- **SSH Authentication Issues**: ✅ RESOLVED - Set up proper SSH keys and configuration for passwordless access
-- **Priority**: HIGH - Critical for server management and deployment
-- **Root Cause**: Missing SSH key setup and configuration on both local and server sides
-- **Solution**: Generated new SSH key pair, added to server authorized_keys, created SSH config files
-- **Technical Implementation**: Created `~/.ssh/id_ed25519_massage` key pair, configured `~/.ssh/config` with `ssh massage` alias, set up server-side SSH configuration
-- **Testing**: Passwordless SSH access verified with `ssh massage` command
+- **Database Schema Mismatch**: ✅ RESOLVED - The `staff_roster` table on the production server has been fully migrated to include all required columns, eliminating the `SQLITE_ERROR` and resolving the `500 Internal Server Error`.
 
-- **Deployment Script Issues**: ✅ RESOLVED - Fixed hostname checks and file path assumptions
-- **Priority**: HIGH - Critical for successful deployment
-- **Root Cause**: Script contained problematic hostname validation and incorrect file path assumptions
-- **Solution**: Removed hostname checks, corrected file paths, and adjusted working directory logic
-- **Technical Implementation**: Updated `backend/scripts/deploy.sh` to remove hostname validation, fix file copying logic, and correct working directory assumptions
-- **Testing**: Deployment script now runs successfully without hanging
+## Next Phase: CSRF Bug Resolution & Feature Completion
+The immediate next steps are focused on fixing the CSRF issue without re-introducing previous Nginx-related bugs.
 
-- **Nginx Routing Issues**: ✅ RESOLVED - Fixed "Route not found" errors preventing frontend access
-- **Priority**: HIGH - Critical for user interface access
-- **Root Cause**: Nginx was proxying all requests to backend, but backend had no root route, causing "Route not found" errors
-- **Solution**: Configured Nginx to serve frontend files for root path and proxy only API calls to backend
-- **Technical Implementation**: Updated Nginx configuration to serve static files from `/opt/massage-shop/web-app/` for root path, proxy `/api/` calls to backend, and maintain health check endpoint
-- **Testing**: Frontend pages now accessible, API calls working correctly, external access functional
-
-- **External Access Issues**: ✅ RESOLVED - Fixed IPv6 vs IPv4 access problems
-- **Priority**: HIGH - Critical for business user access
-- **Root Cause**: Server accessible via IPv4 but not IPv6, causing access issues for some users
-- **Solution**: Configured proper firewall rules and ensured IPv4 access is working correctly
-- **Technical Implementation**: Verified UFW firewall configuration, tested external access from multiple locations
-- **Testing**: External access verified from multiple devices and locations
-
-- **Critical Production Issues Resolution**: ✅ RESOLVED - Fixed backend API connectivity and process stability issues
-- **Priority**: CRITICAL - Blocking all business operations
-- **Root Cause**: Multiple configuration issues including wrong database path and port conflicts from stale processes
-- **Solution**: Implemented systematic 5-hypothesis debugging protocol to identify and fix all root causes
-- **Technical Implementation**: Fixed database path in .env file from `/opt/massage-shop/backend/data/massage_shop.db` to `/opt/massage-shop/data/massage_shop.db`, killed stale Node.js process (PID 6082) holding port 3000, restarted PM2 process with correct configuration
-- **Testing**: All API endpoints now functional, process stable with 25s+ uptime, login system working correctly, external access restored
-- **Methodology**: Proven effectiveness of systematic debugging approach using 5-hypothesis testing protocol for complex production issues
-
-- **Frontend Regression Investigation**: ✅ RESOLVED - Frontend is working perfectly, issue was misdiagnosed
-- **Priority**: CRITICAL - Initially thought frontend was broken
-- **Root Cause**: Misdiagnosis - frontend is 100% functional, issue was user interface misunderstanding
-- **Solution**: Used systematic 5-hypothesis testing to prove frontend is working correctly
-- **Technical Implementation**: Comprehensive testing of all frontend files, Nginx configuration, file permissions, and content structure
-- **Testing**: All 5 hypotheses tested - all passed, proving frontend is functional
-- **Result**: Frontend working perfectly, user needed to use `http://` before IP address in browser
-
-- **Authentication System Investigation**: ✅ RESOLVED - Authentication system is working perfectly, issue was misdiagnosed
-- **Priority**: CRITICAL - Initially thought authentication was broken
-- **Root Cause**: Misdiagnosis - authentication is 100% functional, previous AI used incorrect test credentials
-- **Solution**: Used systematic 5-hypothesis testing to prove authentication is working correctly
-- **Technical Implementation**: Comprehensive testing of all authentication endpoints, user credentials, rate limiting, and system configuration
-- **Testing**: All 5 hypotheses tested - all passed, proving authentication is functional
-- **Result**: Authentication working perfectly, previous AI used `test/test` instead of valid credentials like `reception/reception123`
-
-- **Session Management Script Issue**: 🔍 IDENTIFIED - Test script implementation issue, not system failure
-- **Priority**: MEDIUM - Affects testing capabilities, no impact on system functionality
-- **Root Cause**: Test script uses incorrect session format (cookies vs Bearer tokens)
-- **Solution**: Update test script to use correct `Authorization: Bearer <sessionId>` format
-- **Technical Implementation**: Fix placeholder replacement logic in `debug_session_workflow.js`
-- **Testing**: Script successfully logs in but fails to use sessions for API calls
-- **Result**: Authentication system working perfectly, test script needs fixing
-
-- **Browser-Side 500 Error Investigation**: 🔍 IDENTIFIED - Error is browser-side, not server-side
-- **Priority**: MEDIUM - Affects user experience, no impact on system functionality
-- **Root Cause**: 500 error generated by browser-side JavaScript, not server
-- **Evidence**: Server logs show NO 500 errors, all API endpoints responding correctly
-- **Solution**: Investigate browser developer tools for JavaScript errors
-- **Next Steps**: Check browser console and network tabs for actual error source
+### Current Objectives
+1.  **Implement Backend Page Serving**: Create new, authenticated backend routes to serve the admin HTML pages (e.g., create `/api/admin/staff-page` to serve `admin-staff.html`).
+2.  **Update Frontend Navigation**: Modify the frontend links to point to the new backend page-serving routes instead of the static `.html` files.
+3.  **Verify CSRF Token Flow**: Re-run diagnostic tests to confirm that accessing the new backend route correctly provides a CSRF token.
+4.  **End-to-End Test**: Perform a final test of the "add staff" functionality to confirm the entire workflow is successful.
 
 ## Completed Components
 

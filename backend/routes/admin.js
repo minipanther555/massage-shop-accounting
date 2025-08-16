@@ -91,7 +91,7 @@ router.post('/staff', async (req, res) => {
 
         const newStaff = await database.get(
             'SELECT * FROM staff_roster WHERE id = ?',
-            [this.lastID]
+            [result.lastID]
         );
 
         res.status(201).json(newStaff);
