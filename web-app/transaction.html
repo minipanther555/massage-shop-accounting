@@ -277,8 +277,8 @@
             console.log('🔍 ADDING EVENT LISTENERS...');
             
             const locationSelect = document.getElementById('location');
-            const serviceSelect = document.getElementById('service');
-            const durationSelect = document.getElementById('duration');
+            let serviceSelect = document.getElementById('service');
+            let durationSelect = document.getElementById('duration');
             const paymentSelect = document.getElementById('payment');
             
             console.log('🔍 Elements found:', {
@@ -342,8 +342,8 @@
 
         function updateServiceOptions() {
             const location = document.getElementById('location').value;
-            const serviceSelect = document.getElementById('service');
-            const durationSelect = document.getElementById('duration');
+            let serviceSelect = document.getElementById('service');
+            let durationSelect = document.getElementById('duration');
             
             // Defensive programming: check if elements exist
             if (!serviceSelect || !durationSelect) {
