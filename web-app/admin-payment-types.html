@@ -124,7 +124,7 @@
 
         async function loadPaymentTypes() {
             try {
-                const response = await fetch('http://109.123.238.197/api/payment-types');
+                const response = await fetch('/api/payment-types');
                 if (!response.ok) {
                     throw new Error('Failed to fetch payment types');
                 }
@@ -219,7 +219,7 @@
             if (!deletingPaymentType) return;
 
             try {
-                const response = await fetch(`http://109.123.238.197/api/payment-types/${deletingPaymentType.id}`, {
+                const response = await fetch(`/api/payment-types/${deletingPaymentType.id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -255,8 +255,8 @@
 
             try {
                 const url = editingPaymentType 
-                    ? `http://109.123.238.197/api/payment-types/${editingPaymentType.id}`
-                    : 'http://109.123.238.197/api/payment-types';
+                    ? `/api/payment-types/${editingPaymentType.id}`
+                    : '/api/payment-types';
                 
                 const method = editingPaymentType ? 'PUT' : 'POST';
 

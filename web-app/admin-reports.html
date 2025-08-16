@@ -375,7 +375,7 @@
         async function initializeFilters() {
             try {
                 // Load staff members
-                const staffResponse = await fetch('http://109.123.238.197/api/reports/staff');
+                const staffResponse = await fetch('/api/reports/staff');
                 if (staffResponse.ok) {
                     const staff = await staffResponse.json();
                     const staffSelect = document.getElementById('filter-staff');
@@ -388,7 +388,7 @@
                 }
 
                 // Load service types
-                const servicesResponse = await fetch('http://109.123.238.197/api/services');
+                const servicesResponse = await fetch('/api/services');
                 if (servicesResponse.ok) {
                     const services = await servicesResponse.json();
                     const serviceSelect = document.getElementById('filter-service');
@@ -488,7 +488,7 @@
                 if (location && location !== 'all') params.append('location', location);
 
                 console.log('📡 API URL:', `/api/reports/financial?${params}`);
-                const response = await fetch(`http://109.123.238.197/api/reports/financial?${params}`);
+                const response = await fetch(`/api/reports/financial?${params}`);
                 console.log('📥 Response status:', response.status, response.statusText);
                 
                 if (response.ok) {
