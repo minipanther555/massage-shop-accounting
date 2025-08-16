@@ -1,5 +1,5 @@
 // API client for backend communication
-const API_BASE_URL = 'http://109.123.238.197/api';
+const API_BASE_URL = 'https://109.123.238.197.sslip.io/api';
 
 class APIClient {
     async request(endpoint, options = {}) {

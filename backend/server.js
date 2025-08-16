@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
+// const helmet = require('helmet'); // Temporarily removed to prevent HSTS redirect issues
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
@@ -22,23 +22,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware - simplified for development
-if (process.env.NODE_ENV === 'production') {
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-  }));
-  console.log('🛡️ Security headers enabled for production');
-} else {
-  // Minimal security for development
-  app.use(helmet({ contentSecurityPolicy: false }));
-  console.log('🔓 Security headers relaxed for development');
-}
+// if (process.env.NODE_ENV === 'production') {
+//   app.use(helmet({
+//     contentSecurityPolicy: {
+//       directives: {
+//         defaultSrc: ["'self'"],
+//         styleSrc: ["'self'", "'unsafe-inline'"],
+//         scriptSrc: ["'self'"],
+//         imgSrc: ["'self'", "data:", "https:"],
+//       },
+//     },
+//   }));
+//   console.log('🛡️ Security headers enabled for production');
+// } else {
+//   // Minimal security for development
+//   app.use(helmet({ contentSecurityPolicy: false }));
+//   console.log('🔓 Security headers relaxed for development');
+// }
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
