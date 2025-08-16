@@ -102,8 +102,8 @@ app.use('/api/services', validateCSRFToken, require('./routes/services'));
 app.use('/api/expenses', validateCSRFToken, require('./routes/expenses'));
 app.use('/api/reports', validateCSRFToken, require('./routes/reports'));
 
-// Main application routes with CSRF protection (accessible to both reception and manager)
-app.use('/api/main', validateCSRFToken, require('./routes/main'));
+// Main application routes with authentication and CSRF token injection (accessible to both reception and manager)
+app.use('/api/main', require('./routes/main'));
 
 // --- DIAGNOSTIC LOGGING ---
 app.use('/api/admin', (req, res, next) => {
