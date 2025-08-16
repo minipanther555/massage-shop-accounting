@@ -771,6 +771,28 @@
                 console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
                 console.log('🔍 Services:', CONFIG.settings.services);
                 console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
+                
+                // Wait for all required DOM elements to be ready
+                console.log('🔍 WAITING FOR DOM ELEMENTS TO BE READY...');
+                const requiredElements = ['masseuse', 'service', 'duration', 'payment', 'location'];
+                const missingElements = [];
+                
+                requiredElements.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (!element) {
+                        missingElements.push(id);
+                        console.log(`❌ Missing element: ${id}`);
+                    } else {
+                        console.log(`✅ Element found: ${id}`);
+                    }
+                });
+                
+                if (missingElements.length > 0) {
+                    console.log(`❌ Cannot proceed - missing elements: ${missingElements.join(', ')}`);
+                    return;
+                }
+                
+                console.log('✅ All required DOM elements are ready, proceeding...');
             
                 console.log('🔍 STEP 1: Getting masseuse select element...');
                 const masseuseSelect = document.getElementById('masseuse');
