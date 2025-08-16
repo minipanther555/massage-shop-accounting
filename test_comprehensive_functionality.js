@@ -22,8 +22,17 @@ async function runComprehensiveFunctionalityTest() {
         });
         const page = await browser.newPage();
         
-        // Set realistic user agent
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+                        // Set realistic user agent
+                await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+                
+                // Configure page to handle cookies properly
+                await page.setExtraHTTPHeaders({
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'Connection': 'keep-alive',
+                    'Upgrade-Insecure-Requests': '1'
+                });
         
         // Enable console logging from the page
         page.on('console', msg => console.log('PAGE LOG:', msg.text()));
@@ -46,41 +55,51 @@ async function runComprehensiveFunctionalityTest() {
         await page.type('#password', TEST_CREDENTIALS.password);
         await page.click('#login-btn');
         
-        // Wait for redirect
-        await page.waitForNavigation({ waitUntil: 'networkidle2' });
-        
-        // Verify login success
-        const currentUrl = page.url();
-        if (!currentUrl.includes('index.html')) {
-            throw new Error(`Login failed: Expected redirect to index.html, got ${currentUrl}`);
-        }
-        console.log('✅ Login successful, redirected to main page.');
+                        // Wait for redirect
+                await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+                // Verify login success
+                const currentUrl = page.url();
+                if (!currentUrl.includes('index.html')) {
+                    throw new Error(`Login failed: Expected redirect to index.html, got ${currentUrl}`);
+                }
+                console.log('✅ Login successful, redirected to main page.');
+                
+                // Wait for page to fully load and cookies to be set
+                await new Promise(resolve => setTimeout(resolve, 3000));
         
         // --- MAIN PAGE FUNCTIONALITY TEST ---
         console.log('[STEP 3/8] Testing main page functionality...');
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Test navigation to different pages
-        const mainPageTests = [
-            { name: 'Staff Roster', selector: 'a[href*="staff.html"]', expectedUrl: 'staff.html' },
-            { name: 'New Transaction', selector: 'a[href*="transaction.html"]', expectedUrl: 'transaction.html' },
-            { name: 'Daily Summary', selector: 'a[href*="summary.html"]', expectedUrl: 'summary.html' }
-        ];
+                        // Test navigation to different pages
+                const mainPageTests = [
+                    { name: 'Staff Roster', selector: 'a[href="/api/main/staff-roster"]', expectedUrl: '/api/main/staff-roster' },
+                    { name: 'New Transaction', selector: 'a[href="/api/main/transaction"]', expectedUrl: '/api/main/transaction' },
+                    { name: 'Daily Summary', selector: 'a[href="/api/main/summary"]', expectedUrl: '/api/main/summary' }
+                ];
         
-        for (const test of mainPageTests) {
-            console.log(`           Testing navigation to ${test.name}...`);
-            await page.click(test.selector);
-            await page.waitForNavigation({ waitUntil: 'networkidle2' });
-            
-            const url = page.url();
-            if (!url.includes(test.expectedUrl)) {
-                throw new Error(`Navigation to ${test.name} failed: Expected ${test.expectedUrl}, got ${url}`);
-            }
-            console.log(`           ✅ ${test.name} page loaded successfully.`);
-            
-            // Go back to main page for next test
-            await page.goto(`${BASE_URL}/index.html`, { waitUntil: 'networkidle2' });
-        }
+                        for (const test of mainPageTests) {
+                    console.log(`           Testing navigation to ${test.name}...`);
+                    await page.click(test.selector);
+                    
+                    // Wait for either navigation or for the page to be fully loaded
+                    try {
+                        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
+                    } catch (error) {
+                        // If navigation timeout, check if we're already on the target page
+                        console.log(`           ⚠️ Navigation timeout, checking if already on target page...`);
+                    }
+
+                    const url = page.url();
+                    if (!url.includes(test.expectedUrl)) {
+                        throw new Error(`Navigation to ${test.name} failed: Expected ${test.expectedUrl}, got ${url}`);
+                    }
+                    console.log(`           ✅ ${test.name} page loaded successfully.`);
+
+                    // Go back to main page for next test
+                    await page.goto(`${BASE_URL}/`, { waitUntil: 'networkidle2' });
+                }
         
         // --- STAFF ROSTER FUNCTIONALITY TEST ---
         console.log('[STEP 4/8] Testing staff roster functionality...');
