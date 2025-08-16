@@ -51,7 +51,7 @@ async function testStaffPageFunctionality() {
         
         // Navigate directly to staff page
         console.log('           Navigating to staff page...');
-        await page.goto(`${BASE_URL}/staff.html`, { waitUntil: 'networkidle2' });
+        await page.goto(`${BASE_URL}/api/main/staff-roster`, { waitUntil: 'networkidle2' });
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         console.log('           Checking page elements...');
