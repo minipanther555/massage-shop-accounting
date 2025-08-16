@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ an_actual_token }}">
     <title>Services & Pricing Management - Massage Shop POS</title>
     <link rel="stylesheet" href="styles.css">
     <style>
@@ -243,12 +244,12 @@
 
         <!-- Admin Navigation -->
         <div class="admin-nav">
-            <a href="/api/admin/staff-page" class="btn active">👥 Staff Management</a>
-            <button class="btn">💰 Services & Pricing</button>
-            <button class="btn" onclick="window.location.href='admin-reports.html'">📊 Financial Reports</button>
-            <button class="btn" onclick="window.location.href='admin-payment-types.html'">💳 Payment Types</button>
-            <button class="btn" onclick="window.location.href='admin-users.html'">👤 User Management</button>
-            <button class="btn" onclick="window.location.href='index.html'">🏠 Back to Dashboard</button>
+            <a href="index.html" class="btn active">🏠 Home</a>
+            <a href="/api/admin/staff-page" class="btn">👥 Staff Admin</a>
+            <a href="/api/admin/services-page" class="btn active">💰 Services Admin</a>
+            <a href="/api/admin/reports-page" class="btn">📊 Reports Admin</a>
+            <a href="/api/admin/payment-types-page" class="btn">💳 Payment Types</a>
+            <a href="admin-users.html" class="btn">👤 Users</a>
         </div>
 
         <!-- Summary Cards -->

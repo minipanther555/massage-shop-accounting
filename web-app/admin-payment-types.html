@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ an_actual_token }}">
     <title>Payment Types Management - Massage Shop POS</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -15,9 +16,9 @@
         <div class="nav-buttons">
             <a href="index.html" class="nav-btn home">🏠 Home</a>
             <a href="/api/admin/staff-page" class="nav-btn staff">👥 Staff Admin</a>
-            <a href="admin-services.html" class="nav-btn services">💰 Services Admin</a>
-            <a href="admin-reports.html" class="nav-btn reports">📊 Reports Admin</a>
-            <a href="admin-payment-types.html" class="nav-btn payment-types active">💳 Payment Types</a>
+            <a href="/api/admin/services-page" class="nav-btn services">💰 Services Admin</a>
+            <a href="/api/admin/reports-page" class="nav-btn reports">📊 Reports Admin</a>
+            <a href="/api/admin/payment-types-page" class="nav-btn payment-types active">💳 Payment Types</a>
             <a href="admin-users.html" class="nav-btn users">👤 Users</a>
             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                 <span id="current-user" style="color: #666; font-size: 14px;"></span>

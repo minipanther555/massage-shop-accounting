@@ -29,6 +29,49 @@ router.get('/staff-page', addCSRFToken, (req, res) => {
     });
 });
 
+// Serve admin-services.html
+router.get('/services-page', addCSRFToken, (req, res) => {
+    const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-services.html');
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading admin-services.html:', err);
+            return res.status(500).send('Error loading the page.');
+        }
+        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
+        res.send(modifiedHtml);
+    });
+});
+
+// Serve admin-reports.html
+router.get('/reports-page', addCSRFToken, (req, res) => {
+    const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-reports.html');
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading admin-reports.html:', err);
+            return res.status(500).send('Error loading the page.');
+        }
+        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
+        res.send(modifiedHtml);
+    });
+});
+
+// Serve admin-payment-types.html
+router.get('/payment-types-page', addCSRFToken, (req, res) => {
+    const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-payment-types.html');
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading admin-payment-types.html:', err);
+            return res.status(500).send('Error loading the page.');
+        }
+        console.log(`[CSRF INJECTION] Token for browser session: ${res.locals.csrfToken}`);
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
+        res.send(modifiedHtml);
+    });
+});
+
+
 // =============================================================================
 // STAFF ADMINISTRATION ENDPOINTS
 // =============================================================================
