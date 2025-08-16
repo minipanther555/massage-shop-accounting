@@ -19,6 +19,25 @@ class APIClient {
             ...options
         };
 
+        // --- CSRF TOKEN HANDLING ---
+        // For modifying requests, find and add the CSRF token from the page's meta tag.
+        const isModifyingRequest = options.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method.toUpperCase());
+        if (isModifyingRequest) {
+            const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfTokenMeta) {
+                const csrfToken = csrfTokenMeta.getAttribute('content');
+                if (csrfToken && csrfToken !== '{{ an_actual_token }}') {
+                    config.headers['X-CSRF-Token'] = csrfToken;
+                    console.log(`🚀 DEBUG: CSRF Token found and added to headers.`);
+                } else {
+                    console.warn(`🚨 WARNING: CSRF meta tag found, but token is missing or is a placeholder.`);
+                }
+            } else {
+                console.warn(`🚨 WARNING: CSRF meta tag not found for modifying request to ${url}.`);
+            }
+        }
+        // --- END CSRF TOKEN HANDLING ---
+
         if (config.body && typeof config.body === 'object') {
             config.body = JSON.stringify(config.body);
         }

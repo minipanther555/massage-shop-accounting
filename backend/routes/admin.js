@@ -4,6 +4,7 @@ const database = require('../models/database');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { addCSRFToken } = require('../middleware/csrf-protection');
 const path = require('path');
+const fs = require('fs');
 
 // Apply authentication and manager authorization to all admin routes
 router.use(authenticateToken);
@@ -13,7 +14,17 @@ router.use(authorizeRole('manager'));
 // This ensures that authentication and CSRF middleware are applied
 router.get('/staff-page', addCSRFToken, (req, res) => {
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
-    res.sendFile(filePath);
+    
+    // Read the HTML file, inject the CSRF token, and send it.
+    fs.readFile(filePath, 'utf8', (err, data) => {
+        if (err) {
+            console.error('Error reading admin-staff.html:', err);
+            return res.status(500).send('Error loading the page.');
+        }
+        // The addCSRFToken middleware adds the token to res.locals.csrfToken
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
+        res.send(modifiedHtml);
+    });
 });
 
 // =============================================================================
