@@ -5,28 +5,27 @@ const express = require('express');
 const { sessions } = require('../routes/auth');
 
 /**
- * Authentication middleware that extracts session from Authorization header
+ * Authentication middleware that extracts session from cookies
  * and populates req.user with user data
  */
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const sessionId = req.cookies.sessionId;
     
-    if (!token) {
-        console.log('❌ AUTH: No token provided');
+    if (!sessionId) {
+        console.log('❌ AUTH: No session cookie provided');
         return res.status(401).json({ error: 'Authentication required' });
     }
     
     // Look up session
-    const session = sessions.get(token);
+    const session = sessions.get(sessionId);
     if (!session) {
-        console.log('❌ AUTH: Invalid token:', token);
+        console.log('❌ AUTH: Invalid session ID:', sessionId);
         return res.status(401).json({ error: 'Invalid or expired session' });
     }
     
     // Update last activity
     session.lastActivity = new Date();
-    sessions.set(token, session);
+    sessions.set(sessionId, session);
     
     // Populate req.user with enhanced information
     req.user = {

@@ -5,15 +5,11 @@ class APIClient {
     async request(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
         
-        // Get session token from localStorage
-        const sessionToken = localStorage.getItem('sessionToken');
-        
         const config = {
             mode: 'cors',
-            credentials: 'omit',
+            credentials: 'include', // Enable cookies to be sent with requests
             headers: {
                 'Content-Type': 'application/json',
-                ...(sessionToken && { 'Authorization': `Bearer ${sessionToken}` }),
                 ...options.headers
             },
             ...options

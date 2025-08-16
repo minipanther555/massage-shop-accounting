@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 // const helmet = require('helmet'); // Temporarily removed to prevent HSTS redirect issues
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
@@ -66,6 +67,9 @@ if (process.env.NODE_ENV === 'production') {
 // Body parsing middleware with reasonable limits
 app.use(express.json({ limit: '1mb' })); // Reduced from 10mb for security
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Cookie parsing middleware
+app.use(cookieParser());
 
 // Apply our custom security middleware
 app.use(requestLogger);           // Log all requests for monitoring

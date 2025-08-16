@@ -194,20 +194,15 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('🔐 LOGIN PAGE: Checking existing session...');
             
-            const sessionToken = localStorage.getItem('sessionToken');
-            if (sessionToken) {
-                try {
-                    const session = await api.checkSession();
-                    if (session.valid) {
-                        console.log('✅ EXISTING SESSION FOUND:', session.user);
-                        redirectToApp(session.user.role);
-                        return;
-                    }
-                } catch (error) {
-                    console.log('❌ EXISTING SESSION INVALID, clearing...');
-                    localStorage.removeItem('sessionToken');
-                    localStorage.removeItem('currentUser');
+            try {
+                const session = await api.checkSession();
+                if (session.valid) {
+                    console.log('✅ EXISTING SESSION FOUND:', session.user);
+                    redirectToApp(session.user.role);
+                    return;
                 }
+            } catch (error) {
+                console.log('❌ EXISTING SESSION INVALID, continuing to login...');
             }
             
             // Focus on username field
@@ -251,8 +246,7 @@
                 if (response.success) {
                     console.log('✅ LOGIN SUCCESS:', response.user);
                     
-                    // Store session data
-                    localStorage.setItem('sessionToken', response.sessionId);
+                    // Store user data (session is now handled by cookies)
                     localStorage.setItem('currentUser', JSON.stringify(response.user));
                     
                     // Show success message briefly

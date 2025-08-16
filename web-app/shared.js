@@ -502,7 +502,9 @@ function getCurrentUser() {
 }
 
 function isLoggedIn() {
-    return !!localStorage.getItem('sessionToken');
+    // Session is now handled by cookies, so we'll check if we have user data
+    const user = getCurrentUser();
+    return !!user;
 }
 
 function hasRole(requiredRole) {
@@ -544,7 +546,6 @@ async function logout() {
         console.log('👋 LOGOUT: Attempting logout...');
         await api.logout();
         
-        localStorage.removeItem('sessionToken');
         localStorage.removeItem('currentUser');
         
         console.log('✅ LOGOUT: Success');
@@ -553,7 +554,6 @@ async function logout() {
     } catch (error) {
         console.error('🚨 LOGOUT ERROR:', error);
         // Force logout even if API call fails
-        localStorage.removeItem('sessionToken');
         localStorage.removeItem('currentUser');
         window.location.href = 'login.html';
     }

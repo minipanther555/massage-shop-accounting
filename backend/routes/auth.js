@@ -153,10 +153,17 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     
     console.log('✅ LOGIN SUCCESS:', { username, role: user.role, sessionId, ip: req.ip });
     
-    // Return session info
+    // Set secure session cookie
+    res.cookie('sessionId', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 1 day
+    });
+    
+    // Return user info (without sessionId)
     res.json({
       success: true,
-      sessionId,
       user: {
         id: user.id,
         username: user.username,
@@ -182,7 +189,7 @@ router.post('/reset-rate-limit', (req, res) => {
 // Check session endpoint
 router.get('/session', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     
     if (!sessionId) {
       return res.status(401).json({ error: 'No session provided' });
@@ -221,13 +228,16 @@ router.get('/session', async (req, res) => {
 // Logout endpoint
 router.post('/logout', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     
     if (sessionId && sessions.has(sessionId)) {
       const session = sessions.get(sessionId);
       console.log('👋 LOGOUT:', { username: session.username, sessionId });
       sessions.delete(sessionId);
     }
+    
+    // Clear the session cookie
+    res.clearCookie('sessionId');
     
     res.json({ success: true, message: 'Logged out successfully' });
     
@@ -240,7 +250,7 @@ router.post('/logout', async (req, res) => {
 // Get all active sessions (manager only - for debugging)
 router.get('/sessions', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     const session = sessions.get(sessionId);
     
     if (!session || session.role !== 'manager') {
@@ -270,7 +280,7 @@ router.get('/sessions', async (req, res) => {
 // Change password endpoint (for users to change their own password)
 router.post('/change-password', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     const session = sessions.get(sessionId);
     
     if (!session) {
@@ -310,7 +320,7 @@ router.post('/change-password', async (req, res) => {
 // Get user info endpoint
 router.get('/user-info', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     const session = sessions.get(sessionId);
     
     if (!session) {
@@ -338,7 +348,7 @@ router.get('/user-info', async (req, res) => {
 // Get all users endpoint (manager only - for user management)
 router.get('/users', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     const session = sessions.get(sessionId);
     
     if (!session || session.role !== 'manager') {
@@ -367,7 +377,7 @@ router.get('/users', async (req, res) => {
 // Get users by location endpoint (manager only)
 router.get('/users/location/:locationId', async (req, res) => {
   try {
-    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    const sessionId = req.cookies.sessionId;
     const session = sessions.get(sessionId);
     
     if (!session || session.role !== 'manager') {

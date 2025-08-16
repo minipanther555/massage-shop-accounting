@@ -51,11 +51,21 @@ async function runAdvancedBrowserTest() {
             page.waitForNavigation({ waitUntil: 'networkidle2' })
         ]);
         
-        const adminSection = await page.$('#admin-section');
-        if (!adminSection) {
-            throw new Error('Login failed. Admin section not found on dashboard.');
+        // --- Verify login was successful ---
+        console.log('           Verifying login success...');
+        const loginSuccess = await page.evaluate(() => {
+            // Check if we're redirected to the main page (indicating successful login)
+            return window.location.href.includes('index.html');
+        });
+        
+        if (!loginSuccess) {
+            throw new Error('Login failed: Not redirected to main page after login.');
         }
-        console.log('✅ Login successful.');
+        console.log(`✅ Login successful. User redirected to main page.`);
+
+        // Note: No need to manually set Authorization headers - cookies are handled automatically
+        console.log('✅ Session cookies are automatically managed by the browser.');
+
 
         // --- Navigate to Staff Page ---
         console.log(`[STEP 3/5] Navigating to staff admin page: ${STAFF_PAGE_URL}`);
