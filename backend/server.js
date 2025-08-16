@@ -77,7 +77,7 @@ app.use(requestTimeout(30000));   // 30 second timeout for requests
 app.use(requestSizeLimits);       // Check request size limits
 app.use(securityHeaders);         // Add security headers
 app.use(validateInput);           // Validate and sanitize input
-app.use(addCSRFToken);           // Add CSRF tokens to responses
+// Note: CSRF tokens are added per-route, not globally
 
 // --- DIAGNOSTIC LOGGING ---
 app.use((req, res, next) => {
