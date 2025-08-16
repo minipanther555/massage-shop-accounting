@@ -211,7 +211,15 @@
                 console.error('🚨 CRITICAL ERROR in DOMContentLoaded:', error);
             }
             
-            document.getElementById('transaction-form').addEventListener('submit', handleSubmit);
+            console.log('🔍 ATTACHING SUBMIT EVENT LISTENER...');
+            const form = document.getElementById('transaction-form');
+            console.log('🔍 Form element found:', !!form);
+            if (form) {
+                form.addEventListener('submit', handleSubmit);
+                console.log('✅ Submit event listener attached successfully');
+            } else {
+                console.error('❌ Form element not found for event listener');
+            }
             
             // Event listeners will be added in populateDropdowns function after elements are populated
             
@@ -441,6 +449,10 @@
         }
 
         async function handleSubmit(e) {
+            console.log('🔍 HANDLE SUBMIT FUNCTION CALLED!');
+            console.log('🔍 Event type:', e.type);
+            console.log('🔍 Event target:', e.target);
+            console.log('🔍 Preventing default...');
             e.preventDefault();
             
             console.log('🔍 FORM SUBMISSION STARTED');
@@ -465,12 +477,12 @@
             });
             
             const formData = {
-                masseuse: selectedMasseuse,
-                service: serviceName, // Send exact service_name, not constructed string
-                payment: document.getElementById('payment').value,
-                startTime: document.getElementById('startTime').value,
-                endTime: document.getElementById('endTime').value,
-                customerContact: document.getElementById('customerContact').value
+                masseuse_name: selectedMasseuse,
+                service_type: serviceName, // Send exact service_name, not constructed string
+                payment_method: document.getElementById('payment').value,
+                start_time: document.getElementById('startTime').value,
+                end_time: document.getElementById('endTime').value,
+                customer_contact: document.getElementById('customerContact').value
             };
 
             console.log('🔍 SUBMITTING FORM DATA:', formData);
