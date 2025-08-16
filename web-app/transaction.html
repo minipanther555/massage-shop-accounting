@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ an_actual_token }}">
     <title>Massage Shop POS - New Transaction</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,10 +14,10 @@
         </div>
 
         <div class="nav-buttons">
-            <a href="index.html" class="nav-btn home">🏠 Home</a>
-            <a href="staff.html" class="nav-btn staff">👥 Staff Roster</a>
-            <a href="transaction.html" class="nav-btn transaction active">💳 New Transaction</a>
-            <a href="summary.html" class="nav-btn summary">📊 Daily Summary</a>
+            <a href="/index.html" class="nav-btn home">🏠 Home</a>
+            <a href="/api/main/staff-roster" class="nav-btn staff">👥 Staff Roster</a>
+            <a href="/api/main/transaction" class="nav-btn transaction active">💳 New Transaction</a>
+            <a href="/api/main/summary" class="nav-btn summary">📊 Daily Summary</a>
                             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                     <span id="current-user" style="color: #666; font-size: 14px;"></span>
                 </div>
