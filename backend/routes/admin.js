@@ -13,6 +13,11 @@ router.use(authorizeRole('manager'));
 // Serve the admin-staff.html page through the backend
 // This ensures that authentication and CSRF middleware are applied
 router.get('/staff-page', addCSRFToken, (req, res) => {
+    // Set cache-busting headers to prevent browser/proxy caching
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     console.log(`[ADMIN.JS STAFF-PAGE] Route handler started for ${req.originalUrl}.`);
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-staff.html');
     console.log(`[ADMIN.JS STAFF-PAGE] Reading file from path: ${filePath}`);
@@ -44,6 +49,11 @@ router.get('/staff-page', addCSRFToken, (req, res) => {
 
 // Serve admin-services.html
 router.get('/services-page', addCSRFToken, (req, res) => {
+    // Set cache-busting headers
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-services.html');
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
@@ -58,6 +68,11 @@ router.get('/services-page', addCSRFToken, (req, res) => {
 
 // Serve admin-reports.html
 router.get('/reports-page', addCSRFToken, (req, res) => {
+    // Set cache-busting headers
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-reports.html');
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
@@ -72,6 +87,11 @@ router.get('/reports-page', addCSRFToken, (req, res) => {
 
 // Serve admin-payment-types.html
 router.get('/payment-types-page', addCSRFToken, (req, res) => {
+    // Set cache-busting headers
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-payment-types.html');
     fs.readFile(filePath, 'utf8', (err, data) => {
         if (err) {
