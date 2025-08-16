@@ -837,7 +837,7 @@
                 }
 
                 console.log('🔍 STEP 6: Setting up payment methods...');
-                const paymentSelect = document.getElementById('payment');
+                let paymentSelect = document.getElementById('payment');
                 console.log('🔍 STEP 6a: Payment select element found:', !!paymentSelect);
                 
                 if (paymentSelect) {
@@ -880,6 +880,7 @@
                 paymentSelect = document.getElementById('payment');
                 console.log('🔍 Payment element found:', !!paymentSelect);
                 
+                // Ensure all variables are properly assigned before logging
                 console.log('🔍 Elements found:', {
                     location: !!locationSelect,
                     service: !!serviceSelect,
