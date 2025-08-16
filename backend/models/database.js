@@ -152,8 +152,49 @@ class Database {
       await this.run(table);
     }
 
+    // Add missing columns to existing tables
+    await this.addMissingColumns();
+
     // Insert default data
     await this.insertDefaultData();
+  }
+
+  async addMissingColumns() {
+    try {
+      console.log('Checking and adding missing columns to existing tables...');
+      
+      // Add missing columns to staff_roster table
+      const missingColumns = [
+        { name: 'hire_date', definition: 'DATE' },
+        { name: 'total_fees_earned', definition: 'DECIMAL(10,2) DEFAULT 0' },
+        { name: 'total_fees_paid', definition: 'DECIMAL(10,2) DEFAULT 0' },
+        { name: 'last_payment_date', definition: 'DATE' },
+        { name: 'last_payment_amount', definition: 'DECIMAL(10,2)' },
+        { name: 'last_payment_type', definition: 'TEXT' },
+        { name: 'notes', definition: 'TEXT' }
+      ];
+
+      for (const column of missingColumns) {
+        try {
+          await this.run(`ALTER TABLE staff_roster ADD COLUMN ${column.name} ${column.definition}`);
+          console.log(`✅ Added column staff_roster.${column.name}`);
+        } catch (error) {
+          if (error.message.includes('duplicate column name')) {
+            console.log(`✅ Column staff_roster.${column.name} already exists`);
+          } else {
+            console.error(`❌ Failed to add column staff_roster.${column.name}:`, error.message);
+          }
+        }
+      }
+
+      // Update existing records with default values
+      await this.run(`UPDATE staff_roster SET total_fees_earned = 0 WHERE total_fees_earned IS NULL`);
+      await this.run(`UPDATE staff_roster SET total_fees_paid = 0 WHERE total_fees_paid IS NULL`);
+      
+      console.log('✅ Missing columns check and update completed');
+    } catch (error) {
+      console.error('❌ Error adding missing columns:', error);
+    }
   }
 
   async insertDefaultData() {
