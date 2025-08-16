@@ -441,115 +441,6 @@
             console.log('🔍 STEP 15: Function completed successfully');
         }
 
-        function populateDropdowns() {
-            try {
-                console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
-                console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
-                console.log('🔍 Services:', CONFIG.settings.services);
-                console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
-            
-            const masseuseSelect = document.getElementById('masseuse');
-            masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
-            
-            // Find next in line masseuse for auto-selection
-            const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
-            let nextInLineName = nextInLine ? nextInLine.name : null;
-            
-            CONFIG.settings.masseuses.forEach(name => {
-                const isSelected = name === nextInLineName ? 'selected' : '';
-                masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
-            });
-
-            // Initialize service and duration dropdowns with default state
-            let serviceSelect = document.getElementById('service');
-            let durationSelect = document.getElementById('duration');
-            
-            if (serviceSelect) {
-                serviceSelect.innerHTML = '<option value="">Select Service</option>';
-                console.log('✅ Service dropdown initialized');
-            } else {
-                console.log('❌ Service dropdown element not found');
-            }
-            
-            if (durationSelect) {
-                durationSelect.innerHTML = '<option value="">Select Duration</option>';
-                console.log('✅ Duration dropdown initialized');
-            } else {
-                console.log('❌ Duration dropdown element not found');
-            }
-
-            const paymentSelect = document.getElementById('payment');
-            paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
-            CONFIG.settings.paymentMethods.forEach(method => {
-                paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
-            });
-            
-            console.log('🔍 DROPDOWNS POPULATED - Next in line:', nextInLineName);
-            
-            // Add event listeners for dropdown changes after elements are populated
-            console.log('🔍 ADDING EVENT LISTENERS...');
-            
-            const locationSelect = document.getElementById('location');
-            serviceSelect = document.getElementById('service');
-            durationSelect = document.getElementById('duration');
-            paymentSelect = document.getElementById('payment');
-            
-            console.log('🔍 Elements found:', {
-                location: !!locationSelect,
-                service: !!serviceSelect,
-                duration: !!durationSelect,
-                payment: !!paymentSelect
-            });
-            
-            if (locationSelect) {
-                locationSelect.addEventListener('change', function() {
-                    console.log('🔍 LOCATION CHANGED TO:', this.value);
-                    updateServiceOptions();
-                    updatePricing();
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Location event listener added');
-            } else {
-                console.log('❌ Location element not found');
-            }
-            
-            if (serviceSelect) {
-                serviceSelect.addEventListener('change', function() {
-                    console.log('🔍 SERVICE CHANGED TO:', this.value);
-                    updateDurationOptions();
-                    updatePricing();
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Service event listener added');
-            } else {
-                console.log('❌ Service element not found');
-            }
-            
-            if (durationSelect) {
-                durationSelect.addEventListener('change', function() {
-                    console.log('🔍 DURATION CHANGED TO:', this.value);
-                    updatePricing();
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Duration event listener added');
-            } else {
-                console.log('❌ Duration element not found');
-            }
-            
-            if (paymentSelect) {
-                paymentSelect.addEventListener('change', function() {
-                    console.log('🔍 PAYMENT CHANGED TO:', this.value);
-                    updateTimeDropdowns();
-                });
-                console.log('✅ Payment event listener added');
-            } else {
-                console.log('❌ Payment element not found');
-            }
-        } catch (error) {
-            console.error('❌ ERROR in populateDropdowns:', error);
-        }
-
-
         async function handleSubmit(e) {
             e.preventDefault();
             
@@ -599,7 +490,107 @@
                 showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
             }
         }
-        }        
+
+        async function advanceQueue(currentMasseuse) {
+            try {
+                // Advance to next person in line
+                await api.advanceQueue(currentMasseuse);
+                console.log(`🔄 Queue advanced from ${currentMasseuse}`);
+            } catch (error) {
+                console.error('Error advancing queue:', error);
+            }
+        }
+        
+        async function setMasseuseBusy(masseuseName, endTime) {
+            try {
+                // Set masseuse as busy until end time
+                await api.setMasseuseBusy(masseuseName, endTime);
+                console.log(`🔒 ${masseuseName} marked as busy until ${endTime}`);
+            } catch (error) {
+                console.error('Error setting masseuse busy:', error);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('transaction-form').reset();
+            document.getElementById('servicePrice').textContent = '฿0.00';
+            document.getElementById('masseuseeFee').textContent = '฿0.00';
+            exitCorrectionMode();
+        }
+
+        async function loadCorrection() {
+            const transaction = loadTransactionForCorrection();
+            if (transaction) {
+                document.getElementById('masseuse').value = transaction.masseuse;
+                document.getElementById('service').value = transaction.service;
+                document.getElementById('payment').value = transaction.paymentMethod;
+                document.getElementById('startTime').value = transaction.startTime;
+                document.getElementById('endTime').value = transaction.endTime;
+                document.getElementById('customerContact').value = transaction.customerContact;
+                
+                updatePricing();
+                enterCorrectionMode();
+                await updateAllDisplays();
+            }
+        }
+
+        function enterCorrectionMode() {
+            correctionMode = true;
+            document.getElementById('correction-banner').style.display = 'block';
+            document.getElementById('transaction-form').classList.add('correction-mode');
+            document.getElementById('correction-info').textContent = `Correcting transaction: ${appData.originalTransactionId}`;
+        }
+
+        function exitCorrectionMode() {
+            correctionMode = false;
+            document.getElementById('correction-banner').style.display = 'none';
+            document.getElementById('transaction-form').classList.remove('correction-mode');
+            document.getElementById('correction-info').textContent = 'No recent transaction to correct';
+        }
+
+        async function updateAllDisplays() {
+            
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            const duration = document.getElementById('duration').value;
+            
+            console.log('🔍 FORM VALUES:', {
+                masseuse: selectedMasseuse,
+                location: location,
+                service: serviceName,
+                duration: duration,
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value
+            });
+            
+            const formData = {
+                masseuse: selectedMasseuse,
+                service: serviceName, // Send exact service_name, not constructed string
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value
+            };
+
+            console.log('🔍 SUBMITTING FORM DATA:', formData);
+            const success = await submitTransaction(formData);
+            if (success) {
+                // If using next in line, advance the queue
+                if (isUsingNextInLine) {
+                    await advanceQueue(selectedMasseuse);
+                }
+                
+                // Mark masseuse as busy until end time
+                await setMasseuseBusy(selectedMasseuse, formData.endTime);
+                
+                clearForm();
+                await updateAllDisplays();
+                showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
+            }
+        }
+
         async function advanceQueue(currentMasseuse) {
             try {
                 // Advance to next person in line
@@ -772,6 +763,115 @@
         async function handleRemoveExpense(index) {
             if (removeExpense(index)) {
                 await updateAllDisplays();
+            }
+        }
+
+        function populateDropdowns() {
+            try {
+                console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
+                console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
+                console.log('🔍 Services:', CONFIG.settings.services);
+                console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
+            
+                const masseuseSelect = document.getElementById('masseuse');
+                masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+                
+                // Find next in line masseuse for auto-selection
+                const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
+                let nextInLineName = nextInLine ? nextInLine.name : null;
+                
+                CONFIG.settings.masseuses.forEach(name => {
+                    const isSelected = name === nextInLineName ? 'selected' : '';
+                    masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
+                });
+
+                // Initialize service and duration dropdowns with default state
+                let serviceSelect = document.getElementById('service');
+                let durationSelect = document.getElementById('duration');
+                
+                if (serviceSelect) {
+                    serviceSelect.innerHTML = '<option value="">Select Service</option>';
+                    console.log('✅ Service dropdown initialized');
+                } else {
+                    console.log('❌ Service dropdown element not found');
+                }
+                
+                if (durationSelect) {
+                    durationSelect.innerHTML = '<option value="">Select Duration</option>';
+                    console.log('✅ Duration dropdown initialized');
+                } else {
+                    console.log('❌ Duration dropdown element not found');
+                }
+
+                const paymentSelect = document.getElementById('payment');
+                paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
+                CONFIG.settings.paymentMethods.forEach(method => {
+                    paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
+                });
+                
+                console.log('🔍 DROPDOWNS POPULATED - Next in line:', nextInLineName);
+                
+                // Add event listeners for dropdown changes after elements are populated
+                console.log('🔍 ADDING EVENT LISTENERS...');
+                
+                const locationSelect = document.getElementById('location');
+                serviceSelect = document.getElementById('service');
+                durationSelect = document.getElementById('duration');
+                paymentSelect = document.getElementById('payment');
+                
+                console.log('🔍 Elements found:', {
+                    location: !!locationSelect,
+                    service: !!serviceSelect,
+                    duration: !!durationSelect,
+                    payment: !!paymentSelect
+                });
+                
+                if (locationSelect) {
+                    locationSelect.addEventListener('change', function() {
+                        console.log('🔍 LOCATION CHANGED TO:', this.value);
+                        updateServiceOptions();
+                        updatePricing();
+                        updateTimeDropdowns();
+                    });
+                    console.log('✅ Location event listener added');
+                } else {
+                    console.log('❌ Location element not found');
+                }
+                
+                if (serviceSelect) {
+                    serviceSelect.addEventListener('change', function() {
+                        console.log('🔍 SERVICE CHANGED TO:', this.value);
+                        updateDurationOptions();
+                        updatePricing();
+                        updateTimeDropdowns();
+                    });
+                    console.log('✅ Service event listener added');
+                } else {
+                    console.log('❌ Service element not found');
+                }
+                
+                if (durationSelect) {
+                    durationSelect.addEventListener('change', function() {
+                        console.log('🔍 DURATION CHANGED TO:', this.value);
+                        updatePricing();
+                        updateTimeDropdowns();
+                    });
+                    console.log('✅ Duration event listener added');
+                } else {
+                    console.log('❌ Duration element not found');
+                }
+                
+                if (paymentSelect) {
+                    paymentSelect.addEventListener('change', function() {
+                        console.log('🔍 PAYMENT CHANGED TO:', this.value);
+                        updateTimeDropdowns();
+                    });
+                    console.log('✅ Payment event listener added');
+                } else {
+                    console.log('❌ Payment element not found');
+                }
+            } catch (error) {
+                console.error('❌ ERROR in populateDropdowns:', error);
             }
         }
     </script>
