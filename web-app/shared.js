@@ -142,6 +142,8 @@ async function loadTodayData() {
             date: new Date(t.date),
             masseuse: t.masseuse_name,
             service: t.service_type,
+            duration: t.duration,
+            location: t.location,
             paymentAmount: t.payment_amount,
             paymentMethod: t.payment_method,
             masseuseeFee: t.masseuse_fee,

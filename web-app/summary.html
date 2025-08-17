@@ -81,6 +81,8 @@
                                 <div>Time</div>
                                 <div>Service</div>
                                 <div>Masseuse</div>
+                                <div>Duration</div>
+                                <div>Location</div>
                                 <div>Amount</div>
                             </div>
                         </div>
@@ -258,6 +260,8 @@
                     <div>${formatTime(transaction.timestamp)}</div>
                     <div>${transaction.service}</div>
                     <div>${transaction.masseuse}</div>
+                    <div>${transaction.duration}min</div>
+                    <div>${transaction.location}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
                 `;
                 container.appendChild(div);

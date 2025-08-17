@@ -268,33 +268,34 @@ router.get('/financial', async (req, res) => {
        ORDER BY revenue DESC`,
       params
     );
+
+    // Get duration breakdown
+    const durationBreakdown = await database.all(
+      `SELECT 
+        t.duration,
+        COUNT(*) as count,
+        SUM(t.payment_amount) as revenue
+       FROM transactions t
+       ${whereClause}
+       GROUP BY t.duration
+       ORDER BY revenue DESC`,
+      params
+    );
+
+    // Get location breakdown
+    const locationBreakdown = await database.all(
+      `SELECT 
+        t.location,
+        COUNT(*) as count,
+        SUM(t.payment_amount) as revenue
+       FROM transactions t
+       ${whereClause}
+       GROUP BY t.location
+       ORDER BY revenue DESC`,
+      params
+    );
     
-    // Get location breakdown (In-Shop vs Outcall) - nice to have
-    let locationBreakdown = [];
-    if (location && location !== 'all') {
-      // If specific location requested, filter by it
-      whereClause += " AND s.location = ?";
-      params.push(location);
-    }
-    
-    try {
-      locationBreakdown = await database.all(
-        `SELECT 
-          s.location,
-          COUNT(*) as count,
-          SUM(t.payment_amount) as revenue
-         FROM transactions t
-         JOIN services s ON t.service_type = s.service_name
-         ${whereClause}
-         GROUP BY s.location
-         ORDER BY revenue DESC`,
-        params
-      );
-    } catch (locationError) {
-      // If location join fails, just skip it - it's a nice to have
-      console.log('Location breakdown not available:', locationError.message);
-      locationBreakdown = [];
-    }
+
     
     // Calculate net profit
     const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
@@ -341,6 +342,7 @@ router.get('/financial', async (req, res) => {
       },
       breakdowns: {
         by_payment_method: paymentBreakdown,
+        by_duration: durationBreakdown,
         by_location: locationBreakdown
       },
       expenses: expenseSummary,

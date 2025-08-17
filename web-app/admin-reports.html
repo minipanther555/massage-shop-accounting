@@ -678,6 +678,74 @@
                 `;
             }
 
+            // Add duration breakdown if available
+            if (currentReports.breakdowns && currentReports.breakdowns.by_duration && currentReports.breakdowns.by_duration.length > 0) {
+                reportsHTML += `
+                    <div class="reports-container">
+                        <h3>⏱️ Duration Breakdown</h3>
+                        <div class="report-grid">
+                `;
+                
+                currentReports.breakdowns.by_duration.forEach(duration => {
+                    reportsHTML += `
+                        <div class="report-section">
+                            <h4>${duration.duration} minutes</h4>
+                            <div class="report-item">
+                                <span class="label">Revenue:</span>
+                                <span class="value positive">฿${(duration.revenue || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item">
+                                <span class="label">Transactions:</span>
+                                <span class="value">${duration.count || 0}</span>
+                            </div>
+                            <div class="report-item">
+                                <span class="label">Avg. Price:</span>
+                                <span class="value">฿${duration.count && duration.revenue ? ((duration.revenue / duration.count) || 0).toFixed(0) : '0'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                reportsHTML += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Add location breakdown if available
+            if (currentReports.breakdowns && currentReports.breakdowns.by_location && currentReports.breakdowns.by_location.length > 0) {
+                reportsHTML += `
+                    <div class="reports-container">
+                        <h3>📍 Location Breakdown</h3>
+                        <div class="report-grid">
+                `;
+                
+                currentReports.breakdowns.by_location.forEach(location => {
+                    reportsHTML += `
+                        <div class="report-section">
+                            <h4>${location.location}</h4>
+                            <div class="report-item">
+                                <span class="label">Revenue:</span>
+                                <span class="value positive">฿${(location.revenue || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item">
+                                <span class="label">Transactions:</span>
+                                <span class="value">${location.count || 0}</span>
+                            </div>
+                            <div class="report-item">
+                                <span class="label">Avg. Price:</span>
+                                <span class="value">฿${location.count && location.revenue ? ((location.revenue / location.count) || 0).toFixed(0) : '0'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                reportsHTML += `
+                        </div>
+                    </div>
+                `;
+            }
+
             // Add staff performance if available
             if (currentReports.staffBreakdown && currentReports.staffBreakdown.length > 0) {
                 reportsHTML += `
