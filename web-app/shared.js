@@ -210,19 +210,19 @@ async function serveNextCustomer() {
 // Submit transaction - API version
 async function submitTransaction(formData) {
     // Validation
-    if (!formData.masseuse || !formData.service || !formData.payment || !formData.startTime || !formData.endTime) {
+    if (!formData.masseuse_name || !formData.service_type || !formData.payment_method || !formData.start_time || !formData.end_time) {
         showToast("Masseuse, Service, Payment, and Times are required", 'error');
         return false;
     }
 
     try {
         const transactionData = {
-            masseuse_name: formData.masseuse,
-            service_type: formData.service,
-            payment_method: formData.payment,
-            start_time: formData.startTime,
-            end_time: formData.endTime,
-            customer_contact: formData.customerContact || "",
+            masseuse_name: formData.masseuse_name,
+            service_type: formData.service_type,
+            payment_method: formData.payment_method,
+            start_time: formData.start_time,
+            end_time: formData.end_time,
+            customer_contact: formData.customer_contact || "",
             corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null
         };
 
