@@ -76,6 +76,76 @@ async function debugTransactionPricingRootCause() {
         // Wait for dropdowns to populate
         await new Promise(resolve => setTimeout(resolve, 2000));
         
+        // Add frontend display hypothesis testing and logging
+        await page.evaluate(() => {
+            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: Starting frontend display bug investigation...');
+            
+            // Override loadTodayData with comprehensive logging for frontend display hypotheses
+            if (window.loadTodayData) {
+                const originalLoadTodayData = window.loadTodayData;
+                window.loadTodayData = async function() {
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: loadTodayData called!');
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: TIMESTAMP:', new Date().toISOString());
+                    
+                    const result = await originalLoadTodayData.call(this);
+                    
+                    // 🔍 HYPOTHESIS 1: Data mapping corruption in loadTodayData
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: Data mapping corruption in loadTodayData');
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: appData.transactions exists:', !!window.appData?.transactions);
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: appData.transactions length:', window.appData?.transactions?.length);
+                    
+                    if (window.appData?.transactions?.length > 0) {
+                        const first = window.appData.transactions[0];
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction after loading:', first);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction paymentAmount:', first.paymentAmount);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction paymentAmount type:', typeof first.paymentAmount);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction paymentAmount === 650:', first.paymentAmount === 650);
+                    }
+                    
+                    return result;
+                };
+            }
+            
+            // Override getRecentTransactions with comprehensive logging
+            if (window.getRecentTransactions) {
+                const originalGetRecentTransactions = window.getRecentTransactions;
+                window.getRecentTransactions = function(limit) {
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: getRecentTransactions called with limit:', limit);
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: Current appData.transactions:', window.appData?.transactions);
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: appData.transactions length:', window.appData?.transactions?.length);
+                    
+                    if (window.appData?.transactions?.length > 0) {
+                        const first = window.appData.transactions[0];
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: First transaction structure:', first);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: Keys:', Object.keys(first));
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount value:', first.paymentAmount);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount type:', typeof first.paymentAmount);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount === 650:', first.paymentAmount === 650);
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount === "650":', first.paymentAmount === "650");
+                    }
+                    
+                    const result = originalGetRecentTransactions.call(this, limit);
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: getRecentTransactions result:', result);
+                    return result;
+                };
+            }
+            
+            // Override updateRecentTransactions with comprehensive logging
+            if (window.updateRecentTransactions) {
+                const originalUpdateRecentTransactions = window.updateRecentTransactions;
+                window.updateRecentTransactions = function() {
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: updateRecentTransactions called!');
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: DOM manipulation starting...');
+                    
+                    const result = originalUpdateRecentTransactions.call(this);
+                    console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: updateRecentTransactions completed');
+                    return result;
+                };
+            }
+            
+            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: All function overrides installed');
+        });
+        
         // STEP 4: Fill form with specific bug combination
         console.log('\n[STEP 4] FILLING FORM WITH SPECIFIC BUG COMBINATION...');
         
@@ -292,8 +362,52 @@ async function debugTransactionPricingRootCause() {
             console.log('❌ Our transaction not found in recent transactions');
         }
         
-        // STEP 11: Final comprehensive hypothesis testing
-        console.log('\n[STEP 11] FINAL COMPREHENSIVE HYPOTHESIS TESTING...');
+        // STEP 11: Frontend Display Bug Hypothesis Testing
+        console.log('\n[STEP 11] FRONTEND DISPLAY BUG HYPOTHESIS TESTING...');
+        
+        await page.evaluate(() => {
+            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: Starting frontend display bug investigation...');
+            
+            // 🔍 HYPOTHESIS 1: Data mapping corruption in loadTodayData
+            console.log('🔍 HYPOTHESIS 1: Data mapping corruption in loadTodayData');
+            console.log('🔍 HYPOTHESIS 1: appData.transactions exists:', !!window.appData?.transactions);
+            console.log('🔍 HYPOTHESIS 1: appData.transactions length:', window.appData?.transactions?.length);
+            
+            if (window.appData?.transactions?.length > 0) {
+                const first = window.appData.transactions[0];
+                console.log('🔍 HYPOTHESIS 1: First transaction structure:', first);
+                console.log('🔍 HYPOTHESIS 1: First transaction keys:', Object.keys(first));
+                console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount:', first.paymentAmount);
+                console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount type:', typeof first.paymentAmount);
+                console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount === 650:', first.paymentAmount === 650);
+                console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount === "650":', first.paymentAmount === "650");
+            }
+            
+            // 🔍 HYPOTHESIS 2: Field name mismatch (payment_amount vs paymentAmount)
+            console.log('🔍 HYPOTHESIS 2: Field name mismatch (payment_amount vs paymentAmount)');
+            console.log('🔍 HYPOTHESIS 2: Looking for payment_amount field in API response');
+            console.log('🔍 HYPOTHESIS 2: Checking if field mapping is correct');
+            
+            // 🔍 HYPOTHESIS 3: Data type conversion issues in mapping
+            console.log('🔍 HYPOTHESIS 3: Data type conversion issues in mapping');
+            console.log('🔍 HYPOTHESIS 3: Checking if paymentAmount gets corrupted during mapping');
+            console.log('🔍 HYPOTHESIS 3: String vs Number handling in transaction mapping');
+            
+            // 🔍 HYPOTHESIS 4: Race condition in data loading/display
+            console.log('🔍 HYPOTHESIS 4: Race condition in data loading/display');
+            console.log('🔍 HYPOTHESIS 4: Checking for concurrent data loading issues');
+            console.log('🔍 HYPOTHESIS 4: Data refresh timing analysis');
+            
+            // 🔍 HYPOTHESIS 5: DOM manipulation corruption in updateRecentTransactions
+            console.log('🔍 HYPOTHESIS 5: DOM manipulation corruption in updateRecentTransactions');
+            console.log('🔍 HYPOTHESIS 5: Checking HTML generation integrity');
+            console.log('🔍 HYPOTHESIS 5: Transaction display HTML analysis');
+            
+            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: All 5 hypotheses logged');
+        });
+        
+        // STEP 12: Final comprehensive hypothesis testing
+        console.log('\n[STEP 12] FINAL COMPREHENSIVE HYPOTHESIS TESTING...');
         
         await page.evaluate(() => {
             console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Final analysis...');
