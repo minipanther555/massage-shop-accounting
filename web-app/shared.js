@@ -120,6 +120,8 @@ async function loadTodayData() {
         console.log('🔄 STEP 9: API responses received:');
         console.log('🔄 STEP 9: recentTransactions API response:', recentTransactions);
         console.log('🔄 STEP 9: recentTransactions length:', recentTransactions?.length);
+        console.log('🔄 STEP 9: recentTransactions type:', typeof recentTransactions);
+        console.log('🔄 STEP 9: recentTransactions is array:', Array.isArray(recentTransactions));
         console.log('🔄 STEP 9: expenses API response:', expenses);
         console.log('🔄 STEP 9: expenses length:', expenses?.length);
         
@@ -132,6 +134,8 @@ async function loadTodayData() {
         }
         
         console.log('🔄 STEP 9: Starting transaction mapping...');
+        console.log('🔄 STEP 9: recentTransactions before mapping:', recentTransactions);
+        console.log('🔄 STEP 9: recentTransactions keys (if object):', recentTransactions ? Object.keys(recentTransactions) : 'N/A');
         appData.transactions = recentTransactions.map(t => ({
             id: t.transaction_id,
             timestamp: new Date(t.timestamp),
