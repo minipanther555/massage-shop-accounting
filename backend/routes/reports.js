@@ -269,31 +269,7 @@ router.get('/financial', async (req, res) => {
       params
     );
 
-    // Get duration breakdown
-    const durationBreakdown = await database.all(
-      `SELECT 
-        t.duration,
-        COUNT(*) as count,
-        SUM(t.payment_amount) as revenue
-       FROM transactions t
-       ${whereClause}
-       GROUP BY t.duration
-       ORDER BY revenue DESC`,
-      params
-    );
 
-    // Get location breakdown
-    const locationBreakdown = await database.all(
-      `SELECT 
-        t.location,
-        COUNT(*) as count,
-        SUM(t.payment_amount) as revenue
-       FROM transactions t
-       ${whereClause}
-       GROUP BY t.location
-       ORDER BY revenue DESC`,
-      params
-    );
     
 
     
@@ -342,7 +318,6 @@ router.get('/financial', async (req, res) => {
       },
       breakdowns: {
         by_payment_method: paymentBreakdown,
-        by_duration: durationBreakdown,
         by_location: locationBreakdown
       },
       expenses: expenseSummary,
