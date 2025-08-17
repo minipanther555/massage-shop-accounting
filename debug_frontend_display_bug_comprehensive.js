@@ -7,10 +7,9 @@ async function debugFrontendDisplayBugComprehensive() {
     console.log('🎯 Goal: Find where ฿650 becomes ฿350 in frontend display');
     console.log('============================================================');
 
-    const browser = await puppeteer.launch({ 
-        headless: false, 
-        defaultViewport: null,
-        args: ['--start-maximized']
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
@@ -212,7 +211,7 @@ async function debugFrontendDisplayBugComprehensive() {
         await page.select('#service', 'Foot massage');
         await page.select('#location', 'In-Shop');
         await page.select('#duration', '90');
-        await page.select('#payment-method', 'Cash');
+        await page.select('#payment', 'Cash');
         
         // Wait for pricing to update
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -223,7 +222,7 @@ async function debugFrontendDisplayBugComprehensive() {
         
         // Submit transaction
         console.log('\n[STEP 5] SUBMITTING TRANSACTION WITH COMPREHENSIVE MONITORING...');
-        await page.click('#submit-btn');
+        await page.click('button[type="submit"]');
         
         // Wait for transaction processing
         await new Promise(resolve => setTimeout(resolve, 3000));
