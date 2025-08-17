@@ -448,46 +448,50 @@
             console.log('🔍 STEP 15: Function completed successfully');
         }
 
-        async function handleSubmit(e) {
-            console.log('🔍 HANDLE SUBMIT FUNCTION CALLED!');
-            console.log('🔍 Event type:', e.type);
-            console.log('🔍 Event target:', e.target);
-            console.log('🔍 Preventing default...');
-            e.preventDefault();
+        async function handleSubmit(event) {
+            event.preventDefault();
             
-            console.log('🔍 FORM SUBMISSION STARTED');
+            console.log('🔄 STEP 11: handleSubmit() called - starting transaction submission...');
             
             const selectedMasseuse = document.getElementById('masseuse').value;
-            const nextInLineName = getNextInLineFromStaff();
-            const isUsingNextInLine = selectedMasseuse === nextInLineName;
+            const isUsingNextInLine = selectedMasseuse.includes('(NEXT IN LINE)');
+            
+            if (!selectedMasseuse || selectedMasseuse === 'Select Masseuse') {
+                showToast('Please select a masseuse', 'error');
+                return;
+            }
             
             const location = document.getElementById('location').value;
             const serviceName = document.getElementById('service').value;
             const duration = document.getElementById('duration').value;
             
-            console.log('🔍 FORM VALUES:', {
-                masseuse: selectedMasseuse,
-                location: location,
-                service: serviceName,
-                duration: duration,
-                payment: document.getElementById('payment').value,
-                startTime: document.getElementById('startTime').value,
-                endTime: document.getElementById('endTime').value,
-                customerContact: document.getElementById('customerContact').value
-            });
+            if (!location || location === 'Select Location') {
+                showToast('Please select a location', 'error');
+                return;
+            }
             
-            // Get the calculated price and fee from the pricing display
-            const priceElement = document.getElementById('servicePrice');
-            const feeElement = document.getElementById('masseuseeFee');
-            const price = priceElement ? parseFloat(priceElement.textContent.replace('฿', '')) : 0;
-            const masseuseFee = feeElement ? parseFloat(feeElement.textContent.replace('฿', '')) : 0;
+            if (!serviceName || serviceName === 'Select Service') {
+                showToast('Please select a service', 'error');
+                return;
+            }
             
-            console.log('🔍 PRICING CALCULATED:', { price, masseuseFee });
+            if (!duration || duration === 'Select Duration') {
+                showToast('Please select a duration', 'error');
+                return;
+            }
+            
+            const price = parseFloat(document.getElementById('servicePrice').textContent.replace('฿', ''));
+            const masseuseFee = parseFloat(document.getElementById('masseuseeFee').textContent.replace('฿', ''));
+            
+            if (isNaN(price) || price <= 0) {
+                showToast('Invalid price. Please select a service and duration.', 'error');
+                return;
+            }
             
             const formData = {
                 masseuse: selectedMasseuse,
                 location: location,
-                service: serviceName,
+                service: serviceName, // Send exact service_name, not constructed string
                 duration: duration,
                 price: price,
                 masseuseFee: masseuseFee,
@@ -500,17 +504,63 @@
             console.log('🔍 SUBMITTING FORM DATA:', formData);
             const success = await submitTransaction(formData);
             if (success) {
+                console.log('🔄 STEP 11: Transaction submission successful, starting post-submission operations...');
+                
                 // If using next in line, advance the queue
                 if (isUsingNextInLine) {
+                    console.log('🔄 STEP 11: Advancing queue for next in line...');
                     await advanceQueue(selectedMasseuse);
                 }
                 
                 // Mark masseuse as busy until end time
+                console.log('🔄 STEP 11: Setting masseuse as busy...');
                 await setMasseuseBusy(selectedMasseuse, formData.endTime);
                 
                 clearForm();
-                await updateAllDisplays();
+                
+                // 🔧 STEP 11: Add fallback refresh mechanism
+                console.log('🔄 STEP 11: Starting fallback refresh mechanism...');
+                try {
+                    console.log('🔄 STEP 11: Calling updateAllDisplays()...');
+                    await updateAllDisplays();
+                    console.log('✅ STEP 11: updateAllDisplays() completed successfully');
+                } catch (displayError) {
+                    console.error('❌ STEP 11: updateAllDisplays() failed:', displayError);
+                    console.log('🔄 STEP 11: Attempting manual refresh as fallback...');
+                    
+                    // Manual fallback refresh
+                    try {
+                        console.log('🔄 STEP 11: Manual fallback - calling loadTodayData()...');
+                        if (typeof loadTodayData === 'function') {
+                            await loadTodayData();
+                            console.log('✅ STEP 11: Manual fallback loadTodayData() successful');
+                            
+                            console.log('🔄 STEP 11: Manual fallback - calling updateRecentTransactions()...');
+                            if (typeof updateRecentTransactions === 'function') {
+                                updateRecentTransactions();
+                                console.log('✅ STEP 11: Manual fallback updateRecentTransactions() successful');
+                            } else {
+                                console.log('❌ STEP 11: Manual fallback - updateRecentTransactions function not found');
+                            }
+                        } else {
+                            console.log('❌ STEP 11: Manual fallback - loadTodayData function not found');
+                        }
+                    } catch (fallbackError) {
+                        console.error('❌ STEP 11: Manual fallback also failed:', fallbackError);
+                        console.log('🔄 STEP 11: Last resort - forcing page reload...');
+                        
+                        // Last resort: force page reload
+                        setTimeout(() => {
+                            console.log('🔄 STEP 11: Forcing page reload as last resort...');
+                            window.location.reload();
+                        }, 2000);
+                    }
+                }
+                
                 showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
+                console.log('✅ STEP 11: handleSubmit() completed successfully');
+            } else {
+                console.log('❌ STEP 11: Transaction submission failed');
             }
         }
 
@@ -718,8 +768,21 @@
         }
 
         function updateRecentTransactions() {
+            console.log('🔄 STEP 12: updateRecentTransactions() called - starting display update...');
+            console.log('🔄 STEP 12: Current appData.transactions:', window.appData?.transactions);
+            console.log('🔄 STEP 12: Current appData.transactions length:', window.appData?.transactions?.length);
+            
             const container = document.getElementById('recent-transactions');
+            if (!container) {
+                console.log('❌ STEP 12: ERROR - recent-transactions container not found');
+                return;
+            }
+            console.log('🔄 STEP 12: Found recent-transactions container');
+            
+            console.log('🔄 STEP 12: Calling getRecentTransactions(5)...');
             const recentTransactions = getRecentTransactions(5);
+            console.log('🔄 STEP 12: getRecentTransactions(5) returned:', recentTransactions);
+            console.log('🔄 STEP 12: getRecentTransactions(5) length:', recentTransactions?.length);
 
             // Preserve the header before clearing
             const headerHTML = `
@@ -731,17 +794,24 @@
                 </div>
             `;
             
+            console.log('🔄 STEP 12: Setting container HTML to header...');
             container.innerHTML = headerHTML;
+            console.log('🔄 STEP 12: Container HTML after header:', container.innerHTML.substring(0, 200));
 
             if (recentTransactions.length === 0) {
+                console.log('🔄 STEP 12: No recent transactions, showing empty state...');
                 const div = document.createElement('div');
                 div.className = 'empty-state';
                 div.innerHTML = '<div>No transactions yet today</div>';
                 container.appendChild(div);
+                console.log('🔄 STEP 12: Empty state added to container');
                 return;
             }
 
-            recentTransactions.forEach(transaction => {
+            console.log('🔄 STEP 12: Adding transaction items to container...');
+            recentTransactions.forEach((transaction, index) => {
+                console.log(`🔄 STEP 12: Processing transaction ${index + 1}:`, transaction);
+                
                 const div = document.createElement('div');
                 div.className = 'transaction-item';
                 div.innerHTML = `
@@ -751,7 +821,11 @@
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
                 `;
                 container.appendChild(div);
+                console.log(`🔄 STEP 12: Transaction item ${index + 1} added to container`);
             });
+            
+            console.log('🔄 STEP 12: Final container HTML:', container.innerHTML.substring(0, 500));
+            console.log('✅ STEP 12: updateRecentTransactions() completed successfully');
         }
 
         function updateExpenseDisplay() {

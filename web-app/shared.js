@@ -100,13 +100,35 @@ function loadDataFromLocalStorage() {
 
 // Load today's transactions and expenses
 async function loadTodayData() {
+    console.log('🔄 STEP 9: loadTodayData() called - starting data refresh...');
+    console.log('🔄 STEP 9: Current appData.transactions BEFORE refresh:', appData.transactions);
+    console.log('🔄 STEP 9: Current appData.transactions length BEFORE refresh:', appData.transactions?.length);
+    
     try {
         const today = new Date().toISOString().split('T')[0];
+        console.log('🔄 STEP 9: Target date for data refresh:', today);
+        
+        console.log('🔄 STEP 9: Calling Promise.all for recentTransactions and expenses...');
         const [recentTransactions, expenses] = await Promise.all([
             api.getRecentTransactions(50), // Get more for today's view
             api.getExpenses(today)
         ]);
-
+        
+        console.log('🔄 STEP 9: API responses received:');
+        console.log('🔄 STEP 9: recentTransactions API response:', recentTransactions);
+        console.log('🔄 STEP 9: recentTransactions length:', recentTransactions?.length);
+        console.log('🔄 STEP 9: expenses API response:', expenses);
+        console.log('🔄 STEP 9: expenses length:', expenses?.length);
+        
+        // Check if recentTransactions has the expected structure
+        if (recentTransactions && recentTransactions.length > 0) {
+            console.log('🔄 STEP 9: First transaction structure check:');
+            const firstTransaction = recentTransactions[0];
+            console.log('🔄 STEP 9: First transaction keys:', Object.keys(firstTransaction));
+            console.log('🔄 STEP 9: First transaction sample:', firstTransaction);
+        }
+        
+        console.log('🔄 STEP 9: Starting transaction mapping...');
         appData.transactions = recentTransactions.map(t => ({
             id: t.transaction_id,
             timestamp: new Date(t.timestamp),
@@ -122,7 +144,29 @@ async function loadTodayData() {
             status: t.status
         }));
         
-        console.log('🔍 MAPPED TRANSACTIONS:', appData.transactions);
+        console.log('🔄 STEP 9: Transaction mapping completed:');
+        console.log('🔄 STEP 9: Mapped transactions count:', appData.transactions.length);
+        console.log('🔄 STEP 9: First mapped transaction:', appData.transactions[0]);
+        console.log('🔄 STEP 9: All mapped transactions:', appData.transactions);
+        
+        // Check if our new transaction (May เมย์, Foot massage, ฿650) is in the mapped data
+        if (appData.transactions.length > 0) {
+            const newTransactionFound = appData.transactions.some(t => 
+                t.masseuse === 'May เมย์' && 
+                t.service === 'Foot massage' && 
+                t.paymentAmount === 650
+            );
+            console.log('🔍 STEP 9: New transaction (May เมย์, Foot massage, ฿650) found in mapped data:', newTransactionFound);
+            
+            if (newTransactionFound) {
+                const foundTransaction = appData.transactions.find(t => 
+                    t.masseuse === 'May เมย์' && 
+                    t.service === 'Foot massage' && 
+                    t.paymentAmount === 650
+                );
+                console.log('✅ STEP 9: Found new transaction details:', foundTransaction);
+            }
+        }
 
         appData.expenses = expenses.map(e => ({
             id: e.id.toString(),
@@ -130,10 +174,21 @@ async function loadTodayData() {
             amount: e.amount,
             timestamp: new Date(e.timestamp)
         }));
+        
+        console.log('🔄 STEP 9: Expenses mapping completed:');
+        console.log('🔄 STEP 9: Mapped expenses count:', appData.expenses.length);
+        console.log('🔄 STEP 9: All mapped expenses:', appData.expenses);
+        
+        console.log('✅ STEP 9: loadTodayData() completed successfully');
+        console.log('✅ STEP 9: Final appData.transactions length:', appData.transactions.length);
+        console.log('✅ STEP 9: Final appData.expenses length:', appData.expenses.length);
+        
     } catch (error) {
-        console.error('Failed to load today\'s data:', error);
+        console.error('❌ STEP 9: loadTodayData() failed with error:', error);
+        console.error('❌ STEP 9: Error stack:', error.stack);
         appData.transactions = [];
         appData.expenses = [];
+        throw error; // Re-throw to let caller handle it
     }
 }
 
@@ -261,12 +316,79 @@ async function submitTransaction(formData) {
             exitCorrectionMode();
         }
 
-        // Refresh data
-        await loadTodayData();
+        // 🔧 STEP 8: Add comprehensive logging and error handling for data refresh
+        console.log('🔄 STEP 8: Starting data refresh after transaction creation...');
+        console.log('🔄 STEP 8: appData.transactions BEFORE loadTodayData:', appData.transactions);
+        console.log('🔄 STEP 8: appData.transactions length BEFORE loadTodayData:', appData.transactions?.length);
+        
+        try {
+            // Refresh data
+            console.log('🔄 STEP 8: Calling loadTodayData()...');
+            await loadTodayData();
+            console.log('🔄 STEP 8: loadTodayData() completed successfully');
+            console.log('🔄 STEP 8: appData.transactions AFTER loadTodayData:', appData.transactions);
+            console.log('🔄 STEP 8: appData.transactions length AFTER loadTodayData:', appData.transactions?.length);
+            
+            // Verify data was loaded correctly
+            if (appData.transactions && appData.transactions.length > 0) {
+                console.log('✅ STEP 8: Data refresh successful - transactions loaded:', appData.transactions.length);
+                
+                // Check if our new transaction is in the list
+                const newTransactionFound = appData.transactions.some(t => 
+                    t.masseuse === formData.masseuse && 
+                    t.service === formData.service && 
+                    t.paymentAmount === formData.price
+                );
+                console.log('🔍 STEP 8: New transaction found in refreshed data:', newTransactionFound);
+                
+                if (newTransactionFound) {
+                    console.log('✅ STEP 8: SUCCESS - New transaction appears in refreshed data');
+                } else {
+                    console.log('❌ STEP 8: WARNING - New transaction NOT found in refreshed data');
+                    console.log('🔍 STEP 8: This suggests the transaction was not stored in the database or there is a data mapping issue');
+                }
+            } else {
+                console.log('❌ STEP 8: ERROR - Data refresh failed - appData.transactions is empty or undefined');
+                console.log('🔍 STEP 8: This suggests loadTodayData() is not working correctly');
+            }
+        } catch (refreshError) {
+            console.error('❌ STEP 8: ERROR during data refresh:', refreshError);
+            console.log('🔄 STEP 8: Attempting fallback data refresh...');
+            
+            // Fallback: try to manually refresh transaction data
+            try {
+                console.log('🔄 STEP 8: Fallback - manually calling API to get recent transactions...');
+                const recentTransactions = await api.getRecentTransactions(50);
+                console.log('🔄 STEP 8: Fallback - API response:', recentTransactions);
+                
+                if (recentTransactions && recentTransactions.length > 0) {
+                    appData.transactions = recentTransactions.map(t => ({
+                        id: t.transaction_id,
+                        timestamp: new Date(t.timestamp),
+                        date: new Date(t.date),
+                        masseuse: t.masseuse_name,
+                        service: t.service_type,
+                        paymentAmount: t.payment_amount,
+                        paymentMethod: t.payment_method,
+                        masseuseeFee: t.masseuse_fee,
+                        startTime: t.start_time,
+                        endTime: t.end_time,
+                        customerContact: t.customer_contact || "",
+                        status: t.status
+                    }));
+                    console.log('✅ STEP 8: Fallback successful - transactions loaded:', appData.transactions.length);
+                } else {
+                    console.log('❌ STEP 8: Fallback failed - no transactions returned from API');
+                }
+            } catch (fallbackError) {
+                console.error('❌ STEP 8: Fallback also failed:', fallbackError);
+            }
+        }
 
         showToast("Transaction logged successfully");
         return true;
     } catch (error) {
+        console.error('❌ STEP 8: Transaction creation failed:', error);
         showToast(`Failed to create transaction: ${error.message}`, 'error');
         return false;
     }
@@ -513,12 +635,47 @@ async function getTodaySummary() {
 
 // Get recent transactions
 function getRecentTransactions(limit = 5) {
-    console.log('🔍 ALL TRANSACTIONS:', appData.transactions);
+    console.log('🔄 STEP 10: getRecentTransactions() called with limit:', limit);
+    console.log('🔄 STEP 10: Current appData.transactions:', appData.transactions);
+    console.log('🔄 STEP 10: Current appData.transactions length:', appData.transactions?.length);
+    
+    if (!appData.transactions || appData.transactions.length === 0) {
+        console.log('❌ STEP 10: WARNING - appData.transactions is empty or undefined');
+        console.log('🔄 STEP 10: Returning empty array');
+        return [];
+    }
+    
+    console.log('🔄 STEP 10: Filtering transactions by status...');
     const filtered = appData.transactions
         .filter(t => t.status === 'ACTIVE' || t.status.includes('CORRECTED'));
-    console.log('🔍 FILTERED TRANSACTIONS:', filtered);
+    console.log('🔄 STEP 10: Filtered transactions count:', filtered.length);
+    console.log('🔄 STEP 10: Filtered transactions:', filtered);
+    
+    console.log('🔄 STEP 10: Applying limit and reversing order...');
     const recent = filtered.slice(-limit).reverse();
-    console.log('🔍 RECENT TRANSACTIONS:', recent);
+    console.log('🔄 STEP 10: Final recent transactions count:', recent.length);
+    console.log('🔄 STEP 10: Final recent transactions:', recent);
+    
+    // Check if our new transaction (May เมย์, Foot massage, ฿650) is in the filtered result
+    if (recent.length > 0) {
+        const newTransactionFound = recent.some(t => 
+            t.masseuse === 'May เมย์' && 
+            t.service === 'Foot massage' && 
+            t.paymentAmount === 650
+        );
+        console.log('🔍 STEP 10: New transaction (May เมย์, Foot massage, ฿650) found in filtered result:', newTransactionFound);
+        
+        if (newTransactionFound) {
+            const foundTransaction = recent.find(t => 
+                t.masseuse === 'May เมย์' && 
+                t.service === 'Foot massage' && 
+                t.paymentAmount === 650
+            );
+            console.log('✅ STEP 10: Found new transaction in filtered result:', foundTransaction);
+        }
+    }
+    
+    console.log('✅ STEP 10: getRecentTransactions() returning:', recent);
     return recent;
 }
 
