@@ -18,6 +18,9 @@ let appData = {
     originalTransactionId: null
 };
 
+// Make appData globally accessible to fix scope issues
+window.appData = appData;
+
 // Load data from API
 async function loadData() {
     try {
