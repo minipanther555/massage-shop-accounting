@@ -34,43 +34,43 @@
                 <div class="section">
                     <div class="section-header">TRANSACTION DETAILS</div>
                     <div class="section-content">
-                        <form id="transaction-form">
+                        <form id="transaction-form" method="POST" action="javascript:void(0)" onsubmit="return false;">
                             <input type="hidden" name="csrf_token" value="{{ an_actual_token }}">
                             <div class="form-group">
                                 <label for="masseuse">Masseuse Name:</label>
-                                                <select id="masseuse" name="masseuse" required>
-                    <option value="">Select Masseuse</option>
-                </select>
+                                                                                <select id="masseuse" name="masseuse" required>
+                                    <option value="">Select Masseuse</option>
+                                </select>
                             </div>
 
                             <div class="form-group">
                                 <label for="location">Service Location:</label>
-                                                <select id="location" name="location" required>
-                    <option value="">Select Location</option>
-                    <option value="In-Shop">In-Shop</option>
-                    <option value="Home Service">Home Service</option>
-                </select>
+                                <select id="location" name="location" required>
+                                    <option value="">Select Location</option>
+                                    <option value="In-Shop">In-Shop</option>
+                                    <option value="Home Service">Home Service</option>
+                                </select>
                             </div>
 
                             <div class="form-group">
                                 <label for="service">Service Type:</label>
-                                                <select id="service" name="service" required>
-                    <option value="">Select Service</option>
-                </select>
+                                <select id="service" name="service" required>
+                                    <option value="">Select Service</option>
+                                </select>
                             </div>
 
                             <div class="form-group">
                                 <label for="duration">Duration:</label>
-                                                <select id="duration" name="duration" required>
-                    <option value="">Select Duration</option>
-                </select>
+                                <select id="duration" name="duration" required>
+                                    <option value="">Select Duration</option>
+                                </select>
                             </div>
 
                             <div class="form-group">
                                 <label for="payment">Payment Method:</label>
-                                                <select id="payment" name="payment" required>
-                    <option value="">Select Payment Method</option>
-                </select>
+                                <select id="payment" name="payment" required>
+                                    <option value="">Select Payment Method</option>
+                                </select>
                             </div>
 
                             <div class="form-group">
@@ -80,9 +80,9 @@
 
                             <div class="form-group">
                                 <label for="endTime">End Time:</label>
-                                                <select id="endTime" name="endTime" required>
-                    <option value="">Select End Time</option>
-                </select>
+                                <select id="endTime" name="endTime" required>
+                                    <option value="">Select End Time</option>
+                                </select>
                             </div>
 
                             <div class="form-group">
@@ -477,12 +477,12 @@
             });
             
             const formData = {
-                masseuse_name: selectedMasseuse,
-                service_type: serviceName, // Send exact service_name, not constructed string
-                payment_method: document.getElementById('payment').value,
-                start_time: document.getElementById('startTime').value,
-                end_time: document.getElementById('endTime').value,
-                customer_contact: document.getElementById('customerContact').value
+                masseuse: selectedMasseuse,
+                service: serviceName, // Send exact service_name, not constructed string
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value
             };
 
             console.log('🔍 SUBMITTING FORM DATA:', formData);
