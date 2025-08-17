@@ -187,6 +187,185 @@ async function debugPricingBugReproduction() {
             }
         });
         
+        // ADD COMPREHENSIVE FORM SUBMISSION LOGGING
+        await page.evaluate(() => {
+            console.log('🔍 COMPREHENSIVE FORM SUBMISSION LOGGING ENABLED');
+            
+            // Override the form submit event handler
+            const form = document.querySelector('#transaction-form');
+            if (form) {
+                const originalSubmit = form.onsubmit;
+                
+                form.onsubmit = function(event) {
+                    console.log('🚀 FORM SUBMIT EVENT TRIGGERED!');
+                    console.log('📋 Event details:', event);
+                    
+                    // Log all form fields before submission
+                    const formElements = form.elements;
+                    console.log('📋 All form elements:', formElements.length);
+                    
+                    const formData = {};
+                    for (let i = 0; i < formElements.length; i++) {
+                        const element = formElements[i];
+                        if (element.name || element.id) {
+                            const name = element.name || element.id;
+                            let value;
+                            
+                            if (element.type === 'select-one') {
+                                value = element.options[element.selectedIndex]?.text || element.value;
+                                console.log(`📝 Select field ${name}: "${value}" (value: ${element.value})`);
+                            } else if (element.type === 'checkbox') {
+                                value = element.checked;
+                                console.log(`📝 Checkbox field ${name}: ${value}`);
+                            } else {
+                                value = element.value;
+                                console.log(`📝 Input field ${name}: "${value}"`);
+                            }
+                            
+                            formData[name] = value;
+                        }
+                    }
+                    
+                    console.log('📋 Complete form data collected:', formData);
+                    
+                    // Call original submit handler if it exists
+                    if (originalSubmit) {
+                        console.log('🚀 Calling original form submit handler...');
+                        return originalSubmit.call(this, event);
+                    }
+                    
+                    return true;
+                };
+                
+                console.log('✅ Form submit event handler overridden with logging');
+            }
+            
+            // Override the populateDropdowns function to see what data is loaded
+            if (window.populateDropdowns) {
+                const originalPopulateDropdowns = window.populateDropdowns;
+                
+                window.populateDropdowns = function(services, paymentMethods, roster) {
+                    console.log('🚀 POPULATE DROPDOWNS CALLED!');
+                    console.log('📋 Services data:', services);
+                    console.log('📋 Payment methods data:', paymentMethods);
+                    console.log('📋 Roster data:', roster);
+                    
+                    const result = originalPopulateDropdowns.call(this, services, paymentMethods, roster);
+                    console.log('✅ populateDropdowns result:', result);
+                    return result;
+                };
+                
+                console.log('✅ populateDropdowns function overridden with logging');
+            }
+            
+            // Override the calculatePrice function to see pricing logic
+            if (window.calculatePrice) {
+                const originalCalculatePrice = window.calculatePrice;
+                
+                window.calculatePrice = function(serviceType, duration) {
+                    console.log('🚀 CALCULATE PRICE CALLED!');
+                    console.log('📋 Service type:', serviceType);
+                    console.log('📋 Duration:', duration);
+                    
+                    const result = originalCalculatePrice.call(this, serviceType, duration);
+                    console.log('✅ calculatePrice result:', result);
+                    return result;
+                };
+                
+                console.log('✅ calculatePrice function overridden with logging');
+            }
+            
+            // Override the updateTimeDropdowns function
+            if (window.updateTimeDropdowns) {
+                const originalUpdateTimeDropdowns = window.updateTimeDropdowns;
+                
+                window.updateTimeDropdowns = function(duration) {
+                    console.log('🚀 UPDATE TIME DROPDOWNS CALLED!');
+                    console.log('📋 Duration:', duration);
+                    
+                    const result = originalUpdateTimeDropdowns.call(this, duration);
+                    console.log('✅ updateTimeDropdowns result:', result);
+                    return result;
+                };
+                
+                console.log('✅ updateTimeDropdowns function overridden with logging');
+            }
+            
+            // Monitor all API calls
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options) {
+                console.log('🚀 FETCH API CALL INTERCEPTED!');
+                console.log('📋 URL:', url);
+                console.log('📋 Options:', options);
+                
+                if (options && options.body) {
+                    console.log('📋 Request body:', options.body);
+                    if (options.body instanceof FormData) {
+                        const entries = Array.from(options.body.entries());
+                        console.log('📋 FormData entries:', entries);
+                    }
+                }
+                
+                return originalFetch.call(this, url, options).then(response => {
+                    console.log('📥 Fetch response status:', response.status);
+                    console.log('📥 Fetch response URL:', response.url);
+                    
+                    // Clone response to read body
+                    const clonedResponse = response.clone();
+                    clonedResponse.text().then(text => {
+                        try {
+                            const json = JSON.parse(text);
+                            console.log('📥 Fetch response body (JSON):', json);
+                        } catch (e) {
+                            console.log('📥 Fetch response body (text):', text.substring(0, 500));
+                        }
+                    });
+                    
+                    return response;
+                });
+            };
+            
+            console.log('✅ Fetch API overridden with logging');
+            
+            // Monitor all XMLHttpRequest calls
+            const originalXHROpen = XMLHttpRequest.prototype.open;
+            const originalXHRSend = XMLHttpRequest.prototype.send;
+            
+            XMLHttpRequest.prototype.open = function(method, url, ...args) {
+                console.log('🚀 XMLHttpRequest OPEN:', method, url);
+                this._method = method;
+                this._url = url;
+                return originalXHROpen.call(this, method, url, ...args);
+            };
+            
+            XMLHttpRequest.prototype.send = function(data) {
+                console.log('🚀 XMLHttpRequest SEND:', data);
+                if (data) {
+                    console.log('📋 XHR Request data:', data);
+                    if (data instanceof FormData) {
+                        const entries = Array.from(data.entries());
+                        console.log('📋 XHR FormData entries:', entries);
+                    }
+                }
+                
+                // Monitor response
+                this.addEventListener('load', function() {
+                    console.log('📥 XHR Response status:', this.status);
+                    console.log('📥 XHR Response URL:', this._url);
+                    try {
+                        const response = JSON.parse(this.responseText);
+                        console.log('📥 XHR Response body:', response);
+                    } catch (e) {
+                        console.log('📥 XHR Response body (text):', this.responseText.substring(0, 500));
+                    }
+                });
+                
+                return originalXHRSend.call(this, data);
+            };
+            
+            console.log('✅ XMLHttpRequest overridden with logging');
+        });
+        
         // Click submit button
         console.log('🔍 Clicking submit button...');
         await page.click('button[type="submit"]');
@@ -310,9 +489,100 @@ async function debugPricingBugReproduction() {
             console.log('🔍 Raw HTML content:', recentTransactions.rawHTML);
         }
         
+        // ADD COMPREHENSIVE POST-SUBMISSION ANALYSIS
+        console.log('\n[STEP 9] COMPREHENSIVE POST-SUBMISSION ANALYSIS...');
+        
+        const postSubmissionAnalysis = await page.evaluate(() => {
+            console.log('🔍 COMPREHENSIVE POST-SUBMISSION ANALYSIS:');
+            
+            // Check if any JavaScript errors occurred
+            const consoleErrors = [];
+            const originalConsoleError = console.error;
+            console.error = function(...args) {
+                consoleErrors.push(args.join(' '));
+                originalConsoleError.apply(console, args);
+            };
+            
+            // Check the current state of the form
+            const form = document.querySelector('#transaction-form');
+            const formState = {};
+            if (form) {
+                const inputs = form.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    if (input.name || input.id) {
+                        const name = input.name || input.id;
+                        let value;
+                        
+                        if (input.type === 'select-one') {
+                            value = input.options[input.selectedIndex]?.text || input.value;
+                        } else if (input.type === 'checkbox') {
+                            value = input.checked;
+                        } else {
+                            value = input.value;
+                        }
+                        
+                        formState[name] = value;
+                    }
+                });
+            }
+            
+            // Check if any global variables or functions are missing
+            const globalState = {
+                hasSubmitTransaction: typeof window.submitTransaction === 'function',
+                hasApi: typeof window.api === 'object',
+                hasCreateTransaction: window.api && typeof window.api.createTransaction === 'function',
+                hasPopulateDropdowns: typeof window.populateDropdowns === 'function',
+                hasCalculatePrice: typeof window.calculatePrice === 'function',
+                hasUpdateTimeDropdowns: typeof window.updateTimeDropdowns === 'function'
+            };
+            
+            // Check if the page has any error indicators
+            const pageErrors = {
+                hasErrorClass: document.body.classList.contains('error'),
+                hasErrorStyle: document.body.style.color === 'red',
+                errorElements: document.querySelectorAll('[class*="error"], [id*="error"], [style*="error"]').length
+            };
+            
+            return {
+                formState,
+                globalState,
+                pageErrors,
+                consoleErrors: consoleErrors.slice(-10) // Last 10 errors
+            };
+        });
+        
+        console.log('📋 Post-submission analysis:', postSubmissionAnalysis);
+        
+        // Check if there are any network errors or failed requests
+        console.log('\n[STEP 10] NETWORK REQUEST ANALYSIS...');
+        
+        const networkAnalysis = await page.evaluate(() => {
+            console.log('🔍 NETWORK REQUEST ANALYSIS:');
+            
+            // Check if there are any pending requests
+            const pendingRequests = [];
+            if (window.api && window.api.pendingRequests) {
+                pendingRequests.push(...window.api.pendingRequests);
+            }
+            
+            // Check if there are any failed requests
+            const failedRequests = [];
+            if (window.api && window.api.failedRequests) {
+                failedRequests.push(...window.api.failedRequests);
+            }
+            
+            return {
+                pendingRequests: pendingRequests.length,
+                failedRequests: failedRequests.length
+            };
+        });
+        
+        console.log('📋 Network analysis:', networkAnalysis);
+        
         console.log('\n🔍 PRICING BUG REPRODUCTION COMPLETE');
         console.log('=====================================');
         console.log('Check the output above for the root cause of the pricing mismatch');
+        console.log('Comprehensive logging has been added to capture the complete form submission flow');
         
     } catch (error) {
         console.error('❌ ERROR during pricing bug reproduction:', error);
