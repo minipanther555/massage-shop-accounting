@@ -128,13 +128,13 @@ router.post('/', async (req, res) => {
     const result = await database.run(
       `INSERT INTO transactions (
         transaction_id, timestamp, date, masseuse_name, service_type,
-        payment_amount, payment_method, masseuse_fee, start_time, end_time,
-        customer_contact, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        location, duration, payment_amount, payment_method, masseuse_fee, 
+        start_time, end_time, customer_contact, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         transaction_id, timestamp, date, masseuse_name, service_type,
-        service.price, payment_method, service.masseuse_fee, start_time, end_time,
-        customer_contact, status
+        location, duration, service.price, payment_method, service.masseuse_fee, 
+        start_time, end_time, customer_contact, status
       ]
     );
 

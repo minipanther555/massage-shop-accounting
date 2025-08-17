@@ -41,6 +41,8 @@ class Database {
         date DATE NOT NULL,
         masseuse_name TEXT NOT NULL,
         service_type TEXT NOT NULL,
+        location TEXT NOT NULL,
+        duration INTEGER NOT NULL,
         payment_amount DECIMAL(10,2) NOT NULL,
         payment_method TEXT NOT NULL,
         masseuse_fee DECIMAL(10,2) NOT NULL,
@@ -123,6 +125,8 @@ class Database {
         date DATE NOT NULL,
         masseuse_name TEXT NOT NULL,
         service_type TEXT NOT NULL,
+        location TEXT NOT NULL,
+        duration INTEGER NOT NULL,
         payment_amount DECIMAL(10,2) NOT NULL,
         payment_method TEXT NOT NULL,
         masseuse_fee DECIMAL(10,2) NOT NULL,
@@ -174,6 +178,18 @@ class Database {
         { name: 'notes', definition: 'TEXT' }
       ];
 
+      // Add missing columns to transactions table
+      const transactionColumns = [
+        { name: 'location', definition: 'TEXT' },
+        { name: 'duration', definition: 'INTEGER' }
+      ];
+
+      // Add missing columns to archived_transactions table
+      const archivedTransactionColumns = [
+        { name: 'location', definition: 'TEXT' },
+        { name: 'duration', definition: 'INTEGER' }
+      ];
+
       for (const column of missingColumns) {
         try {
           await this.run(`ALTER TABLE staff_roster ADD COLUMN ${column.name} ${column.definition}`);
@@ -183,6 +199,34 @@ class Database {
             console.log(`✅ Column staff_roster.${column.name} already exists`);
           } else {
             console.error(`❌ Failed to add column staff_roster.${column.name}:`, error.message);
+          }
+        }
+      }
+
+      // Add missing columns to transactions table
+      for (const column of transactionColumns) {
+        try {
+          await this.run(`ALTER TABLE transactions ADD COLUMN ${column.name} ${column.definition}`);
+          console.log(`✅ Added column transactions.${column.name}`);
+        } catch (error) {
+          if (error.message.includes('duplicate column name')) {
+            console.log(`✅ Column transactions.${column.name} already exists`);
+          } else {
+            console.error(`❌ Failed to add column transactions.${column.name}:`, error.message);
+          }
+        }
+      }
+
+      // Add missing columns to archived_transactions table
+      for (const column of archivedTransactionColumns) {
+        try {
+          await this.run(`ALTER TABLE archived_transactions ADD COLUMN ${column.name} ${column.definition}`);
+          console.log(`✅ Added column archived_transactions.${column.name}`);
+        } catch (error) {
+          if (error.message.includes('duplicate column name')) {
+            console.log(`✅ Column archived_transactions.${column.name} already exists`);
+          } else {
+            console.error(`❌ Failed to add column archived_transactions.${column.name}:`, error.message);
           }
         }
       }
