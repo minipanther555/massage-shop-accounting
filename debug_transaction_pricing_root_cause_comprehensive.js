@@ -80,7 +80,7 @@ async function debugTransactionPricingRootCause() {
         await page.evaluate(() => {
             console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: Starting frontend display bug investigation...');
             
-            // Override loadTodayData with comprehensive logging for frontend display hypotheses
+            // Override loadTodayData with comprehensive logging for ALL 5 hypotheses
             if (window.loadTodayData) {
                 const originalLoadTodayData = window.loadTodayData;
                 window.loadTodayData = async function() {
@@ -100,13 +100,19 @@ async function debugTransactionPricingRootCause() {
                         console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction paymentAmount:', first.paymentAmount);
                         console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction paymentAmount type:', typeof first.paymentAmount);
                         console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 1: First transaction paymentAmount === 650:', first.paymentAmount === 650);
+                        
+                        // 🔍 HYPOTHESIS 2: Field name mismatch in API response
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 2: Field name mismatch in API response');
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 2: Checking if payment_amount field exists in original data');
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 2: First transaction all keys:', Object.keys(first));
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 2: Looking for payment_amount vs paymentAmount');
                     }
                     
                     return result;
                 };
             }
             
-            // Override getRecentTransactions with comprehensive logging
+            // Override getRecentTransactions with comprehensive logging for ALL 5 hypotheses
             if (window.getRecentTransactions) {
                 const originalGetRecentTransactions = window.getRecentTransactions;
                 window.getRecentTransactions = function(limit) {
@@ -122,20 +128,38 @@ async function debugTransactionPricingRootCause() {
                         console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount type:', typeof first.paymentAmount);
                         console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount === 650:', first.paymentAmount === 650);
                         console.log('🔍 FRONTEND DISPLAY HYPOTHESIS TESTING: paymentAmount === "650":', first.paymentAmount === "650");
+                        
+                        // 🔍 HYPOTHESIS 3: Data type conversion issues during mapping
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 3: Data type conversion issues during mapping');
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 3: paymentAmount as number:', Number(first.paymentAmount));
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 3: paymentAmount as string:', String(first.paymentAmount));
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 3: paymentAmount parsed as int:', parseInt(first.paymentAmount));
+                        console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 3: paymentAmount parsed as float:', parseFloat(first.paymentAmount));
                     }
                     
                     const result = originalGetRecentTransactions.call(this, limit);
                     console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: getRecentTransactions result:', result);
+                    
+                    // 🔍 HYPOTHESIS 4: Race condition in data loading/display
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 4: Race condition in data loading/display');
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 4: Checking for concurrent data loading issues');
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 4: Data refresh timing analysis');
+                    
                     return result;
                 };
             }
             
-            // Override updateRecentTransactions with comprehensive logging
+            // Override updateRecentTransactions with comprehensive logging for ALL 5 hypotheses
             if (window.updateRecentTransactions) {
                 const originalUpdateRecentTransactions = window.updateRecentTransactions;
                 window.updateRecentTransactions = function() {
                     console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: updateRecentTransactions called!');
                     console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: DOM manipulation starting...');
+                    
+                    // 🔍 HYPOTHESIS 5: HTML generation corruption in updateRecentTransactions
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 5: HTML generation corruption in updateRecentTransactions');
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 5: Checking HTML generation integrity');
+                    console.log('🔍 FRONTEND DISPLAY HYPOTHESIS 5: Transaction display HTML analysis');
                     
                     const result = originalUpdateRecentTransactions.call(this);
                     console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: updateRecentTransactions completed');
@@ -143,7 +167,7 @@ async function debugTransactionPricingRootCause() {
                 };
             }
             
-            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: All function overrides installed');
+            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: All 5 hypotheses function overrides installed');
         });
         
         // STEP 4: Fill form with specific bug combination
@@ -381,29 +405,37 @@ async function debugTransactionPricingRootCause() {
                 console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount type:', typeof first.paymentAmount);
                 console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount === 650:', first.paymentAmount === 650);
                 console.log('🔍 HYPOTHESIS 1: First transaction paymentAmount === "650":', first.paymentAmount === "650");
+                
+                // 🔍 HYPOTHESIS 2: Field name mismatch (payment_amount vs paymentAmount)
+                console.log('🔍 HYPOTHESIS 2: Field name mismatch (payment_amount vs paymentAmount)');
+                console.log('🔍 HYPOTHESIS 2: Looking for payment_amount field in API response');
+                console.log('🔍 HYPOTHESIS 2: Checking if field mapping is correct');
+                console.log('🔍 HYPOTHESIS 2: First transaction all keys:', Object.keys(first));
+                console.log('🔍 HYPOTHESIS 2: Looking for payment_amount vs paymentAmount');
+                
+                // 🔍 HYPOTHESIS 3: Data type conversion issues in mapping
+                console.log('🔍 HYPOTHESIS 3: Data type conversion issues in mapping');
+                console.log('🔍 HYPOTHESIS 3: Checking if paymentAmount gets corrupted during mapping');
+                console.log('🔍 HYPOTHESIS 3: String vs Number handling in transaction mapping');
+                console.log('🔍 HYPOTHESIS 3: paymentAmount as number:', Number(first.paymentAmount));
+                console.log('🔍 HYPOTHESIS 3: paymentAmount as string:', String(first.paymentAmount));
+                console.log('🔍 HYPOTHESIS 3: paymentAmount parsed as int:', parseInt(first.paymentAmount));
+                console.log('🔍 HYPOTHESIS 3: paymentAmount parsed as float:', parseFloat(first.paymentAmount));
             }
-            
-            // 🔍 HYPOTHESIS 2: Field name mismatch (payment_amount vs paymentAmount)
-            console.log('🔍 HYPOTHESIS 2: Field name mismatch (payment_amount vs paymentAmount)');
-            console.log('🔍 HYPOTHESIS 2: Looking for payment_amount field in API response');
-            console.log('🔍 HYPOTHESIS 2: Checking if field mapping is correct');
-            
-            // 🔍 HYPOTHESIS 3: Data type conversion issues in mapping
-            console.log('🔍 HYPOTHESIS 3: Data type conversion issues in mapping');
-            console.log('🔍 HYPOTHESIS 3: Checking if paymentAmount gets corrupted during mapping');
-            console.log('🔍 HYPOTHESIS 3: String vs Number handling in transaction mapping');
             
             // 🔍 HYPOTHESIS 4: Race condition in data loading/display
             console.log('🔍 HYPOTHESIS 4: Race condition in data loading/display');
             console.log('🔍 HYPOTHESIS 4: Checking for concurrent data loading issues');
             console.log('🔍 HYPOTHESIS 4: Data refresh timing analysis');
+            console.log('🔍 HYPOTHESIS 4: Current timestamp:', new Date().toISOString());
             
             // 🔍 HYPOTHESIS 5: DOM manipulation corruption in updateRecentTransactions
             console.log('🔍 HYPOTHESIS 5: DOM manipulation corruption in updateRecentTransactions');
             console.log('🔍 HYPOTHESIS 5: Checking HTML generation integrity');
             console.log('🔍 HYPOTHESIS 5: Transaction display HTML analysis');
+            console.log('🔍 HYPOTHESIS 5: Recent transactions container exists:', !!document.getElementById('recent-transactions'));
             
-            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: All 5 hypotheses logged');
+            console.log('🧪 FRONTEND DISPLAY HYPOTHESIS TESTING: All 5 hypotheses logged with comprehensive data');
         });
         
         // STEP 12: Final comprehensive hypothesis testing
