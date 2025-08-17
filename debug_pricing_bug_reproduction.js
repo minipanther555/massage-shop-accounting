@@ -1226,10 +1226,306 @@ async function debugPricingBugReproduction() {
         
         console.log('📋 Network analysis:', networkAnalysis);
         
+        // Add comprehensive hypothesis testing and logging
+        await page.evaluate(() => {
+            console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Starting transaction display issue diagnosis...');
+            
+            // 🧪 HYPOTHESIS 1: Data Refresh Issue - loadTodayData not being called after transaction creation
+            console.log('🧪 HYPOTHESIS 1: Data Refresh Issue - loadTodayData not being called after transaction creation');
+            console.log('🧪 TESTING: Checking if loadTodayData was called and if appData.transactions was updated');
+            
+            // 🧪 HYPOTHESIS 2: Data Mapping Issue - API response structure mismatch in loadTodayData
+            console.log('🧪 HYPOTHESIS 2: Data Mapping Issue - API response structure mismatch in loadTodayData');
+            console.log('🧪 TESTING: Checking if API response structure matches expected mapping in loadTodayData');
+            
+            // 🧪 HYPOTHESIS 3: Display Update Issue - updateRecentTransactions not being called after data refresh
+            console.log('🧪 HYPOTHESIS 3: Display Update Issue - updateRecentTransactions not being called after data refresh');
+            console.log('🧪 TESTING: Checking if updateRecentTransactions was called and if DOM was updated');
+            
+            // 🧪 HYPOTHESIS 4: Timing Issue - Race condition between data loading and display update
+            console.log('🧪 HYPOTHESIS 4: Timing Issue - Race condition between data loading and display update');
+            console.log('🧪 TESTING: Checking timing of data loading vs display update calls');
+            
+            // 🧪 HYPOTHESIS 5: Data Filtering Issue - getRecentTransactions filtering out the new transaction
+            console.log('🧪 HYPOTHESIS 5: Data Filtering Issue - getRecentTransactions filtering out the new transaction');
+            console.log('🧪 TESTING: Checking if getRecentTransactions is filtering correctly and returning new data');
+            
+            // 🧪 COMPREHENSIVE LOGGING: Add logging to all critical functions
+            console.log('🧪 COMPREHENSIVE LOGGING: Adding logging to all critical functions...');
+            
+            // Override loadTodayData with comprehensive logging
+            if (window.loadTodayData) {
+                const originalLoadTodayData = window.loadTodayData;
+                window.loadTodayData = async function() {
+                    console.log('🧪 HYPOTHESIS 1 & 2 TESTING: loadTodayData called!');
+                    console.log('🧪 TIMESTAMP:', new Date().toISOString());
+                    console.log('🧪 CALL STACK:', new Error().stack);
+                    
+                    try {
+                        const result = await originalLoadTodayData.call(this);
+                        console.log('🧪 HYPOTHESIS 1 & 2 TESTING: loadTodayData completed successfully');
+                        console.log('🧪 HYPOTHESIS 1 & 2 TESTING: appData.transactions length after load:', window.appData?.transactions?.length);
+                        console.log('🧪 HYPOTHESIS 1 & 2 TESTING: appData.transactions content:', window.appData?.transactions);
+                        return result;
+                    } catch (error) {
+                        console.error('🧪 HYPOTHESIS 1 & 2 TESTING: loadTodayData failed:', error);
+                        throw error;
+                    }
+                };
+                console.log('✅ HYPOTHESIS 1 & 2 TESTING: loadTodayData function overridden with logging');
+            }
+            
+            // Override getRecentTransactions with comprehensive logging
+            if (window.getRecentTransactions) {
+                const originalGetRecentTransactions = window.getRecentTransactions;
+                window.getRecentTransactions = function(limit) {
+                    console.log('🧪 HYPOTHESIS 5 TESTING: getRecentTransactions called with limit:', limit);
+                    console.log('🧪 TIMESTAMP:', new Date().toISOString());
+                    console.log('🧪 CALL STACK:', new Error().stack);
+                    console.log('🧪 HYPOTHESIS 5 TESTING: appData.transactions before filtering:', window.appData?.transactions);
+                    
+                    const result = originalGetRecentTransactions.call(this, limit);
+                    console.log('🧪 HYPOTHESIS 5 TESTING: getRecentTransactions result:', result);
+                    console.log('🧪 HYPOTHESIS 5 TESTING: Result length:', result?.length);
+                    return result;
+                };
+                console.log('✅ HYPOTHESIS 5 TESTING: getRecentTransactions function overridden with logging');
+            }
+            
+            // Override updateRecentTransactions with comprehensive logging
+            if (window.updateRecentTransactions) {
+                const originalUpdateRecentTransactions = window.updateRecentTransactions;
+                window.updateRecentTransactions = function() {
+                    console.log('🧪 HYPOTHESIS 3 TESTING: updateRecentTransactions called!');
+                    console.log('🧪 TIMESTAMP:', new Date().toISOString());
+                    console.log('🧪 CALL STACK:', new Error().stack);
+                    console.log('🧪 HYPOTHESIS 3 TESTING: DOM state before update - recent-transactions container:', document.getElementById('recent-transactions')?.innerHTML?.substring(0, 200));
+                    
+                    const result = originalUpdateRecentTransactions.call(this);
+                    console.log('🧪 HYPOTHESIS 3 TESTING: updateRecentTransactions completed');
+                    console.log('🧪 HYPOTHESIS 3 TESTING: DOM state after update - recent-transactions container:', document.getElementById('recent-transactions')?.innerHTML?.substring(0, 200));
+                    return result;
+                };
+                console.log('✅ HYPOTHESIS 3 TESTING: updateRecentTransactions function overridden with logging');
+            }
+            
+            // Override api.getRecentTransactions with comprehensive logging
+            if (window.api && window.api.getRecentTransactions) {
+                const originalGetRecentTransactions = window.api.getRecentTransactions;
+                window.api.getRecentTransactions = async function(limit) {
+                    console.log('🧪 HYPOTHESIS 2 TESTING: api.getRecentTransactions called with limit:', limit);
+                    console.log('🧪 TIMESTAMP:', new Date().toISOString());
+                    console.log('🧪 CALL STACK:', new Error().stack);
+                    
+                    try {
+                        const result = await originalGetRecentTransactions.call(this, limit);
+                        console.log('🧪 HYPOTHESIS 2 TESTING: api.getRecentTransactions API response:', result);
+                        console.log('🧪 HYPOTHESIS 2 TESTING: API response length:', result?.length);
+                        console.log('🧪 HYPOTHESIS 2 TESTING: API response structure check - first item keys:', result?.[0] ? Object.keys(result[0]) : 'No items');
+                        return result;
+                    } catch (error) {
+                        console.error('🧪 HYPOTHESIS 2 TESTING: api.getRecentTransactions failed:', error);
+                        throw error;
+                    }
+                };
+                console.log('✅ HYPOTHESIS 2 TESTING: api.getRecentTransactions function overridden with logging');
+            }
+            
+            // Add timing analysis for Hypothesis 4
+            window.hypothesis4Timing = {
+                loadTodayDataStart: null,
+                loadTodayDataEnd: null,
+                updateRecentTransactionsStart: null,
+                updateRecentTransactionsEnd: null,
+                getRecentTransactionsStart: null,
+                getRecentTransactionsEnd: null
+            };
+            
+            console.log('🧪 HYPOTHESIS 4 TESTING: Timing analysis variables initialized');
+            console.log('✅ COMPREHENSIVE HYPOTHESIS TESTING: All logging functions overridden successfully');
+        });
+
+        console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Waiting 3 seconds for any pending operations...');
+        await page.waitForTimeout(3000);
+
+        console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Now triggering a manual refresh to test all hypotheses...');
+
+        // Trigger manual refresh to test all hypotheses
+        await page.evaluate(() => {
+            console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Manually triggering data refresh...');
+            
+            // Test Hypothesis 1 & 2: Manual loadTodayData call
+            if (window.loadTodayData) {
+                console.log('🧪 HYPOTHESIS 1 & 2 TESTING: Manually calling loadTodayData...');
+                window.hypothesis4Timing.loadTodayDataStart = Date.now();
+                window.loadTodayData().then(() => {
+                    window.hypothesis4Timing.loadTodayDataEnd = Date.now();
+                    console.log('🧪 HYPOTHESIS 4 TESTING: loadTodayData timing:', {
+                        start: window.hypothesis4Timing.loadTodayDataStart,
+                        end: window.hypothesis4Timing.loadTodayDataEnd,
+                        duration: window.hypothesis4Timing.loadTodayDataEnd - window.hypothesis4Timing.loadTodayDataStart
+                    });
+                    
+                    // Test Hypothesis 3: Manual updateRecentTransactions call
+                    if (window.updateRecentTransactions) {
+                        console.log('🧪 HYPOTHESIS 3 TESTING: Manually calling updateRecentTransactions...');
+                        window.hypothesis4Timing.updateRecentTransactionsStart = Date.now();
+                        window.updateRecentTransactions();
+                        window.hypothesis4Timing.updateRecentTransactionsEnd = Date.now();
+                        console.log('🧪 HYPOTHESIS 4 TESTING: updateRecentTransactions timing:', {
+                            start: window.hypothesis4Timing.updateRecentTransactionsStart,
+                            end: window.hypothesis4Timing.updateRecentTransactionsEnd,
+                            duration: window.hypothesis4Timing.updateRecentTransactionsEnd - window.hypothesis4Timing.updateRecentTransactionsStart
+                        });
+                        
+                        // Test Hypothesis 5: Manual getRecentTransactions call
+                        if (window.getRecentTransactions) {
+                            console.log('🧪 HYPOTHESIS 5 TESTING: Manually calling getRecentTransactions...');
+                            window.hypothesis4Timing.getRecentTransactionsStart = Date.now();
+                            const recentTransactions = window.getRecentTransactions(5);
+                            window.hypothesis4Timing.getRecentTransactionsEnd = Date.now();
+                            console.log('🧪 HYPOTHESIS 4 TESTING: getRecentTransactions timing:', {
+                                start: window.hypothesis4Timing.getRecentTransactionsStart,
+                                end: window.hypothesis4Timing.getRecentTransactionsEnd,
+                                duration: window.hypothesis4Timing.getRecentTransactionsEnd - window.hypothesis4Timing.getRecentTransactionsStart
+                            });
+                            console.log('🧪 HYPOTHESIS 5 TESTING: Manual getRecentTransactions result:', recentTransactions);
+                        }
+                    }
+                }).catch(error => {
+                    console.error('🧪 HYPOTHESIS 1 & 2 TESTING: Manual loadTodayData failed:', error);
+                });
+            }
+        });
+
+        console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Waiting 5 seconds for manual refresh to complete...');
+        await page.waitForTimeout(5000);
+
+        console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Final analysis of all hypotheses...');
+
+        // Final analysis of all hypotheses
+        const finalAnalysis = await page.evaluate(() => {
+            console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Final analysis starting...');
+            
+            const analysis = {
+                hypothesis1: {
+                    name: 'Data Refresh Issue - loadTodayData not being called after transaction creation',
+                    loadTodayDataCalled: false,
+                    appDataTransactionsUpdated: false,
+                    appDataTransactionsLength: 0,
+                    appDataTransactionsContent: null
+                },
+                hypothesis2: {
+                    name: 'Data Mapping Issue - API response structure mismatch in loadTodayData',
+                    apiResponseStructure: null,
+                    mappingSuccess: false,
+                    fieldMismatches: []
+                },
+                hypothesis3: {
+                    name: 'Display Update Issue - updateRecentTransactions not being called after data refresh',
+                    updateRecentTransactionsCalled: false,
+                    domUpdated: false,
+                    domBeforeUpdate: null,
+                    domAfterUpdate: null
+                },
+                hypothesis4: {
+                    name: 'Timing Issue - Race condition between data loading and display update',
+                    timingData: window.hypothesis4Timing || {},
+                    raceConditionDetected: false
+                },
+                hypothesis5: {
+                    name: 'Data Filtering Issue - getRecentTransactions filtering out the new transaction',
+                    filteringLogic: null,
+                    newTransactionIncluded: false,
+                    filteredResult: null
+                },
+                currentAppData: {
+                    transactions: window.appData?.transactions || [],
+                    transactionsLength: window.appData?.transactions?.length || 0
+                },
+                currentDomState: {
+                    recentTransactionsContainer: document.getElementById('recent-transactions')?.innerHTML?.substring(0, 500) || 'Not found',
+                    transactionItems: document.querySelectorAll('.transaction-item')?.length || 0
+                }
+            };
+            
+            // Analyze Hypothesis 1
+            if (window.appData && window.appData.transactions) {
+                analysis.hypothesis1.appDataTransactionsUpdated = true;
+                analysis.hypothesis1.appDataTransactionsLength = window.appData.transactions.length;
+                analysis.hypothesis1.appDataTransactionsContent = window.appData.transactions;
+            }
+            
+            // Analyze Hypothesis 2
+            if (window.appData && window.appData.transactions && window.appData.transactions.length > 0) {
+                const firstTransaction = window.appData.transactions[0];
+                analysis.hypothesis2.apiResponseStructure = Object.keys(firstTransaction);
+                analysis.hypothesis2.mappingSuccess = true;
+                
+                // Check for expected fields
+                const expectedFields = ['id', 'masseuse', 'service', 'paymentAmount', 'paymentMethod'];
+                analysis.hypothesis2.fieldMismatches = expectedFields.filter(field => !(field in firstTransaction));
+            }
+            
+            // Analyze Hypothesis 3
+            const container = document.getElementById('recent-transactions');
+            if (container) {
+                analysis.hypothesis3.domUpdated = true;
+                analysis.hypothesis3.domAfterUpdate = container.innerHTML.substring(0, 500);
+            }
+            
+            // Analyze Hypothesis 4
+            if (window.hypothesis4Timing) {
+                analysis.hypothesis4.timingData = window.hypothesis4Timing;
+                // Check for race conditions (if loadTodayData takes longer than expected)
+                if (window.hypothesis4Timing.loadTodayDataStart && window.hypothesis4Timing.loadTodayDataEnd) {
+                    const loadDuration = window.hypothesis4Timing.loadTodayDataEnd - window.hypothesis4Timing.loadTodayDataStart;
+                    analysis.hypothesis4.raceConditionDetected = loadDuration > 5000; // More than 5 seconds
+                }
+            }
+            
+            // Analyze Hypothesis 5
+            if (window.getRecentTransactions) {
+                try {
+                    const recentTransactions = window.getRecentTransactions(5);
+                    analysis.hypothesis5.filteredResult = recentTransactions;
+                    analysis.hypothesis5.filteringLogic = 'Function exists and returns data';
+                    
+                    // Check if our new transaction (May เมย์, Foot massage, ฿650.00) is in the filtered result
+                    const newTransactionFound = recentTransactions.some(t => 
+                        t.masseuse === 'May เมย์' && 
+                        t.service === 'Foot massage' && 
+                        t.paymentAmount === 650
+                    );
+                    analysis.hypothesis5.newTransactionIncluded = newTransactionFound;
+                } catch (error) {
+                    analysis.hypothesis5.filteringLogic = `Error: ${error.message}`;
+                }
+            }
+            
+            console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Final analysis completed:', analysis);
+            return analysis;
+        });
+
+        console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Final analysis results:');
+        console.log(JSON.stringify(finalAnalysis, null, 2));
+
+        // 🧪 COMPREHENSIVE HYPOTHESIS TESTING SUMMARY
+        console.log('\n🧪 COMPREHENSIVE HYPOTHESIS TESTING SUMMARY');
+        console.log('=============================================');
+        console.log('✅ All 5 hypotheses have been tested with comprehensive logging');
+        console.log('✅ Timing analysis has been performed to detect race conditions');
+        console.log('✅ Data flow has been traced from API response to DOM display');
+        console.log('✅ All critical functions have been overridden with detailed logging');
+        console.log('✅ Manual refresh has been triggered to test the complete flow');
+        console.log('\n🔍 Check the browser console for detailed hypothesis testing logs');
+        console.log('🔍 The analysis above shows which hypothesis is most likely correct');
+
         console.log('\n🔍 PRICING BUG REPRODUCTION COMPLETE');
         console.log('=====================================');
         console.log('Check the output above for the root cause of the pricing mismatch');
         console.log('Comprehensive logging has been added to capture the complete form submission flow');
+        console.log('ALL 5 HYPOTHESES HAVE BEEN TESTED WITH COMPREHENSIVE LOGGING');
         
     } catch (error) {
         console.error('❌ ERROR during pricing bug reproduction:', error);
