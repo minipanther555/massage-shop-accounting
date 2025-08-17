@@ -567,6 +567,133 @@ async function debugPricingBugReproduction() {
             console.log('🧪 ALL HYPOTHESES TESTING LOGGING ENABLED - READY FOR COMPREHENSIVE DEBUGGING');
         });
         
+        // SUBSTEP 1: ADD SUBMIT EVENT LISTENER TO CAPTURE FORM SUBMISSION
+        console.log('\n🔍 SUBSTEP 1: Adding submit event listener to capture form submission...');
+        await page.evaluate(() => {
+            console.log('🔍 SUBSTEP 1: Adding submit event listener for debugging');
+            const form = document.querySelector('#transaction-form');
+            
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    console.log('🔍 SUBSTEP 1: SUBMIT EVENT FIRED!');
+                    console.log('🔍 SUBSTEP 1: Event details:', e);
+                    console.log('🔍 SUBSTEP 1: Form data at submit:', new FormData(form));
+                    console.log('🔍 SUBSTEP 1: Form action:', form.action);
+                    console.log('🔍 SUBSTEP 1: Form method:', form.method);
+                    
+                    // Don't prevent default - let it submit normally
+                    console.log('🔍 SUBSTEP 1: Allowing normal form submission...');
+                });
+                
+                console.log('✅ SUBSTEP 1: Submit event listener added successfully');
+            } else {
+                console.log('❌ SUBSTEP 1: Form not found');
+            }
+        });
+        
+        // SUBSTEP 2: ENSURE FORM SUBMISSION TRIGGERS handleSubmit FUNCTION
+        console.log('\n🔍 SUBSTEP 2: Ensuring form submission triggers handleSubmit function...');
+        const handleSubmitStatus = await page.evaluate(() => {
+            console.log('🔍 SUBSTEP 2: Checking handleSubmit function status');
+            
+            const form = document.querySelector('#transaction-form');
+            const hasSubmitListener = form && form.onsubmit;
+            const hasSubmitEventListeners = form && form.addEventListener;
+            
+            console.log('🔍 SUBSTEP 2: Form has onsubmit handler:', !!hasSubmitListener);
+            console.log('🔍 SUBSTEP 2: Form supports addEventListener:', !!hasSubmitEventListeners);
+            console.log('🔍 SUBSTEP 2: handleSubmit function exists:', typeof window.handleSubmit === 'function');
+            
+            return {
+                hasSubmitListener: !!hasSubmitListener,
+                hasSubmitEventListeners: !!hasSubmitEventListeners,
+                handleSubmitExists: typeof window.handleSubmit === 'function'
+            };
+        });
+        
+        console.log('📋 SUBSTEP 2 RESULTS:', handleSubmitStatus);
+        
+        // SUBSTEP 3: TEST THAT HYPOTHESIS LOGGING NOW EXECUTES
+        console.log('\n🔍 SUBSTEP 3: Testing that hypothesis logging now executes...');
+        console.log('🔍 SUBSTEP 3: Ready to click submit button and trigger handleSubmit...');
+        
+        // SUBSTEP 1: REMOVE THE onsubmit="return false;" FROM THE FORM
+        console.log('\n🔍 SUBSTEP 1: Removing onsubmit="return false;" from form...');
+        const formFixResult = await page.evaluate(() => {
+            console.log('🔍 SUBSTEP 1: Fixing form submission');
+            const form = document.querySelector('#transaction-form');
+            
+            if (form) {
+                console.log('🔍 SUBSTEP 1: Form found, checking current onsubmit');
+                console.log('🔍 SUBSTEP 1: Current onsubmit:', form.onsubmit);
+                console.log('🔍 SUBSTEP 1: Current action:', form.action);
+                console.log('🔍 SUBSTEP 1: Current method:', form.method);
+                
+                // Remove the onsubmit="return false;" that's blocking form submission
+                form.onsubmit = null;
+                form.action = 'javascript:void(0)';
+                form.method = 'POST';
+                
+                console.log('🔍 SUBSTEP 1: Form fixed - onsubmit removed, action and method set');
+                console.log('🔍 SUBSTEP 1: New onsubmit:', form.onsubmit);
+                console.log('🔍 SUBSTEP 1: New action:', form.action);
+                console.log('🔍 SUBSTEP 1: New method:', form.method);
+                
+                return {
+                    success: true,
+                    oldOnsubmit: 'return false;',
+                    newOnsubmit: null,
+                    formFixed: true
+                };
+            } else {
+                console.log('❌ SUBSTEP 1: Form not found');
+                return { success: false, error: 'Form not found' };
+            }
+        });
+        
+        console.log('📋 SUBSTEP 1 RESULTS:', formFixResult);
+        
+        // SUBSTEP 2: ENSURE FORM CAN PROPERLY SUBMIT AND TRIGGER handleSubmit
+        console.log('\n🔍 SUBSTEP 2: Ensuring form can properly submit and trigger handleSubmit...');
+        const formSubmissionStatus = await page.evaluate(() => {
+            console.log('🔍 SUBSTEP 2: Testing form submission capability');
+            
+            const form = document.querySelector('#transaction-form');
+            if (!form) {
+                return { error: 'Form not found' };
+            }
+            
+            // Test if form can submit properly
+            const canSubmit = form.checkValidity();
+            const submitEventListeners = form.addEventListener ? 'Supported' : 'Not supported';
+            
+            console.log('🔍 SUBSTEP 2: Form validation state:', canSubmit);
+            console.log('🔍 SUBSTEP 2: Submit event listener support:', submitEventListeners);
+            console.log('🔍 SUBSTEP 2: handleSubmit function exists:', typeof window.handleSubmit === 'function');
+            
+            // Test form submission
+            try {
+                const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                const eventFired = form.dispatchEvent(submitEvent);
+                console.log('🔍 SUBSTEP 2: Submit event dispatch test:', eventFired);
+            } catch (error) {
+                console.log('🔍 SUBSTEP 2: Submit event dispatch error:', error.message);
+            }
+            
+            return {
+                canSubmit,
+                submitEventListeners,
+                handleSubmitExists: typeof window.handleSubmit === 'function',
+                formReady: canSubmit && typeof window.handleSubmit === 'function'
+            };
+        });
+        
+        console.log('📋 SUBSTEP 2 RESULTS:', formSubmissionStatus);
+        
+        // SUBSTEP 3: TEST THAT HYPOTHESIS LOGGING NOW EXECUTES
+        console.log('\n🔍 SUBSTEP 3: Testing that hypothesis logging now executes...');
+        console.log('🔍 SUBSTEP 3: Form should now submit properly and trigger handleSubmit...');
+        
         // Click submit button
         console.log('🔍 Clicking submit button...');
         await page.click('button[type="submit"]');
