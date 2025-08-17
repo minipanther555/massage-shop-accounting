@@ -476,9 +476,21 @@
                 customerContact: document.getElementById('customerContact').value
             });
             
+            // Get the calculated price and fee from the pricing display
+            const priceElement = document.getElementById('servicePrice');
+            const feeElement = document.getElementById('masseuseeFee');
+            const price = priceElement ? parseFloat(priceElement.textContent.replace('฿', '')) : 0;
+            const masseuseFee = feeElement ? parseFloat(feeElement.textContent.replace('฿', '')) : 0;
+            
+            console.log('🔍 PRICING CALCULATED:', { price, masseuseFee });
+            
             const formData = {
                 masseuse: selectedMasseuse,
-                service: serviceName, // Send exact service_name, not constructed string
+                location: location,
+                service: serviceName,
+                duration: duration,
+                price: price,
+                masseuseFee: masseuseFee,
                 payment: document.getElementById('payment').value,
                 startTime: document.getElementById('startTime').value,
                 endTime: document.getElementById('endTime').value,

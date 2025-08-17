@@ -209,24 +209,50 @@ async function serveNextCustomer() {
 
 // Submit transaction - API version
 async function submitTransaction(formData) {
-    // Validation
-    if (!formData.masseuse_name || !formData.service_type || !formData.payment_method || !formData.start_time || !formData.end_time) {
+    console.log('🔍 SUBMIT TRANSACTION - RECEIVED FORM DATA:', formData);
+    
+    // Validation - check for all required fields
+    if (!formData.masseuse || !formData.service || !formData.payment || !formData.startTime || !formData.endTime) {
         showToast("Masseuse, Service, Payment, and Times are required", 'error');
+        return false;
+    }
+    
+    // Additional validation for critical fields
+    if (!formData.location || !formData.duration || !formData.price || !formData.masseuseFee) {
+        showToast("Location, Duration, Price, and Masseuse Fee are required", 'error');
         return false;
     }
 
     try {
+        // Transform frontend field names to backend field names
         const transactionData = {
-            masseuse_name: formData.masseuse_name,
-            service_type: formData.service_type,
-            payment_method: formData.payment_method,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            customer_contact: formData.customer_contact || "",
+            masseuse_name: formData.masseuse,
+            service_type: formData.service,
+            location: formData.location,
+            duration: formData.duration,
+            price: formData.price,
+            masseuse_fee: formData.masseuseFee,
+            payment_method: formData.payment,
+            start_time: formData.startTime,
+            end_time: formData.endTime,
+            customer_contact: formData.customerContact || "",
             corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null
         };
 
-        console.log('🚀 SUBMITTING TRANSACTION:', transactionData);
+        console.log('🚀 SUBMITTING TRANSACTION - TRANSFORMED DATA:', transactionData);
+        console.log('🔍 FIELD MAPPING VERIFICATION:');
+        console.log('  Frontend → Backend:');
+        console.log('    masseuse → masseuse_name:', formData.masseuse, '→', transactionData.masseuse_name);
+        console.log('    service → service_type:', formData.service, '→', transactionData.service_type);
+        console.log('    location → location:', formData.location, '→', transactionData.location);
+        console.log('    duration → duration:', formData.duration, '→', transactionData.duration);
+        console.log('    price → price:', formData.price, '→', transactionData.price);
+        console.log('    masseuseFee → masseuse_fee:', formData.masseuseFee, '→', transactionData.masseuse_fee);
+        console.log('    payment → payment_method:', formData.payment, '→', transactionData.payment_method);
+        console.log('    startTime → start_time:', formData.startTime, '→', transactionData.start_time);
+        console.log('    endTime → end_time:', formData.endTime, '→', transactionData.end_time);
+        console.log('    customerContact → customer_contact:', formData.customerContact, '→', transactionData.customer_contact);
+        
         const newTransaction = await api.createTransaction(transactionData);
         console.log('✅ TRANSACTION RESPONSE:', newTransaction);
 
