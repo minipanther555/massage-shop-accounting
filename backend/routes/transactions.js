@@ -72,6 +72,8 @@ router.post('/', async (req, res) => {
     const {
       masseuse_name,
       service_type,
+      location,
+      duration,
       payment_method,
       start_time,
       end_time,
@@ -80,25 +82,36 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!masseuse_name || !service_type || !payment_method || !start_time || !end_time) {
+    if (!masseuse_name || !service_type || !location || !duration || !payment_method || !start_time || !end_time) {
       return res.status(400).json({ 
-        error: 'Missing required fields: masseuse_name, service_type, payment_method, start_time, end_time' 
+        error: 'Missing required fields: masseuse_name, service_type, location, duration, payment_method, start_time, end_time' 
       });
     }
 
-    // Get service pricing
-    console.log('🔍 LOOKING FOR SERVICE:', service_type);
+    // Get service pricing with duration and location filtering
+    console.log('🔍 LOOKING FOR SERVICE:', service_type, 'DURATION:', duration, 'LOCATION:', location);
     const service = await database.get(
-      'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true',
-      [service_type]
+      'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND duration_minutes = ? AND location = ? AND active = true',
+      [service_type, parseInt(duration), location]
     );
     console.log('🔍 FOUND SERVICE:', service);
+    console.log('✅ SERVICE LOOKUP SUCCESSFUL:', {
+      service_type,
+      duration,
+      location,
+      price: service.price,
+      masseuse_fee: service.masseuse_fee
+    });
 
     if (!service) {
       console.log('🚨 SERVICE NOT FOUND - available services:');
-      const allServices = await database.all('SELECT service_name, active FROM services');
-      console.log('🚨 ALL SERVICES:', allServices);
-      return res.status(400).json({ error: 'Invalid service type' });
+      console.log('🚨 LOOKING FOR:', { service_type, duration, location });
+      const allServices = await database.all('SELECT service_name, duration_minutes, location, active FROM services WHERE service_name = ?', [service_type]);
+      console.log('🚨 ALL SERVICES WITH SAME NAME:', allServices);
+      return res.status(400).json({ 
+        error: `Service not found: ${service_type} (${duration} minutes, ${location})`,
+        availableServices: allServices
+      });
     }
 
     // Generate transaction ID (timestamp-based like Google Sheets version)
