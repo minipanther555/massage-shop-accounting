@@ -75,12 +75,14 @@
             <div class="section-header">RECENT ACTIVITY</div>
             <div class="section-content">
                 <div class="transaction-log" id="recent-activity">
-                    <div class="transaction-item">
-                        <div>Time</div>
-                        <div>Activity</div>
-                        <div>Masseuse</div>
-                        <div>Amount</div>
-                    </div>
+                                    <div class="transaction-item">
+                    <div>Time</div>
+                    <div>Activity</div>
+                    <div>Masseuse</div>
+                    <div>Duration</div>
+                    <div>Location</div>
+                    <div>Amount</div>
+                </div>
                 </div>
             </div>
         </div>
@@ -147,11 +149,11 @@
             const allActivity = [
                 ...recentTransactions.map(t => ({
                     type: 'transaction', timestamp: t.timestamp, description: t.service,
-                    masseuse: t.masseuse, amount: t.paymentAmount
+                    masseuse: t.masseuse, duration: t.duration, location: t.location, amount: t.paymentAmount
                 })),
                 ...recentExpenses.map(e => ({
                     type: 'expense', timestamp: e.timestamp, description: e.description,
-                    masseuse: 'Expense', amount: e.amount
+                    masseuse: 'Expense', duration: '-', location: '-', amount: e.amount
                 }))
             ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
 
@@ -177,6 +179,8 @@
                     <div>${formatTime(activity.timestamp)}</div>
                     <div>${icon} ${activity.description}</div>
                     <div>${activity.masseuse}</div>
+                    <div>${activity.duration}</div>
+                    <div>${activity.location}</div>
                     <div style="color: ${color}">${prefix}฿${activity.amount.toFixed(2)}</div>
                 `;
                 container.appendChild(div);
