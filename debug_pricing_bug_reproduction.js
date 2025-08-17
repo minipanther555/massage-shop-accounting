@@ -366,6 +366,207 @@ async function debugPricingBugReproduction() {
             console.log('✅ XMLHttpRequest overridden with logging');
         });
         
+        // ADD COMPREHENSIVE HYPOTHESIS TESTING LOGGING
+        await page.evaluate(() => {
+            console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING LOGGING ENABLED');
+            
+            // HYPOTHESIS 1: Field Name Mapping Mismatch
+            console.log('🧪 HYPOTHESIS 1: Field Name Mapping Mismatch');
+            console.log('🧪 Frontend sends: masseuse, service, payment, startTime, endTime');
+            console.log('🧪 Backend expects: masseuse_name, service_type, payment_method, start_time, end_time');
+            
+            // HYPOTHESIS 2: Missing Duration Field
+            console.log('🧪 HYPOTHESIS 2: Missing Duration Field');
+            console.log('🧪 Duration is collected but never sent to API');
+            
+            // HYPOTHESIS 3: Missing Location Field  
+            console.log('🧪 HYPOTHESIS 3: Missing Location Field');
+            console.log('🧪 Location is collected but never sent to API');
+            
+            // HYPOTHESIS 4: Data Transformation Logic Missing
+            console.log('🧪 HYPOTHESIS 4: Data Transformation Logic Missing');
+            console.log('🧪 submitTransaction function doesn\'t transform frontend field names to backend field names');
+            
+            // HYPOTHESIS 5: Form Data Collection Incomplete
+            console.log('🧪 HYPOTHESIS 5: Form Data Collection Incomplete');
+            console.log('🧪 handleSubmit doesn\'t collect all required fields before calling submitTransaction');
+            
+            // Override handleSubmit function with comprehensive logging
+            if (window.handleSubmit) {
+                const originalHandleSubmit = window.handleSubmit;
+                
+                window.handleSubmit = async function(event) {
+                    console.log('🧪 HYPOTHESIS TESTING: handleSubmit called!');
+                    console.log('🧪 Event:', event);
+                    
+                    // HYPOTHESIS 1 TESTING: Field Name Mapping
+                    console.log('🧪 HYPOTHESIS 1 TESTING: Field Name Mapping Analysis');
+                    const formElements = {
+                        masseuse: document.getElementById('masseuse')?.value,
+                        location: document.getElementById('location')?.value,
+                        service: document.getElementById('service')?.value,
+                        duration: document.getElementById('duration')?.value,
+                        payment: document.getElementById('payment')?.value,
+                        startTime: document.getElementById('startTime')?.value,
+                        endTime: document.getElementById('endTime')?.value,
+                        customerContact: document.getElementById('customerContact')?.value
+                    };
+                    
+                    console.log('🧪 HYPOTHESIS 1: Form elements collected:', formElements);
+                    console.log('🧪 HYPOTHESIS 1: Frontend field names:', Object.keys(formElements));
+                    console.log('🧪 HYPOTHESIS 1: Backend expected field names:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time', 'duration', 'location']);
+                    
+                    // HYPOTHESIS 2 TESTING: Duration Field
+                    console.log('🧪 HYPOTHESIS 2 TESTING: Duration Field Analysis');
+                    console.log('🧪 HYPOTHESIS 2: Duration value:', formElements.duration);
+                    console.log('🧪 HYPOTHESIS 2: Duration element exists:', !!document.getElementById('duration'));
+                    console.log('🧪 HYPOTHESIS 2: Duration element type:', document.getElementById('duration')?.type);
+                    console.log('🧪 HYPOTHESIS 2: Duration element options:', document.getElementById('duration')?.options?.length);
+                    
+                    // HYPOTHESIS 3 TESTING: Location Field
+                    console.log('🧪 HYPOTHESIS 3 TESTING: Location Field Analysis');
+                    console.log('🧪 HYPOTHESIS 3: Location value:', formElements.location);
+                    console.log('🧪 HYPOTHESIS 3: Location element exists:', !!document.getElementById('location'));
+                    console.log('🧪 HYPOTHESIS 3: Location element type:', document.getElementById('location')?.type);
+                    console.log('🧪 HYPOTHESIS 3: Location element options:', document.getElementById('location')?.options?.length);
+                    
+                    // HYPOTHESIS 4 TESTING: Data Transformation
+                    console.log('🧪 HYPOTHESIS 4 TESTING: Data Transformation Analysis');
+                    console.log('🧪 HYPOTHESIS 4: submitTransaction function exists:', typeof window.submitTransaction === 'function');
+                    console.log('🧪 HYPOTHESIS 4: submitTransaction function source:', window.submitTransaction.toString().substring(0, 200));
+                    
+                    // HYPOTHESIS 5 TESTING: Form Data Collection
+                    console.log('🧪 HYPOTHESIS 5 TESTING: Form Data Collection Analysis');
+                    console.log('🧪 HYPOTHESIS 5: All form elements count:', document.querySelectorAll('#transaction-form input, #transaction-form select').length);
+                    console.log('🧪 HYPOTHESIS 5: Required form elements:', document.querySelectorAll('#transaction-form [required]').length);
+                    console.log('🧪 HYPOTHESIS 5: Form validation state:', document.getElementById('transaction-form')?.checkValidity());
+                    
+                    // Call original function
+                    console.log('🧪 Calling original handleSubmit function...');
+                    const result = await originalHandleSubmit.call(this, event);
+                    console.log('🧪 Original handleSubmit result:', result);
+                    return result;
+                };
+                
+                console.log('✅ handleSubmit function overridden with hypothesis testing logging');
+            }
+            
+            // Override submitTransaction function with comprehensive hypothesis testing
+            if (window.submitTransaction) {
+                const originalSubmitTransaction = window.submitTransaction;
+                
+                window.submitTransaction = async function(formData) {
+                    console.log('🧪 HYPOTHESIS TESTING: submitTransaction called!');
+                    console.log('🧪 Form data received:', formData);
+                    console.log('🧪 Form data type:', typeof formData);
+                    console.log('🧪 Form data keys:', Object.keys(formData));
+                    
+                    // HYPOTHESIS 1 TESTING: Field Name Mapping
+                    console.log('🧪 HYPOTHESIS 1 TESTING: Field Name Mapping in submitTransaction');
+                    console.log('🧪 HYPOTHESIS 1: Frontend field names received:', Object.keys(formData));
+                    console.log('🧪 HYPOTHESIS 1: Backend field names expected:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time']);
+                    console.log('🧪 HYPOTHESIS 1: Field name mapping analysis:');
+                    console.log('🧪 HYPOTHESIS 1: - masseuse -> masseuse_name:', formData.masseuse ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - service -> service_type:', formData.service ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - payment -> payment_method:', formData.payment ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - startTime -> start_time:', formData.startTime ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - endTime -> end_time:', formData.endTime ? '✅' : '❌');
+                    
+                    // HYPOTHESIS 2 TESTING: Duration Field
+                    console.log('🧪 HYPOTHESIS 2 TESTING: Duration Field in submitTransaction');
+                    console.log('🧪 HYPOTHESIS 2: Duration field present:', 'duration' in formData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 2: Duration value:', formData.duration);
+                    console.log('🧪 HYPOTHESIS 2: Duration field missing from API call:', 'duration' in formData ? '❌' : '✅');
+                    
+                    // HYPOTHESIS 3 TESTING: Location Field
+                    console.log('🧪 HYPOTHESIS 3 TESTING: Location Field in submitTransaction');
+                    console.log('🧪 HYPOTHESIS 3: Location field present:', 'location' in formData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 3: Location value:', formData.location);
+                    console.log('🧪 HYPOTHESIS 3: Location field missing from API call:', 'location' in formData ? '❌' : '✅');
+                    
+                    // HYPOTHESIS 4 TESTING: Data Transformation
+                    console.log('🧪 HYPOTHESIS 4 TESTING: Data Transformation in submitTransaction');
+                    console.log('🧪 HYPOTHESIS 4: Function source code:', window.submitTransaction.toString().substring(0, 500));
+                    console.log('🧪 HYPOTHESIS 4: Looking for field name transformation logic...');
+                    
+                    // Check if there's transformation logic
+                    const hasTransformation = window.submitTransaction.toString().includes('masseuse_name') || 
+                                           window.submitTransaction.toString().includes('service_type') ||
+                                           window.submitTransaction.toString().includes('payment_method');
+                    console.log('🧪 HYPOTHESIS 4: Has field name transformation:', hasTransformation ? '✅' : '❌');
+                    
+                    // HYPOTHESIS 5 TESTING: Form Data Collection
+                    console.log('🧪 HYPOTHESIS 5 TESTING: Form Data Collection in submitTransaction');
+                    console.log('🧪 HYPOTHESIS 5: Total fields received:', Object.keys(formData).length);
+                    console.log('🧪 HYPOTHESIS 5: Expected fields count:', 7); // masseuse, location, service, duration, payment, startTime, endTime
+                    console.log('🧪 HYPOTHESIS 5: Missing fields count:', 7 - Object.keys(formData).length);
+                    console.log('🧪 HYPOTHESIS 5: All required fields present:', Object.keys(formData).length >= 7 ? '✅' : '❌');
+                    
+                    // Call original function
+                    console.log('🧪 Calling original submitTransaction function...');
+                    const result = await originalSubmitTransaction.call(this, formData);
+                    console.log('🧪 Original submitTransaction result:', result);
+                    return result;
+                };
+                
+                console.log('✅ submitTransaction function overridden with hypothesis testing logging');
+            }
+            
+            // Override API client createTransaction method with hypothesis testing
+            if (window.api && window.api.createTransaction) {
+                const originalCreateTransaction = window.api.createTransaction;
+                
+                window.api.createTransaction = async function(transactionData) {
+                    console.log('🧪 HYPOTHESIS TESTING: API createTransaction called!');
+                    console.log('🧪 Transaction data being sent to API:', transactionData);
+                    console.log('🧪 Data type:', typeof transactionData);
+                    
+                    // HYPOTHESIS 1 TESTING: Field Name Mapping in API Call
+                    console.log('🧪 HYPOTHESIS 1 TESTING: Field Name Mapping in API Call');
+                    console.log('🧪 HYPOTHESIS 1: API field names:', Object.keys(transactionData));
+                    console.log('🧪 HYPOTHESIS 1: Backend expected field names:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time']);
+                    console.log('🧪 HYPOTHESIS 1: Field name mapping analysis:');
+                    console.log('🧪 HYPOTHESIS 1: - masseuse_name present:', 'masseuse_name' in transactionData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - service_type present:', 'service_type' in transactionData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - payment_method present:', 'payment_method' in transactionData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - start_time present:', 'start_time' in transactionData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 1: - end_time present:', 'end_time' in transactionData ? '✅' : '❌');
+                    
+                    // HYPOTHESIS 2 TESTING: Duration Field in API Call
+                    console.log('🧪 HYPOTHESIS 2 TESTING: Duration Field in API Call');
+                    console.log('🧪 HYPOTHESIS 2: Duration field present in API call:', 'duration' in transactionData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 2: Duration value in API call:', transactionData.duration);
+                    
+                    // HYPOTHESIS 3 TESTING: Location Field in API Call
+                    console.log('🧪 HYPOTHESIS 3 TESTING: Location Field in API Call');
+                    console.log('🧪 HYPOTHESIS 3: Location field present in API call:', 'location' in transactionData ? '✅' : '❌');
+                    console.log('🧪 HYPOTHESIS 3: Location value in API call:', transactionData.location);
+                    
+                    // HYPOTHESIS 4 TESTING: Data Transformation in API Call
+                    console.log('🧪 HYPOTHESIS 4 TESTING: Data Transformation in API Call');
+                    console.log('🧪 HYPOTHESIS 4: Transformation successful:', 
+                        ('masseuse_name' in transactionData && 'service_type' in transactionData) ? '✅' : '❌');
+                    
+                    // HYPOTHESIS 5 TESTING: Form Data Collection in API Call
+                    console.log('🧪 HYPOTHESIS 5 TESTING: Form Data Collection in API Call');
+                    console.log('🧪 HYPOTHESIS 5: Total fields sent to API:', Object.keys(transactionData).length);
+                    console.log('🧪 HYPOTHESIS 5: Expected fields count:', 6); // masseuse_name, service_type, payment_method, start_time, end_time, customer_contact
+                    console.log('🧪 HYPOTHESIS 5: Missing fields count:', 6 - Object.keys(transactionData).length);
+                    console.log('🧪 HYPOTHESIS 5: All required fields present:', Object.keys(transactionData).length >= 6 ? '✅' : '❌');
+                    
+                    // Call original function
+                    console.log('🧪 Calling original createTransaction function...');
+                    const result = await originalCreateTransaction.call(this, transactionData);
+                    console.log('🧪 Original createTransaction result:', result);
+                    return result;
+                };
+                
+                console.log('✅ API createTransaction function overridden with hypothesis testing logging');
+            }
+            
+            console.log('🧪 ALL HYPOTHESES TESTING LOGGING ENABLED - READY FOR COMPREHENSIVE DEBUGGING');
+        });
+        
         // Click submit button
         console.log('🔍 Clicking submit button...');
         await page.click('button[type="submit"]');
