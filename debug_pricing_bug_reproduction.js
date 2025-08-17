@@ -1346,7 +1346,7 @@ async function debugPricingBugReproduction() {
         });
 
         console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Waiting 3 seconds for any pending operations...');
-        await page.waitForTimeout(3000);
+await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Now triggering a manual refresh to test all hypotheses...');
 
@@ -1399,7 +1399,7 @@ async function debugPricingBugReproduction() {
         });
 
         console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Waiting 5 seconds for manual refresh to complete...');
-        await page.waitForTimeout(5000);
+await new Promise(resolve => setTimeout(resolve, 5000));
 
         console.log('🧪 COMPREHENSIVE HYPOTHESIS TESTING: Final analysis of all hypotheses...');
 
