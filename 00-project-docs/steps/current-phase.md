@@ -1,29 +1,43 @@
-# Current Phase: ✅ COMPLETED - System Fully Operational
+# Current Phase: 🔴 CRITICAL - Database Schema Mismatch Discovery
 
 ## Phase Overview
-This phase has been **SUCCESSFULLY COMPLETED**. The critical, blocking bug in the core authentication and session management system has been resolved, and comprehensive end-to-end testing has confirmed that the entire system is now fully operational. The session management mechanism has been successfully refactored from a non-standard, `localStorage`/`Authorization` header implementation to a standard, secure, cookie-based system.
+**CRITICAL ARCHITECTURAL ISSUE DISCOVERED**: During investigation of a pricing bug, we discovered a fundamental database schema mismatch that breaks the entire transaction system. The `transactions` table is missing critical `duration` and `location` columns, causing all transaction data to fail silently while appearing to succeed at the API level.
 
-## Current Status: ✅ COMPLETED - Transaction Form Functionality
+## Current Status: 🔴 CRITICAL - Database Schema Mismatch
 
-### What Was Accomplished (Problem Resolution)
-- **Production Environment**: The production server is stable and deployed at `https://109.123.238.197.sslip.io`.
-- **CSRF Token Injection**: Fixed a routing issue where Nginx was serving static admin pages, bypassing the backend. Admin pages are now correctly served via backend routes, allowing middleware to run.
-- **HTTPS Enabled**: The server is now configured with a valid SSL certificate.
-- **Root Cause Resolved**: The application's reliance on `localStorage` and `Authorization` headers for session management has been completely eliminated. The system now uses standard, secure httpOnly cookies.
-- **Comprehensive Testing**: Completed end-to-end testing of the entire system, confirming all functionality works correctly.
+### What Was Discovered (Critical Issue)
+- **Pricing Bug Investigation**: Frontend shows correct pricing (฿650) but backend stores wrong pricing (฿350)
+- **Comprehensive Hypothesis Testing**: Tested 5 different hypotheses for the bug
+- **Architectural Verification**: Discovered fundamental database schema mismatch
+- **Root Cause Identified**: `transactions` table missing `duration` and `location` columns
+- **System Impact**: All transaction data fails silently while appearing to succeed at API level
 
-### Current Focus: Transaction Form Functionality ✅ COMPLETED
-- **Issue Identified**: Multiple JavaScript functions (`updateTimeDropdowns`, `handleSubmit`, `updateServiceOptions`) were undefined due to function hoisting problems in `web-app/transaction.html`
-- **Root Cause**: Helper functions were being called in `populateDropdowns` before their definitions appeared in the script
-- **Solution Applied**: Moved all helper functions (`getNextInLineFromStaff`, `updateServiceOptions`, `updateDurationOptions`, `updatePricing`, `formatTime`, `updateTimeDropdowns`, `handleSubmit`, and others) to appear before `populateDropdowns`
-- **Status**: ✅ Function hoisting issues resolved, variable declaration conflicts fixed, form field names added, transaction form now fully functional
+### Current Focus: 🔴 CRITICAL - Database Schema Mismatch
+
+#### **Critical Issue Discovered**
+- **Issue Identified**: Frontend sends transaction data with `duration` and `location` fields, but backend cannot store them
+- **Root Cause**: `transactions` table schema is missing `duration` and `location` columns
+- **Impact**: All transaction data fails silently while appearing to succeed at API level
+- **Status**: 🔴 **CRITICAL** - System cannot function until schema is fixed
+
+#### **Previous Issues Resolved (2025-08-16)**
+- **Input Validation Middleware Issue**: ✅ RESOLVED - Backend was rejecting valid transaction data because input validation middleware was validating calculated fields (`payment_amount`, `masseuse_fee`) that should not be validated at middleware level
+- **Service Dropdown Population Issue**: ✅ RESOLVED - Service dropdown was not populating due to missing `let` declarations in `updateServiceOptions()` and `updateDurationOptions()` functions
+- **Form Submission Failure**: ✅ RESOLVED - Transaction form now submits successfully with proper service selection
 
 ### Additional Issues Resolved (2025-08-16)
 - **Input Validation Middleware Issue**: ✅ RESOLVED - Backend was rejecting valid transaction data because input validation middleware was validating calculated fields (`payment_amount`, `masseuse_fee`) that should not be validated at middleware level
 - **Service Dropdown Population Issue**: ✅ RESOLVED - Service dropdown was not populating due to missing `let` declarations in `updateServiceOptions()` and `updateDurationOptions()` functions
 - **Form Submission Failure**: ✅ RESOLVED - Transaction form now submits successfully with proper service selection
 
-### What Was Implemented
+### What Was Discovered (Critical Issue Investigation)
+1. **🔍 Pricing Bug Investigation** - Frontend shows ฿650 for 90min Foot massage, backend stores ฿350
+2. **🔍 Comprehensive Hypothesis Testing** - Tested 5 different hypotheses for the bug
+3. **🔍 Architectural Verification** - Systematically examined frontend, API, and database layers
+4. **🔍 Root Cause Identified** - `transactions` table schema missing `duration` and `location` columns
+5. **🔍 Data Flow Breakdown** - Frontend → API ✅, API → Database ❌, Database → Display ❌
+
+### What Was Previously Implemented (Before Critical Issue Discovery)
 1. **✅ cookie-parser middleware** - Added to handle HTTP cookies
 2. **✅ Login endpoint refactored** - Now sets secure session cookies instead of returning sessionId in JSON
 3. **✅ Authentication middleware updated** - Now reads sessionId from cookies instead of Authorization header

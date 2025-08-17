@@ -2,6 +2,18 @@
 
 ## High Priority Risks
 
+### RISK-000: Critical Database Schema Mismatch
+**Status**: ACTIVE 🔴  
+**Probability**: CERTAIN  
+**Impact**: CRITICAL  
+**Description**: `transactions` table schema missing `duration` and `location` columns
+**Impact Summary**: 
+- All transaction data fails silently while appearing to succeed
+- System cannot function as a business tool
+- Revenue tracking, staff commission, and financial reporting completely broken
+**Required Action**: HALT all development, fix database schema immediately
+**Priority**: 🔴 **CRITICAL** - Must be fixed before any other development can proceed
+
 ### RISK-001: Server Connectivity Issues
 **Status**: RESOLVED ✅  
 **Probability**: N/A  

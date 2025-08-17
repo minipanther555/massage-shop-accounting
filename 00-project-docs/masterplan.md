@@ -67,6 +67,14 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 - HTTPS enforcement and security headers ✅ COMPLETED
 - **Implementation**: Rate limiting (5 login attempts/15 min), input validation middleware, security headers (CSP, HSTS, X-Frame-Options), CSRF protection with cookie-based sessions, request size limits, comprehensive logging system. **UPDATE**: Session management has been successfully refactored from localStorage/Authorization headers to secure, httpOnly cookies, resolving the critical authentication blocker.
 
+## Critical Issues
+
+### 🔴 CRITICAL: Database Schema Mismatch (2025-08-17)
+**Issue**: The `transactions` table schema is missing critical `duration` and `location` columns
+**Impact**: All transaction data fails silently while appearing to succeed at API level
+**Status**: 🔴 **CRITICAL** - System cannot function until schema is fixed
+**Required Action**: HALT all development, fix database schema, then resume normal operations
+
 ## Development Phases
 
 ### Phase 1: Core Infrastructure ✅ COMPLETED
@@ -93,11 +101,13 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 - Service activation/deactivation controls
 - Comprehensive service editing capabilities
 
-### Phase 5: Transaction Processing System ✅ COMPLETED
+### Phase 5: Transaction Processing System 🔴 CRITICAL ISSUE DISCOVERED
 - Daily transaction recording interface
 - Staff assignment and tracking
 - End-of-day processing and summaries
 - Financial data aggregation
+- **🔴 CRITICAL ISSUE**: Database schema missing `duration` and `location` columns
+- **Status**: System cannot function until schema is fixed
 - **Current Status**: ✅ JavaScript function hoisting issues resolved, variable declaration conflicts fixed, form field names added, transaction form now fully functional with complete end-to-end operation
 
 ### Phase 6: Financial Reporting & Analytics ✅ COMPLETED
