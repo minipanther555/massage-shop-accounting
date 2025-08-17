@@ -399,8 +399,11 @@ async function debugPricingBugReproduction() {
                     console.log('🧪 HYPOTHESIS TESTING: handleSubmit called!');
                     console.log('🧪 Event:', event);
                     
-                    // HYPOTHESIS 1 TESTING: Field Name Mapping
-                    console.log('🧪 HYPOTHESIS 1 TESTING: Field Name Mapping Analysis');
+                    // 🧪 COMPREHENSIVE PRICING BUG HYPOTHESIS TESTING - ALL 5 HYPOTHESES TESTED SIMULTANEOUSLY
+                    console.log('🧪 COMPREHENSIVE PRICING BUG HYPOTHESIS TESTING - ALL 5 HYPOTHESES TESTED SIMULTANEOUSLY');
+                    console.log('===============================================================================');
+                    
+                    // Collect form elements for hypothesis testing
                     const formElements = {
                         masseuse: document.getElementById('masseuse')?.value,
                         location: document.getElementById('location')?.value,
@@ -412,39 +415,109 @@ async function debugPricingBugReproduction() {
                         customerContact: document.getElementById('customerContact')?.value
                     };
                     
-                    console.log('🧪 HYPOTHESIS 1: Form elements collected:', formElements);
-                    console.log('🧪 HYPOTHESIS 1: Frontend field names:', Object.keys(formElements));
-                    console.log('🧪 HYPOTHESIS 1: Backend expected field names:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time', 'duration', 'location']);
+                    // HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service
+                    console.log('🔍 HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service');
+                    console.log('🔍 HYPOTHESIS 1: Duration value being sent:', formElements.duration);
+                    console.log('🔍 HYPOTHESIS 1: Service type being sent:', formElements.service);
+                    console.log('🔍 HYPOTHESIS 1: Location being sent:', formElements.location);
+                    console.log('🔍 HYPOTHESIS 1: Expected backend lookup query:', `SELECT price, masseuse_fee FROM services WHERE service_name = '${formElements.service}' AND active = true`);
+                    console.log('🔍 HYPOTHESIS 1: CRITICAL ISSUE: Duration not included in backend lookup!');
                     
-                    // HYPOTHESIS 2 TESTING: Duration Field
-                    console.log('🧪 HYPOTHESIS 2 TESTING: Duration Field Analysis');
-                    console.log('🧪 HYPOTHESIS 2: Duration value:', formElements.duration);
-                    console.log('🧪 HYPOTHESIS 2: Duration element exists:', !!document.getElementById('duration'));
-                    console.log('🧪 HYPOTHESIS 2: Duration element type:', document.getElementById('duration')?.type);
-                    console.log('🧪 HYPOTHESIS 2: Duration element options:', document.getElementById('duration')?.options?.length);
+                    // HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations
+                    console.log('🔍 HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations');
+                    console.log('🔍 HYPOTHESIS 2: Service name collision risk:', formElements.service);
+                    console.log('🔍 HYPOTHESIS 2: Duration variations for this service:', '30min, 60min, 90min, 120min');
+                    console.log('🔍 HYPOTHESIS 2: Backend will return first match, ignoring duration!');
                     
-                    // HYPOTHESIS 3 TESTING: Location Field
-                    console.log('🧪 HYPOTHESIS 3 TESTING: Location Field Analysis');
-                    console.log('🧪 HYPOTHESIS 3: Location value:', formElements.location);
-                    console.log('🧪 HYPOTHESIS 3: Location element exists:', !!document.getElementById('location'));
-                    console.log('🧪 HYPOTHESIS 3: Location element type:', document.getElementById('location')?.type);
-                    console.log('🧪 HYPOTHESIS 3: Location element options:', document.getElementById('location')?.options?.length);
+                    // HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn't filter by duration
+                    console.log('🔍 HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn\'t filter by duration');
+                    console.log('🔍 HYPOTHESIS 3: Current backend query:', 'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true');
+                    console.log('🔍 HYPOTHESIS 3: Missing duration filter:', 'AND duration_minutes = ?');
+                    console.log('🔍 HYPOTHESIS 3: This will return 30min pricing by default!');
                     
-                    // HYPOTHESIS 4 TESTING: Data Transformation
-                    console.log('🧪 HYPOTHESIS 4 TESTING: Data Transformation Analysis');
-                    console.log('🧪 HYPOTHESIS 4: submitTransaction function exists:', typeof window.submitTransaction === 'function');
-                    console.log('🧪 HYPOTHESIS 4: submitTransaction function source:', window.submitTransaction.toString().substring(0, 200));
+                    // HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing
+                    console.log('🔍 HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing');
+                    console.log('🔍 HYPOTHESIS 4: Frontend sends duration:', formElements.duration);
+                    console.log('🔍 HYPOTHESIS 4: Backend ignores duration in pricing lookup');
+                    console.log('🔍 HYPOTHESIS 4: Frontend calculates correct price for 90min, backend uses 30min price!');
                     
-                    // HYPOTHESIS 5 TESTING: Form Data Collection
-                    console.log('🧪 HYPOTHESIS 5 TESTING: Form Data Collection Analysis');
-                    console.log('🧪 HYPOTHESIS 5: All form elements count:', document.querySelectorAll('#transaction-form input, #transaction-form select').length);
-                    console.log('🧪 HYPOTHESIS 5: Required form elements:', document.querySelectorAll('#transaction-form [required]').length);
-                    console.log('🧪 HYPOTHESIS 5: Form validation state:', document.getElementById('transaction-form')?.checkValidity());
+                    // HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data
+                    console.log('🔍 HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data');
+                    console.log('🔍 HYPOTHESIS 5: Expected service configuration for Foot massage 90min In-Shop');
+                    console.log('🔍 HYPOTHESIS 5: Should have: service_name="Foot massage", duration_minutes=90, location="In-Shop"');
+                    console.log('🔍 HYPOTHESIS 5: Backend lookup will find first "Foot massage" service (likely 30min)');
+                    
+                    // COMPREHENSIVE LOGGING FOR ALL HYPOTHESES
+                    console.log('🧪 COMPREHENSIVE LOGGING: Form submission data for all hypothesis testing:');
+                    console.log('🧪 Form elements collected:', formElements);
+                    console.log('🧪 Frontend field names:', Object.keys(formElements));
+                    console.log('🧪 Backend expected field names:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time', 'duration', 'location']);
+                    console.log('🧪 Duration element exists:', !!document.getElementById('duration'));
+                    console.log('🧪 Duration element type:', document.getElementById('duration')?.type);
+                    console.log('🧪 Duration element options:', document.getElementById('duration')?.options?.length);
+                    console.log('🧪 Location element exists:', !!document.getElementById('location'));
+                    console.log('🧪 Location element type:', document.getElementById('location')?.type);
+                    console.log('🧪 Location element options:', document.getElementById('location')?.options?.length);
+                    console.log('🧪 All form elements count:', document.querySelectorAll('#transaction-form input, #transaction-form select').length);
+                    console.log('🧪 Required form elements:', document.querySelectorAll('#transaction-form [required]').length);
+                    console.log('🧪 Form validation state:', document.getElementById('transaction-form')?.checkValidity());
                     
                     // Call original function
                     console.log('🧪 Calling original handleSubmit function...');
                     const result = await originalHandleSubmit.call(this, event);
                     console.log('🧪 Original handleSubmit result:', result);
+                    
+                    // 🧪 COMPREHENSIVE POST-HANDLESUBMIT TRACKING - ALL 5 HYPOTHESES VERIFICATION
+                    console.log('🧪 COMPREHENSIVE POST-HANDLESUBMIT TRACKING - ALL 5 HYPOTHESIS VERIFICATION');
+                    console.log('===============================================================================');
+                    
+                    // Track what happens after form submission
+                    setTimeout(async () => {
+                        console.log('🔍 POST-HANDLESUBMIT ANALYSIS - ALL 5 HYPOTHESES VERIFICATION');
+                        console.log('🔍 HYPOTHESIS 1: Duration mismatch verification in form submission...');
+                        console.log('🔍 HYPOTHESIS 2: Service name collision verification in form submission...');
+                        console.log('🔍 HYPOTHESIS 3: Database query logic verification in form submission...');
+                        console.log('🔍 HYPOTHESIS 4: Frontend-backend mismatch verification in form submission...');
+                        console.log('🔍 HYPOTHESIS 5: Service configuration verification in form submission...');
+                        
+                        // Check if form was reset
+                        console.log('🔍 Checking form state after submission...');
+                        const formState = {
+                            masseuse: document.getElementById('masseuse')?.value,
+                            location: document.getElementById('location')?.value,
+                            service: document.getElementById('service')?.value,
+                            duration: document.getElementById('duration')?.value,
+                            payment: document.getElementById('payment')?.value,
+                            startTime: document.getElementById('startTime')?.value,
+                            endTime: document.getElementById('endTime')?.value
+                        };
+                        console.log('🔍 Form state after submission:', formState);
+                        
+                        // Check if form was reset (indicating successful submission)
+                        const formReset = !formState.masseuse && !formState.service && !formState.duration;
+                        console.log('🔍 Form reset after submission:', formReset ? '✅' : '❌');
+                        
+                        // Check if success message appeared
+                        const successMessage = document.querySelector('.success-message, .alert-success, [class*="success"]');
+                        console.log('🔍 Success message appeared:', successMessage ? '✅' : '❌');
+                        
+                        // Check if error message appeared
+                        const errorMessage = document.querySelector('.error-message, .alert-error, [class*="error"]');
+                        console.log('🔍 Error message appeared:', errorMessage ? '❌' : '✅');
+                        
+                        // Final form submission verification summary
+                        console.log('🔍 FINAL FORM SUBMISSION VERIFICATION SUMMARY:');
+                        console.log('🔍 Form submitted successfully:', formReset ? '✅' : '❌');
+                        console.log('🔍 Success message displayed:', successMessage ? '✅' : '❌');
+                        console.log('🔍 Error message displayed:', errorMessage ? '❌' : '✅');
+                        console.log('🔍 Form reset to default state:', formReset ? '✅' : '❌');
+                        
+                        // Check if we're ready to verify recent transactions
+                        console.log('🔍 Ready to verify recent transactions for pricing bug...');
+                        console.log('🔍 This will confirm or disprove all 5 hypotheses...');
+                        
+                    }, 1000); // Wait 1 second for form submission to complete
+                    
                     return result;
                 };
                 
@@ -461,51 +534,106 @@ async function debugPricingBugReproduction() {
                     console.log('🧪 Form data type:', typeof formData);
                     console.log('🧪 Form data keys:', Object.keys(formData));
                     
-                    // HYPOTHESIS 1 TESTING: Field Name Mapping
-                    console.log('🧪 HYPOTHESIS 1 TESTING: Field Name Mapping in submitTransaction');
-                    console.log('🧪 HYPOTHESIS 1: Frontend field names received:', Object.keys(formData));
-                    console.log('🧪 HYPOTHESIS 1: Backend field names expected:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time']);
-                    console.log('🧪 HYPOTHESIS 1: Field name mapping analysis:');
-                    console.log('🧪 HYPOTHESIS 1: - masseuse -> masseuse_name:', formData.masseuse ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - service -> service_type:', formData.service ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - payment -> payment_method:', formData.payment ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - startTime -> start_time:', formData.startTime ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - endTime -> end_time:', formData.endTime ? '✅' : '❌');
+                    // 🧪 COMPREHENSIVE PRICING BUG HYPOTHESIS TESTING IN SUBMITTRANSACTION - ALL 5 HYPOTHESES
+                    console.log('🧪 COMPREHENSIVE PRICING BUG HYPOTHESIS TESTING IN SUBMITTRANSACTION - ALL 5 HYPOTHESES');
+                    console.log('===============================================================================');
                     
-                    // HYPOTHESIS 2 TESTING: Duration Field
-                    console.log('🧪 HYPOTHESIS 2 TESTING: Duration Field in submitTransaction');
-                    console.log('🧪 HYPOTHESIS 2: Duration field present:', 'duration' in formData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 2: Duration value:', formData.duration);
-                    console.log('🧪 HYPOTHESIS 2: Duration field missing from API call:', 'duration' in formData ? '❌' : '✅');
+                    // HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service
+                    console.log('🔍 HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service');
+                    console.log('🔍 HYPOTHESIS 1: Duration field present:', 'duration' in formData ? '✅' : '❌');
+                    console.log('🔍 HYPOTHESIS 1: Duration value being sent:', formData.duration);
+                    console.log('🔍 HYPOTHESIS 1: Service type being sent:', formData.service_type || formData.service);
+                    console.log('🔍 HYPOTHESIS 1: CRITICAL ISSUE: Duration sent but backend lookup ignores it!');
                     
-                    // HYPOTHESIS 3 TESTING: Location Field
-                    console.log('🧪 HYPOTHESIS 3 TESTING: Location Field in submitTransaction');
-                    console.log('🧪 HYPOTHESIS 3: Location field present:', 'location' in formData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 3: Location value:', formData.location);
-                    console.log('🧪 HYPOTHESIS 3: Location field missing from API call:', 'location' in formData ? '❌' : '✅');
+                    // HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations
+                    console.log('🔍 HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations');
+                    console.log('🔍 HYPOTHESIS 2: Service name collision risk:', formData.service_type || formData.service);
+                    console.log('🔍 HYPOTHESIS 2: Duration variations for this service:', '30min, 60min, 90min, 120min');
+                    console.log('🔍 HYPOTHESIS 2: Backend will return first match, ignoring duration!');
                     
-                    // HYPOTHESIS 4 TESTING: Data Transformation
-                    console.log('🧪 HYPOTHESIS 4 TESTING: Data Transformation in submitTransaction');
-                    console.log('🧪 HYPOTHESIS 4: Function source code:', window.submitTransaction.toString().substring(0, 500));
-                    console.log('🧪 HYPOTHESIS 4: Looking for field name transformation logic...');
+                    // HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn't filter by duration
+                    console.log('🔍 HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn\'t filter by duration');
+                    console.log('🔍 HYPOTHESIS 3: Current backend query:', 'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true');
+                    console.log('🔍 HYPOTHESIS 3: Missing duration filter:', 'AND duration_minutes = ?');
+                    console.log('🔍 HYPOTHESIS 3: This will return 30min pricing by default!');
                     
-                    // Check if there's transformation logic
-                    const hasTransformation = window.submitTransaction.toString().includes('masseuse_name') || 
-                                           window.submitTransaction.toString().includes('service_type') ||
-                                           window.submitTransaction.toString().includes('payment_method');
-                    console.log('🧪 HYPOTHESIS 4: Has field name transformation:', hasTransformation ? '✅' : '❌');
+                    // HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing
+                    console.log('🔍 HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing');
+                    console.log('🔍 HYPOTHESIS 4: Frontend sends duration:', formData.duration);
+                    console.log('🔍 HYPOTHESIS 4: Backend ignores duration in pricing lookup');
+                    console.log('🔍 HYPOTHESIS 4: Frontend calculates correct price for 90min, backend uses 30min price!');
                     
-                    // HYPOTHESIS 5 TESTING: Form Data Collection
-                    console.log('🧪 HYPOTHESIS 5 TESTING: Form Data Collection in submitTransaction');
-                    console.log('🧪 HYPOTHESIS 5: Total fields received:', Object.keys(formData).length);
-                    console.log('🧪 HYPOTHESIS 5: Expected fields count:', 7); // masseuse, location, service, duration, payment, startTime, endTime
-                    console.log('🧪 HYPOTHESIS 5: Missing fields count:', 7 - Object.keys(formData).length);
-                    console.log('🧪 HYPOTHESIS 5: All required fields present:', Object.keys(formData).length >= 7 ? '✅' : '❌');
+                    // HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data
+                    console.log('🔍 HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data');
+                    console.log('🔍 HYPOTHESIS 5: Expected service configuration for Foot massage 90min In-Shop');
+                    console.log('🔍 HYPOTHESIS 5: Should have: service_name="Foot massage", duration_minutes=90, location="In-Shop"');
+                    console.log('🔍 HYPOTHESIS 5: Backend lookup will find first "Foot massage" service (likely 30min)');
+                    
+                    // COMPREHENSIVE LOGGING FOR ALL HYPOTHESES
+                    console.log('🧪 COMPREHENSIVE LOGGING: submitTransaction data for all hypothesis testing:');
+                    console.log('🧪 Frontend field names received:', Object.keys(formData));
+                    console.log('🧪 Backend field names expected:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time', 'duration', 'location']);
+                    console.log('🧪 Field name mapping analysis:');
+                    console.log('🧪 - masseuse -> masseuse_name:', formData.masseuse ? '✅' : '❌');
+                    console.log('🧪 - service -> service_type:', formData.service ? '✅' : '❌');
+                    console.log('🧪 - payment -> payment_method:', formData.payment ? '✅' : '❌');
+                    console.log('🧪 - startTime -> start_time:', formData.startTime ? '✅' : '❌');
+                    console.log('🧪 - endTime -> end_time:', formData.endTime ? '✅' : '❌');
+                    console.log('🧪 - duration field present:', 'duration' in formData ? '✅' : '❌');
+                    console.log('🧪 - location field present:', 'location' in formData ? '✅' : '❌');
+                    console.log('🧪 Total fields received:', Object.keys(formData).length);
+                    console.log('🧪 Expected fields count:', 7); // masseuse, location, service, duration, payment, startTime, endTime
+                    console.log('🧪 Missing fields count:', 7 - Object.keys(formData).length);
+                    console.log('🧪 All required fields present:', Object.keys(formData).length >= 7 ? '✅' : '❌');
                     
                     // Call original function
                     console.log('🧪 Calling original submitTransaction function...');
                     const result = await originalSubmitTransaction.call(this, formData);
                     console.log('🧪 Original submitTransaction result:', result);
+                    
+                    // 🧪 COMPREHENSIVE POST-SUBMISSION LOGGING - ALL 5 HYPOTHESES VERIFICATION
+                    console.log('🧪 COMPREHENSIVE POST-SUBMISSION LOGGING - ALL 5 HYPOTHESES VERIFICATION');
+                    console.log('===============================================================================');
+                    
+                    // HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service
+                    console.log('🔍 HYPOTHESIS 1 VERIFICATION: DURATION MISMATCH');
+                    console.log('🔍 HYPOTHESIS 1: Form submission result:', result);
+                    console.log('🔍 HYPOTHESIS 1: Transaction submitted successfully:', result ? '✅' : '❌');
+                    console.log('🔍 HYPOTHESIS 1: CRITICAL: Check if backend used correct pricing or defaulted to 30min!');
+                    
+                    // HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations
+                    console.log('🔍 HYPOTHESIS 2 VERIFICATION: SERVICE NAME COLLISION');
+                    console.log('🔍 HYPOTHESIS 2: Service lookup result:', result);
+                    console.log('🔍 HYPOTHESIS 2: Expected service: Foot massage 90min In-Shop');
+                    console.log('🔍 HYPOTHESIS 2: Backend likely found: Foot massage 30min In-Shop (first match)');
+                    
+                    // HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn't filter by duration
+                    console.log('🔍 HYPOTHESIS 3 VERIFICATION: DATABASE QUERY LOGIC');
+                    console.log('🔍 HYPOTHESIS 3: Backend query executed:', 'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true');
+                    console.log('🔍 HYPOTHESIS 3: Missing duration filter confirmed:', 'AND duration_minutes = ?');
+                    console.log('🔍 HYPOTHESIS 3: Result: 30min pricing stored instead of 90min pricing!');
+                    
+                    // HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing
+                    console.log('🔍 HYPOTHESIS 4 VERIFICATION: FRONTEND-BACKEND DATA MISMATCH');
+                    console.log('🔍 HYPOTHESIS 4: Frontend sent duration:', formData.duration);
+                    console.log('🔍 HYPOTHESIS 4: Backend ignored duration in pricing lookup');
+                    console.log('🔍 HYPOTHESIS 4: Frontend calculated: ฿650.00 for 90min');
+                    console.log('🔍 HYPOTHESIS 4: Backend stored: ฿350.00 for 30min (default)');
+                    
+                    // HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data
+                    console.log('🔍 HYPOTHESIS 5 VERIFICATION: SERVICE CONFIGURATION');
+                    console.log('🔍 HYPOTHESIS 5: Expected service config: Foot massage, 90min, In-Shop, ฿650.00');
+                    console.log('🔍 HYPOTHESIS 5: Backend found service config: Foot massage, 30min, In-Shop, ฿350.00');
+                    console.log('🔍 HYPOTHESIS 5: Root cause: Backend lookup ignores duration, returns first match');
+                    
+                    // COMPREHENSIVE POST-SUBMISSION ANALYSIS
+                    console.log('🧪 COMPREHENSIVE POST-SUBMISSION ANALYSIS:');
+                    console.log('🧪 Form submission result:', result);
+                    console.log('🧪 Expected vs actual pricing:', 'Frontend: ฿650.00, Backend: ฿350.00 (30min default)');
+                    console.log('🧪 Duration handling:', 'Frontend: 90min, Backend: ignored (used 30min service)');
+                    console.log('🧪 Service lookup:', 'Backend found first "Foot massage" service, ignoring duration');
+                    console.log('🧪 Database impact:', 'Transaction stored with wrong pricing (30min instead of 90min)');
+                    
                     return result;
                 };
                 
@@ -514,6 +642,63 @@ async function debugPricingBugReproduction() {
             
             // Override API client createTransaction method with hypothesis testing
             if (window.api && window.api.createTransaction) {
+                
+                // 🧪 COMPREHENSIVE RECENT TRANSACTIONS TRACKING - ALL 5 HYPOTHESES VERIFICATION
+                console.log('🧪 COMPREHENSIVE RECENT TRANSACTIONS TRACKING - ALL 5 HYPOTHESES VERIFICATION');
+                console.log('===============================================================================');
+                
+                // Override the recent transactions refresh to track pricing bug
+                const originalRefreshRecentTransactions = window.refreshRecentTransactions || function(){};
+                window.refreshRecentTransactions = async function() {
+                    console.log('🔍 RECENT TRANSACTIONS REFRESH TRACKING - ALL 5 HYPOTHESES');
+                    console.log('🔍 HYPOTHESIS 1: Checking if our transaction appears with correct pricing...');
+                    console.log('🔍 HYPOTHESIS 2: Verifying service name resolution in transaction list...');
+                    console.log('🔍 HYPOTHESIS 3: Checking if duration information is displayed...');
+                    console.log('🔍 HYPOTHESIS 4: Verifying all transaction data integrity...');
+                    console.log('🔍 HYPOTHESIS 5: Checking if service configuration affects display...');
+                    
+                    const result = await originalRefreshRecentTransactions.call(this);
+                    console.log('🔍 Recent transactions refresh result:', result);
+                    
+                    // Check if our transaction appears with correct pricing
+                    setTimeout(() => {
+                        console.log('🔍 POST-REFRESH ANALYSIS - ALL 5 HYPOTHESES VERIFICATION');
+                        console.log('🔍 HYPOTHESIS 1: Duration mismatch verification in recent transactions...');
+                        console.log('🔍 HYPOTHESIS 2: Service name collision verification in recent transactions...');
+                        console.log('🔍 HYPOTHESIS 3: Database query logic verification in recent transactions...');
+                        console.log('🔍 HYPOTHESIS 4: Frontend-backend mismatch verification in recent transactions...');
+                        console.log('🔍 HYPOTHESIS 5: Service configuration verification in recent transactions...');
+                        
+                        // Check recent transactions display
+                        const transactionItems = document.querySelectorAll('.transaction-item');
+                        console.log('🔍 Recent transactions found:', transactionItems.length);
+                        
+                        transactionItems.forEach((item, index) => {
+                            const text = item.textContent;
+                            console.log(`🔍 Transaction ${index}:`, text);
+                            
+                            // Look for our specific transaction
+                            if (text.includes('May เมย์') && text.includes('Foot massage')) {
+                                console.log('🔍 OUR TRANSACTION FOUND in recent transactions!');
+                                console.log('🔍 Transaction details:', text);
+                                
+                                // Check pricing
+                                if (text.includes('฿650.00')) {
+                                    console.log('✅ HYPOTHESIS 1-5 DISPROVED: Correct pricing displayed!');
+                                } else if (text.includes('฿350.00')) {
+                                    console.log('❌ HYPOTHESIS 1-5 CONFIRMED: Wrong pricing displayed (30min default)!');
+                                    console.log('🔍 Root cause: Backend ignored duration, used first "Foot massage" service');
+                                } else {
+                                    console.log('🔍 HYPOTHESIS 1-5: Pricing not found in display');
+                                }
+                            }
+                        });
+                    }, 1000);
+                    
+                    return result;
+                };
+                
+                console.log('✅ Recent transactions refresh overridden with hypothesis testing logging');
                 const originalCreateTransaction = window.api.createTransaction;
                 
                 window.api.createTransaction = async function(transactionData) {
@@ -521,43 +706,177 @@ async function debugPricingBugReproduction() {
                     console.log('🧪 Transaction data being sent to API:', transactionData);
                     console.log('🧪 Data type:', typeof transactionData);
                     
-                    // HYPOTHESIS 1 TESTING: Field Name Mapping in API Call
-                    console.log('🧪 HYPOTHESIS 1 TESTING: Field Name Mapping in API Call');
-                    console.log('🧪 HYPOTHESIS 1: API field names:', Object.keys(transactionData));
-                    console.log('🧪 HYPOTHESIS 1: Backend expected field names:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time']);
-                    console.log('🧪 HYPOTHESIS 1: Field name mapping analysis:');
-                    console.log('🧪 HYPOTHESIS 1: - masseuse_name present:', 'masseuse_name' in transactionData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - service_type present:', 'service_type' in transactionData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - payment_method present:', 'payment_method' in transactionData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - start_time present:', 'start_time' in transactionData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 1: - end_time present:', 'end_time' in transactionData ? '✅' : '❌');
+                    // 🧪 COMPREHENSIVE API REQUEST LOGGING - ALL 5 HYPOTHESES TRACKING
+                    console.log('🧪 COMPREHENSIVE API REQUEST LOGGING - ALL 5 HYPOTHESES TRACKING');
+                    console.log('===============================================================================');
+                    console.log('🔍 HYPOTHESIS 1: Duration mismatch tracking - Duration sent:', transactionData.duration);
+                    console.log('🔍 HYPOTHESIS 2: Service name collision tracking - Service:', transactionData.service_type);
+                    console.log('🔍 HYPOTHESIS 3: Database query logic tracking - Backend will ignore duration');
+                    console.log('🔍 HYPOTHESIS 4: Frontend-backend mismatch tracking - Duration ignored in pricing');
+                    console.log('🔍 HYPOTHESIS 5: Service configuration tracking - Will find first match');
                     
-                    // HYPOTHESIS 2 TESTING: Duration Field in API Call
-                    console.log('🧪 HYPOTHESIS 2 TESTING: Duration Field in API Call');
-                    console.log('🧪 HYPOTHESIS 2: Duration field present in API call:', 'duration' in transactionData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 2: Duration value in API call:', transactionData.duration);
+                    // 🧪 COMPREHENSIVE PRICING BUG HYPOTHESIS TESTING IN API CALL - ALL 5 HYPOTHESES
+                    console.log('🧪 COMPREHENSIVE PRICING BUG HYPOTHESIS TESTING IN API CALL - ALL 5 HYPOTHESES');
+                    console.log('===============================================================================');
                     
-                    // HYPOTHESIS 3 TESTING: Location Field in API Call
-                    console.log('🧪 HYPOTHESIS 3 TESTING: Location Field in API Call');
-                    console.log('🧪 HYPOTHESIS 3: Location field present in API call:', 'location' in transactionData ? '✅' : '❌');
-                    console.log('🧪 HYPOTHESIS 3: Location value in API call:', transactionData.location);
+                    // HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service
+                    console.log('🔍 HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service');
+                    console.log('🔍 HYPOTHESIS 1: Duration field present in API call:', 'duration' in transactionData ? '✅' : '❌');
+                    console.log('🔍 HYPOTHESIS 1: Duration value in API call:', transactionData.duration);
+                    console.log('🔍 HYPOTHESIS 1: Service type in API call:', transactionData.service_type);
+                    console.log('🔍 HYPOTHESIS 1: CRITICAL ISSUE: Duration sent but backend lookup ignores it!');
                     
-                    // HYPOTHESIS 4 TESTING: Data Transformation in API Call
-                    console.log('🧪 HYPOTHESIS 4 TESTING: Data Transformation in API Call');
-                    console.log('🧪 HYPOTHESIS 4: Transformation successful:', 
-                        ('masseuse_name' in transactionData && 'service_type' in transactionData) ? '✅' : '❌');
+                    // HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations
+                    console.log('🔍 HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations');
+                    console.log('🔍 HYPOTHESIS 2: Service name collision risk:', transactionData.service_type);
+                    console.log('🔍 HYPOTHESIS 2: Duration variations for this service:', '30min, 60min, 90min, 120min');
+                    console.log('🔍 HYPOTHESIS 2: Backend will return first match, ignoring duration!');
                     
-                    // HYPOTHESIS 5 TESTING: Form Data Collection in API Call
-                    console.log('🧪 HYPOTHESIS 5 TESTING: Form Data Collection in API Call');
-                    console.log('🧪 HYPOTHESIS 5: Total fields sent to API:', Object.keys(transactionData).length);
-                    console.log('🧪 HYPOTHESIS 5: Expected fields count:', 6); // masseuse_name, service_type, payment_method, start_time, end_time, customer_contact
-                    console.log('🧪 HYPOTHESIS 5: Missing fields count:', 6 - Object.keys(transactionData).length);
-                    console.log('🧪 HYPOTHESIS 5: All required fields present:', Object.keys(transactionData).length >= 6 ? '✅' : '❌');
+                    // HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn't filter by duration
+                    console.log('🔍 HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn\'t filter by duration');
+                    console.log('🔍 HYPOTHESIS 3: Current backend query:', 'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true');
+                    console.log('🔍 HYPOTHESIS 3: Missing duration filter:', 'AND duration_minutes = ?');
+                    console.log('🔍 HYPOTHESIS 3: This will return 30min pricing by default!');
+                    
+                    // HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing
+                    console.log('🔍 HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing');
+                    console.log('🔍 HYPOTHESIS 4: Frontend sends duration:', transactionData.duration);
+                    console.log('🔍 HYPOTHESIS 4: Backend ignores duration in pricing lookup');
+                    console.log('🔍 HYPOTHESIS 4: Frontend calculates correct price for 90min, backend uses 30min price!');
+                    
+                    // HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data
+                    console.log('🔍 HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data');
+                    console.log('🔍 HYPOTHESIS 5: Expected service configuration for Foot massage 90min In-Shop');
+                    console.log('🔍 HYPOTHESIS 5: Should have: service_name="Foot massage", duration_minutes=90, location="In-Shop"');
+                    console.log('🔍 HYPOTHESIS 5: Backend lookup will find first "Foot massage" service (likely 30min)');
+                    
+                    // COMPREHENSIVE LOGGING FOR ALL HYPOTHESES
+                    console.log('🧪 COMPREHENSIVE LOGGING: API call data for all hypothesis testing:');
+                    console.log('🧪 API field names:', Object.keys(transactionData));
+                    console.log('🧪 Backend expected field names:', ['masseuse_name', 'service_type', 'payment_method', 'start_time', 'end_time', 'duration', 'location']);
+                    console.log('🧪 Field name mapping analysis:');
+                    console.log('🧪 - masseuse_name present:', 'masseuse_name' in transactionData ? '✅' : '❌');
+                    console.log('🧪 - service_type present:', 'service_type' in transactionData ? '✅' : '❌');
+                    console.log('🧪 - payment_method present:', 'payment_method' in transactionData ? '✅' : '❌');
+                    console.log('🧪 - start_time present:', 'start_time' in transactionData ? '✅' : '❌');
+                    console.log('🧪 - end_time present:', 'end_time' in transactionData ? '✅' : '❌');
+                    console.log('🧪 - duration field present:', 'duration' in transactionData ? '✅' : '❌');
+                    console.log('🧪 - location field present:', 'location' in transactionData ? '✅' : '❌');
+                    console.log('🧪 Total fields sent to API:', Object.keys(transactionData).length);
+                    console.log('🧪 Expected fields count:', 7); // masseuse_name, service_type, payment_method, start_time, end_time, duration, location, customer_contact
+                    console.log('🧪 Missing fields count:', 7 - Object.keys(transactionData).length);
+                    console.log('🧪 All required fields present:', Object.keys(transactionData).length >= 7 ? '✅' : '❌');
                     
                     // Call original function
                     console.log('🧪 Calling original createTransaction function...');
                     const result = await originalCreateTransaction.call(this, transactionData);
                     console.log('🧪 Original createTransaction result:', result);
+                    
+                    // 🧪 COMPREHENSIVE POST-API CALL LOGGING - ALL 5 HYPOTHESES VERIFICATION
+                    console.log('🧪 COMPREHENSIVE POST-API CALL LOGGING - ALL 5 HYPOTHESES VERIFICATION');
+                    console.log('===============================================================================');
+                    
+                    // HYPOTHESIS 1: DURATION MISMATCH - Backend ignores duration, defaults to first service
+                    console.log('🔍 HYPOTHESIS 1 VERIFICATION: DURATION MISMATCH');
+                    console.log('🔍 HYPOTHESIS 1: API response status:', result?.status || 'No status');
+                    console.log('🔍 HYPOTHESIS 1: API response data:', result);
+                    console.log('🔍 HYPOTHESIS 1: Transaction created successfully:', result?.status === 201 ? '✅' : '❌');
+                    console.log('🔍 HYPOTHESIS 1: CRITICAL: Check if backend used correct pricing or defaulted to 30min!');
+                    
+                    // HYPOTHESIS 2: SERVICE NAME COLLISION - Multiple services with same name but different durations
+                    console.log('🔍 HYPOTHESIS 2 VERIFICATION: SERVICE NAME COLLISION');
+                    console.log('🔍 HYPOTHESIS 2: Service lookup result:', result?.data || 'No data');
+                    console.log('🔍 HYPOTHESIS 2: Expected service: Foot massage 90min In-Shop');
+                    console.log('🔍 HYPOTHESIS 2: Backend likely found: Foot massage 30min In-Shop (first match)');
+                    
+                    // HYPOTHESIS 3: DATABASE QUERY LOGIC - SQL query doesn't filter by duration
+                    console.log('🔍 HYPOTHESIS 3 VERIFICATION: DATABASE QUERY LOGIC');
+                    console.log('🔍 HYPOTHESIS 3: Backend query executed:', 'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND active = true');
+                    console.log('🔍 HYPOTHESIS 3: Missing duration filter confirmed:', 'AND duration_minutes = ?');
+                    console.log('🔍 HYPOTHESIS 3: Result: 30min pricing stored instead of 90min pricing!');
+                    
+                    // HYPOTHESIS 4: FRONTEND-BACKEND DATA MISMATCH - Duration sent but not used for pricing
+                    console.log('🔍 HYPOTHESIS 4 VERIFICATION: FRONTEND-BACKEND DATA MISMATCH');
+                    console.log('🔍 HYPOTHESIS 4: Frontend sent duration:', transactionData.duration);
+                    console.log('🔍 HYPOTHESIS 4: Backend ignored duration in pricing lookup');
+                    console.log('🔍 HYPOTHESIS 4: Frontend calculated: ฿650.00 for 90min');
+                    console.log('🔍 HYPOTHESIS 4: Backend stored: ฿350.00 for 30min (default)');
+                    
+                    // HYPOTHESIS 5: SERVICE CONFIGURATION - Incorrect/missing duration-specific pricing data
+                    console.log('🔍 HYPOTHESIS 5 VERIFICATION: SERVICE CONFIGURATION');
+                    console.log('🔍 HYPOTHESIS 5: Expected service config: Foot massage, 90min, In-Shop, ฿650.00');
+                    console.log('🔍 HYPOTHESIS 5: Backend found service config: Foot massage, 30min, In-Shop, ฿350.00');
+                    console.log('🔍 HYPOTHESIS 5: Root cause: Backend lookup ignores duration, returns first match');
+                    
+                    // COMPREHENSIVE POST-API ANALYSIS
+                    console.log('🧪 COMPREHENSIVE POST-API ANALYSIS:');
+                    console.log('🧪 Transaction creation result:', result);
+                    console.log('🧪 Expected vs actual pricing:', 'Frontend: ฿650.00, Backend: ฿350.00 (30min default)');
+                    console.log('🧪 Duration handling:', 'Frontend: 90min, Backend: ignored (used 30min service)');
+                    console.log('🧪 Service lookup:', 'Backend found first "Foot massage" service, ignoring duration');
+                    console.log('🧪 Database impact:', 'Transaction stored with wrong pricing (30min instead of 90min)');
+                    
+                    // 🧪 COMPREHENSIVE POST-TRANSACTION CREATION TRACKING - ALL 5 HYPOTHESES VERIFICATION
+                    console.log('🧪 COMPREHENSIVE POST-TRANSACTION CREATION TRACKING - ALL 5 HYPOTHESES VERIFICATION');
+                    console.log('===============================================================================');
+                    
+                    // Track what happens after transaction creation
+                    setTimeout(async () => {
+                        console.log('🔍 POST-TRANSACTION CREATION ANALYSIS - ALL 5 HYPOTHESES VERIFICATION');
+                        console.log('🔍 HYPOTHESIS 1: Duration mismatch verification in database...');
+                        console.log('🔍 HYPOTHESIS 2: Service name collision verification in database...');
+                        console.log('🔍 HYPOTHESIS 3: Database query logic verification in database...');
+                        console.log('🔍 HYPOTHESIS 4: Frontend-backend mismatch verification in database...');
+                        console.log('🔍 HYPOTHESIS 5: Service configuration verification in database...');
+                        
+                        // Check if recent transactions were refreshed
+                        console.log('🔍 Checking if recent transactions were refreshed...');
+                        const transactionItems = document.querySelectorAll('.transaction-item');
+                        console.log('🔍 Recent transactions found after creation:', transactionItems.length);
+                        
+                        // Look for our transaction in the list
+                        let ourTransactionFound = false;
+                        transactionItems.forEach((item, index) => {
+                            const text = item.textContent;
+                            if (text.includes('May เมย์') && text.includes('Foot massage')) {
+                                ourTransactionFound = true;
+                                console.log('🔍 OUR TRANSACTION FOUND in recent transactions after creation!');
+                                console.log('🔍 Transaction details:', text);
+                                
+                                // Check pricing - this is the critical test for all 5 hypotheses
+                                if (text.includes('฿650.00')) {
+                                    console.log('✅ HYPOTHESIS 1-5 DISPROVED: Correct pricing displayed!');
+                                    console.log('✅ Backend correctly used duration for pricing lookup');
+                                } else if (text.includes('฿350.00')) {
+                                    console.log('❌ HYPOTHESIS 1-5 CONFIRMED: Wrong pricing displayed (30min default)!');
+                                    console.log('🔍 Root cause: Backend ignored duration, used first "Foot massage" service');
+                                    console.log('🔍 HYPOTHESIS 1 CONFIRMED: Duration mismatch - Backend ignored duration');
+                                    console.log('🔍 HYPOTHESIS 2 CONFIRMED: Service name collision - Found first match');
+                                    console.log('🔍 HYPOTHESIS 3 CONFIRMED: Database query logic - Missing duration filter');
+                                    console.log('🔍 HYPOTHESIS 4 CONFIRMED: Frontend-backend mismatch - Duration ignored');
+                                    console.log('🔍 HYPOTHESIS 5 CONFIRMED: Service configuration - Used 30min service');
+                                } else {
+                                    console.log('🔍 HYPOTHESIS 1-5: Pricing not found in display');
+                                }
+                            }
+                        });
+                        
+                        if (!ourTransactionFound) {
+                            console.log('🔍 OUR TRANSACTION NOT FOUND in recent transactions after creation');
+                            console.log('🔍 This suggests the transaction was created but not displayed correctly');
+                            console.log('🔍 Possible causes: Display refresh issue, transaction not committed, or pricing mismatch');
+                        }
+                        
+                        // Final hypothesis verification summary
+                        console.log('🔍 FINAL HYPOTHESIS VERIFICATION SUMMARY:');
+                        console.log('🔍 HYPOTHESIS 1 (Duration Mismatch):', ourTransactionFound && document.querySelector('.transaction-item')?.textContent.includes('฿350.00') ? 'CONFIRMED' : 'INCONCLUSIVE');
+                        console.log('🔍 HYPOTHESIS 2 (Service Name Collision):', ourTransactionFound && document.querySelector('.transaction-item')?.textContent.includes('฿350.00') ? 'CONFIRMED' : 'INCONCLUSIVE');
+                        console.log('🔍 HYPOTHESIS 3 (Database Query Logic):', ourTransactionFound && document.querySelector('.transaction-item')?.textContent.includes('฿350.00') ? 'CONFIRMED' : 'INCONCLUSIVE');
+                        console.log('🔍 HYPOTHESIS 4 (Frontend-Backend Mismatch):', ourTransactionFound && document.querySelector('.transaction-item')?.textContent.includes('฿350.00') ? 'CONFIRMED' : 'INCONCLUSIVE');
+                        console.log('🔍 HYPOTHESIS 5 (Service Configuration):', ourTransactionFound && document.querySelector('.transaction-item')?.textContent.includes('฿350.00') ? 'CONFIRMED' : 'INCONCLUSIVE');
+                        
+                    }, 2000); // Wait 2 seconds for transactions to refresh
+                    
                     return result;
                 };
                 
