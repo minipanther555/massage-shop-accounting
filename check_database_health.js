@@ -292,13 +292,24 @@ function main() {
         console.log(gitStatus.output);
     }
     
-    const gitTrackedFiles = runCommand('cd /opt/massage-shop && git ls-files | grep -E "(massage_shop\.db|\.env)"', 'Git tracked database/env files');
-    if (gitTrackedFiles.success && gitTrackedFiles.output) {
-        logError('❌ CRITICAL: Database or .env files are tracked by Git!');
+    // Check for actual database files tracked by Git (not documentation)
+    const gitTrackedDbFiles = runCommand('cd /opt/massage-shop && git ls-files | grep -E "(massage_shop\.db$|\.db$)"', 'Git tracked database files');
+    if (gitTrackedDbFiles.success && gitTrackedDbFiles.output) {
+        logError('❌ CRITICAL: Database files are tracked by Git!');
         logError('  → This will cause permission and path issues');
-        console.log('Tracked files:', gitTrackedFiles.output);
+        console.log('Tracked database files:', gitTrackedDbFiles.output);
     } else {
-        logSuccess('✅ No database or .env files tracked by Git');
+        logSuccess('✅ No database files tracked by Git');
+    }
+    
+    // Check for actual .env files tracked by Git (not documentation)
+    const gitTrackedEnvFiles = runCommand('cd /opt/massage-shop && git ls-files | grep -E "^\\.env$"', 'Git tracked .env files');
+    if (gitTrackedEnvFiles.success && gitTrackedEnvFiles.output) {
+        logError('❌ CRITICAL: .env files are tracked by Git!');
+        logError('  → This will cause permission and path issues');
+        console.log('Tracked .env files:', gitTrackedEnvFiles.output);
+    } else {
+        logSuccess('✅ No .env files tracked by Git');
     }
     
     // Phase 6: Check Systemd Service
@@ -369,9 +380,14 @@ function main() {
         logWarning(`ISSUE ${issuesFound}: Multiple .env files detected`);
     }
     
-    if (gitTrackedFiles.success && gitTrackedFiles.output) {
+    if (gitTrackedDbFiles.success && gitTrackedDbFiles.output) {
         criticalIssues++;
-        logError(`CRITICAL ISSUE ${criticalIssues}: Database/.env files tracked by Git`);
+        logError(`CRITICAL ISSUE ${criticalIssues}: Database files tracked by Git`);
+    }
+    
+    if (gitTrackedEnvFiles.success && gitTrackedEnvFiles.output) {
+        criticalIssues++;
+        logError(`CRITICAL ISSUE ${criticalIssues}: .env files tracked by Git`);
     }
     
     logInfo(`\n📊 DIAGNOSTIC SUMMARY:`);
