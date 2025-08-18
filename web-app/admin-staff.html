@@ -477,7 +477,7 @@
 
             try {
                 if (currentStaffId) {
-                    await api.updateStaff(currentStaffId, staffData);
+                    await api.updateAdminStaff(currentStaffId, staffData);
                     showToast('Staff member updated successfully');
                 } else {
                     await api.addStaff(staffData);

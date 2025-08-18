@@ -251,7 +251,7 @@ class APIClient {
         });
     }
 
-    async updateStaff(staffId, staffData) {
+    async updateAdminStaff(staffId, staffData) {
         return this.request(`/admin/staff/${staffId}`, {
             method: 'PUT',
             body: staffData
