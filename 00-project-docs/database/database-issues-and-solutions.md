@@ -124,7 +124,25 @@ This document captures the critical database issues encountered during developme
 - API endpoints return empty arrays `[]`
 - Frontend shows no data
 
-**Status**: ❌ **UNSOLVED** - We don't know what's automatically recreating it
+**Status**: ✅ **SOLVED** - Git was tracking the second database
+
+**Root Cause Discovered**:
+- The second database `/opt/massage-shop/data/massage_shop.db` was **committed to Git**
+- Every `git pull`, `git checkout`, or `git pull origin` operation **restored the file**
+- This is why it kept "regenerating" - Git was systematically restoring it
+
+**The Fix**:
+```bash
+# Remove from Git tracking (but keep local file)
+git rm --cached data/massage_shop.db
+
+# Add to .gitignore to prevent future tracking
+echo "data/massage_shop.db" >> .gitignore
+
+# Commit the changes
+git add .gitignore
+git commit -m "Remove second database from Git tracking and add to .gitignore"
+```
 
 ## Permanent Solutions Implemented
 
@@ -319,9 +337,36 @@ grep DATABASE_PATH /opt/massage-shop/.env
 2. **Database Connection**: App now connects successfully to database
 3. **Broken Directory Creation**: Removed from `database.js`
 4. **Conflicting .env Files**: Consolidated to single file
+5. **Second Database Regeneration**: ✅ **SOLVED** - Git was tracking the file
+
+### 🎯 BREAKTHROUGH DISCOVERY (August 18, 2025):
+**The Second Database Mystery is Solved!**
+
+**Root Cause**: The second database `/opt/massage-shop/data/massage_shop.db` was **committed to Git** and was being systematically restored by every Git operation.
+
+**Why This Happened**:
+- Someone accidentally committed the second database file to Git
+- Every `git pull`, `git checkout`, or `git pull origin` operation restored it
+- This made it appear to "regenerate" automatically
+- The timing (2:58 AM) was likely when automated Git operations occurred
+
+**The Fix Applied**:
+```bash
+# Remove from Git tracking (but keep local file)
+git rm --cached data/massage_shop.db
+
+# Add to .gitignore to prevent future tracking
+echo "data/massage_shop.db" >> .gitignore
+
+# Commit the changes
+git add .gitignore
+git commit -m "Remove second database from Git tracking and add to .gitignore"
+```
+
+**Lesson Learned**: Always check Git tracking when files keep "regenerating" - Git operations can restore files that appear to be automatically recreated.
 
 ### ❌ UNSOLVED MYSTERIES:
-1. **Second Database Regeneration**: Still automatically reappearing
+1. **Second Database Regeneration**: ✅ **SOLVED** - Git was tracking it
 2. **2:58 AM Process**: Unknown automated process creating databases
 3. **Permission Reversion**: Database permissions keep changing back to read-only
 4. **API Empty Data**: App connects to wrong database, returns empty arrays
@@ -335,7 +380,6 @@ grep DATABASE_PATH /opt/massage-shop/.env
   - ✅ Not broken `database.js` logic (fixed)
 
 - **What We Still Don't Know**:
-  - What's automatically recreating the second database
   - What's running at 2:58 AM
   - What's changing database permissions back to read-only
   - Why the app sometimes connects to the wrong database
