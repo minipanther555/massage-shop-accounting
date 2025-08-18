@@ -248,15 +248,11 @@
             }
             
             try {
-                // Find an empty position in the database roster
-                const emptyPosition = appData.roster.find(r => !r.name || r.name.trim() === '');
-                if (!emptyPosition) {
-                    showToast('No empty positions available', 'error');
-                    return;
-                }
+                // Get the next available position number
+                const nextPosition = appData.roster.length + 1;
                 
-                // Update via API
-                await api.updateStaff(emptyPosition.position, {
+                // Create a new roster entry via API
+                await api.updateStaff(nextPosition, {
                     masseuse_name: selectedName,
                     status: null // Will be set to Next if it's the first person
                 });
@@ -264,7 +260,7 @@
                 // Check if this is the first person, set as Next
                 const currentActiveStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
                 if (currentActiveStaff.length === 0) {
-                    await api.updateStaff(emptyPosition.position, {
+                    await api.updateStaff(nextPosition, {
                         masseuse_name: selectedName,
                         status: 'Next'
                     });
@@ -274,7 +270,7 @@
                 await loadData();
                 updateRosterDisplay();
                 updateAvailableStaffDropdown();
-                showToast(`Added ${selectedName} to today's roster`);
+                showToast(`Added ${selectedName} to today's roster at position ${nextPosition}`);
             } catch (error) {
                 console.error('Error adding staff:', error);
                 showToast('Error adding staff to roster', 'error');

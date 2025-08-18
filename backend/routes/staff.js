@@ -132,48 +132,74 @@ router.get('/roster', async (req, res) => {
 router.put('/roster/:position', async (req, res) => {
   try {
     const { position } = req.params;
-    const { masseuse_name, status } = req.body;
+    const { masseuse_name, status, busy_until, today_massages } = req.body;
     
     // Validate status - only Next and Busy until [time] allowed
     if (status && !status.startsWith('Busy until ') && status !== 'Next') {
       return res.status(400).json({ error: 'Invalid status. Only "Next" or "Busy until [time]" allowed' });
     }
     
-    const updates = [];
-    const params = [];
-    
-    if (masseuse_name !== undefined) {
-      updates.push('masseuse_name = ?');
-      params.push(masseuse_name);
-    }
-    
-    if (status !== undefined) {
-      updates.push('status = ?');
-      params.push(status);
-    }
-    
-    if (updates.length === 0) {
-      return res.status(400).json({ error: 'No updates provided' });
-    }
-    
-    updates.push('last_updated = CURRENT_TIMESTAMP');
-    params.push(position);
-    
-    await database.run(
-      `UPDATE staff_roster SET ${updates.join(', ')} WHERE position = ?`,
-      params
-    );
-    
-    // Get updated record
-    const updated = await database.get(
+    // Check if a row exists at this position
+    const existingRow = await database.get(
       'SELECT * FROM staff_roster WHERE position = ?',
       [position]
     );
     
-    res.json(updated);
+    if (existingRow) {
+      // UPDATE existing row
+      const updates = [];
+      const params = [];
+      
+      if (masseuse_name !== undefined) {
+        updates.push('masseuse_name = ?');
+        params.push(masseuse_name);
+      }
+      
+      if (status !== undefined) {
+        updates.push('status = ?');
+        params.push(status);
+      }
+      
+      if (busy_until !== undefined) {
+        updates.push('busy_until = ?');
+        params.push(busy_until);
+      }
+      
+      if (today_massages !== undefined) {
+        updates.push('today_massages = ?');
+        params.push(today_massages);
+      }
+      
+      if (updates.length === 0) {
+        return res.status(400).json({ error: 'No updates provided' });
+      }
+      
+      updates.push('last_updated = CURRENT_TIMESTAMP');
+      params.push(position);
+      
+      await database.run(
+        `UPDATE staff_roster SET ${updates.join(', ')} WHERE position = ?`,
+        params
+      );
+    } else {
+      // INSERT new row
+      await database.run(
+        `INSERT INTO staff_roster (position, masseuse_name, status, busy_until, today_massages, last_updated) 
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [position, masseuse_name || '', status || null, busy_until || null, today_massages || 0]
+      );
+    }
+    
+    // Get the record (either updated or newly created)
+    const result = await database.get(
+      'SELECT * FROM staff_roster WHERE position = ?',
+      [position]
+    );
+    
+    res.json(result);
   } catch (error) {
-    console.error('Error updating staff:', error);
-    res.status(500).json({ error: 'Failed to update staff' });
+    console.error('Error updating/creating staff:', error);
+    res.status(500).json({ error: 'Failed to update/create staff' });
   }
 });
 
