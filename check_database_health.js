@@ -199,6 +199,168 @@ function checkDatabaseSchema(dbPath, description) {
     }
 }
 
+function validateSystemdConfiguration() {
+    logSection('SYSTEMD CONFIGURATION VALIDATION');
+    
+    try {
+        const systemdConfig = execSync('systemctl cat massage-shop', { encoding: 'utf8' });
+        
+        // Check WorkingDirectory
+        const workingDirMatch = systemdConfig.match(/WorkingDirectory=(.+)/);
+        if (workingDirMatch) {
+            const workingDir = workingDirMatch[1].trim();
+            if (workingDir === '/opt/massage-shop') {
+                logSuccess('✅ WorkingDirectory: CORRECT (/opt/massage-shop)');
+            } else {
+                logError(`❌ WorkingDirectory: WRONG (${workingDir}) - should be /opt/massage-shop`);
+            }
+        } else {
+            logWarning('⚠️ WorkingDirectory: NOT FOUND in systemd config');
+        }
+        
+        // Check ExecStart
+        const execStartMatch = systemdConfig.match(/ExecStart=(.+)/);
+        if (execStartMatch) {
+            const execStart = execStartMatch[1].trim();
+            if (execStart === '/usr/bin/node backend/server.js') {
+                logSuccess('✅ ExecStart: CORRECT (/usr/bin/node backend/server.js)');
+            } else {
+                logError(`❌ ExecStart: WRONG (${execStart}) - should be /usr/bin/node backend/server.js`);
+            }
+        } else {
+            logWarning('⚠️ ExecStart: NOT FOUND in systemd config');
+        }
+        
+        // Check User
+        const userMatch = systemdConfig.match(/User=(.+)/);
+        if (userMatch) {
+            const user = userMatch[1].trim();
+            if (user === 'massage-shop') {
+                logSuccess('✅ User: CORRECT (massage-shop)');
+            } else {
+                logError(`❌ User: WRONG (${user}) - should be massage-shop`);
+            }
+        } else {
+            logWarning('⚠️ User: NOT FOUND in systemd config');
+        }
+        
+        return { workingDir: workingDirMatch?.[1]?.trim(), execStart: execStartMatch?.[1]?.trim(), user: userMatch?.[1]?.trim() };
+    } catch (error) {
+        logError(`❌ Failed to validate systemd configuration: ${error.message}`);
+        return null;
+    }
+}
+
+function testDatabaseWritePermissions(dbPath) {
+    logSection('DATABASE WRITE PERMISSION TESTING');
+    
+    try {
+        // Test if we can write to the database by creating a temporary table
+        const testTableName = `test_write_${Date.now()}`;
+        const createTableQuery = `sqlite3 "${dbPath}" "CREATE TABLE ${testTableName} (id INTEGER PRIMARY KEY, test TEXT);" 2>/dev/null || echo 'ERROR'`;
+        const createResult = runCommand(createTableQuery, `Creating test table ${testTableName}`);
+        
+        if (createResult.success && createResult.output !== 'ERROR') {
+            logSuccess('✅ Database write test: SUCCESS - can create tables');
+            
+            // Clean up - drop the test table
+            const dropTableQuery = `sqlite3 "${dbPath}" "DROP TABLE ${testTableName};" 2>/dev/null || echo 'ERROR'`;
+            runCommand(dropTableQuery, `Cleaning up test table ${testTableName}`);
+            
+            return { success: true, canWrite: true };
+        } else {
+            logError('❌ Database write test: FAILED - cannot create tables');
+            return { success: false, canWrite: false, reason: 'create_table_failed' };
+        }
+    } catch (error) {
+        logError(`❌ Database write test failed: ${error.message}`);
+        return { success: false, canWrite: false, error: error.message };
+    }
+}
+
+function testPathResolution() {
+    logSection('PATH RESOLUTION TESTING');
+    
+    try {
+        // Test if the path from systemd working directory resolves correctly
+        const systemdConfig = execSync('systemctl cat massage-shop', { encoding: 'utf8' });
+        const workingDirMatch = systemdConfig.match(/WorkingDirectory=(.+)/);
+        
+        if (!workingDirMatch) {
+            logWarning('⚠️ Cannot test path resolution - WorkingDirectory not found');
+            return { success: false, reason: 'no_working_directory' };
+        }
+        
+        const workingDir = workingDirMatch[1].trim();
+        logInfo(`Testing path resolution from WorkingDirectory: ${workingDir}`);
+        
+        // Test the database path resolution
+        const testPath = path.resolve(workingDir, './backend/data/massage_shop.db');
+        logInfo(`Resolved path: ${workingDir} + ./backend/data/massage_shop.db = ${testPath}`);
+        
+        if (fs.existsSync(testPath)) {
+            logSuccess('✅ Path resolution: SUCCESS - database file found at resolved path');
+            return { success: true, resolvedPath: testPath, exists: true };
+        } else {
+            logError(`❌ Path resolution: FAILED - database file not found at resolved path: ${testPath}`);
+            return { success: false, resolvedPath: testPath, exists: false };
+        }
+    } catch (error) {
+        logError(`❌ Path resolution test failed: ${error.message}`);
+        return { success: false, error: error.message };
+    }
+}
+
+function testAPIEndpoints() {
+    logSection('API ENDPOINT FUNCTIONALITY TESTING');
+    
+    try {
+        // Test if the service is running and responding
+        const serviceStatus = execSync('systemctl is-active massage-shop', { encoding: 'utf8' }).trim();
+        
+        if (serviceStatus !== 'active') {
+            logError(`❌ Service not running: ${serviceStatus}`);
+            return { success: false, reason: 'service_not_running' };
+        }
+        
+        logSuccess('✅ Service is running and active');
+        
+        // Test basic connectivity to localhost
+        const localhostTest = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/services || echo "FAILED"', { encoding: 'utf8' }).trim();
+        
+        if (localhostTest === '200') {
+            logSuccess('✅ Localhost API connectivity: SUCCESS (200 OK)');
+        } else if (localhostTest === 'FAILED') {
+            logError('❌ Localhost API connectivity: FAILED - cannot connect to localhost:3000');
+            return { success: false, reason: 'localhost_connectivity_failed' };
+        } else {
+            logWarning(`⚠️ Localhost API connectivity: Unexpected response (${localhostTest})`);
+        }
+        
+        // Test the critical admin staff endpoint
+        const adminStaffTest = execSync('curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/admin/staff || echo "FAILED"', { encoding: 'utf8' }).trim();
+        
+        if (adminStaffTest === '200') {
+            logSuccess('✅ Admin staff endpoint: SUCCESS (200 OK)');
+        } else if (adminStaffTest === '401') {
+            logWarning('⚠️ Admin staff endpoint: Requires authentication (401 Unauthorized) - this is expected');
+        } else if (adminStaffTest === '500') {
+            logError('❌ Admin staff endpoint: Internal server error (500) - CRITICAL ISSUE');
+            return { success: false, reason: 'admin_staff_500_error' };
+        } else if (adminStaffTest === 'FAILED') {
+            logError('❌ Admin staff endpoint: Cannot connect');
+            return { success: false, reason: 'admin_staff_connectivity_failed' };
+        } else {
+            logWarning(`⚠️ Admin staff endpoint: Unexpected response (${adminStaffTest})`);
+        }
+        
+        return { success: true, localhost: localhostTest, adminStaff: adminStaffTest };
+    } catch (error) {
+        logError(`❌ API endpoint testing failed: ${error.message}`);
+        return { success: false, error: error.message };
+    }
+}
+
 function main() {
     logHeader('DATABASE HEALTH CHECK - COMPREHENSIVE DIAGNOSTIC');
     logInfo(`Timestamp: ${new Date().toISOString()}`);
@@ -228,7 +390,20 @@ function main() {
     logSection('PHASE 2: DATABASE PERMISSIONS CHECK');
     
     if (correctDb.exists) {
-        checkFilePermissions(correctDbPath, 'Correct Database Permissions');
+        const permissions = checkFilePermissions(correctDbPath, 'Correct Database Permissions');
+        
+        // Enhanced permission validation
+        if (permissions.exists && permissions.mode) {
+            const mode = permissions.mode;
+            if (mode === '666' || mode === '664') {
+                logSuccess('✅ Database permissions: CORRECT (readable and writable)');
+            } else if (mode === '644') {
+                logError('❌ Database permissions: WRONG (644 = read-only for group/others)');
+                logError('  → This will cause SQLITE_READONLY errors');
+            } else {
+                logWarning(`⚠️ Database permissions: ${mode} (may be too restrictive)`);
+            }
+        }
     }
     
     if (incorrectDb.exists) {
@@ -327,20 +502,24 @@ function main() {
         console.log(systemdConfig.output);
     }
     
-    // Phase 7: Check PM2 Status
+    // Phase 6.5: Validate Systemd Configuration
+    const systemdValidation = validateSystemdConfiguration();
+    
+    // Phase 6.6: Test Path Resolution
+    const pathResolution = testPathResolution();
+    
+    // Phase 6.7: Test Database Write Permissions
+    if (correctDb.exists) {
+        const writeTest = testDatabaseWritePermissions(correctDbPath);
+    }
+    
+    // Phase 6.8: Test API Endpoints
+    const apiTest = testAPIEndpoints();
+    
+    // Phase 7: Check PM2 Status (Skipped - requires sudo access)
     logSection('PHASE 7: PM2 STATUS CHECK');
-    
-    const pm2Status = runCommand('sudo pm2 list', 'PM2 process list');
-    if (pm2Status.success) {
-        logInfo('PM2 status:');
-        console.log(pm2Status.output);
-    }
-    
-    const pm2Startup = runCommand('sudo pm2 startup', 'PM2 startup configuration');
-    if (pm2Startup.success) {
-        logInfo('PM2 startup configuration:');
-        console.log(pm2Startup.output);
-    }
+    logInfo('PM2 status check skipped - requires sudo access');
+    logInfo('This check is not critical for diagnosing the 500 errors we keep experiencing');
     
     // Phase 8: Check for Automated Processes
     logSection('PHASE 8: AUTOMATED PROCESSES CHECK');
@@ -390,6 +569,28 @@ function main() {
         logError(`CRITICAL ISSUE ${criticalIssues}: .env files tracked by Git`);
     }
     
+    // Check new critical issues
+    if (systemdValidation) {
+        if (systemdValidation.workingDir !== '/opt/massage-shop') {
+            criticalIssues++;
+            logError(`CRITICAL ISSUE ${criticalIssues}: Systemd WorkingDirectory is wrong`);
+        }
+        if (systemdValidation.execStart !== '/usr/bin/node backend/server.js') {
+            criticalIssues++;
+            logError(`CRITICAL ISSUE ${criticalIssues}: Systemd ExecStart is wrong`);
+        }
+    }
+    
+    if (pathResolution && !pathResolution.success) {
+        criticalIssues++;
+        logError(`CRITICAL ISSUE ${criticalIssues}: Path resolution failed`);
+    }
+    
+    if (apiTest && apiTest.adminStaff === '500') {
+        criticalIssues++;
+        logError(`CRITICAL ISSUE ${criticalIssues}: Admin staff endpoint returns 500 error`);
+    }
+    
     logInfo(`\n📊 DIAGNOSTIC SUMMARY:`);
     logInfo(`  → Critical Issues: ${criticalIssues}`);
     logInfo(`  → Minor Issues: ${issuesFound}`);
@@ -419,4 +620,13 @@ if (require.main === module) {
     main();
 }
 
-module.exports = { main, checkFileExists, checkFilePermissions, checkDatabaseSchema };
+module.exports = { 
+    main, 
+    checkFileExists, 
+    checkFilePermissions, 
+    checkDatabaseSchema,
+    validateSystemdConfiguration,
+    testDatabaseWritePermissions,
+    testPathResolution,
+    testAPIEndpoints
+};
