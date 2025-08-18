@@ -17,3 +17,4 @@ node_modules/
 .idea/
 
 data/massage_shop.db
+backend/scripts/deploy.sh
