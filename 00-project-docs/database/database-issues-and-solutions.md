@@ -595,6 +595,34 @@ git commit -m "Remove second database from Git tracking and add to .gitignore"
 - **After**: Systemd runs from `/opt/massage-shop/backend`, .env is in `/opt/massage-shop/`, `dotenv` finds it correctly
 - **Database Path**: `./data/massage_shop.db` now resolves to `/opt/massage-shop/backend/data/massage_shop.db` ✅
 
+**RECURRENCE PATTERN - August 18, 2025 (Database Schema Restructuring)**:
+- **Trigger**: Database schema modifications (ALTER TABLE operations)
+- **Symptoms**: 
+  - Staff administration page returns 500 errors
+  - Server logs show `SQLITE_READONLY: attempt to write a readonly database`
+  - Service fails to start or crashes
+- **Root Cause**: Systemd service configuration reverted to incorrect paths
+  - **WorkingDirectory**: Reverted to `/opt/massage-shop/backend` (WRONG)
+  - **ExecStart**: Reverted to `/usr/bin/node server.js` (WRONG)
+  - **Path Resolution**: `./backend/data/massage_shop.db` resolved to non-existent path
+- **Fix Applied**: 
+  - **WorkingDirectory**: Set to `/opt/massage-shop` (CORRECT)
+  - **ExecStart**: Set to `/usr/bin/node backend/server.js` (CORRECT)
+  - **Path Resolution**: `./backend/data/massage_shop.db` now resolves correctly
+- **Pattern**: Every time we make database changes, the systemd service configuration gets corrupted
+
+**CRITICAL DISCOVERY - Systemd Service Configuration Corruption Pattern**:
+- **Date**: August 18, 2025
+- **Pattern**: Database operations trigger systemd service configuration corruption
+- **Evidence**: 
+  - After ALTER TABLE operations, systemd service paths become incorrect
+  - WorkingDirectory reverts to `/opt/massage-shop/backend` (wrong)
+  - ExecStart reverts to `/usr/bin/node server.js` (wrong)
+  - This causes path resolution failures and 500 errors
+- **Hypothesis**: Something is automatically "fixing" the systemd service configuration after database changes
+- **Impact**: Staff administration page becomes completely broken after any database schema modification
+- **Required Investigation**: Find what process is corrupting the systemd service configuration
+
 **Testing Results**: 
 - ✅ **500 Internal Server Error**: Completely resolved - no more crashes during transaction creation
 - ✅ **Transaction Creation**: Working perfectly with 201 Created responses
@@ -625,6 +653,7 @@ git commit -m "Remove second database from Git tracking and add to .gitignore"
   - What's running at 2:58 AM
   - What's changing database permissions back to read-only
   - Why the app sometimes connects to the wrong database
+  - **NEW**: What's corrupting the systemd service configuration after database operations
 
 ## Future Considerations
 
@@ -637,3 +666,5 @@ git commit -m "Remove second database from Git tracking and add to .gitignore"
 7. **Permission Persistence Investigation**: Find what's reverting database permissions
 8. **Systemd Service Monitoring**: Add monitoring for systemd service configuration changes
 9. **Environment File Validation**: Add validation that .env files are in correct locations and contain required variables
+10. **Systemd Configuration Corruption Investigation**: Find what process corrupts systemd service configuration after database operations
+11. **Database Operation Impact Monitoring**: Monitor what happens to system configuration after ALTER TABLE operations
