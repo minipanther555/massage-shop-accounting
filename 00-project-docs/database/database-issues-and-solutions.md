@@ -90,11 +90,65 @@ This document captures the critical database issues encountered during developme
 **Pattern**:
 - Permissions keep reverting to `root:root` and `644`
 - This happens after Git operations and deployments
+- **NEW DISCOVERY (August 18, 2025)**: This also happens after database schema modifications
 - Even without manually running `deploy.sh`
 
 **Why It Happens**: Unknown - something keeps changing the permissions back automatically
 
-**Status**: ❌ **UNSOLVED** - Root cause of permission reversion unknown
+**New Evidence - Database Operations Trigger Permission Changes**:
+- **Date**: August 18, 2025
+- **Trigger**: Database schema restructuring (ALTER TABLE operations)
+- **Result**: Database permissions automatically changed from `666` to `644`
+- **Impact**: Staff administration page returns 500 errors due to read-only database
+- **Pattern**: Database write operations (schema changes) trigger permission reversion
+
+**Status**: 🔴 **CRITICAL** - Root cause of permission reversion unknown, but now identified that database operations trigger it
+
+### 9. Database Operations Trigger Permission Changes (NEW - August 18, 2025)
+**Problem**: Database schema modifications automatically trigger permission reversion from `666` to `644`
+
+**Evidence**:
+- **Before**: Database permissions were `666` (read/write for all)
+- **Trigger**: Executed `ALTER TABLE` operations to restructure `staff_roster` table
+- **After**: Database permissions automatically changed to `644` (read-only for group/others)
+- **Impact**: Staff administration page returns 500 errors due to insufficient write permissions
+
+**Five Hypotheses for Root Cause**:
+
+#### **Hypothesis 1: SQLite Internal Permission Management**
+**Theory**: SQLite automatically adjusts file permissions when performing schema modifications
+**Evidence**: Permissions changed immediately after `ALTER TABLE` operations
+**Mechanism**: SQLite may reset file permissions to default `644` after structural changes
+**Testing**: Check if other SQLite operations (INSERT, UPDATE) also trigger permission changes
+
+#### **Hypothesis 2: Linux Filesystem ACL/Extended Attributes**
+**Theory**: The database file has extended attributes or ACLs that override basic permissions
+**Evidence**: Permissions keep reverting despite manual `chmod` commands
+**Mechanism**: Extended attributes may be set to automatically reset permissions after file modifications
+**Testing**: Check for extended attributes with `lsattr` and `getfacl` commands
+
+#### **Hypothesis 3: Systemd Service Security Policies**
+**Theory**: The `massage-shop` systemd service has security policies that reset file permissions
+**Evidence**: Service runs as `massage-shop` user but permissions keep reverting
+**Mechanism**: Systemd may have `ProtectSystem` or similar policies that reset file permissions
+**Testing**: Check systemd service configuration for security hardening policies
+
+#### **Hypothesis 4: SELinux/AppArmor Security Context**
+**Theory**: SELinux or AppArmor security policies are enforcing permission restrictions
+**Evidence**: Permissions revert to `644` which is a common secure default
+**Mechanism**: Security modules may reset database file permissions after modifications
+**Testing**: Check SELinux status with `sestatus` and AppArmor with `aa-status`
+
+#### **Hypothesis 5: Automated System Maintenance Process**
+**Theory**: A background system process is monitoring and correcting file permissions
+**Evidence**: Permissions change automatically without manual intervention
+**Mechanism**: Cron job, systemd timer, or monitoring script that enforces security policies
+**Testing**: Check for cron jobs, systemd timers, and running processes that might affect file permissions
+
+**Immediate Action Required**:
+1. Fix permissions to `666` to restore functionality
+2. Investigate each hypothesis systematically
+3. Implement permanent solution based on root cause identification
 
 ### 7. Two Conflicting `.env` Files
 **Problem**: Had two `.env` files with different settings causing configuration conflicts
