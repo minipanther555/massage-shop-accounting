@@ -16,7 +16,7 @@ async function resetExpiredBusyStatuses() {
     const busyStaff = await database.all(
       `SELECT * FROM staff_roster 
        WHERE status LIKE 'Busy until %' 
-       AND masseuse_name != ''`
+       AND (masseuse_name IS NOT NULL AND masseuse_name != '')`
     );
     
     console.log(`🔍 Found ${busyStaff.length} staff with busy status`);
@@ -58,7 +58,7 @@ async function resetExpiredBusyStatuses() {
           console.log(`⏰ Time comparison: ${normalizedBusyTime} < ${currentTime} = ${isExpired}`);
           
           if (isExpired) {
-            console.log(`🔄 Resetting expired status for ${staff.masseuse_name}`);
+            console.log(`🔄 Resetting expired status for ${staff.masseuse_name || 'unnamed staff'}`);
             
             // Reset to default status (null) and clear busy_until
             await database.run(
@@ -71,7 +71,7 @@ async function resetExpiredBusyStatuses() {
             );
             
             resetCount++;
-            console.log(`✅ Reset ${staff.masseuse_name} status from "${staff.status}" to NULL`);
+            console.log(`✅ Reset ${staff.masseuse_name || 'unnamed staff'} status from "${staff.status}" to NULL`);
           }
         }
       }

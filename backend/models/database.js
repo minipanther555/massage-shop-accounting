@@ -248,41 +248,6 @@ class Database {
     console.log('Skipping default data insertion - using external script for clean data');
   }
 
-  async resetDatabaseExceptStaff() {
-    try {
-      // Store current staff names
-      const currentStaff = await this.all('SELECT position, masseuse_name FROM staff_roster WHERE masseuse_name != ""');
-      
-      // Clear all tables except staff_roster structure
-      await this.run('DELETE FROM transactions');
-      await this.run('DELETE FROM expenses');
-      await this.run('DELETE FROM daily_summaries');
-      await this.run('DELETE FROM archived_transactions');
-      await this.run('DELETE FROM services');
-      await this.run('DELETE FROM payment_methods');
-      
-      // Reset staff_roster but preserve names
-      await this.run('DELETE FROM staff_roster');
-      
-      // Rebuild roster with preserved names and new schema
-      for (let i = 1; i <= 20; i++) {
-        const staffMember = currentStaff.find(s => s.position === i);
-        const name = staffMember ? staffMember.masseuse_name : '';
-        const status = (i === 1 && name) ? 'Next' : null; // Set first staff as Next, others null
-        
-        await this.run(
-          `INSERT INTO staff_roster (position, masseuse_name, status, today_massages, busy_until) VALUES (?, ?, ?, ?, ?)`,
-          [i, name, status, 0, null]
-        );
-      }
-      
-      console.log('Database reset complete - preserved staff names and updated schema');
-    } catch (error) {
-      console.error('Error resetting database:', error);
-      // If reset fails, continue with normal initialization
-    }
-  }
-
   async run(sql, params = []) {
     return new Promise((resolve, reject) => {
       this.db.run(sql, params, function(err) {

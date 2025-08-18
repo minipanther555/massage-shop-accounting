@@ -428,7 +428,9 @@
                     for (const staff of activeStaff) {
                         await api.updateStaff(staff.position, {
                             masseuse_name: '',
-                            status: null
+                            status: null,
+                            busy_until: null,
+                            today_massages: 0
                         });
                     }
                     
