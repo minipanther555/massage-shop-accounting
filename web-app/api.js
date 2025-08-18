@@ -108,6 +108,10 @@ class APIClient {
         return this.request('/staff/roster');
     }
 
+    async getAllStaff() {
+        return this.request('/staff/allstaff');
+    }
+
     async updateStaff(position, data) {
         return this.request(`/staff/roster/${position}`, {
             method: 'PUT',

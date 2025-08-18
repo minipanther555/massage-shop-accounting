@@ -6,6 +6,49 @@
     <meta name="csrf-token" content="{{ an_actual_token }}">
     <title>Massage Shop POS - Staff Roster</title>
     <link rel="stylesheet" href="/styles.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        /* Mobile-friendly reorder controls */
+        .mobile-reorder {
+            display: none; /* Hidden by default, shown on mobile */
+        }
+        
+        .mobile-reorder .btn {
+            margin: 2px;
+            padding: 8px 12px;
+            font-size: 14px;
+            min-width: 44px; /* Touch-friendly minimum size */
+            min-height: 44px;
+        }
+        
+        /* Hide mobile controls on desktop */
+        @media (min-width: 768px) {
+            .mobile-reorder {
+                display: none !important;
+            }
+        }
+        
+        /* Show mobile controls on small screens */
+        @media (max-width: 767px) {
+            .mobile-reorder {
+                display: block !important;
+            }
+            
+            /* Make buttons more touch-friendly on mobile */
+            .btn-small {
+                min-width: 44px;
+                min-height: 44px;
+                font-size: 16px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -75,6 +118,9 @@
                 document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
             }
             
+            // Mobile detection and responsive controls
+            setupMobileControls();
+            
             await loadData(); // Load data from API first
             updateAvailableStaffDropdown(); // Populate the dropdown
             updateRosterDisplay(); // Then display the roster
@@ -85,18 +131,46 @@
             }, 30000);
         });
 
+        // Mobile detection and responsive controls
+        function setupMobileControls() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Show mobile controls, hide desktop drag-and-drop
+                document.querySelectorAll('.mobile-reorder').forEach(el => el.style.display = 'block');
+                document.querySelectorAll('[draggable="true"]').forEach(el => {
+                    el.draggable = false;
+                    el.style.cursor = 'default';
+                });
+                console.log('📱 Mobile device detected - showing touch-friendly controls');
+            } else {
+                // Show desktop controls, hide mobile controls
+                document.querySelectorAll('.mobile-reorder').forEach(el => el.style.display = 'none');
+                console.log('💻 Desktop device detected - showing drag-and-drop controls');
+            }
+        }
+
         function updateAvailableStaffDropdown() {
             const dropdown = document.getElementById('available-staff');
             dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
             
-            // Get masseuses not already in the database roster (those with names)
-            const usedNames = appData.roster
-                .filter(r => r.name && r.name.trim() !== '')
-                .map(r => r.name);
-            const availableStaff = CONFIG.settings.masseuses.filter(name => !usedNames.includes(name));
-            
-            availableStaff.forEach(name => {
-                dropdown.innerHTML += `<option value="${name}">${name}</option>`;
+            // Get all staff names from the API
+            api.getAllStaff().then(allStaffNames => {
+                // Get masseuses not already in the current roster
+                const usedNames = appData.roster
+                    .filter(r => r.name && r.name.trim() !== '')
+                    .map(r => r.name);
+                
+                const availableStaff = allStaffNames.filter(name => !usedNames.includes(name));
+                
+                availableStaff.forEach(name => {
+                    dropdown.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+                
+                console.log(`✅ Populated dropdown with ${availableStaff.length} available staff out of ${allStaffNames.length} total staff`);
+            }).catch(error => {
+                console.error('❌ Error fetching all staff names:', error);
+                showToast('Error loading available staff', 'error');
             });
         }
 
@@ -143,6 +217,11 @@
                         <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
                         <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
                         <button onclick="removeFromRoster(${staff.position})" class="btn btn-danger btn-small">✕</button>
+                        <!-- Mobile-friendly reorder buttons -->
+                        <div class="mobile-reorder" style="display: none;">
+                            <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>⬆️</button>
+                            <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>⬇️</button>
+                        </div>
                     </div>
                 `;
                 
@@ -156,6 +235,7 @@
             });
             
             updateAvailableStaffDropdown();
+            setupMobileControls(); // Ensure mobile controls are applied after roster rendering
         }
 
         async function addStaffToRoster() {

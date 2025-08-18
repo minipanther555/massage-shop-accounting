@@ -373,4 +373,26 @@ router.get('/performance/today', async (req, res) => {
   }
 });
 
+// Get all staff names (for dropdown population)
+router.get('/allstaff', async (req, res) => {
+  try {
+    console.log('📋 Fetching all staff names...');
+    
+    // Get all staff names from the master staff table
+    const allStaff = await database.all(
+      'SELECT id, name FROM staff WHERE active = TRUE ORDER BY name ASC'
+    );
+    
+    // Extract just the names for the dropdown
+    const staffNames = allStaff.map(staff => staff.name);
+    
+    console.log(`📋 Retrieved ${staffNames.length} staff names:`, staffNames);
+    
+    res.json(staffNames);
+  } catch (error) {
+    console.error('❌ Error fetching all staff names:', error);
+    res.status(500).json({ error: 'Failed to fetch all staff names' });
+  }
+});
+
 module.exports = router;

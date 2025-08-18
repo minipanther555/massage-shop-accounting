@@ -142,6 +142,14 @@ class Database {
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (masseuse_name) REFERENCES staff_roster(masseuse_name)
+      )`,
+
+      // Master staff list (separate from daily roster)
+      `CREATE TABLE IF NOT EXISTS staff (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        active BOOLEAN DEFAULT TRUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`
     ];
 
@@ -154,6 +162,7 @@ class Database {
 
     // Insert default data
     await this.insertDefaultData();
+    
   }
 
   async addMissingColumns() {
@@ -235,8 +244,7 @@ class Database {
   }
 
   async insertDefaultData() {
-    // Skip all default data insertion - data will be inserted via external script
-    // This prevents conflicts with our clean data insertion
+    // Skip all default data insertion - data will be inserted via external script for clean data
     console.log('Skipping default data insertion - using external script for clean data');
   }
 
