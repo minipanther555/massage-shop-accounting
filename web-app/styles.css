@@ -226,6 +226,16 @@ body {
     text-overflow: ellipsis;
 }
 
+/* Ensure action buttons container never wraps to vertical */
+.roster-grid > div:last-child {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+    min-width: 0;
+}
+
 .roster-grid input,
 .roster-grid select {
     padding: 8px;
@@ -476,11 +486,20 @@ body {
     }
     
     .roster-grid {
-        grid-template-columns: 40px 1fr 80px 60px 100px;
+        grid-template-columns: 40px 1fr 80px 60px 120px;
         gap: 4px;
         padding: 6px 8px;
         min-height: 36px;
         font-size: 12px;
+    }
+    
+    /* Ensure action buttons stay horizontal on mobile */
+    .roster-grid > div:last-child {
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: nowrap;
     }
     
     .transaction-item {
@@ -524,18 +543,28 @@ body {
     }
     
     .roster-grid {
-        grid-template-columns: 35px 1fr 70px 50px 90px;
-        gap: 3px;
+        grid-template-columns: 30px 1fr 60px 45px 110px;
+        gap: 2px;
         padding: 4px 6px;
         min-height: 32px;
         font-size: 11px;
     }
     
+    /* Ensure action buttons stay horizontal on very small screens */
+    .roster-grid > div:last-child {
+        display: flex;
+        gap: 1px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+    
     .roster-grid .btn-small {
-        padding: 2px 6px;
-        margin: 1px;
-        font-size: 10px;
-        min-height: 24px;
+        padding: 2px 4px;
+        margin: 0;
+        font-size: 9px;
+        min-height: 22px;
+        min-width: 22px;
     }
 }
 
