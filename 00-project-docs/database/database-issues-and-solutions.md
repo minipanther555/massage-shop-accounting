@@ -150,6 +150,40 @@ This document captures the critical database issues encountered during developme
 2. Investigate each hypothesis systematically
 3. Implement permanent solution based on root cause identification
 
+### 10. CRITICAL DISCOVERY: Ownership vs Permissions Confusion (NEW - August 18, 2025)
+**Problem**: We keep confusing file permissions (666) with file ownership (root:root vs massage-shop:massage-shop)
+
+**What We Keep Missing**:
+- **File permissions can be 666** (read/write for all) ✅
+- **But file ownership can still be root:root** ❌
+- **Systemd service runs as massage-shop user** 
+- **Root-owned files with 666 permissions still can't be written by massage-shop user**
+
+**Evidence from Today**:
+- Database permissions: `666` (correct)
+- Database ownership: `root:root` (WRONG)
+- .env file: `DATABASE_PATH=./backend/data/massage_shop.db` (correct)
+- Result: `SQLITE_READONLY: attempt to write a readonly database`
+
+**Why This Happens**:
+- We focus on permissions (666) and think "that should work"
+- We ignore ownership (root:root) which actually blocks the massage-shop user
+- The systemd service runs as massage-shop user, not root
+- Even with 666 permissions, massage-shop user can't write to root-owned files
+
+**The Real Fix**:
+```bash
+# Fix ownership (this is what we keep missing)
+sudo chown massage-shop:massage-shop backend/data/massage_shop.db
+
+# Fix permissions (this we usually get right)
+sudo chmod 666 backend/data/massage_shop.db
+```
+
+**Status**: 🔴 **CRITICAL** - We keep making this same mistake over and over
+**Pattern**: Every time we fix permissions but ignore ownership, the 500 errors return
+**Required**: ALWAYS check both permissions AND ownership when fixing database issues
+
 ### 7. Two Conflicting `.env` Files
 **Problem**: Had two `.env` files with different settings causing configuration conflicts
 
