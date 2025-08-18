@@ -55,14 +55,8 @@ class Database {
         status TEXT,
         today_massages INTEGER DEFAULT 0,
         busy_until TEXT,
-        hire_date DATE,
-        total_fees_earned DECIMAL(10,2) DEFAULT 0,
-        total_fees_paid DECIMAL(10,2) DEFAULT 0,
-        last_payment_date DATE,
-        last_payment_amount DECIMAL(10,2),
-        last_payment_type TEXT,
-        notes TEXT,
-        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+        last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+        location_id INTEGER DEFAULT 1
       )`,
 
       // Service types and pricing with duration and location options
@@ -149,7 +143,14 @@ class Database {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
         active BOOLEAN DEFAULT TRUE,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        hire_date DATE,
+        total_fees_earned DECIMAL(10,2) DEFAULT 0,
+        total_fees_paid DECIMAL(10,2) DEFAULT 0,
+        last_payment_date DATE,
+        last_payment_amount DECIMAL(10,2),
+        last_payment_type TEXT,
+        notes TEXT
       )`
     ];
 
@@ -169,8 +170,8 @@ class Database {
     try {
       console.log('Checking and adding missing columns to existing tables...');
       
-      // Add missing columns to staff_roster table
-      const missingColumns = [
+      // Add missing columns to staff table (payment tracking fields)
+      const staffColumns = [
         { name: 'hire_date', definition: 'DATE' },
         { name: 'total_fees_earned', definition: 'DECIMAL(10,2) DEFAULT 0' },
         { name: 'total_fees_paid', definition: 'DECIMAL(10,2) DEFAULT 0' },
@@ -192,15 +193,16 @@ class Database {
         { name: 'duration', definition: 'INTEGER' }
       ];
 
-      for (const column of missingColumns) {
+      // Add payment tracking columns to staff table
+      for (const column of staffColumns) {
         try {
-          await this.run(`ALTER TABLE staff_roster ADD COLUMN ${column.name} ${column.definition}`);
-          console.log(`✅ Added column staff_roster.${column.name}`);
+          await this.run(`ALTER TABLE staff ADD COLUMN ${column.name} ${column.definition}`);
+          console.log(`✅ Added column staff.${column.name}`);
         } catch (error) {
           if (error.message.includes('duplicate column name')) {
-            console.log(`✅ Column staff_roster.${column.name} already exists`);
+            console.log(`✅ Column staff.${column.name} already exists`);
           } else {
-            console.error(`❌ Failed to add column staff_roster.${column.name}:`, error.message);
+            console.error(`❌ Failed to add column staff.${column.name}:`, error.message);
           }
         }
       }
@@ -233,9 +235,9 @@ class Database {
         }
       }
 
-      // Update existing records with default values
-      await this.run(`UPDATE staff_roster SET total_fees_earned = 0 WHERE total_fees_earned IS NULL`);
-      await this.run(`UPDATE staff_roster SET total_fees_paid = 0 WHERE total_fees_paid IS NULL`);
+      // Update existing records with default values for staff table
+      await this.run(`UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL`);
+      await this.run(`UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL`);
       
       console.log('✅ Missing columns check and update completed');
     } catch (error) {

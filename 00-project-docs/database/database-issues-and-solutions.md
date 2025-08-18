@@ -144,8 +144,96 @@ git add .gitignore
 git commit -m "Remove second database from Git tracking and add to .gitignore"
 ```
 
-### 🎯 STAFF ROSTER DATABASE PERMISSIONS ISSUE RESOLUTION (August 18, 2025):
-**Complete Resolution of Staff Roster Functionality Blocker**
+## STAFF ADMINISTRATION PAGE DATABASE ARCHITECTURE ISSUE (August 18, 2025)
+
+### Issue Description
+**Status**: 🔴 **CRITICAL** - Staff administration page completely broken  
+**Severity**: 🔴 **CRITICAL** - Cannot manage staff, add new hires, or track payment history
+
+**Problem**: The staff administration page (`admin-staff.html`) is completely non-functional and cannot load or display any data due to fundamental database architecture issues.
+
+### Root Cause Analysis
+**Database Architecture Mismatch**: The database schema has payment tracking fields in the wrong tables, causing the staff administration page to fail.
+
+**Current Architecture (INCORRECT)**:
+- **`staff` table**: Simple master list with only `{id, name, active, created_at}` - TOO SIMPLE
+- **`staff_roster` table**: Daily roster with complex payment tracking fields like `total_fees_earned`, `total_fees_paid`, `last_payment_date`, etc. - WRONG PLACE
+
+**What Should Happen (CORRECT)**:
+- **`staff_roster` table**: Should ONLY contain daily stats (position, masseuse_name, status, today_massages, busy_until)
+- **`staff` table**: Should contain ALL long-term payment tracking fields (total_fees_earned, total_fees_paid, last_payment_date, hire_date, notes, etc.)
+
+### Why This Architecture Makes Sense
+- **Staff roster** = "Who's working today and what's their queue status?" (daily, clearable)
+- **Staff master** = "What's the total payment history and long-term stats for each staff member?" (permanent, not clearable)
+
+### Technical Details
+**Wrong Table Usage**: The staff administration page is trying to read/write payment data from `staff_roster` table (daily table) instead of `staff` table (master table).
+
+**Evidence from Code**:
+```javascript
+// In backend/routes/admin.js - WRONG TABLE!
+router.get('/staff', async (req, res) => {
+    const staff = await database.all(`
+        SELECT 
+            sr.*,  // ← Querying staff_roster table
+            (sr.total_fees_earned - sr.total_fees_paid) as outstanding_balance,
+            // ... more payment tracking fields
+        FROM staff_roster sr  // ← WRONG TABLE!
+        WHERE sr.masseuse_name IS NOT NULL AND sr.masseuse_name != ''
+    `);
+});
+```
+
+**Payment Tracking Data in Wrong Location**: Long-term payment tracking data is stored in the daily roster table where it gets cleared daily.
+
+**Current Problem**:
+- When daily roster is cleared, payment tracking data is lost
+- Staff administration page cannot access payment history
+- Long-term staff management is impossible
+
+### Solution Required
+1. **Database Schema Restructuring**: Move payment tracking fields from `staff_roster` to `staff` table
+2. **Simplify Staff Roster**: Keep only daily fields in `staff_roster` table
+3. **Update Admin Endpoints**: Change staff administration to use `staff` table for permanent data
+4. **Maintain Data Integrity**: Ensure daily clearing only affects daily stats, not long-term data
+
+### Implementation Steps
+1. **Update `staff` table schema** - Add all payment tracking fields (total_fees_earned, total_fees_paid, last_payment_date, hire_date, notes)
+2. **Simplify `staff_roster` table schema** - Remove payment tracking fields, keep only daily fields
+3. **Migrate existing payment data** - Move payment data from `staff_roster` to `staff` table
+4. **Update admin staff endpoints** - Change to read/write from `staff` table instead of `staff_roster`
+5. **Test staff administration page** - Verify it now works correctly
+
+### Risk Assessment
+**High Risk Items**:
+- **Database Schema Changes**: Major schema modifications affecting core functionality
+- **Data Migration**: Risk of data loss during payment data migration
+
+**Mitigation Strategies**:
+1. **Database Backup**: Create full backup before schema changes
+2. **Incremental Implementation**: Implement changes in small, testable increments
+3. **Comprehensive Testing**: Test all functionality thoroughly after changes
+4. **Rollback Plan**: Maintain ability to revert changes if issues arise
+
+### Current Status
+**Status**: 🔴 **CRITICAL** - August 18, 2025  
+**Resolution**: Database schema restructuring required  
+**Testing**: Cannot test until schema is fixed  
+**Next Steps**: Restructure database schema to separate daily vs. long-term data
+
+The staff administration page is completely broken due to fundamental database architecture issues. This is a critical problem that must be resolved before the system can be considered fully operational for business use. The solution requires restructuring the database schema to properly separate daily operations from long-term staff management.
+
+### Impact on System
+**System Status**: PARTIALLY OPERATIONAL
+- ✅ **Staff Roster System**: Fully operational with all features working correctly
+- ❌ **Staff Administration System**: Completely broken due to database architecture mismatch
+- ❌ **Long-term Staff Management**: Cannot add, edit, or remove staff members
+- ❌ **Payment Tracking**: Cannot view or manage staff payment data
+
+This issue severely limits business operations and staff management capabilities, making it a critical blocker that must be resolved immediately.
+
+## STAFF ROSTER DATABASE PERMISSIONS ISSUE RESOLUTION (August 18, 2025)
 
 **Issue**: The staff roster system was experiencing `SQLITE_READONLY: attempt to write a readonly database` errors, completely blocking staff addition to the daily roster.
 

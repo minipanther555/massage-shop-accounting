@@ -3,38 +3,48 @@
 ## Project Overview
 EIW Massage Shop Bookkeeping System - A comprehensive web-based management system for massage shop operations, replacing Google Sheets with a modern, scalable solution.
 
-## Current Phase: ✅ COMPLETED - Staff Roster Functionality & Database Permissions Resolution
+## Current Phase: 🔴 IN PROGRESS - Database Architecture Restructuring for Staff Management
 
-### Phase Status: CRITICAL ISSUE RESOLVED
-**STAFF ROSTER FUNCTIONALITY COMPLETED**: The staff roster system is now fully operational with all features working correctly. The critical database permissions issue that was causing 500 errors has been completely resolved through systematic Git tracking cleanup and database permission fixes.
+### Phase Status: NEW CRITICAL ISSUE IDENTIFIED
+**DATABASE ARCHITECTURE ISSUE IDENTIFIED**: While the staff roster functionality is working, we've discovered a fundamental architectural problem with the staff management system. The staff administration page is broken because it's using the wrong table structure, and we need to restructure the database to properly separate daily operations from long-term staff management.
 
-**Current Focus**: ✅ **COMPLETED** - The staff roster system is now fully operational with all features working correctly. All major issues have been completely resolved, and comprehensive testing confirms full end-to-end functionality.
+**Current Focus**: 🔴 **IN PROGRESS** - We need to restructure the database schema to fix the staff administration page and establish proper separation between daily operations and long-term staff management.
 
 - **Previous Blocker**: Staff roster dropdown not populating and database permissions causing `SQLITE_READONLY` errors
 - **Root Cause Resolved**: Circular dependency in staff roster design and database file tracked by Git causing permission reversion
-- **Current Status**: Staff roster system is fully operational with all features working correctly
+- **New Blocker**: Staff administration page broken due to database architecture mismatch
+- **Current Status**: Staff roster system working, but staff administration page completely broken
 
 ## Current System Status
 
-### ✅ What's Working (100% Operational)
+### ✅ What's Working (Staff Roster System - 100% Operational)
 - **Staff Roster System** - **FULLY OPERATIONAL** - All features working correctly
 - **Staff Addition to Roster** - Staff can be added sequentially to daily roster
 - **Dropdown Population** - Populates with all 16 available staff names from master list
 - **Database Operations** - INSERT/UPDATE operations working correctly for roster management
-- **API Endpoints** - All staff-related endpoints functional and returning correct data
-- **Transaction System** - **FULLY OPERATIONAL** - All transaction creation working perfectly
-- **Data Storage** - All transaction data stored correctly with 201 Created responses
-- **Revenue Tracking** - Can record and track all business transactions successfully
-- **Staff Commission** - Can calculate commissions with complete transaction data
-- **Financial Reporting** - All data available for comprehensive reporting
-- **Authentication System** - Login, session management, and role-based access control all functional
-- **Database Connections** - API endpoints returning real data and processing transactions successfully
-- **CSRF Protection** - Real tokens being generated and injected into admin pages
-- **Static Assets** - CSS and JavaScript files served with correct MIME types
-- **Production Deployment** - System accessible at https://109.123.238.197.sslip.io
-- **Admin Pages** - All loading with proper styling and scripts
-- **Daily Summary Data** - Loading correctly with all sections populated
-- **Navigation Between Pages** - All routes functional and accessible
+- **API Endpoints** - All staff roster endpoints functional and returning correct data
+- **Transaction Page Compatibility** - New transaction page still works with roster data
+
+### ❌ What's Broken (Staff Administration System - 0% Operational)
+- **Staff Administration Page** - **COMPLETELY BROKEN** - Cannot load or function
+- **Staff Management Functions** - Cannot add, edit, or remove staff members
+- **Payment Tracking** - Cannot view or manage staff payment data
+- **Long-term Staff Data** - Cannot access historical staff information
+
+### 🔴 Root Cause: Database Architecture Mismatch
+**Problem**: The staff administration page is broken because it's using the wrong table structure for its intended purpose.
+
+**Current Architecture (INCORRECT)**:
+- **`staff` table**: Simple master list with only `{id, name, active, created_at}` - TOO SIMPLE
+- **`staff_roster` table**: Daily roster with complex payment tracking fields like `total_fees_earned`, `total_fees_paid`, `last_payment_date`, etc. - WRONG PLACE
+
+**What Should Happen (CORRECT)**:
+- **`staff_roster` table**: Should ONLY contain daily stats (position, masseuse_name, status, today_massages, busy_until)
+- **`staff` table**: Should contain ALL long-term payment tracking fields (total_fees_earned, total_fees_paid, last_payment_date, hire_date, notes, etc.)
+
+**Why This Makes Sense**:
+- **Staff roster** = "Who's working today and what's their queue status?" (daily, clearable)
+- **Staff master** = "What's the total payment history and long-term stats for each staff member?" (permanent, not clearable)
 
 ### ✅ Issues Resolved
 - **Staff Roster Dropdown Issue**: ✅ RESOLVED - Fixed by creating separate master staff list and new API endpoint
@@ -54,12 +64,18 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 - **Input Validation Middleware** - ✅ RESOLVED - Removed validation for calculated fields
 - **Service Dropdown Population** - ✅ RESOLVED - Fixed variable declaration issues
 
-### 🎯 System Status: ✅ 100% OPERATIONAL
-**SYSTEM FULLY OPERATIONAL**: The system is now **100% OPERATIONAL** with all critical functionality working correctly. The staff roster functionality has been completely implemented and tested, resolving the dropdown population issue and database permissions problems. All major functionality is working correctly, and the system is ready for the next phase of enhancements.
+### 🎯 System Status: PARTIALLY OPERATIONAL
+**SYSTEM PARTIALLY OPERATIONAL**: The system is **PARTIALLY OPERATIONAL** with staff roster functionality working correctly, but staff administration page completely broken due to database architecture mismatch. We need to restructure the database schema to properly separate daily operations from long-term staff management.
 
-**Impact**: The system is now fully functional as a business tool. All transaction data is properly stored, enabling revenue tracking, staff commission calculation, and financial reporting. The staff roster system is fully operational, allowing reception staff to manage daily staff assignments efficiently.
+**Impact**: The system can handle daily staff roster operations but cannot manage long-term staff data, add new hires, or track payment history. This severely limits business operations and staff management capabilities.
 
 ## Critical Issue Resolution (August 18, 2025)
+
+### 🔴 NEW CRITICAL: Database Architecture Mismatch Issue (August 18, 2025)
+**Issue**: Staff administration page completely broken due to wrong table structure for payment tracking
+**Root Cause**: Payment tracking fields stored in daily roster table instead of master staff table
+**Solution**: Restructure database schema to separate daily operations from long-term staff management
+**Status**: 🔴 **CRITICAL** - Staff administration page completely broken until fixed
 
 ### ✅ Staff Roster Functionality & Database Permissions Resolution (August 18, 2025)
 **Issue**: Staff roster dropdown not populating and database permissions causing `SQLITE_READONLY` errors

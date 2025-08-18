@@ -69,6 +69,12 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 
 ## Critical Issues
 
+### 🔴 CRITICAL: Staff Administration Page Database Architecture Issue (2025-08-18)
+**Issue**: Staff administration page completely broken due to wrong table structure for payment tracking
+**Root Cause**: Payment tracking fields stored in daily roster table instead of master staff table
+**Solution**: Restructure database schema to separate daily operations from long-term staff management
+**Status**: 🔴 **CRITICAL** - Staff administration page completely broken until fixed
+
 ### 🔴 CRITICAL: Staff Roster Dropdown and Database Permissions Issue ✅ RESOLVED (2025-08-18)
 **Issue**: Staff roster dropdown not populating and database permissions causing `SQLITE_READONLY` errors
 **Root Cause**: Circular dependency in staff roster design and database file tracked by Git causing permission reversion

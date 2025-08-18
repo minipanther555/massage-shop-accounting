@@ -114,30 +114,30 @@ router.get('/staff', async (req, res) => {
     try {
         const staff = await database.all(`
             SELECT 
-                sr.*,
-                (sr.total_fees_earned - sr.total_fees_paid) as outstanding_balance,
+                s.*,
+                (s.total_fees_earned - s.total_fees_paid) as outstanding_balance,
                 CASE 
-                    WHEN sr.last_payment_date IS NULL THEN 'Never Paid'
-                    WHEN sr.last_payment_date >= date('now', 'weekday 0', '-6 days') THEN 'Paid This Week'
-                    WHEN sr.last_payment_date >= date('now', 'weekday 0', '-13 days') THEN 'Payment Due'
+                    WHEN s.last_payment_date IS NULL THEN 'Never Paid'
+                    WHEN s.last_payment_date >= date('now', 'weekday 0', '-6 days') THEN 'Paid This Week'
+                    WHEN s.last_payment_date >= date('now', 'weekday 0', '-13 days') THEN 'Payment Due'
                     ELSE 'Overdue'
                 END as payment_status,
-                JULIANDAY('now') - JULIANDAY(sr.last_payment_date) as days_since_payment,
+                JULIANDAY('now') - JULIANDAY(s.last_payment_date) as days_since_payment,
                 date('now', 'weekday 0') as next_payment_due,
                 (SELECT COUNT(*) FROM transactions t 
-                 WHERE t.masseuse_name = sr.masseuse_name 
+                 WHERE t.masseuse_name = s.name 
                  AND date(t.timestamp) = date('now') 
                  AND t.status = 'ACTIVE') as today_transactions,
                 (SELECT COALESCE(SUM(t.masseuse_fee), 0) FROM transactions t 
-                 WHERE t.masseuse_name = sr.masseuse_name 
+                 WHERE t.masseuse_name = s.name 
                  AND date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
                  AND t.status = 'ACTIVE') as this_week_fees,
                 (SELECT COUNT(*) FROM transactions t 
-                 WHERE t.masseuse_name = sr.masseuse_name 
+                 WHERE t.masseuse_name = s.name 
                  AND date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
                  AND t.status = 'ACTIVE') as this_week_massages
-            FROM staff_roster sr 
-            WHERE sr.masseuse_name IS NOT NULL AND sr.masseuse_name != ''
+            FROM staff s 
+            WHERE s.active = TRUE
             ORDER BY outstanding_balance DESC
         `);
 
@@ -166,20 +166,14 @@ router.post('/staff', async (req, res) => {
             return res.status(400).json({ error: 'Masseuse name is required' });
         }
 
-        // Find next available position
-        const lastPosition = await database.get(
-            'SELECT MAX(position) as max_pos FROM staff_roster'
-        );
-        const nextPosition = (lastPosition.max_pos || 0) + 1;
-
         const result = await database.run(`
-            INSERT INTO staff_roster 
-            (position, masseuse_name, status, hire_date, notes, total_fees_earned, total_fees_paid) 
-            VALUES (?, ?, 'Available', ?, ?, 0, 0)
-        `, [nextPosition, masseuse_name, hire_date || null, notes || null]);
+            INSERT INTO staff 
+            (name, hire_date, notes, total_fees_earned, total_fees_paid) 
+            VALUES (?, ?, ?, 0, 0)
+        `, [masseuse_name, hire_date || null, notes || null]);
 
         const newStaff = await database.get(
-            'SELECT * FROM staff_roster WHERE id = ?',
+            'SELECT * FROM staff WHERE id = ?',
             [result.id]
         );
 
@@ -201,13 +195,13 @@ router.put('/staff/:id', async (req, res) => {
         const { masseuse_name, hire_date, notes } = req.body;
 
         await database.run(`
-            UPDATE staff_roster 
-            SET masseuse_name = ?, hire_date = ?, notes = ?, last_updated = CURRENT_TIMESTAMP
+            UPDATE staff 
+            SET name = ?, hire_date = ?, notes = ?
             WHERE id = ?
         `, [masseuse_name, hire_date || null, notes || null, id]);
 
         const updatedStaff = await database.get(
-            'SELECT * FROM staff_roster WHERE id = ?',
+            'SELECT * FROM staff WHERE id = ?',
             [id]
         );
 
@@ -229,7 +223,7 @@ router.delete('/staff/:id', async (req, res) => {
 
         // Check if staff has outstanding fees
         const staff = await database.get(
-            'SELECT *, (total_fees_earned - total_fees_paid) as outstanding FROM staff_roster WHERE id = ?',
+            'SELECT *, (total_fees_earned - total_fees_paid) as outstanding FROM staff WHERE id = ?',
             [id]
         );
 
@@ -243,10 +237,10 @@ router.delete('/staff/:id', async (req, res) => {
             });
         }
 
-        // Clear the position (soft delete)
+        // Soft delete by setting active to false
         await database.run(`
-            UPDATE staff_roster 
-            SET masseuse_name = '', status = null, last_updated = CURRENT_TIMESTAMP
+            UPDATE staff 
+            SET active = FALSE
             WHERE id = ?
         `, [id]);
 
@@ -268,7 +262,7 @@ router.get('/staff/:id/payments', async (req, res) => {
         
         // Get staff details
         const staff = await database.get(
-            'SELECT masseuse_name FROM staff_roster WHERE id = ?',
+            'SELECT name FROM staff WHERE id = ?',
             [id]
         );
 
@@ -281,9 +275,9 @@ router.get('/staff/:id/payments', async (req, res) => {
             SELECT * FROM staff_payments 
             WHERE masseuse_name = ? 
             ORDER BY payment_date DESC
-        `, [staff.masseuse_name]);
+        `, [staff.name]);
 
-        res.json(payments);
+        res.json({ staff, payments });
     } catch (error) {
         console.error('Error fetching payment history:', error);
         res.status(500).json({ error: 'Failed to fetch payment history' });

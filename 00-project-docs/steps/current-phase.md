@@ -1,47 +1,57 @@
-# Current Phase: ✅ COMPLETED - Staff Roster Functionality & Database Permissions Resolution
+# Current Phase: 🔴 IN PROGRESS - Database Architecture Restructuring for Staff Management
 
 ## Phase Overview
-**STAFF ROSTER FUNCTIONALITY COMPLETED**: The staff roster system is now fully operational with all features working correctly. The critical database permissions issue that was causing 500 errors has been completely resolved through systematic Git tracking cleanup and database permission fixes.
+**DATABASE ARCHITECTURE ISSUE IDENTIFIED**: While the staff roster functionality is working, we've discovered a fundamental architectural problem with the staff management system. The staff administration page is broken because it's using the wrong table structure, and we need to restructure the database to properly separate daily operations from long-term staff management.
 
-## Current Status: ✅ COMPLETED - Staff Roster Functionality & Database Permissions Resolution
+## Current Status: 🔴 IN PROGRESS - Database Architecture Restructuring
 
-### What Was Resolved (Critical Issues)
-- **Staff Roster Dropdown Issue**: Dropdown now populates correctly with all available staff names from master staff list
-- **Database Permissions Issue**: `SQLITE_READONLY: attempt to write a readonly database` errors completely resolved
-- **Staff Addition to Roster**: Staff can now be successfully added to daily roster with proper INSERT/UPDATE operations
-- **Git Tracking Conflicts**: Database file was tracked by Git, causing automatic permission reversion
+### What Was Previously Resolved (Critical Issues)
+- **Staff Roster Dropdown Issue**: ✅ RESOLVED - Dropdown now populates correctly with all available staff names from master staff list
+- **Database Permissions Issue**: ✅ RESOLVED - `SQLITE_READONLY: attempt to write a readonly database` errors completely resolved
+- **Staff Addition to Roster**: ✅ RESOLVED - Staff can now be successfully added to daily roster with proper INSERT/UPDATE operations
+- **Git Tracking Conflicts**: ✅ RESOLVED - Database file was tracked by Git, causing automatic permission reversion
+
+### New Issue Identified: Database Architecture Mismatch
+**Problem**: The staff administration page is broken because it's using the wrong table structure for its intended purpose.
+
+**Current Architecture (INCORRECT)**:
+- **`staff` table**: Simple master list with only `{id, name, active, created_at}` - TOO SIMPLE
+- **`staff_roster` table**: Daily roster with complex payment tracking fields like `total_fees_earned`, `total_fees_paid`, `last_payment_date`, etc. - WRONG PLACE
+
+**What Should Happen (CORRECT)**:
+- **`staff_roster` table**: Should ONLY contain daily stats (position, masseuse_name, status, today_massages, busy_until)
+- **`staff` table**: Should contain ALL long-term payment tracking fields (total_fees_earned, total_fees_paid, last_payment_date, hire_date, notes, etc.)
+
+**Why This Makes Sense**:
+- **Staff roster** = "Who's working today and what's their queue status?" (daily, clearable)
+- **Staff master** = "What's the total payment history and long-term stats for each staff member?" (permanent, not clearable)
 
 ### Root Cause Analysis
-- **Staff Roster Design**: Original design had circular dependency - roster dropdown tried to populate from roster itself
-- **Database Schema**: Needed separation between master staff list (`staff` table) and daily working roster (`staff_roster` table)
-- **Database Permissions**: Database file `backend/data/massage_shop.db` was tracked by Git, causing ownership to revert to `root:root` after every Git operation
-- **API Endpoint Mismatch**: Frontend was calling wrong endpoints due to method name conflicts
+- **Staff Administration Page**: Currently trying to read/write payment data from `staff_roster` table (daily table)
+- **Payment Tracking Data**: Currently stored in `staff_roster` table where it gets cleared daily
+- **Long-term Staff Management**: Needs permanent storage in `staff` table, not daily roster
+- **Daily Clearing Functionality**: Should only clear daily stats, not long-term payment data
 
-### Solution Implemented
-1. **Database Schema Redesign**: Created separate `staff` table for master list, kept `staff_roster` for daily working list
-2. **New API Endpoint**: Created `/api/staff/allstaff` endpoint to fetch master staff list
-3. **Frontend Logic Update**: Modified staff roster page to populate dropdown from master list, filter out already assigned staff
-4. **Git Tracking Cleanup**: Removed database file from Git tracking, added to `.gitignore`
-5. **Database Permissions Fix**: Changed ownership to `massage-shop:massage-shop` and permissions to `666`
-6. **API Method Conflict Resolution**: Renamed admin `updateStaff` to `updateAdminStaff` to resolve method name conflicts
+### Solution Required
+1. **Database Schema Restructuring**: Move payment tracking fields from `staff_roster` to `staff` table
+2. **Simplify Staff Roster**: Keep only daily fields in `staff_roster` table
+3. **Update Admin Endpoints**: Change staff administration to use `staff` table for permanent data
+4. **Maintain Data Integrity**: Ensure daily clearing only affects daily stats, not long-term data
 
-### Current System Status: ✅ 100% OPERATIONAL
-- **Staff Roster System**: Fully operational with all features working correctly
-- **Database Permissions**: Fixed and stable, no more read-only errors
-- **Staff Addition**: Staff can be added to roster sequentially (position 1, 2, 3, etc.)
-- **Dropdown Population**: Populates with all available staff names from master list
-- **API Endpoints**: All staff-related endpoints working correctly
-- **Transaction Page Compatibility**: New transaction page still works with roster data
-
-## Next Phase: System Enhancement & Feature Completion
+## Next Phase: Database Architecture Restructuring
 
 ### Immediate Next Actions (August 18, 2025)
-1. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
+1. **Restructure Database Schema** - Move payment tracking fields to correct tables
+   - **Priority**: CRITICAL - Required to fix staff administration page
+   - **Impact**: Staff administration page completely broken until fixed
+   - **Required**: Database schema migration and API endpoint updates
+
+2. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
    - **Priority**: HIGH - Critical for staff scheduling and customer service
    - **Impact**: Staff appear unavailable when they should be free
    - **Required**: Implement automatic status reset mechanism for expired busy times
 
-2. **Add Duration and Location to Financial Reports** - Recent transactions and financial reports need duration and location columns
+3. **Add Duration and Location to Financial Reports** - Recent transactions and financial reports need duration and location columns
    - **Priority**: HIGH - Critical for business reporting and analysis
    - **Impact**: Financial reports lack essential transaction details
    - **Required**: Update admin-reports.html and backend/routes/reports.js to include duration and location breakdowns
@@ -58,7 +68,7 @@
 9. **✅ Input validation middleware fixed** - Removed validation for calculated fields
 10. **✅ Service dropdown population fixed** - Added proper variable declarations
 
-## Current Status: ✅ COMPLETED - Staff Roster Functionality & Database Permissions Resolution
+## Current Status: 🔴 IN PROGRESS - Database Architecture Restructuring
 
 ### Success Metrics Achieved
 - ✅ **Staff Roster Dropdown**: Now populates correctly with all 16 available staff names
@@ -76,11 +86,16 @@
 - ✅ **API Method Conflicts**: Resolved by renaming conflicting methods
 - ✅ **Circular Dependency**: Eliminated by separating master list from daily roster
 
-## Next Phase: Live Operations & Enhancement
+### New Issues Identified
+- 🔴 **Staff Administration Page Broken**: Using wrong table structure for payment tracking
+- 🔴 **Database Architecture Mismatch**: Payment tracking fields in wrong tables
+- 🔴 **Daily vs. Long-term Data Confusion**: Need clear separation of concerns
 
-The staff roster system has been successfully implemented and is now fully operational. Reception staff can add staff to the daily roster, the system correctly handles both INSERT and UPDATE operations, and all API endpoints are working correctly. The critical database permissions issue has been completely resolved.
+## Next Phase: Database Architecture Restructuring
 
-### System Status: 100% OPERATIONAL
-The system is now **100% OPERATIONAL** with all critical functionality working correctly. The staff roster functionality has been completely implemented and tested, resolving the dropdown population issue and database permissions problems. All major issues have been completely resolved, and comprehensive testing confirms full end-to-end functionality.
+The staff roster system is working correctly, but we've identified a fundamental architectural problem with the staff management system. The staff administration page is broken because it's trying to manage long-term payment data in a table designed for daily operations.
 
-The system is ready for the next phase of enhancements including fixing the 'busy until' time reset issue and adding duration and location columns to financial reports.
+### System Status: PARTIALLY OPERATIONAL
+The system is **PARTIALLY OPERATIONAL** with staff roster functionality working correctly, but staff administration page completely broken due to database architecture mismatch. We need to restructure the database schema to properly separate daily operations from long-term staff management.
+
+The system is ready for the next phase of database architecture restructuring to fix the staff administration page and establish proper data separation.
