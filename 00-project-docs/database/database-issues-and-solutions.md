@@ -46,6 +46,86 @@ This document captures the critical database issues encountered during developme
 - Delayed problem resolution
 - Difficulty tracking system state
 
+### 4. Broken Directory/Database Creation Logic in `database.js`
+**Problem**: The `database.js` file was automatically creating data directories and database files on app startup
+
+**Root Cause**:
+- Code included `fs.mkdirSync(dataDir, { recursive: true })` to create missing directories
+- This was a "fix" for deployment problems that created more problems
+- App should fail if deployment is broken, not create empty databases
+
+**Impact**:
+- Created the second database automatically
+- Masked deployment configuration errors
+- Led to data inconsistency and confusion
+
+**Status**: ✅ **FIXED** - Removed the broken logic
+
+### 5. 2:58 AM Database Creation Mystery
+**Problem**: Both databases were created simultaneously at 2:58 AM on August 18, 2025
+
+**Evidence**:
+- We've been working on this project for at least a week
+- 2:58 AM is middle of the night (not normal development time)
+- Both databases created within 2 seconds of each other
+- This timing suggests automated process, not manual operation
+
+**Theories**:
+- Automated "next day" or "end of day" process
+- System maintenance or backup process
+- Scheduled database operations
+- Unknown automated system process
+
+**Status**: ❌ **UNSOLVED** - We don't know what's running at 2:58 AM
+
+### 6. Recurring `SQLITE_READONLY` Errors
+**Problem**: Database keeps becoming read-only after we fix it, despite setting correct permissions
+
+**What We've Tried**:
+- Fixed permissions to `666` (read/write for all)
+- Fixed ownership to `massage-shop:massage-shop`
+- Made directory immutable with `chattr +i`
+- Applied immutable flag to database file (but this caused more problems)
+
+**Pattern**:
+- Permissions keep reverting to `root:root` and `644`
+- This happens after Git operations and deployments
+- Even without manually running `deploy.sh`
+
+**Why It Happens**: Unknown - something keeps changing the permissions back automatically
+
+**Status**: ❌ **UNSOLVED** - Root cause of permission reversion unknown
+
+### 7. Two Conflicting `.env` Files
+**Problem**: Had two `.env` files with different settings causing configuration conflicts
+
+**What We Found**:
+- `/opt/massage-shop/.env` (manually edited, contained correct `DATABASE_PATH`)
+- `/opt/massage-shop/backend/.env` (created by `deploy.sh`, contained `DB_FILENAME`)
+
+**Impact**:
+- App was using wrong environment variables
+- Database path resolution was inconsistent
+- Configuration was fragmented and confusing
+
+**Status**: ✅ **FIXED** - Consolidated to single `.env` file in correct location
+
+### 8. Second Database Keeps Regenerating
+**Problem**: Even after deleting the second database multiple times, it keeps reappearing
+
+**Evidence**:
+- Deleted `/opt/massage-shop/data/massage_shop.db` multiple times
+- It keeps coming back with 0 services (empty)
+- Main database has 92 services, second has 0
+- This happens automatically, not through manual operations
+
+**Impact**:
+- App connects to empty database instead of correct one
+- API endpoints return empty arrays `[]`
+- Frontend shows no data
+
+**Status**: ❌ **UNSOLVED** - We don't know what's automatically recreating it
+
 ## Permanent Solutions Implemented
 
 ### 1. Database Path Standardization
@@ -232,6 +312,34 @@ grep DATABASE_PATH /opt/massage-shop/.env
 4. **Database Validation**: Add startup checks to catch configuration errors early
 5. **Monitoring**: Implement health checks to detect issues before they cause failures
 
+## Current Status (August 18, 2025)
+
+### ✅ RESOLVED ISSUES:
+1. **500 Internal Server Error**: Fixed by removing broken directory creation logic
+2. **Database Connection**: App now connects successfully to database
+3. **Broken Directory Creation**: Removed from `database.js`
+4. **Conflicting .env Files**: Consolidated to single file
+
+### ❌ UNSOLVED MYSTERIES:
+1. **Second Database Regeneration**: Still automatically reappearing
+2. **2:58 AM Process**: Unknown automated process creating databases
+3. **Permission Reversion**: Database permissions keep changing back to read-only
+4. **API Empty Data**: App connects to wrong database, returns empty arrays
+
+### 🔍 INVESTIGATION STATUS:
+- **What We've Eliminated**:
+  - ✅ Not `deploy.sh` (no code calls it automatically)
+  - ✅ Not cron jobs (none found)
+  - ✅ Not GitHub Actions (none found)
+  - ✅ Not end-day functionality (it's normal)
+  - ✅ Not broken `database.js` logic (fixed)
+
+- **What We Still Don't Know**:
+  - What's automatically recreating the second database
+  - What's running at 2:58 AM
+  - What's changing database permissions back to read-only
+  - Why the app sometimes connects to the wrong database
+
 ## Future Considerations
 
 1. **Database Migration Scripts**: Create automated scripts for database setup and validation
@@ -239,3 +347,5 @@ grep DATABASE_PATH /opt/massage-shop/.env
 3. **Backup Strategy**: Implement automated database backups to prevent data loss
 4. **Health Monitoring**: Add real-time monitoring of database accessibility and performance
 5. **Documentation**: Keep this document updated with any new issues or solutions encountered
+6. **Automated Database Creation Investigation**: Find what's creating the second database at 2:58 AM
+7. **Permission Persistence Investigation**: Find what's reverting database permissions
