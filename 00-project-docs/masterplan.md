@@ -165,10 +165,10 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 - API response optimization
 - Scalable architecture design
 
-## Current Status: ✅ COMPLETED - Staff Roster Functionality & Database Permissions Resolution
+## Current Status: 🔴 IN PROGRESS - Database Architecture Restructuring for Staff Management
 
-### System Status: 100% OPERATIONAL
-The system is now **100% OPERATIONAL** with all critical functionality working correctly. The staff roster functionality has been completely implemented and tested, resolving the dropdown population issue and database permissions problems. All major issues have been completely resolved, and comprehensive testing confirms full end-to-end functionality.
+### System Status: PARTIALLY OPERATIONAL
+The system is **PARTIALLY OPERATIONAL** with staff roster functionality working correctly, but staff administration page completely broken due to database architecture mismatch. We need to restructure the database schema to properly separate daily operations from long-term staff management.
 
 ### Recently Completed (August 18, 2025)
 1. **✅ Staff Roster System Implementation** - Complete staff roster system now operational
@@ -183,23 +183,34 @@ The system is now **100% OPERATIONAL** with all critical functionality working c
    - **System Stability**: No more 500 errors during staff roster operations
 
 ### Next Phase Priorities (August 18, 2025)
-1. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
+1. **🔴 CRITICAL: Database Architecture Restructuring** - Staff administration page broken due to wrong table structure
+   - **Priority**: CRITICAL - Required to fix staff administration page
+   - **Status**: 🔴 **IN PROGRESS** - Database schema restructuring required
+   - **Required**: Move payment tracking fields from `staff_roster` to `staff` table
+
+2. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
    - **Priority**: HIGH - Critical for staff scheduling and customer service
    - **Status**: 🔴 **PENDING** - Not yet implemented
 
-2. **Add Duration and Location to Financial Reports** - Recent transactions and financial reports need duration and location columns
+3. **Add Duration and Location to Financial Reports** - Recent transactions and financial reports need duration and location columns
    - **Priority**: HIGH - Critical for business reporting and analysis
    - **Status**: 🔴 **PENDING** - Not yet implemented
 
 ## Critical Issues
 
-### 🔴 CRITICAL: Staff Roster Dropdown and Database Permissions Issue ✅ RESOLVED (2025-08-18)
+### 🔴 CRITICAL: Staff Administration Page Database Architecture Issue (2025-08-18)
+**Issue**: Staff administration page completely broken due to wrong table structure for payment tracking
+**Root Cause**: Payment tracking fields stored in daily roster table instead of master staff table
+**Solution**: Restructure database schema to separate daily operations from long-term staff management
+**Status**: 🔴 **CRITICAL** - Staff administration page completely broken until fixed
+
+### ✅ Staff Roster Dropdown and Database Permissions Issue ✅ RESOLVED (2025-08-18)
 **Issue**: Staff roster dropdown not populating and database permissions causing `SQLITE_READONLY` errors
 **Root Cause**: Circular dependency in staff roster design and database file tracked by Git causing permission reversion
 **Solution**: Complete staff roster system implementation with database permissions fix
 **Status**: ✅ **RESOLVED** - Staff roster system is now fully operational with all features working correctly
 
-### 🔴 CRITICAL: Database Schema Mismatch ✅ RESOLVED (2025-08-17)
+### ✅ Critical Database Schema Mismatch ✅ RESOLVED (2025-08-17)
 **Issue**: The `transactions` table schema was missing critical `duration` and `location` columns
 **Impact**: All transaction data fails silently while appearing to succeed at API level
 **Status**: ✅ **RESOLVED** - System cannot function until schema is fixed

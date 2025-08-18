@@ -465,6 +465,35 @@ grep DATABASE_PATH /opt/massage-shop/.env
 5. **Second Database Regeneration**: ✅ **SOLVED** - Git was tracking the file
 6. **Critical 500 Internal Server Error**: ✅ **SOLVED** - Complete resolution through systematic configuration fixes
 
+### 🔧 COMPREHENSIVE DIAGNOSTIC SCRIPT DEVELOPED (August 18, 2025)
+**Status**: ✅ **COMPLETED** - Comprehensive diagnostic script created and refined
+
+**What Was Developed**:
+1. **`check_database_health.js`** - Node.js script to systematically check all known database and environment issues
+2. **Multi-Phase Analysis**: Script checks 8 different categories of potential problems
+3. **Precise Git Tracking Detection**: Refined grep patterns to avoid false positives from documentation files
+4. **Comprehensive Issue Reporting**: Provides detailed analysis and recommendations for each issue found
+
+**Script Capabilities**:
+- **Phase 1**: Two-Database Problem detection
+- **Phase 2**: Database permissions and ownership verification
+- **Phase 3**: Environment file analysis and conflicts
+- **Phase 4**: Database schema validation
+- **Phase 5**: Git tracking verification (separate checks for DB and .env files)
+- **Phase 6**: Systemd service status and configuration
+- **Phase 7**: PM2 process monitoring and configuration
+- **Phase 8**: Automated process detection and file system analysis
+
+**Evolution and Refinement**:
+- **Initial Version**: Had false positive for Git tracking due to broad grep patterns
+- **Refined Version**: Uses precise patterns (`massage_shop\.db$` for DB files, `^\.env$` for .env files)
+- **Separate Checks**: Database files and .env files checked independently to avoid confusion
+- **Comprehensive Output**: Provides actionable recommendations for each issue detected
+
+**Current Status**: Script has been committed to `testing2002` branch and is ready for deployment to server for comprehensive system analysis.
+
+**Next Steps**: Deploy script to server and run comprehensive analysis to identify any remaining issues before proceeding with database architecture restructuring.
+
 ### 🎯 BREAKTHROUGH DISCOVERY (August 18, 2025):
 **The Second Database Mystery is Solved!**
 

@@ -3,7 +3,7 @@
 ## Phase Overview
 **DATABASE ARCHITECTURE ISSUE IDENTIFIED**: While the staff roster functionality is working, we've discovered a fundamental architectural problem with the staff management system. The staff administration page is broken because it's using the wrong table structure, and we need to restructure the database to properly separate daily operations from long-term staff management.
 
-## Current Status: 🔴 IN PROGRESS - Database Architecture Restructuring
+## Current Status: 🔴 IN PROGRESS - Database Architecture Restructuring for Staff Management
 
 ### What Was Previously Resolved (Critical Issues)
 - **Staff Roster Dropdown Issue**: ✅ RESOLVED - Dropdown now populates correctly with all available staff names from master staff list
@@ -37,6 +37,19 @@
 2. **Simplify Staff Roster**: Keep only daily fields in `staff_roster` table
 3. **Update Admin Endpoints**: Change staff administration to use `staff` table for permanent data
 4. **Maintain Data Integrity**: Ensure daily clearing only affects daily stats, not long-term data
+
+### Recent Development Work (August 18, 2025)
+**Comprehensive Diagnostic Script Created**: Developed `check_database_health.js` to systematically check all known database and environment issues:
+- **Two-Database Problem**: Check for duplicate database files
+- **Database Permissions**: Verify ownership and permissions
+- **Environment Files**: Check .env file locations and content
+- **Git Tracking**: Verify database and .env files are not tracked
+- **Systemd Service**: Check service configuration and status
+- **PM2 Status**: Check for PM2 processes running as root
+- **Automated Processes**: Look for cron jobs or systemd timers
+- **File System**: Check directory contents and permissions
+
+**Script Evolution**: Initially had false positive for Git tracking due to broad grep patterns, refined to use precise patterns (`massage_shop\.db$` for DB files, `^\.env$` for .env files).
 
 ## Next Phase: Database Architecture Restructuring
 

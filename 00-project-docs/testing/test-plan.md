@@ -44,6 +44,34 @@
 
 **Root Cause**: Payment tracking fields are stored in `staff_roster` table (daily table) instead of `staff` table (master table). Staff administration page is trying to read/write from wrong table.
 
+### ✅ Database Permissions Testing - COMPLETED (August 18, 2025)
+**Status**: ✅ **COMPLETED** - All tests passing
+
+**What Was Tested**:
+- Database file ownership (massage-shop:massage-shop)
+- Database file permissions (666)
+- Git tracking removal (database file no longer tracked)
+- .gitignore updates (database file excluded from tracking)
+- Service restart after permission changes
+- SQLITE_READONLY error resolution
+
+**Results**: All tests passed. Database permissions are stable and no more read-only errors occur.
+
+### 🔴 Staff Administration Page Testing - CRITICAL PRIORITY (August 18, 2025)
+**Status**: 🔴 **CRITICAL** - Cannot test until database architecture is fixed
+
+**What Needs Testing**:
+- Staff administration page loading and functionality
+- Staff list display with payment information
+- Add new staff member functionality
+- Edit existing staff member functionality
+- Remove staff member functionality
+- Payment tracking display and management
+
+**Blocking Issue**: Staff administration page is completely broken due to database architecture mismatch. Cannot test until database schema is restructured.
+
+**Root Cause**: Payment tracking fields are stored in `staff_roster` table (daily table) instead of `staff` table (master table). Staff administration page is trying to read/write from wrong table.
+
 ## Next Phase Testing Priorities
 
 ### 🔴 Phase 1: Database Schema Restructuring Testing (CRITICAL PRIORITY)
@@ -120,6 +148,29 @@
 - **API Testing**: Direct HTTP requests to test backend endpoints
 - **Database Testing**: Direct SQL queries to verify data integrity
 - **Manual Testing**: Browser-based testing for user experience validation
+- **Comprehensive Diagnostic Script**: `check_database_health.js` for systematic issue detection
+
+### Comprehensive Diagnostic Script - `check_database_health.js`
+**Status**: ✅ **COMPLETED** - Ready for deployment and testing
+
+**What It Tests**:
+1. **Two-Database Problem**: Check for duplicate database files
+2. **Database Permissions**: Verify ownership and permissions
+3. **Environment Files**: Check .env file locations and content
+4. **Database Schema**: Validate table structures and payment fields
+5. **Git Tracking**: Verify database and .env files are not tracked
+6. **Systemd Service**: Check service configuration and status
+7. **PM2 Status**: Check for PM2 processes running as root
+8. **Automated Processes**: Look for cron jobs or systemd timers
+9. **File System**: Check directory contents and permissions
+
+**Evolution**:
+- **Initial Version**: Had false positive for Git tracking due to broad grep patterns
+- **Refined Version**: Uses precise patterns (`massage_shop\.db$` for DB files, `^\.env$` for .env files)
+- **Separate Checks**: Database files and .env files checked independently
+- **Comprehensive Output**: Provides actionable recommendations for each issue detected
+
+**Current Status**: Script committed to `testing2002` branch, ready for deployment to server for comprehensive system analysis.
 
 ### Testing Environment
 - **Local Development**: Full testing environment with local database

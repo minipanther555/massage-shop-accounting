@@ -9,6 +9,21 @@ Replacement of complex multi-status staff management with simplified "next in li
 - User requested simplification to just track "who's next"
 - No role-based access control for staff management
 - Single table approach lacks separation between master staff list and daily roster
+- **🔴 CRITICAL**: Payment tracking fields stored in daily roster table instead of master staff table
+- **🔴 CRITICAL**: Staff administration page completely broken due to database architecture mismatch
+
+**Database Architecture Problem Identified (August 18, 2025)**:
+- **Current Architecture (INCORRECT)**:
+  - `staff` table: Simple master list with only `{id, name, active, created_at}` - TOO SIMPLE
+  - `staff_roster` table: Daily roster with complex payment tracking fields like `total_fees_earned`, `total_fees_paid`, `last_payment_date`, etc. - WRONG PLACE
+
+- **What Should Happen (CORRECT)**:
+  - `staff_roster` table: Should ONLY contain daily stats (position, masseuse_name, status, today_massages, busy_until)
+  - `staff` table: Should contain ALL long-term payment tracking fields (total_fees_earned, total_fees_paid, last_payment_date, hire_date, notes, etc.)
+
+**Why This Makes Sense**:
+- **Staff roster** = "Who's working today and what's their queue status?" (daily, clearable)
+- **Staff master** = "What's the total payment history and long-term stats for each staff member?" (permanent, not clearable)
 
 **Business Requirements:**
 - Receptionists need simple queue management for daily operations
@@ -273,3 +288,33 @@ const ROLES = {
 - ✅ Queue auto-advances with manual override capability
 - ✅ Daily roster resets properly at start of each day
 - ✅ All existing transaction functionality preserved
+
+## Current Status (August 18, 2025)
+
+### ✅ What's Working
+- **Staff Roster System**: Fully operational with all features working correctly
+- **Staff Addition to Roster**: Staff can be added sequentially to daily roster
+- **Dropdown Population**: Populates with all 16 available staff names from master list
+- **Database Operations**: INSERT/UPDATE operations working correctly for roster management
+- **API Endpoints**: All staff roster endpoints functional and returning correct data
+- **Transaction Page Compatibility**: New transaction page still works with roster data
+
+### ❌ What's Broken
+- **Staff Administration Page**: Completely broken due to database architecture mismatch
+- **Staff Management Functions**: Cannot add, edit, or remove staff members
+- **Payment Tracking**: Cannot view or manage staff payment data
+- **Long-term Staff Data**: Cannot access historical staff information
+
+### 🔴 Critical Blocker: Database Architecture Mismatch
+**Root Cause**: Payment tracking fields are stored in `staff_roster` table (daily table) instead of `staff` table (master table).
+
+**Impact**: Staff administration page cannot function because it's trying to read/write payment data from the wrong table structure.
+
+**Solution Required**: Restructure database schema to move payment tracking fields from `staff_roster` to `staff` table.
+
+### Next Steps
+1. **🔴 CRITICAL**: Restructure database schema to fix staff administration page
+2. **HIGH PRIORITY**: Fix 'Busy Until' time reset issue
+3. **HIGH PRIORITY**: Add duration and location to financial reports
+
+**Status**: System is **PARTIALLY OPERATIONAL** - staff roster functionality working, but staff administration page completely broken until database architecture is fixed.

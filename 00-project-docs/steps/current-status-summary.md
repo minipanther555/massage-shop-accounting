@@ -10,6 +10,8 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 **Current Focus**: 🔴 **IN PROGRESS** - We need to restructure the database schema to fix the staff administration page and establish proper separation between daily operations and long-term staff management.
 
+**Recent Development Work**: Created comprehensive diagnostic script `check_database_health.js` to systematically check all known database and environment issues, including two-database problem, permissions, environment files, Git tracking, systemd service, PM2 status, and automated processes.
+
 - **Previous Blocker**: Staff roster dropdown not populating and database permissions causing `SQLITE_READONLY` errors
 - **Root Cause Resolved**: Circular dependency in staff roster design and database file tracked by Git causing permission reversion
 - **New Blocker**: Staff administration page broken due to database architecture mismatch
@@ -89,6 +91,35 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 **Solution**: Systematic resolution through environment file consolidation, systemd service optimization, and Git tracking cleanup
 **Status**: ✅ **RESOLVED** - System is now 100% operational with no more 500 errors
 
+## Recent Development Work (August 18, 2025)
+
+### 🔧 Comprehensive Diagnostic Script Development
+**Status**: ✅ **COMPLETED** - Comprehensive diagnostic script created and refined
+
+**What Was Developed**:
+1. **`check_database_health.js`** - Node.js script to systematically check all known database and environment issues
+2. **Multi-Phase Analysis**: Script checks 8 different categories of potential problems
+3. **Precise Git Tracking Detection**: Refined grep patterns to avoid false positives from documentation files
+4. **Comprehensive Issue Reporting**: Provides detailed analysis and recommendations for each issue found
+
+**Script Capabilities**:
+- **Phase 1**: Two-Database Problem detection
+- **Phase 2**: Database permissions and ownership verification
+- **Phase 3**: Environment file analysis and conflicts
+- **Phase 4**: Database schema validation
+- **Phase 5**: Git tracking verification (separate checks for DB and .env files)
+- **Phase 6**: Systemd service status and configuration
+- **Phase 7**: PM2 process monitoring and configuration
+- **Phase 8**: Automated process detection and file system analysis
+
+**Evolution and Refinement**:
+- **Initial Version**: Had false positive for Git tracking due to broad grep patterns
+- **Refined Version**: Uses precise patterns (`massage_shop\.db$` for DB files, `^\.env$` for .env files)
+- **Separate Checks**: Database files and .env files checked independently to avoid confusion
+- **Comprehensive Output**: Provides actionable recommendations for each issue detected
+
+**Current Status**: Script has been committed to `testing2002` branch and is ready for deployment to server for comprehensive system analysis.
+
 ## Recent Bug Fixes and Improvements
 
 ### ✅ Critical 500 Internal Server Error Resolution (August 18, 2025)
@@ -117,13 +148,19 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 ## Next Steps
 
 ### Immediate Priorities (August 18, 2025)
-1. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
+1. **🔴 CRITICAL: Database Architecture Restructuring** - Staff administration page broken due to wrong table structure
+   - **Priority**: CRITICAL - Required to fix staff administration page
+   - **Impact**: Staff administration page completely broken until fixed
+   - **Required**: Database schema migration and API endpoint updates
+   - **Status**: 🔴 **IN PROGRESS** - Database schema restructuring required
+
+2. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
    - **Priority**: HIGH - Critical for staff scheduling and customer service
    - **Impact**: Staff appear unavailable when they should be free
    - **Required**: Implement automatic status reset mechanism for expired busy times
    - **Status**: 🔴 **PENDING** - Not yet implemented
 
-2. **Add Duration and Location to Financial Reports** - Recent transactions and financial reports need duration and location columns
+3. **Add Duration and Location to Financial Reports** - Recent transactions and financial reports need duration and location columns
    - **Priority**: HIGH - Critical for business reporting and analysis
    - **Impact**: Financial reports lack essential transaction details
    - **Required**: Update admin-reports.html and backend/routes/reports.js to include duration and location breakdowns
@@ -142,6 +179,12 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
    - **Database Ownership**: Fixed to `massage-shop:massage-shop` with proper permissions
    - **System Stability**: No more 500 errors during staff roster operations
 
+3. **✅ Comprehensive Diagnostic Script Development** - Systematic issue detection tool created
+   - **Multi-Phase Analysis**: 8 different categories of potential problems checked
+   - **Precise Detection**: Refined patterns to avoid false positives
+   - **Actionable Output**: Detailed recommendations for each issue found
+   - **Ready for Deployment**: Script committed to testing2002 branch
+
 ### Previous Accomplishments (Before Staff Roster Discovery)
 1. **✅ Transaction Form Debugging Completed** - All issues resolved
 2. **✅ Input Validation Middleware Fixed** - Calculated fields no longer validated
@@ -154,4 +197,4 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 2. **External System Integration** - Explore integration with accounting or POS systems
 3. **Advanced Analytics** - Implement additional business intelligence features
 
-The system is now **100% OPERATIONAL** and ready for business use. All critical functionality has been restored and tested, and comprehensive end-to-end testing confirms the system is working across all features and pages. The staff roster functionality has been completely implemented and tested, resolving the dropdown population issue and database permissions problems. All transaction form issues have been resolved, ensuring full functionality. The system is ready for the next phase of enhancements including fixing the 'busy until' time reset issue and adding duration and location columns to financial reports.
+The system is now **PARTIALLY OPERATIONAL** with staff roster functionality working correctly, but staff administration page completely broken due to database architecture mismatch. We need to restructure the database schema to properly separate daily operations from long-term staff management. The comprehensive diagnostic script has been developed and is ready for deployment to systematically identify and resolve all remaining issues.
