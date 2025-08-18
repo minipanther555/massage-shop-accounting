@@ -3,8 +3,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// Connect to the database
-const dbPath = path.join(__dirname, 'backend', 'data', 'massage_shop.db');
+// Connect to the database - works from backend directory
+const dbPath = path.join(__dirname, 'data', 'massage_shop.db');
 const db = new sqlite3.Database(dbPath);
 
 console.log('🚀 Starting staff table population...');
