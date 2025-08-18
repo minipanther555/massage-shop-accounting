@@ -144,6 +144,43 @@ git add .gitignore
 git commit -m "Remove second database from Git tracking and add to .gitignore"
 ```
 
+### 🎯 STAFF ROSTER DATABASE PERMISSIONS ISSUE RESOLUTION (August 18, 2025):
+**Complete Resolution of Staff Roster Functionality Blocker**
+
+**Issue**: The staff roster system was experiencing `SQLITE_READONLY: attempt to write a readonly database` errors, completely blocking staff addition to the daily roster.
+
+**Root Cause Analysis**: The database file `backend/data/massage_shop.db` was **tracked by Git**, causing automatic permission reversion after every Git operation:
+1. **Git Tracking**: Database file was committed to Git repository
+2. **Permission Reversion**: Every `git pull`, `git checkout`, or `git reset` operation changed file ownership back to `root:root`
+3. **Service User Mismatch**: The `massage-shop` service user couldn't write to database owned by `root`
+4. **Circular Dependency**: Original staff roster design had dropdown trying to populate from roster itself
+
+**Solution Implemented**:
+1. **Git Tracking Cleanup**: Removed database file from Git tracking using `git rm --cached`
+2. **Updated .gitignore**: Added `backend/data/massage_shop.db` to prevent future tracking
+3. **Database Permissions Fix**: Changed ownership to `massage-shop:massage-shop` and permissions to `666`
+4. **Database Schema Redesign**: Created separate `staff` table for master list, kept `staff_roster` for daily working list
+5. **New API Endpoint**: Created `/api/staff/allstaff` endpoint to fetch master staff list
+6. **Frontend Logic Update**: Modified staff roster page to populate dropdown from master list, filter out already assigned staff
+7. **API Method Conflict Resolution**: Renamed admin `updateStaff` to `updateAdminStaff` to resolve method name conflicts
+
+**Technical Details**:
+- **Before**: Database file tracked by Git, ownership reverting to `root:root` after every Git operation
+- **After**: Database file untracked, ownership stable as `massage-shop:massage-shop`, permissions `666`
+- **Database Schema**: Two-table approach eliminates circular dependency
+- **API Endpoints**: Clear separation between master staff list and daily roster management
+
+**Testing Results**: 
+- ✅ **Staff Roster Dropdown**: Now populates correctly with all 16 available staff names
+- ✅ **Staff Addition**: Staff can be successfully added to daily roster with proper INSERT/UPDATE operations
+- ✅ **Database Permissions**: Fixed and stable, no more `SQLITE_READONLY` errors
+- ✅ **API Endpoints**: All staff-related endpoints working correctly
+- ✅ **Transaction Page Compatibility**: New transaction page still works with roster data
+
+**Outcome**: The staff roster system is now **100% OPERATIONAL** with all features working correctly. Reception staff can add staff to the daily roster, the system correctly handles both INSERT and UPDATE operations, and all API endpoints are working correctly. The critical database permissions issue has been completely resolved.
+
+**Lesson Learned**: Always check Git tracking when files keep reverting permissions - Git operations can systematically restore files and change their ownership/permissions, especially for database files that should never be tracked in version control.
+
 ## Permanent Solutions Implemented
 
 ### 1. Database Path Standardization
