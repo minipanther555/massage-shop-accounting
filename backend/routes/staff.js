@@ -182,10 +182,14 @@ router.put('/roster/:position', async (req, res) => {
         params
       );
     } else {
-      // INSERT new row
+      // INSERT new row - include all columns to avoid schema mismatch
       await database.run(
-        `INSERT INTO staff_roster (position, masseuse_name, status, busy_until, today_massages, last_updated) 
-         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        `INSERT INTO staff_roster (
+          position, masseuse_name, status, busy_until, today_massages, 
+          last_updated, hire_date, total_fees_earned, total_fees_paid, 
+          last_payment_date, last_payment_amount, last_payment_type, 
+          notes, location_id
+        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, NULL, 0, 0, NULL, NULL, NULL, NULL, 1)`,
         [position, masseuse_name || '', status || null, busy_until || null, today_massages || 0]
       );
     }
