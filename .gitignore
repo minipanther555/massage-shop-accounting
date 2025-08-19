@@ -16,5 +16,11 @@ node_modules/
 .vscode/
 .idea/
 
+# Database files - ignore ALL database files regardless of path
+*.db
+**/*.db
 data/massage_shop.db
+backend/data/massage_shop.db
+
+# Deployment scripts
 backend/scripts/deploy.sh
