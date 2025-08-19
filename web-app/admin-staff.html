@@ -367,10 +367,27 @@
 
         async function loadStaffData() {
             try {
+                console.log('🔍 DEBUG: Starting loadStaffData()');
                 const data = await api.getAdminStaff();
+                console.log('🔍 DEBUG: API response received:', data);
+                console.log('🔍 DEBUG: data.staff type:', typeof data.staff);
+                console.log('🔍 DEBUG: data.staff length:', data.staff ? data.staff.length : 'undefined');
+                console.log('🔍 DEBUG: data.staff content:', data.staff);
+                
                 staffData = data.staff;
-                updateSummaryCards(data.summary);
-                updateStaffList(data.staff);
+                console.log('🔍 DEBUG: staffData assigned:', staffData);
+                
+                if (data.summary) {
+                    updateSummaryCards(data.summary);
+                } else {
+                    console.log('🔍 DEBUG: No summary data received');
+                }
+                
+                if (data.staff) {
+                    updateStaffList(data.staff);
+                } else {
+                    console.log('🔍 DEBUG: No staff data received');
+                }
             } catch (error) {
                 console.error('Error loading staff data:', error);
                 showToast('Error loading staff data: ' + error.message, 'error');
@@ -389,10 +406,18 @@
         }
 
         function updateStaffList(staff) {
+            console.log('🔍 DEBUG: updateStaffList called with:', staff);
+            console.log('🔍 DEBUG: staff type:', typeof staff);
+            console.log('🔍 DEBUG: staff length:', staff ? staff.length : 'undefined');
+            
             const container = document.getElementById('staff-list');
             const emptyMessage = document.getElementById('empty-staff');
             
-            if (staff.length === 0) {
+            console.log('🔍 DEBUG: container element:', container);
+            console.log('🔍 DEBUG: emptyMessage element:', emptyMessage);
+            
+            if (!staff || staff.length === 0) {
+                console.log('🔍 DEBUG: No staff data, showing empty message');
                 container.innerHTML = '';
                 emptyMessage.style.display = 'block';
                 return;
