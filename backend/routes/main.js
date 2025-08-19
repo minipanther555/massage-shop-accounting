@@ -21,10 +21,8 @@ router.get('/staff-roster', addCSRFToken, (req, res) => {
             console.error('Error reading staff.html:', err);
             return res.status(500).send('Error loading the page.');
         }
-        // Get CSRF token from response headers (more reliable than res.locals)
-        const csrfToken = res.getHeader('X-CSRF-Token');
-        console.log(`[MAIN.JS STAFF-ROSTER] CSRF token from headers: ${csrfToken}`);
-        const modifiedHtml = data.replace('{{ an_actual_token }}', csrfToken || '');
+        console.log(`[MAIN.JS STAFF-ROSTER] CSRF token from res.locals: ${res.locals.csrfToken}`);
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
     });
 });
@@ -42,10 +40,8 @@ router.get('/transaction', addCSRFToken, (req, res) => {
             console.error('Error reading transaction.html:', err);
             return res.status(500).send('Error loading the page.');
         }
-        // Get CSRF token from response headers (more reliable than res.locals)
-        const csrfToken = res.getHeader('X-CSRF-Token');
-        console.log(`[MAIN.JS TRANSACTION] CSRF token from headers: ${csrfToken}`);
-        const modifiedHtml = data.replace('{{ an_actual_token }}', csrfToken || '');
+        console.log(`[MAIN.JS TRANSACTION] CSRF token from res.locals: ${res.locals.csrfToken}`);
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
     });
 });
@@ -63,10 +59,8 @@ router.get('/summary', addCSRFToken, (req, res) => {
             console.error('Error reading summary.html:', err);
             return res.status(500).send('Error loading the page.');
         }
-        // Get CSRF token from response headers (more reliable than res.locals)
-        const csrfToken = res.getHeader('X-CSRF-Token');
-        console.log(`[MAIN.JS SUMMARY] CSRF token from headers: ${csrfToken}`);
-        const modifiedHtml = data.replace('{{ an_actual_token }}', csrfToken || '');
+        console.log(`[MAIN.JS SUMMARY] CSRF token from res.locals: ${res.locals.csrfToken}`);
+        const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
         res.send(modifiedHtml);
     });
 });

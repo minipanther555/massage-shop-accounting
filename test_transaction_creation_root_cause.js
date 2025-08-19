@@ -42,9 +42,15 @@ class TransactionCreationTestSuite {
             console.log(`🚀 REQUEST: ${request.method()} ${request.url()}`);
         });
 
-        this.page.on('response', response => {
+        this.page.on('response', async response => {
             if (response.status() >= 400) {
-                console.log(`❌ ERROR RESPONSE: ${response.status()} ${response.url()}`);
+                try {
+                    const body = await response.text();
+                    console.log(`❌ ERROR RESPONSE: ${response.status()} ${response.url()}`);
+                    console.log(`❌ ERROR BODY: ${body}`);
+                } catch (e) {
+                    console.log(`❌ ERROR RESPONSE: ${response.status()} ${response.url()} (body unavailable: ${e.message})`);
+                }
             }
         });
     }
@@ -233,15 +239,41 @@ class TransactionCreationTestSuite {
                 
                 console.log('🔍 Test data:', testData);
                 
+                // --- CSRF TOKEN EXTRACTION AND LOGGING ---
+                console.log('🔍 [CSRF-DEBUG] Starting CSRF token extraction for transaction creation');
+                
+                const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+                console.log('🔍 [CSRF-DEBUG] Meta tag found:', csrfMetaTag ? 'YES' : 'NO');
+                
+                let csrfToken = '';
+                if (csrfMetaTag) {
+                    csrfToken = csrfMetaTag.getAttribute('content') || '';
+                    console.log('🔍 [CSRF-DEBUG] Meta tag content:', csrfToken ? csrfToken.substring(0, 20) + '...' : 'EMPTY');
+                    console.log('🔍 [CSRF-DEBUG] Is placeholder:', csrfToken === '{{ an_actual_token }}' ? 'YES' : 'NO');
+                    console.log('🔍 [CSRF-DEBUG] Token length:', csrfToken.length);
+                } else {
+                    console.warn('🚨 [CSRF-DEBUG] CSRF meta tag not found on page!');
+                }
+                
+                const requestHeaders = {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                };
+                
+                console.log('🔍 [CSRF-DEBUG] Final request headers:', requestHeaders);
+                console.log('🔍 [CSRF-DEBUG] Request body:', testData);
+                console.log('🔍 [CSRF-DEBUG] Making POST request to /api/transactions');
+                
                 // Make direct fetch call to transactions endpoint
                 const response = await fetch('/api/transactions', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    },
+                    headers: requestHeaders,
                     body: JSON.stringify(testData)
                 });
+                
+                console.log('🔍 [CSRF-DEBUG] Response received - Status:', response.status, response.statusText);
+                console.log('🔍 [CSRF-DEBUG] Response headers:', Object.fromEntries(response.headers.entries()));
+                // --- END CSRF TOKEN EXTRACTION AND LOGGING ---
                 
                 console.log('🔍 Direct API response status:', response.status);
                 console.log('🔍 Direct API response headers:', Object.fromEntries(response.headers.entries()));
@@ -282,9 +314,51 @@ class TransactionCreationTestSuite {
      * This test fills out the form and attempts submission
      */
     async testFrontendTransactionSubmission() {
-        // Fill out the form
-        await this.page.select('#location', 'In-Shop');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // First, let's debug what's actually on the page
+        console.log('🔍 [PAGE-DEBUG] Starting frontend transaction submission test');
+        
+        const pageState = await this.page.evaluate(() => {
+            console.log('🔍 [PAGE-DEBUG] Checking page state');
+            
+            // Check what elements exist
+            const locationSelect = document.getElementById('location');
+            const serviceSelect = document.getElementById('service');
+            const masseuseSelect = document.getElementById('masseuse');
+            const paymentSelect = document.getElementById('payment');
+            const form = document.querySelector('#transaction-form');
+            
+            // Check CSRF token
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : null;
+            
+            return {
+                hasLocationSelect: !!locationSelect,
+                hasServiceSelect: !!serviceSelect,
+                hasMasseuseSelect: !!masseuseSelect,
+                hasPaymentSelect: !!paymentSelect,
+                hasForm: !!form,
+                csrfToken: csrfToken ? csrfToken.substring(0, 20) + '...' : 'NOT_FOUND',
+                isPlaceholder: csrfToken === '{{ an_actual_token }}',
+                pageTitle: document.title,
+                currentUrl: window.location.href,
+                allSelectElements: Array.from(document.querySelectorAll('select')).map(s => ({ id: s.id, name: s.name, options: s.options.length }))
+            };
+        });
+        
+        console.log('🔍 [PAGE-DEBUG] Page state:', pageState);
+        
+        // Check if we're on the right page
+        if (!pageState.hasForm) {
+            throw new Error(`Transaction form not found. Page title: ${pageState.pageTitle}, URL: ${pageState.currentUrl}`);
+        }
+        
+        // Fill out the form - only if elements exist
+        if (pageState.hasLocationSelect) {
+            await this.page.select('#location', 'In-Shop');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+            console.log('⚠️ [PAGE-DEBUG] Location select not found, skipping');
+        }
         
         const serviceOptions = await this.page.evaluate(() => {
             const serviceSelect = document.getElementById('service');

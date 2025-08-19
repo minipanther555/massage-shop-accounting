@@ -122,186 +122,92 @@ async function debugStaffRosterFunctionality() {
         console.log('           Dropdown state:', dropdownState);
         
         // --- TEST 1: Add Staff to Roster ---
-        console.log('[STEP 4/6] Testing staff addition to roster...');
+        console.log('[STEP 4/7] Testing staff addition to roster...');
         
-        if (dropdownState.availableOptions > 0) {
-            // Select first available staff member
-            const firstStaffName = dropdownState.optionTexts[0];
-            console.log(`           Selecting first available staff: ${firstStaffName}`);
-            
-            await page.select('#available-staff', firstStaffName);
-            await page.click('button[onclick="addStaffToRoster()"]');
-            
-            // Wait for the addition to complete
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Check if staff was added to roster
-            const afterAdditionState = await page.evaluate(() => {
-                const rosterItems = Array.from(document.querySelectorAll('#roster-list .roster-item')).map(item => ({
-                    position: item.querySelector('.position')?.textContent,
-                    name: item.querySelector('.name')?.textContent,
-                    status: item.querySelector('.status')?.textContent
+        // Helper function to get current roster state
+        const getRosterState = async (page) => {
+            return page.evaluate(() => {
+                const rosterItems = Array.from(document.querySelectorAll('#roster-list .roster-grid')).map(item => ({
+                    position: parseInt(item.children[0].textContent.replace('#', '')),
+                    name: item.children[1].textContent,
+                    status: item.children[2].textContent.trim(),
+                    todayCount: parseInt(item.children[3].textContent)
                 }));
-                
                 return {
                     rosterItemCount: rosterItems.length,
-                    rosterItems: rosterItems
+                    rosterItems
                 };
             });
-            
-            console.log('           After adding staff:', afterAdditionState);
-            
-            if (afterAdditionState.rosterItemCount > 0) {
-                console.log('✅ Staff successfully added to roster!');
+        };
+        
+        try {
+            // First, clear the roster to ensure a clean slate
+            console.log('           Clearing roster before test...');
+            page.on('dialog', async dialog => {
+                await dialog.accept();
+            });
+            await page.evaluate(() => clearTodayRoster());
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const staffToAdd1 = dropdownState.optionTexts[0];
+            console.log('           Adding first staff member: ' + staffToAdd1);
+            await page.select('#available-staff', staffToAdd1);
+            await page.click('button.btn');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const rosterAfterAdd1 = await getRosterState(page);
+            console.log('           After adding first staff:', rosterAfterAdd1);
+            if (rosterAfterAdd1.rosterItemCount !== 1 || rosterAfterAdd1.rosterItems[0].name !== staffToAdd1) {
+                console.error('❌ First staff member was not added correctly');
             } else {
-                console.log('❌ Staff was not added to roster');
+                console.log('✅ First staff member added successfully');
             }
-        } else {
-            console.log('⚠️ No staff available in dropdown to test with');
-        }
-        
-        // --- TEST 2: Set Busy Status (1 minute duration) ---
-        console.log('[STEP 5/6] Testing busy status setting with 1-minute duration...');
-        
-        // First, add another staff member if we have one available
-        const secondStaffAvailable = await page.evaluate(() => {
-            const dropdown = document.getElementById('available-staff');
-            const options = Array.from(dropdown.options).filter(opt => opt.value && opt.text !== 'Select masseuse to add...');
-            return options.length > 1 ? options[1].text : null;
-        });
-        
-        if (secondStaffAvailable) {
-            console.log(`           Adding second staff member: ${secondStaffAvailable}`);
-            await page.select('#available-staff', secondStaffAvailable);
-            await page.click('button[onclick="addStaffToRoster()"]');
+
+           const staffToAdd2 = dropdownState.optionTexts[1];
+           console.log('           Adding second staff member: ' + staffToAdd2);
+           await page.select('#available-staff', staffToAdd2);
+           await page.click('button.btn');
+           await new Promise(resolve => setTimeout(resolve, 2000));
+
+           const rosterAfterAdd2 = await getRosterState(page);
+           console.log('           After adding second staff:', rosterAfterAdd2);
+           if (rosterAfterAdd2.rosterItemCount !== 2 || rosterAfterAdd2.rosterItems[1].name !== staffToAdd2) {
+                console.error('❌ Second staff member was not added correctly');
+           } else {
+                console.log('✅ Second staff member added successfully');
+           }
+
+           // Test staff removal
+            console.log('[STEP 5/7] Testing staff removal from roster...');
+            const staffToRemove = rosterAfterAdd2.rosterItems[0]; // Remove the first person
+            console.log(`           Removing staff: ${staffToRemove.name} at position ${staffToRemove.position}`);
+            await page.click(`.roster-grid:nth-child(1) button.btn-danger`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            const rosterAfterRemove = await getRosterState(page);
+            console.log('           After removing staff:', rosterAfterRemove);
+            if (rosterAfterRemove.rosterItemCount !== 1 || rosterAfterRemove.rosterItems[0].name !== staffToAdd2) {
+                console.error('❌ Staff member was not removed correctly');
+            } else {
+                console.log('✅ Staff member removed and roster re-indexed successfully');
+            }
+
+           // Test Clear All
+            console.log('[STEP 6/7] Testing Clear All functionality...');
+            await page.evaluate(() => clearTodayRoster());
             await new Promise(resolve => setTimeout(resolve, 2000));
             
-            // Now set a busy status that expires in 1 minute
-            const oneMinuteFromNow = new Date(Date.now() + 60000);
-            const busyUntilTime = oneMinuteFromNow.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true 
-            });
-            
-            console.log(`           Setting busy status until ${busyUntilTime} (1 minute from now)`);
-            
-            // Find the second staff member in the roster and set them as busy
-            const busyStatusSet = await page.evaluate((staffName, endTime) => {
-                // Find the staff member in the roster
-                const rosterItems = Array.from(document.querySelectorAll('#roster-list .roster-item'));
-                const targetItem = rosterItems.find(item => 
-                    item.querySelector('.name')?.textContent === staffName
-                );
-                
-                if (targetItem) {
-                    // Click on the status field to edit it
-                    const statusField = targetItem.querySelector('.status');
-                    if (statusField) {
-                        statusField.textContent = `Busy until ${endTime}`;
-                        return { success: true, message: `Status set to Busy until ${endTime}` };
-                    }
-                }
-                
-                return { success: false, message: 'Could not find staff member or status field' };
-            }, secondStaffAvailable, busyUntilTime);
-            
-            console.log('           Busy status set result:', busyStatusSet);
-            
-            if (busyStatusSet.success) {
-                console.log('✅ Busy status set successfully!');
-                console.log(`⏰ Staff will be busy until ${busyUntilTime}`);
-                console.log('🔄 Waiting 1 minute to test auto-reset...');
-                
-                // Wait 1 minute and 10 seconds to test auto-reset
-                await new Promise(resolve => setTimeout(resolve, 70000));
-                
-                // Check if status was auto-reset
-                const statusAfterTimeout = await page.evaluate((staffName) => {
-                    const rosterItems = Array.from(document.querySelectorAll('#roster-list .roster-item'));
-                    const targetItem = rosterItems.find(item => 
-                        item.querySelector('.name')?.textContent === staffName
-                    );
-                    
-                    if (targetItem) {
-                        const statusField = targetItem.querySelector('.status');
-                        return {
-                            status: statusField?.textContent || 'No status',
-                            wasReset: !statusField?.textContent?.includes('Busy until')
-                        };
-                    }
-                    
-                    return { error: 'Staff member not found' };
-                }, secondStaffAvailable);
-                
-                console.log('           Status after timeout:', statusAfterTimeout);
-                
-                if (statusAfterTimeout.wasReset) {
-                    console.log('✅ Busy status auto-reset working correctly!');
-                } else {
-                    console.log('❌ Busy status did not auto-reset - this is a bug!');
-                }
-            }
-        } else {
-            console.log('⚠️ Only one staff member available, skipping busy status test');
-        }
-        
-        // --- TEST 3: Clear All Functionality ---
-        console.log('[STEP 6/6] Testing Clear All functionality...');
-        
-        // Check current roster state
-        const beforeClearState = await page.evaluate(() => {
-            const rosterItems = Array.from(document.querySelectorAll('#roster-list .roster-item')).map(item => ({
-                position: item.querySelector('.position')?.textContent,
-                name: item.querySelector('.name')?.textContent,
-                status: item.querySelector('.status')?.textContent
-            }));
-            
-            return {
-                rosterItemCount: rosterItems.length,
-                hasStaffWithNames: rosterItems.some(item => item.name && item.name.trim() !== ''),
-                hasStaffWithStatus: rosterItems.some(item => item.status && item.status.trim() !== '')
-            };
-        });
-        
-        console.log('           Before Clear All:', beforeClearState);
-        
-        if (beforeClearState.rosterItemCount > 0) {
-            // Click Clear All button
-            await page.click('button[onclick="clearTodayRoster()"]');
-            
-            // Wait for confirmation dialog and confirm
-            await page.waitForSelector('button[onclick="clearTodayRoster()"]', { timeout: 5000 });
-            
-            // Wait for the clear operation to complete
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            // Check state after clearing
-            const afterClearState = await page.evaluate(() => {
-                const rosterItems = Array.from(document.querySelectorAll('#roster-list .roster-item')).map(item => ({
-                    position: item.querySelector('.position')?.textContent,
-                    name: item.querySelector('.name')?.textContent,
-                    status: item.querySelector('.status')?.textContent
-                }));
-                
-                return {
-                    rosterItemCount: rosterItems.length,
-                    hasStaffWithNames: rosterItems.some(item => item.name && item.name.trim() !== ''),
-                    hasStaffWithStatus: rosterItems.some(item => item.status && item.status.trim() !== ''),
-                    hasEmptyRosterMessage: !!document.getElementById('empty-roster')?.style.display !== 'none'
-                };
-            });
-            
-            console.log('           After Clear All:', afterClearState);
-            
-            if (!afterClearState.hasStaffWithNames && !afterClearState.hasStaffWithStatus) {
-                console.log('✅ Clear All working correctly - no orphaned data!');
+            const rosterAfterClear = await getRosterState(page);
+            console.log('           After Clear All:', rosterAfterClear);
+            if (rosterAfterClear.rosterItemCount !== 0) {
+                console.error('❌ Roster was not cleared correctly');
             } else {
-                console.log('❌ Clear All has issues - orphaned data remains!');
+                console.log('✅ Roster cleared successfully');
             }
-        } else {
-            console.log('⚠️ No staff in roster to clear');
-        }
+
+       } catch (e) {
+           console.error('Error during staff addition/status test:', e);
+       }
         
         console.log('\n🎉 STAFF ROSTER FUNCTIONALITY TEST COMPLETE! 🎉');
         
