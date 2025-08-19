@@ -268,15 +268,15 @@
             <form id="staff-form">
                 <div class="form-group">
                     <label for="staff-name">Staff Name:</label>
-                    <input type="text" id="staff-name" required maxlength="100">
+                    <input type="text" id="staff-name" name="name" required maxlength="100">
                 </div>
                 <div class="form-group">
                     <label for="hire-date">Hire Date:</label>
-                    <input type="date" id="hire-date">
+                    <input type="date" id="hire-date" name="hire_date">
                 </div>
                 <div class="form-group">
                     <label for="staff-notes">Notes:</label>
-                    <textarea id="staff-notes" rows="3" maxlength="500"></textarea>
+                    <textarea id="staff-notes" name="notes" rows="3" maxlength="500"></textarea>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button type="button" onclick="closeStaffModal()" class="btn btn-secondary">Cancel</button>
@@ -414,7 +414,7 @@
                 
                 div.innerHTML = `
                     <div>
-                        <strong>${member.masseuse_name}</strong>
+                        <strong>${member.name}</strong>
                         ${member.hire_date ? `<br><small>Hired: ${new Date(member.hire_date).toLocaleDateString()}</small>` : ''}
                     </div>
                     <div class="outstanding-amount">฿${outstandingAmount.toFixed(2)}</div>
@@ -456,7 +456,7 @@
 
             currentStaffId = staffId;
             document.getElementById('staff-modal-title').textContent = 'Edit Staff Member';
-            document.getElementById('staff-name').value = staff.masseuse_name || '';
+            document.getElementById('staff-name').value = staff.name || '';
             document.getElementById('hire-date').value = staff.hire_date || '';
             document.getElementById('staff-notes').value = staff.notes || '';
             document.getElementById('staff-modal').style.display = 'block';
@@ -470,7 +470,7 @@
             e.preventDefault();
             
             const staffData = {
-                masseuse_name: document.getElementById('staff-name').value.trim(),
+                name: document.getElementById('staff-name').value.trim(),
                 hire_date: document.getElementById('hire-date').value || null,
                 notes: document.getElementById('staff-notes').value.trim() || null
             };
@@ -496,7 +496,7 @@
             const staff = staffData.find(s => s.id === staffId);
             if (!staff) return;
 
-            if (!confirm(`Are you sure you want to remove ${staff.masseuse_name} from the staff roster?`)) {
+            if (!confirm(`Are you sure you want to remove ${staff.name} from the staff roster?`)) {
                 return;
             }
 
@@ -516,12 +516,12 @@
             if (!staff) return;
 
             currentStaffId = staffId;
-            document.getElementById('payment-modal-title').textContent = `Record Payment - ${staff.masseuse_name}`;
+            document.getElementById('payment-modal-title').textContent = `Record Payment - ${staff.name}`;
             
             // Show staff info
             const outstandingBalance = staff.outstanding_balance || 0;
             document.getElementById('payment-staff-info').innerHTML = `
-                <strong>${staff.masseuse_name}</strong><br>
+                <strong>${staff.name}</strong><br>
                 Outstanding Balance: <span style="color: #dc3545; font-weight: bold;">฿${outstandingBalance.toFixed(2)}</span><br>
                 Last Payment: ${staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never'}
             `;
@@ -620,7 +620,7 @@
                         const statusClass = getPaymentStatusClass(staff.payment_status);
                         html += `
                             <div class="staff-grid">
-                                <div><strong>${staff.masseuse_name}</strong></div>
+                                <div><strong>${staff.name}</strong></div>
                                 <div class="outstanding-amount">฿${staff.outstanding_balance.toFixed(2)}</div>
                                 <div class="payment-status ${statusClass}">${staff.payment_status}</div>
                                 <div>${staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never'}</div>

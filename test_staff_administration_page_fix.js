@@ -155,7 +155,7 @@ async function testStaffAdministrationPageFix() {
         
         const addStaffTest = await page.evaluate(() => {
             const form = document.getElementById('staff-form');
-            const nameInput = document.querySelector('input[name="masseuse_name"], input[name="name"]');
+            const nameInput = document.querySelector('input[name="name"]');
             const hireDateInput = document.querySelector('input[name="hire_date"]');
             const notesInput = document.querySelector('textarea[name="notes"]');
             const submitButton = document.querySelector('button[type="submit"]');
@@ -189,7 +189,7 @@ async function testStaffAdministrationPageFix() {
             
             try {
                 // Fill out the form
-                await page.type('input[name="masseuse_name"], input[name="name"]', testStaffName);
+                await page.type('input[name="name"]', testStaffName);
                 await page.type('input[name="hire_date"]', '2025-08-18');
                 await page.type('textarea[name="notes"]', 'Test staff member for database architecture verification');
                 
