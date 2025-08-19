@@ -138,12 +138,11 @@ router.post('/', async (req, res) => {
       ]
     );
 
-    // Update staff total fees earned
+    // Update staff total fees earned in staff table (not staff_roster)
     await database.run(
-      `UPDATE staff_roster 
-       SET total_fees_earned = total_fees_earned + ?,
-           last_updated = CURRENT_TIMESTAMP
-       WHERE masseuse_name = ?`,
+      `UPDATE staff 
+       SET total_fees_earned = total_fees_earned + ?
+       WHERE name = ?`,
       [service.masseuse_fee, masseuse_name]
     );
 

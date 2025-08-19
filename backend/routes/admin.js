@@ -328,9 +328,9 @@ router.post('/staff/:id/payments', async (req, res) => {
             WHERE id = ?
         `, [amount, today, amount, payment_type, id]);
 
-        // Get updated staff data
+        // Get updated staff data from staff table (not staff_roster)
         const updatedStaff = await database.get(
-            'SELECT *, (total_fees_earned - total_fees_paid) as outstanding_balance FROM staff_roster WHERE id = ?',
+            'SELECT *, (total_fees_earned - total_fees_paid) as outstanding_balance FROM staff WHERE id = ?',
             [id]
         );
 
@@ -350,23 +350,24 @@ router.get('/staff/outstanding-fees', async (req, res) => {
     try {
         const outstandingFees = await database.all(`
             SELECT 
-                sr.id,
-                sr.masseuse_name,
-                sr.total_fees_earned,
-                sr.total_fees_paid,
-                (sr.total_fees_earned - sr.total_fees_paid) as outstanding_balance,
-                sr.last_payment_date,
-                sr.last_payment_type,
+                s.id,
+                s.name as masseuse_name,
+                s.total_fees_earned,
+                s.total_fees_paid,
+                (s.total_fees_earned - s.total_fees_paid) as outstanding_balance,
+                s.last_payment_date,
+                s.last_payment_type,
                 CASE 
-                    WHEN sr.last_payment_date IS NULL THEN 'Never Paid'
-                    WHEN sr.last_payment_date >= date('now', 'weekday 0', '-6 days') THEN 'Paid This Week'
-                    WHEN sr.last_payment_date >= date('now', 'weekday 0', '-13 days') THEN 'Payment Due'
+                    WHEN s.last_payment_date IS NULL THEN 'Never Paid'
+                    WHEN s.last_payment_date >= date('now', 'weekday 0', '-6 days') THEN 'Paid This Week'
+                    WHEN s.last_payment_date >= date('now', 'weekday 0', '-13 days') THEN 'Payment Due'
                     ELSE 'Overdue'
                 END as payment_status
-            FROM staff_roster sr 
-            WHERE sr.masseuse_name IS NOT NULL 
-            AND sr.masseuse_name != ''
-            AND (sr.total_fees_earned - sr.total_fees_paid) > 0
+            FROM staff s 
+            WHERE s.name IS NOT NULL 
+            AND s.name != ''
+            AND s.active = TRUE
+            AND (s.total_fees_earned - s.total_fees_paid) > 0
             ORDER BY outstanding_balance DESC
         `);
 
@@ -435,19 +436,19 @@ router.get('/staff/rankings', async (req, res) => {
     try {
         const rankings = await database.all(`
             SELECT 
-                sr.masseuse_name,
+                s.name as masseuse_name,
                 COUNT(t.id) as total_massages,
                 COALESCE(SUM(t.masseuse_fee), 0) as total_earnings,
                 COALESCE(AVG(t.masseuse_fee), 0) as avg_fee,
                 (SELECT COUNT(*) FROM transactions t2 
-                 WHERE t2.masseuse_name = sr.masseuse_name 
+                 WHERE t2.masseuse_name = s.name 
                  AND date(t2.timestamp) >= date('now', 'weekday 1', '-6 days')
                  AND t2.status = 'ACTIVE') as this_week_count,
-                (sr.total_fees_earned - sr.total_fees_paid) as outstanding_fees
-            FROM staff_roster sr
-            LEFT JOIN transactions t ON t.masseuse_name = sr.masseuse_name AND t.status = 'ACTIVE'
-            WHERE sr.masseuse_name IS NOT NULL AND sr.masseuse_name != ''
-            GROUP BY sr.masseuse_name
+                (s.total_fees_earned - s.total_fees_paid) as outstanding_fees
+            FROM staff s
+            LEFT JOIN transactions t ON t.masseuse_name = s.name AND t.status = 'ACTIVE'
+            WHERE s.name IS NOT NULL AND s.name != '' AND s.active = TRUE
+            GROUP BY s.name
             ORDER BY total_earnings DESC
         `);
 

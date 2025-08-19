@@ -135,7 +135,7 @@ class Database {
         fees_period_end DATE,
         notes TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (masseuse_name) REFERENCES staff_roster(masseuse_name)
+        FOREIGN KEY (masseuse_name) REFERENCES staff(name)
       )`,
 
       // Master staff list (separate from daily roster)
