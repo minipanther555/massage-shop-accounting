@@ -205,6 +205,49 @@ router.put('/roster/:position', async (req, res) => {
   }
 });
 
+// Remove staff member from roster
+router.delete('/roster/:position', async (req, res) => {
+  try {
+    const { position } = req.params;
+
+    // Delete the staff member at the specified position
+    await database.run(
+      'DELETE FROM staff_roster WHERE position = ?',
+      [position]
+    );
+
+    // Re-index the remaining staff members
+    const remainingStaff = await database.all(
+      'SELECT * FROM staff_roster WHERE position > ? ORDER BY position ASC',
+      [position]
+    );
+
+    for (const staff of remainingStaff) {
+      const newPosition = staff.position - 1;
+      await database.run(
+        'UPDATE staff_roster SET position = ? WHERE id = ?',
+        [newPosition, staff.id]
+      );
+    }
+
+    res.json({ message: 'Staff member removed and roster re-indexed' });
+  } catch (error) {
+    console.error('Error removing staff from roster:', error);
+    res.status(500).json({ error: 'Failed to remove staff from roster' });
+  }
+});
+
+// Clear all staff from roster
+router.delete('/roster', async (req, res) => {
+  try {
+    await database.run('DELETE FROM staff_roster');
+    res.json({ message: 'Roster cleared successfully' });
+  } catch (error) {
+    console.error('Error clearing roster:', error);
+    res.status(500).json({ error: 'Failed to clear roster' });
+  }
+});
+
 // Serve next customer (automatic assignment)
 router.post('/serve-next', async (req, res) => {
   try {

@@ -119,6 +119,18 @@ class APIClient {
         });
     }
 
+    async removeStaffFromRoster(position) {
+        return this.request(`/staff/roster/${position}`, {
+            method: 'DELETE'
+        });
+    }
+
+    async clearRoster() {
+        return this.request('/staff/roster', {
+            method: 'DELETE'
+        });
+    }
+
     async serveNextCustomer() {
         return this.request('/staff/serve-next', {
             method: 'POST'

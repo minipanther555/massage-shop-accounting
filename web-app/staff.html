@@ -284,28 +284,9 @@
                     showToast('Staff member not found', 'error');
                     return;
                 }
-                
-                const wasNext = staffMember.status === 'Next';
-                
-                // Remove from database by clearing the name
-                await api.updateStaff(position, {
-                    masseuse_name: '',
-                    status: null
-                });
-                
-                // If removed person was "next", set first available person as next
-                if (wasNext) {
-                    const remainingStaff = appData.roster.find(r => 
-                        r.name && r.name.trim() !== '' && r.position !== position
-                    );
-                    if (remainingStaff) {
-                        await api.updateStaff(remainingStaff.position, {
-                            masseuse_name: remainingStaff.name,
-                            status: 'Next'
-                        });
-                    }
-                }
-                
+
+                await api.removeStaffFromRoster(position);
+
                 // Reload data and update display
                 await loadData();
                 updateRosterDisplay();
@@ -419,16 +400,7 @@
         async function clearTodayRoster() {
             if (confirm('Clear all staff from today\'s roster?')) {
                 try {
-                    const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
-                    
-                    for (const staff of activeStaff) {
-                        await api.updateStaff(staff.position, {
-                            masseuse_name: '',
-                            status: null,
-                            busy_until: null,
-                            today_massages: 0
-                        });
-                    }
+                    await api.clearRoster();
                     
                     await loadData();
                     updateRosterDisplay();
