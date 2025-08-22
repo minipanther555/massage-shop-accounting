@@ -712,7 +712,7 @@ function hasRole(requiredRole) {
 function requireAuth(requiredRole = null) {
     if (!isLoggedIn()) {
         console.log('❌ AUTH: Not logged in, redirecting to login');
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
         return false;
     }
     
@@ -740,13 +740,13 @@ async function logout() {
         localStorage.removeItem('currentUser');
         
         console.log('✅ LOGOUT: Success');
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
         
     } catch (error) {
         console.error('🚨 LOGOUT ERROR:', error);
         // Force logout even if API call fails
         localStorage.removeItem('currentUser');
-        window.location.href = 'login.html';
+        window.location.href = '/login.html';
     }
 }
 

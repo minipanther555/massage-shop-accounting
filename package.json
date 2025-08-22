@@ -1,8 +1,25 @@
 {
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "test": "mocha test_authentication_flow.js"
+  },
+  "keywords": [
+    "pos",
+    "restaurant",
+    "order",
+    "management",
+    "system"
+  ],
   "dependencies": {
     "cookie-parser": "^1.4.7",
     "node-fetch": "^3.3.2",
     "puppeteer": "^24.16.2",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "chai": "^5.3.1",
+    "mocha": "^11.7.1",
+    "supertest": "^7.1.4"
   }
 }

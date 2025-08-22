@@ -158,7 +158,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
       sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 // 1 day
+      maxAge: 90 * 24 * 60 * 60 * 1000 // 90 days
     });
     
     // Return user info (without sessionId)

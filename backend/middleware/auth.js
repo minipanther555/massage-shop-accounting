@@ -11,16 +11,25 @@ const { sessions } = require('../routes/auth');
 function authenticateToken(req, res, next) {
     const sessionId = req.cookies.sessionId;
     
-    if (!sessionId) {
-        console.log('❌ AUTH: No session cookie provided');
+    // This function handles unauthenticated access
+    const handleUnauthenticated = (message) => {
+        console.log(message);
+        // If the request is from a browser expecting HTML, redirect to login
+        if (req.headers.accept && req.headers.accept.includes('text/html')) {
+            return res.redirect('/login.html');
+        }
+        // Otherwise, it's an API request, so send a JSON error
         return res.status(401).json({ error: 'Authentication required' });
+    };
+
+    if (!sessionId) {
+        return handleUnauthenticated('❌ AUTH: No session cookie provided');
     }
     
     // Look up session
     const session = sessions.get(sessionId);
     if (!session) {
-        console.log('❌ AUTH: Invalid session ID:', sessionId);
-        return res.status(401).json({ error: 'Invalid or expired session' });
+        return handleUnauthenticated('❌ AUTH: Invalid session ID: ' + sessionId);
     }
     
     // Update last activity

@@ -15,6 +15,8 @@ node_modules/
 # Editor/IDE
 .vscode/
 .idea/
+docker
+diagnostics
 
 # Database files - ignore ALL database files regardless of path
 *.db
