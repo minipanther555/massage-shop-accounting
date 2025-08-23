@@ -14,7 +14,7 @@ async function insertAllData() {
     await database.run('DROP TABLE IF EXISTS expenses');
     await database.run('DROP TABLE IF EXISTS daily_summaries');
     await database.run('DROP TABLE IF EXISTS archived_transactions');
-    
+
     // Recreate tables fresh
     await database.run(`CREATE TABLE services (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,14 +27,14 @@ async function insertAllData() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(service_name, duration_minutes, location)
     )`);
-    
+
     await database.run(`CREATE TABLE payment_methods (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       method_name TEXT UNIQUE NOT NULL,
       active BOOLEAN DEFAULT TRUE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-    
+
     await database.run(`CREATE TABLE staff_roster (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       position INTEGER NOT NULL,
@@ -44,7 +44,7 @@ async function insertAllData() {
       busy_until TEXT,
       last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-    
+
     await database.run(`CREATE TABLE transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       transaction_id TEXT UNIQUE NOT NULL,
@@ -62,7 +62,7 @@ async function insertAllData() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-    
+
     await database.run(`CREATE TABLE expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date DATE NOT NULL,
@@ -71,7 +71,7 @@ async function insertAllData() {
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
-    
+
     console.log('Recreated all tables fresh');
 
     // Insert staff names
@@ -300,7 +300,6 @@ async function insertAllData() {
 
     await database.close();
     console.log('Database connection closed');
-
   } catch (error) {
     console.error('Error inserting data:', error);
     process.exit(1);

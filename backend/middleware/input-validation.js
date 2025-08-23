@@ -1,6 +1,6 @@
 /**
  * Input Validation and Sanitization Middleware
- * 
+ *
  * This middleware validates and cleans user input to prevent:
  * - SQL Injection attacks
  * - Cross-Site Scripting (XSS) attacks
@@ -11,13 +11,13 @@
 // Helper function to sanitize strings
 function sanitizeString(input) {
   if (typeof input !== 'string') return input;
-  
+
   // Remove or escape potentially dangerous characters
   return input
-    .replace(/[<>]/g, '')           // Remove < and > (prevents HTML injection)
-    .replace(/javascript:/gi, '')   // Remove javascript: protocol
-    .replace(/on\w+=/gi, '')       // Remove event handlers like onclick=
-    .trim();                        // Remove leading/trailing whitespace
+    .replace(/[<>]/g, '') // Remove < and > (prevents HTML injection)
+    .replace(/javascript:/gi, '') // Remove javascript: protocol
+    .replace(/on\w+=/gi, '') // Remove event handlers like onclick=
+    .trim(); // Remove leading/trailing whitespace
 }
 
 // Helper function to validate email format
@@ -47,7 +47,7 @@ function isValidDate(dateString) {
 // Main validation middleware
 function validateInput(req, res, next) {
   console.log('🔍 VALIDATION: Validating request input');
-  
+
   try {
     // Sanitize all string inputs in body, query, and params
     if (req.body) {
@@ -59,25 +59,24 @@ function validateInput(req, res, next) {
     if (req.params) {
       sanitizeObject(req.params);
     }
-    
+
     // Validate specific endpoints with custom rules
     validateEndpoint(req);
-    
+
     console.log('✅ VALIDATION: Input validation passed');
     next();
-    
   } catch (error) {
     console.error('❌ VALIDATION ERROR:', error.message);
-    res.status(400).json({ 
-      error: 'Invalid input data', 
-      details: error.message 
+    res.status(400).json({
+      error: 'Invalid input data',
+      details: error.message
     });
   }
 }
 
 // Recursively sanitize object properties
 function sanitizeObject(obj) {
-  for (let key in obj) {
+  for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
       if (typeof obj[key] === 'string') {
         obj[key] = sanitizeString(obj[key]);
@@ -91,7 +90,7 @@ function sanitizeObject(obj) {
 // Validate specific endpoints with custom rules
 function validateEndpoint(req) {
   const { method, path, body } = req;
-  
+
   // Login validation
   if (path === '/api/auth/login' && method === 'POST') {
     if (!body.username || body.username.length < 1 || body.username.length > 50) {
@@ -101,7 +100,7 @@ function validateEndpoint(req) {
       throw new Error('Password must be between 1 and 100 characters');
     }
   }
-  
+
   // Transaction validation
   if (path === '/api/transactions' && method === 'POST') {
     if (!body.masseuse_name || body.masseuse_name.length < 1 || body.masseuse_name.length > 100) {
@@ -121,7 +120,7 @@ function validateEndpoint(req) {
       throw new Error('Start time and end time are required');
     }
   }
-  
+
   // Staff validation
   if (path === '/api/staff' && method === 'POST') {
     if (!body.masseuse_name || body.masseuse_name.length < 1 || body.masseuse_name.length > 100) {
@@ -134,7 +133,7 @@ function validateEndpoint(req) {
       throw new Error('Email format is invalid');
     }
   }
-  
+
   // Service validation
   if (path === '/api/services' && method === 'POST') {
     if (!body.service_name || body.service_name.length < 1 || body.service_name.length > 100) {
@@ -150,7 +149,7 @@ function validateEndpoint(req) {
       throw new Error('Masseuse fee must be a valid number between $0 and $9,999.99');
     }
   }
-  
+
   // Expense validation
   if (path === '/api/expenses' && method === 'POST') {
     if (!body.description || body.description.length < 1 || body.description.length > 200) {
@@ -168,14 +167,14 @@ function validateEndpoint(req) {
 // Rate limiting for file uploads (if you add file uploads later)
 function validateFileUpload(req, res, next) {
   const maxFileSize = 5 * 1024 * 1024; // 5MB limit
-  
+
   if (req.headers['content-length'] && parseInt(req.headers['content-length']) > maxFileSize) {
-    return res.status(413).json({ 
-      error: 'File too large', 
-      maxSize: '5MB' 
+    return res.status(413).json({
+      error: 'File too large',
+      maxSize: '5MB'
     });
   }
-  
+
   next();
 }
 

@@ -26,24 +26,24 @@ async function populateStaffTable() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `;
-    
+
     db.run(createTableSQL, (err) => {
       if (err) {
         console.error('❌ Error creating staff table:', err);
         reject(err);
         return;
       }
-      
+
       console.log('✅ Staff table created/verified');
-      
+
       // Insert staff names
       let insertedCount = 0;
       let skippedCount = 0;
-      
+
       staffNames.forEach((name, index) => {
         const insertSQL = 'INSERT OR IGNORE INTO staff (name) VALUES (?)';
-        
-        db.run(insertSQL, [name], function(err) {
+
+        db.run(insertSQL, [name], function (err) {
           if (err) {
             console.error(`❌ Error inserting ${name}:`, err);
           } else if (this.changes > 0) {
@@ -53,21 +53,21 @@ async function populateStaffTable() {
             skippedCount++;
             console.log(`⏭️ Skipped (already exists): ${name}`);
           }
-          
+
           // Check if this was the last insertion
           if (index === staffNames.length - 1) {
-            console.log(`\n🎉 Staff table population complete!`);
+            console.log('\n🎉 Staff table population complete!');
             console.log(`📊 Inserted: ${insertedCount}, Skipped: ${skippedCount}, Total: ${staffNames.length}`);
-            
+
             // Verify the data
             db.all('SELECT * FROM staff ORDER BY name', (err, rows) => {
               if (err) {
                 console.error('❌ Error verifying data:', err);
               } else {
                 console.log('\n📋 Final staff table contents:');
-                rows.forEach(row => console.log(`  ${row.id}: ${row.name} (${row.active ? 'active' : 'inactive'})`));
+                rows.forEach((row) => console.log(`  ${row.id}: ${row.name} (${row.active ? 'active' : 'inactive'})`));
               }
-              
+
               db.close();
               resolve();
             });

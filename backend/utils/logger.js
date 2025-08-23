@@ -1,11 +1,11 @@
 /**
  * Production Logging System
- * 
+ *
  * This logger handles different log levels and can write to:
  * - Console (development)
  * - Files (production)
  * - Both (if needed)
- * 
+ *
  * Why proper logging matters in production:
  * - Track system performance and errors
  * - Monitor security events (failed logins, suspicious requests)
@@ -57,7 +57,7 @@ function formatLogMessage(level, message, meta = {}) {
     message,
     ...meta
   };
-  
+
   return JSON.stringify(logEntry);
 }
 
@@ -66,10 +66,10 @@ function formatLogMessage(level, message, meta = {}) {
  */
 function writeToFile(logEntry) {
   if (!config.logging.enableFile) return;
-  
+
   try {
     // Add newline for file writing
-    fs.appendFileSync(config.logging.file, logEntry + '\n');
+    fs.appendFileSync(config.logging.file, `${logEntry}\n`);
   } catch (error) {
     console.error('❌ LOGGER: Failed to write to log file:', error.message);
   }
@@ -80,22 +80,24 @@ function writeToFile(logEntry) {
  */
 function writeToConsole(logEntry) {
   if (!config.logging.enableConsole) return;
-  
-  const { timestamp, level, message, ...meta } = JSON.parse(logEntry);
-  
+
+  const {
+    timestamp, level, message, ...meta
+  } = JSON.parse(logEntry);
+
   // Color coding for console output
   const colors = {
     ERROR: '\x1b[31m', // Red
-    WARN: '\x1b[33m',  // Yellow
-    INFO: '\x1b[36m',  // Cyan
-    DEBUG: '\x1b[35m'  // Magenta
+    WARN: '\x1b[33m', // Yellow
+    INFO: '\x1b[36m', // Cyan
+    DEBUG: '\x1b[35m' // Magenta
   };
-  
+
   const reset = '\x1b[0m';
   const color = colors[level] || '';
-  
+
   console.log(`${color}[${level}]${reset} ${timestamp} - ${message}`);
-  
+
   // Log additional metadata if present
   if (Object.keys(meta).length > 0) {
     console.log(`${color}  └─${reset}`, meta);
@@ -110,9 +112,9 @@ function log(level, message, meta = {}) {
   if (LOG_LEVELS[level] > getCurrentLogLevel()) {
     return;
   }
-  
+
   const logEntry = formatLogMessage(level, message, meta);
-  
+
   // Write to appropriate outputs
   writeToFile(logEntry);
   writeToConsole(logEntry);
@@ -123,19 +125,19 @@ function log(level, message, meta = {}) {
  */
 function rotateLogs() {
   if (!config.logging.enableFile) return;
-  
+
   try {
     const stats = fs.statSync(config.logging.file);
     const fileSizeInMB = stats.size / (1024 * 1024);
-    
+
     if (fileSizeInMB > parseInt(config.logging.maxSize)) {
       // Create backup with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupFile = `${config.logging.file}.${timestamp}`;
-      
+
       fs.renameSync(config.logging.file, backupFile);
       console.log('🔄 LOGGER: Rotated log file to:', backupFile);
-      
+
       // Clean up old backup files
       cleanupOldLogs();
     }
@@ -149,32 +151,30 @@ function rotateLogs() {
  */
 function cleanupOldLogs() {
   if (!config.logging.enableFile) return;
-  
+
   try {
     const logsDir = path.dirname(config.logging.file);
     const files = fs.readdirSync(logsDir);
-    
+
     // Find log backup files
-    const logFiles = files.filter(file => 
-      file.startsWith(path.basename(config.logging.file)) && 
-      file.includes('.')
-    );
-    
+    const logFiles = files.filter((file) => file.startsWith(path.basename(config.logging.file))
+      && file.includes('.'));
+
     // Sort by modification time (oldest first)
     const sortedFiles = logFiles
-      .map(file => ({
+      .map((file) => ({
         name: file,
         path: path.join(logsDir, file),
         mtime: fs.statSync(path.join(logsDir, file)).mtime
       }))
       .sort((a, b) => a.mtime - b.mtime);
-    
+
     // Keep only the most recent files
     const maxFiles = config.logging.maxFiles || 5;
     if (sortedFiles.length > maxFiles) {
       const filesToDelete = sortedFiles.slice(0, sortedFiles.length - maxFiles);
-      
-      filesToDelete.forEach(file => {
+
+      filesToDelete.forEach((file) => {
         fs.unlinkSync(file.path);
         console.log('🗑️ LOGGER: Deleted old log file:', file.name);
       });
@@ -192,17 +192,17 @@ const logger = {
   warn: (message, meta) => log('warn', message, meta),
   info: (message, meta) => log('info', message, meta),
   debug: (message, meta) => log('debug', message, meta),
-  
+
   // Special logging for security events
   security: (event, meta) => {
     log('info', `SECURITY: ${event}`, { ...meta, type: 'security' });
   },
-  
+
   // Special logging for business events
   business: (event, meta) => {
     log('info', `BUSINESS: ${event}`, { ...meta, type: 'business' });
   },
-  
+
   // Special logging for system events
   system: (event, meta) => {
     log('info', `SYSTEM: ${event}`, { ...meta, type: 'system' });

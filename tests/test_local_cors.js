@@ -16,31 +16,31 @@ console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
 console.log(`ALLOWED_ORIGINS: ${process.env.ALLOWED_ORIGINS}`);
 
 // Parse the allowed origins
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000', 'http://localhost:8080'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:8080'];
 
 console.log('\nParsed ALLOWED_ORIGINS:');
 allowedOrigins.forEach((origin, index) => {
-    console.log(`  ${index + 1}. ${origin.trim()}`);
+  console.log(`  ${index + 1}. ${origin.trim()}`);
 });
 
 // Test CORS validation logic
 console.log('\n🧪 Testing CORS Origin Validation Logic...');
 
 const testOrigins = [
-    'http://109.123.238.197',
-    'http://localhost:3000', 
-    'http://localhost:8080',
-    'http://127.0.0.1:3000',
-    'https://example.com',
-    null // No origin
+  'http://109.123.238.197',
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'http://127.0.0.1:3000',
+  'https://example.com',
+  null // No origin
 ];
 
-testOrigins.forEach(origin => {
-    const isAllowed = !origin || allowedOrigins.includes(origin);
-    const status = isAllowed ? '✅ ALLOWED' : '❌ BLOCKED';
-    console.log(`Origin: ${origin || 'NO_ORIGIN'} -> ${status}`);
+testOrigins.forEach((origin) => {
+  const isAllowed = !origin || allowedOrigins.includes(origin);
+  const status = isAllowed ? '✅ ALLOWED' : '❌ BLOCKED';
+  console.log(`Origin: ${origin || 'NO_ORIGIN'} -> ${status}`);
 });
 
 console.log('\n📋 SUMMARY:');

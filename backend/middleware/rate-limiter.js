@@ -61,7 +61,7 @@ function resetRateLimits(req, res) {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ error: 'Rate limit reset not allowed in production' });
   }
-  
+
   // Reset the rate limit store
   if (loginRateLimiter.resetKey) {
     loginRateLimiter.resetKey(req.ip);

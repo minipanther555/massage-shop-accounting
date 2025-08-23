@@ -1,11 +1,11 @@
 /**
  * Environment Configuration System
- * 
+ *
  * This file manages different configuration settings for:
  * - Development (local testing)
  * - Production (VPS deployment)
  * - Testing (automated tests)
- * 
+ *
  * Why this matters:
  * - Different security levels for different environments
  * - Environment-specific database connections
@@ -27,7 +27,7 @@ const baseConfig = {
     port: process.env.PORT || 3000,
     host: process.env.HOST || 'localhost'
   },
-  
+
   // Database settings
   database: {
     type: 'sqlite', // Could be 'postgresql' or 'mysql' in production
@@ -39,34 +39,34 @@ const baseConfig = {
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'massage_shop'
   },
-  
+
   // Security settings
   security: {
     // Session settings
     sessionSecret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
     sessionTimeout: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
-    
+
     // Password settings
     passwordMinLength: 8,
     passwordMaxLength: 100,
     passwordRequireComplexity: false, // Keep simple for your users
-    
+
     // Rate limiting
     loginAttempts: 5,
     loginWindowMs: 15 * 60 * 1000, // 15 minutes
     apiRequests: 100,
     apiWindowMs: 15 * 60 * 1000, // 15 minutes
-    
+
     // CSRF protection
     csrfTokenExpiry: 24 * 60 * 60 * 1000, // 24 hours
-    
+
     // Request limits
     maxBodySize: '1mb',
     maxUrlLength: 2048,
     maxHeadersSize: '16kb',
     requestTimeout: 30000 // 30 seconds
   },
-  
+
   // Logging settings
   logging: {
     level: process.env.LOG_LEVEL || 'info', // error, warn, info, debug
@@ -76,10 +76,10 @@ const baseConfig = {
     enableConsole: true,
     enableFile: false // Enable in production
   },
-  
+
   // CORS settings
   cors: {
-    allowedOrigins: process.env.ALLOWED_ORIGINS 
+    allowedOrigins: process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
       : ['http://109.123.238.197', 'http://localhost:3000', 'http://localhost:8080'],
     credentials: true
@@ -130,7 +130,7 @@ const productionConfig = {
   },
   cors: {
     ...baseConfig.cors,
-    allowedOrigins: process.env.ALLOWED_ORIGINS 
+    allowedOrigins: process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
       : ['http://109.123.238.197', 'http://localhost:3000', 'http://localhost:8080'] // Production domains
   }
@@ -168,32 +168,32 @@ switch (NODE_ENV) {
   case 'production':
     config = productionConfig;
     console.log('🏭 PRODUCTION: Using production configuration');
-    
+
     // Validate production configuration ONLY when production is selected
     const requiredEnvVars = ['SESSION_SECRET'];
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    
+    const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+
     if (missingVars.length > 0) {
       console.error('❌ PRODUCTION ERROR: Missing required environment variables:', missingVars);
       console.error('Please set these variables before starting the production server');
       process.exit(1);
     }
-    
+
     // Validate session secret is properly set
     if (!process.env.SESSION_SECRET) {
       console.error('❌ PRODUCTION ERROR: SESSION_SECRET environment variable is required');
       process.exit(1);
     }
-    
+
     // Update the config with the validated session secret
     config.security.sessionSecret = process.env.SESSION_SECRET;
     break;
-    
+
   case 'testing':
     config = testingConfig;
     console.log('🧪 TESTING: Using testing configuration');
     break;
-    
+
   case 'development':
   default:
     config = developmentConfig;

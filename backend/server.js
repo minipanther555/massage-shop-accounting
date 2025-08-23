@@ -1,4 +1,4 @@
-require("./instrument.js");
+require('./instrument.js');
 
 const express = require('express');
 const Sentry = require('@sentry/node');
@@ -12,12 +12,12 @@ require('dotenv').config();
 const securityHeaders = require('./middleware/security-headers');
 const { validateInput } = require('./middleware/input-validation');
 const { validateCSRFToken, addCSRFToken } = require('./middleware/csrf-protection');
-const { 
-  requestSizeLimits, 
-  errorHandler, 
-  notFoundHandler, 
-  requestTimeout, 
-  requestLogger 
+const {
+  requestSizeLimits,
+  errorHandler,
+  notFoundHandler,
+  requestTimeout,
+  requestLogger
 } = require('./middleware/request-limits');
 
 const database = require('./models/database');
@@ -47,7 +47,7 @@ const PORT = process.env.PORT || 3000;
 // }
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:3000', 'http://localhost:8080'];
 
@@ -77,17 +77,17 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
 
 // Apply our custom security middleware
-app.use(requestLogger);           // Log all requests for monitoring
-app.use(requestTimeout(30000));   // 30 second timeout for requests
-app.use(requestSizeLimits);       // Check request size limits
-app.use(securityHeaders);         // Add security headers
-app.use(validateInput);           // Validate and sanitize input
+app.use(requestLogger); // Log all requests for monitoring
+app.use(requestTimeout(30000)); // 30 second timeout for requests
+app.use(requestSizeLimits); // Check request size limits
+app.use(securityHeaders); // Add security headers
+app.use(validateInput); // Validate and sanitize input
 // Note: CSRF tokens are added per-route, not globally
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -106,20 +106,19 @@ app.use('/api/main', require('./routes/main'));
 
 // --- DIAGNOSTIC LOGGING ---
 app.use('/api/admin', (req, res, next) => {
-    next();
+  next();
 }, validateCSRFToken, require('./routes/admin')); // Manager-only admin routes
 
 app.use('/api/payment-types', validateCSRFToken, require('./routes/payment-types')); // Payment types CRUD management
 
 // Sentry: A debug route to test Sentry error capturing
-app.get("/debug-sentry", function mainHandler(req, res) {
-  throw new Error("My first Sentry error!");
+app.get('/debug-sentry', (req, res) => {
+  throw new Error('My first Sentry error!');
 });
 
 // Sentry: The error handler must be before any other error middleware and after all controllers.
 // This single line replaces the old requestHandler, tracingHandler, and errorHandler.
 Sentry.setupExpressErrorHandler(app);
-
 
 // Enhanced error handling middleware
 app.use(errorHandler);
@@ -132,7 +131,7 @@ async function startServer() {
   try {
     await database.connect();
     console.log('Database initialized successfully');
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 Massage Shop POS Backend running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);

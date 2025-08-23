@@ -1,4 +1,5 @@
 const express = require('express');
+
 const router = express.Router();
 const database = require('../models/database');
 
@@ -6,7 +7,7 @@ const database = require('../models/database');
 router.get('/daily/:date?', async (req, res) => {
   try {
     const date = req.params.date || new Date().toISOString().split('T')[0];
-    
+
     // Transaction summary
     const transactionSummary = await database.get(
       `SELECT 
@@ -17,7 +18,7 @@ router.get('/daily/:date?', async (req, res) => {
        WHERE date = ? AND status = 'ACTIVE'`,
       [date]
     );
-    
+
     // Expense summary
     const expenseSummary = await database.get(
       `SELECT 
@@ -27,7 +28,7 @@ router.get('/daily/:date?', async (req, res) => {
        WHERE date = ?`,
       [date]
     );
-    
+
     // Payment method breakdown
     const paymentBreakdown = await database.all(
       `SELECT 
@@ -40,7 +41,7 @@ router.get('/daily/:date?', async (req, res) => {
        ORDER BY revenue DESC`,
       [date]
     );
-    
+
     // Masseuse performance
     const masseusePerformance = await database.all(
       `SELECT 
@@ -54,10 +55,10 @@ router.get('/daily/:date?', async (req, res) => {
        ORDER BY total_fees DESC`,
       [date]
     );
-    
+
     // Calculate net profit
     const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
-    
+
     res.json({
       date,
       transaction_summary: transactionSummary,
@@ -80,10 +81,10 @@ router.get('/weekly', async (req, res) => {
     monday.setDate(today.getDate() - today.getDay() + 1);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
-    
+
     const weekStart = monday.toISOString().split('T')[0];
     const weekEnd = sunday.toISOString().split('T')[0];
-    
+
     const weeklyFees = await database.all(
       `SELECT 
         masseuse_name,
@@ -95,7 +96,7 @@ router.get('/weekly', async (req, res) => {
        ORDER BY weekly_fees DESC`,
       [weekStart, weekEnd]
     );
-    
+
     res.json({
       week_start: weekStart,
       week_end: weekEnd,
@@ -113,10 +114,10 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
     const now = new Date();
     const year = req.params.year || now.getFullYear();
     const month = req.params.month || (now.getMonth() + 1);
-    
+
     const monthStart = `${year}-${month.toString().padStart(2, '0')}-01`;
     const monthEnd = new Date(year, month, 0).toISOString().split('T')[0];
-    
+
     // Monthly totals
     const monthlyTotals = await database.get(
       `SELECT 
@@ -127,7 +128,7 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
        WHERE date >= ? AND date <= ? AND status IN ('ACTIVE', 'CORRECTED')`,
       [monthStart, monthEnd]
     );
-    
+
     // Monthly expenses
     const monthlyExpenses = await database.get(
       `SELECT 
@@ -137,7 +138,7 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
        WHERE date >= ? AND date <= ?`,
       [monthStart, monthEnd]
     );
-    
+
     // Service type breakdown
     const serviceBreakdown = await database.all(
       `SELECT 
@@ -150,7 +151,7 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
        ORDER BY revenue DESC`,
       [monthStart, monthEnd]
     );
-    
+
     res.json({
       month: `${year}-${month.toString().padStart(2, '0')}`,
       month_start: monthStart,
@@ -169,7 +170,7 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
 router.get('/summary/today', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const transactionSummary = await database.get(
       `SELECT 
         COUNT(*) as transaction_count,
@@ -179,7 +180,7 @@ router.get('/summary/today', async (req, res) => {
        WHERE date = ? AND status = 'ACTIVE'`,
       [today]
     );
-    
+
     // Payment method breakdown
     const paymentBreakdown = await database.all(
       `SELECT 
@@ -192,7 +193,7 @@ router.get('/summary/today', async (req, res) => {
        ORDER BY revenue DESC`,
       [today]
     );
-    
+
     res.json({
       ...transactionSummary,
       payment_breakdown: paymentBreakdown
@@ -206,27 +207,29 @@ router.get('/summary/today', async (req, res) => {
 // Financial reports endpoint for admin dashboard
 router.get('/financial', async (req, res) => {
   try {
-    const { from_date, to_date, staff_member, service_type, location } = req.query;
-    
+    const {
+      from_date, to_date, staff_member, service_type, location
+    } = req.query;
+
     // Build WHERE clause based on filters
     let whereClause = "WHERE t.status IN ('ACTIVE', 'CORRECTED')";
-    let params = [];
-    
+    const params = [];
+
     if (from_date && to_date) {
-      whereClause += " AND t.date >= ? AND t.date <= ?";
+      whereClause += ' AND t.date >= ? AND t.date <= ?';
       params.push(from_date, to_date);
     }
-    
+
     if (staff_member && staff_member !== 'all') {
-      whereClause += " AND t.masseuse_name = ?";
+      whereClause += ' AND t.masseuse_name = ?';
       params.push(staff_member);
     }
-    
+
     if (service_type && service_type !== 'all') {
-      whereClause += " AND t.service_type = ?";
+      whereClause += ' AND t.service_type = ?';
       params.push(service_type);
     }
-    
+
     // Get transaction summary
     const transactionSummary = await database.get(
       `SELECT 
@@ -237,16 +240,16 @@ router.get('/financial', async (req, res) => {
        ${whereClause}`,
       params
     );
-    
+
     // Get expense summary for the same period
-    let expenseWhereClause = "WHERE 1=1";
-    let expenseParams = [];
-    
+    let expenseWhereClause = 'WHERE 1=1';
+    const expenseParams = [];
+
     if (from_date && to_date) {
-      expenseWhereClause += " AND date >= ? AND date <= ?";
+      expenseWhereClause += ' AND date >= ? AND date <= ?';
       expenseParams.push(from_date, to_date);
     }
-    
+
     const expenseSummary = await database.get(
       `SELECT 
         COUNT(*) as expense_count,
@@ -255,7 +258,7 @@ router.get('/financial', async (req, res) => {
        ${expenseWhereClause}`,
       expenseParams
     );
-    
+
     // Get payment method breakdown (like daily summary page)
     const paymentBreakdown = await database.all(
       `SELECT 
@@ -268,15 +271,15 @@ router.get('/financial', async (req, res) => {
        ORDER BY revenue DESC`,
       params
     );
-    
+
     // Get location breakdown (In-Shop vs Outcall) - nice to have
     let locationBreakdown = [];
     if (location && location !== 'all') {
       // If specific location requested, filter by it
-      whereClause += " AND s.location = ?";
+      whereClause += ' AND s.location = ?';
       params.push(location);
     }
-    
+
     try {
       locationBreakdown = await database.all(
         `SELECT 
@@ -295,14 +298,14 @@ router.get('/financial', async (req, res) => {
       console.log('Location breakdown not available:', locationError.message);
       locationBreakdown = [];
     }
-    
+
     // Calculate net profit
     const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
-    
+
     // Calculate additional metrics
-    const profitMargin = transactionSummary.total_revenue > 0 ? 
-      Number(((netProfit / transactionSummary.total_revenue) * 100).toFixed(1)) : 0;
-    
+    const profitMargin = transactionSummary.total_revenue > 0
+      ? Number(((netProfit / transactionSummary.total_revenue) * 100).toFixed(1)) : 0;
+
     // Get service breakdown
     const serviceBreakdown = await database.all(
       `SELECT 
@@ -315,13 +318,13 @@ router.get('/financial', async (req, res) => {
        ORDER BY revenue DESC`,
       params
     );
-    
+
     res.json({
       summary: {
         total_revenue: transactionSummary.total_revenue,
         total_transactions: transactionSummary.transaction_count,
-        average_transaction: transactionSummary.transaction_count > 0 ? 
-          Number((transactionSummary.total_revenue / transactionSummary.transaction_count).toFixed(2)) : 0,
+        average_transaction: transactionSummary.transaction_count > 0
+          ? Number((transactionSummary.total_revenue / transactionSummary.transaction_count).toFixed(2)) : 0,
         total_masseuse_fees: transactionSummary.total_fees,
         total_expenses: expenseSummary.total_expenses,
         net_profit: netProfit,
@@ -332,9 +335,9 @@ router.get('/financial', async (req, res) => {
         totalFees: transactionSummary.total_fees,
         otherCosts: expenseSummary.total_expenses,
         totalCosts: transactionSummary.total_fees + expenseSummary.total_expenses,
-        netProfit: netProfit // Add camelCase version
+        netProfit // Add camelCase version
       },
-      serviceBreakdown: serviceBreakdown,
+      serviceBreakdown,
       dateRange: {
         from: from_date,
         to: to_date
@@ -362,7 +365,7 @@ router.get('/financial', async (req, res) => {
 router.post('/end-day', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Calculate daily totals
     const dailyData = await database.get(
       `SELECT 
@@ -373,12 +376,12 @@ router.post('/end-day', async (req, res) => {
        WHERE date = ? AND status = 'ACTIVE'`,
       [today]
     );
-    
+
     const expenseData = await database.get(
-      `SELECT COALESCE(SUM(amount), 0) as total_expenses FROM expenses WHERE date = ?`,
+      'SELECT COALESCE(SUM(amount), 0) as total_expenses FROM expenses WHERE date = ?',
       [today]
     );
-    
+
     // Insert into daily summaries
     await database.run(
       `INSERT OR REPLACE INTO daily_summaries 
@@ -386,25 +389,25 @@ router.post('/end-day', async (req, res) => {
        VALUES (?, ?, ?, ?, ?)`,
       [today, dailyData.total_revenue, dailyData.total_fees, dailyData.total_transactions, expenseData.total_expenses]
     );
-    
+
     // Clear today's transactions (now that they're saved to daily_summaries)
     const clearedTransactions = await database.run(
       'DELETE FROM transactions WHERE date = ?',
       [today]
     );
-    
-    // Clear today's expenses 
+
+    // Clear today's expenses
     const clearedExpenses = await database.run(
       'DELETE FROM expenses WHERE date = ?',
       [today]
     );
-    
+
     // Reset staff roster to Available
     await database.run(
       'UPDATE staff_roster SET status = ? WHERE status != ?',
       ['Available', 'Off']
     );
-    
+
     res.json({
       message: 'Day ended successfully',
       cleared_transactions: clearedTransactions.changes,
@@ -429,8 +432,8 @@ router.get('/staff', async (req, res) => {
        WHERE masseuse_name IS NOT NULL AND masseuse_name != ''
        ORDER BY masseuse_name`
     );
-    
-    res.json(staff.map(s => s.masseuse_name));
+
+    res.json(staff.map((s) => s.masseuse_name));
   } catch (error) {
     console.error('Error fetching staff list:', error);
     res.status(500).json({ error: 'Failed to fetch staff list' });
@@ -446,8 +449,8 @@ router.get('/service-types', async (req, res) => {
        WHERE service_type IS NOT NULL AND service_type != ''
        ORDER BY service_type`
     );
-    
-    res.json(serviceTypes.map(s => s.service_type));
+
+    res.json(serviceTypes.map((s) => s.service_type));
   } catch (error) {
     console.error('Error fetching service types:', error);
     res.status(500).json({ error: 'Failed to fetch service types' });
@@ -463,8 +466,8 @@ router.get('/locations', async (req, res) => {
        WHERE location IS NOT NULL AND location != ''
        ORDER BY location`
     );
-    
-    res.json(locations.map(l => l.location));
+
+    res.json(locations.map((l) => l.location));
   } catch (error) {
     console.error('Error fetching locations:', error);
     res.status(500).json({ error: 'Failed to fetch locations' });

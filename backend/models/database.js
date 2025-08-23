@@ -152,10 +152,7 @@ class Database {
         last_payment_amount DECIMAL(10,2),
         last_payment_type TEXT,
         notes TEXT
-      )`,
-
-      // Add corrected_from_id to transactions table
-      `ALTER TABLE transactions ADD COLUMN corrected_from_id TEXT`,
+      )`
     ];
 
     for (const table of tables) {
@@ -167,13 +164,12 @@ class Database {
 
     // Insert default data
     await this.insertDefaultData();
-    
   }
 
   async addMissingColumns() {
     try {
       console.log('Checking and adding missing columns to existing tables...');
-      
+
       // Add missing columns to staff table (payment tracking fields)
       const staffColumns = [
         { name: 'hire_date', definition: 'DATE' },
@@ -241,9 +237,9 @@ class Database {
       }
 
       // Update existing records with default values for staff table
-      await this.run(`UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL`);
-      await this.run(`UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL`);
-      
+      await this.run('UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL');
+      await this.run('UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL');
+
       console.log('✅ Missing columns check and update completed');
     } catch (error) {
       console.error('❌ Error adding missing columns:', error);
@@ -257,7 +253,7 @@ class Database {
 
   async run(sql, params = []) {
     return new Promise((resolve, reject) => {
-      this.db.run(sql, params, function(err) {
+      this.db.run(sql, params, function (err) {
         if (err) {
           console.error('Database run error:', err);
           reject(err);

@@ -26,7 +26,7 @@ This module exports a single instance of the `Database` class.
 
 *   **`addMissingColumns()` method:**
     *   **Purpose:** To add new columns to existing tables without dropping them, allowing for schema evolution.
-    *   **Logic Notes:** It attempts to execute `ALTER TABLE ... ADD COLUMN` for a predefined list of columns. It wraps each attempt in a `try...catch` block to gracefully handle cases where the column already exists, preventing crashes on subsequent application starts.
+    *   **Logic Notes:** It attempts to execute `ALTER TABLE ... ADD COLUMN` for a predefined list of columns. It wraps each attempt in a `try...catch` block to gracefully handle cases where the column already exists, preventing crashes on subsequent application starts. The `corrected_from_id` column was added to the `transactions` table using this method to support the auditable transaction edit feature.
 
 *   **`run(sql, params)` method:**
     *   **Purpose:** To execute SQL statements that do not return data (e.g., `INSERT`, `UPDATE`, `DELETE`).
@@ -63,5 +63,13 @@ This module exports a single instance of the `Database` class.
         *   `all()`: Returns an array of JSON objects representing database rows.
 
 ## 4. Bug & Resolution History
-*   (This section will be populated as bugs are identified and resolved.)
+
+*   **Bug Summary (August 2024):** The server logs showed a non-fatal `SQLITE_ERROR: duplicate column name: corrected_from_id` on every startup.
+*   **Validated Hypothesis:** The `addMissingColumns()` function, while correctly designed to prevent crashes, attempts to add every column in its list on every server start. This is inefficient and clutters the logs with expected errors.
+*   **Invalidated Hypotheses:** This was not a data corruption issue or a critical failure.
+*   **Resolution:** The behavior is currently accepted as a non-critical issue. The `try...catch` block correctly prevents it from crashing the server. A future improvement would be to implement a more sophisticated migration system that tracks which migrations have already been run, but this is not a priority.
+
+*   **Bug Summary (August 2024):** The application server was crashing immediately on startup with a `SQLITE_ERROR: duplicate column name: corrected_from_id`.
+*   **Validated Hypothesis:** A hardcoded `ALTER TABLE transactions ADD COLUMN corrected_from_id` statement was mistakenly placed inside the main `initializeTables` loop instead of within the `addMissingColumns` function. Unlike the statements in `addMissingColumns`, this one was not wrapped in a `try...catch` block, causing a fatal error on any startup after the first one.
+*   **Resolution:** The erroneous `ALTER TABLE` statement was removed from the `initializeTables` loop. The existing, correct logic within the `addMissingColumns` function was already sufficient to add the column safely.
 

@@ -2,7 +2,9 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "test": "mocha test_authentication_flow.js"
+    "test": "mocha test_authentication_flow.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "keywords": [
     "pos",
@@ -30,6 +32,9 @@
   },
   "devDependencies": {
     "chai": "^5.3.1",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.32.0",
     "mocha": "^11.7.1",
     "nodemon": "^3.0.1",
     "supertest": "^7.1.4"
