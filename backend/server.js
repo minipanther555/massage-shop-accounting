@@ -1,4 +1,7 @@
+require("./instrument.js");
+
 const express = require('express');
+const Sentry = require('@sentry/node');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 // const helmet = require('helmet'); // Temporarily removed to prevent HSTS redirect issues
@@ -21,6 +24,8 @@ const database = require('./models/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// All middleware and routes must be defined BEFORE the Sentry error handler.
 
 // Security middleware - simplified for development
 // if (process.env.NODE_ENV === 'production') {
@@ -79,12 +84,6 @@ app.use(securityHeaders);         // Add security headers
 app.use(validateInput);           // Validate and sanitize input
 // Note: CSRF tokens are added per-route, not globally
 
-// --- DIAGNOSTIC LOGGING ---
-app.use((req, res, next) => {
-    console.log(`[SERVER.JS ENTRY] Request received for: ${req.method} ${req.originalUrl}`);
-    next();
-});
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
@@ -107,11 +106,20 @@ app.use('/api/main', require('./routes/main'));
 
 // --- DIAGNOSTIC LOGGING ---
 app.use('/api/admin', (req, res, next) => {
-    console.log(`[SERVER.JS ADMIN ROUTE] Request is being routed to admin.js for: ${req.method} ${req.originalUrl}`);
     next();
 }, validateCSRFToken, require('./routes/admin')); // Manager-only admin routes
 
 app.use('/api/payment-types', validateCSRFToken, require('./routes/payment-types')); // Payment types CRUD management
+
+// Sentry: A debug route to test Sentry error capturing
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
+
+// Sentry: The error handler must be before any other error middleware and after all controllers.
+// This single line replaces the old requestHandler, tracingHandler, and errorHandler.
+Sentry.setupExpressErrorHandler(app);
+
 
 // Enhanced error handling middleware
 app.use(errorHandler);

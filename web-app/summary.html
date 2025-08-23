@@ -259,12 +259,30 @@
                     <div>${transaction.service}</div>
                     <div>${transaction.masseuse}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
+                    <div class="btn-group">
+                        <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary">✏️ Edit</button>
+                    </div>
                 `;
                 container.appendChild(div);
             });
         }
 
-        function updateAllExpenses() {
+        function editTransaction(transactionId) {
+            // Find the transaction in the appData
+            const transaction = appData.transactions.find(t => t.id === transactionId);
+            if (!transaction) {
+                showToast('Transaction not found. It may have been recently modified.', 'error');
+                return;
+            }
+
+            // Store the transaction data in sessionStorage to pass it to the form page
+            sessionStorage.setItem('transactionToEdit', JSON.stringify(transaction));
+
+            // Redirect to the new transaction page
+            window.location.href = '/api/main/transaction';
+        }
+
+        async function updateAllExpenses() {
             const container = document.getElementById('all-expenses');
             
             if (appData.expenses.length === 0) {

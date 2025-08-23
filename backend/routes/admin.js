@@ -160,9 +160,9 @@ router.get('/staff', async (req, res) => {
 // Add new staff member
 router.post('/staff', async (req, res) => {
     try {
-        const { masseuse_name, hire_date, notes } = req.body;
+        const { name, hire_date, notes } = req.body;
 
-        if (!masseuse_name) {
+        if (!name) {
             return res.status(400).json({ error: 'Masseuse name is required' });
         }
 
@@ -170,7 +170,7 @@ router.post('/staff', async (req, res) => {
             INSERT INTO staff 
             (name, hire_date, notes, total_fees_earned, total_fees_paid) 
             VALUES (?, ?, ?, 0, 0)
-        `, [masseuse_name, hire_date || null, notes || null]);
+        `, [name, hire_date || null, notes || null]);
 
         const newStaff = await database.get(
             'SELECT * FROM staff WHERE id = ?',
@@ -192,13 +192,13 @@ router.post('/staff', async (req, res) => {
 router.put('/staff/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { masseuse_name, hire_date, notes } = req.body;
+        const { name, hire_date, notes } = req.body;
 
         await database.run(`
             UPDATE staff 
             SET name = ?, hire_date = ?, notes = ?
             WHERE id = ?
-        `, [masseuse_name, hire_date || null, notes || null, id]);
+        `, [name, hire_date || null, notes || null, id]);
 
         const updatedStaff = await database.get(
             'SELECT * FROM staff WHERE id = ?',
@@ -298,9 +298,9 @@ router.post('/staff/:id/payments', async (req, res) => {
             return res.status(400).json({ error: 'Payment type must be "regular" or "advance"' });
         }
 
-        // Get staff details
+        // Get staff details from the permanent staff table
         const staff = await database.get(
-            'SELECT * FROM staff_roster WHERE id = ?',
+            'SELECT * FROM staff WHERE id = ?',
             [id]
         );
 
@@ -315,20 +315,19 @@ router.post('/staff/:id/payments', async (req, res) => {
             INSERT INTO staff_payments 
             (masseuse_name, payment_date, amount, payment_type, fees_period_start, fees_period_end, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [staff.masseuse_name, today, amount, payment_type, fees_period_start || null, fees_period_end || null, notes || null]);
+        `, [staff.name, today, amount, payment_type, fees_period_start || null, fees_period_end || null, notes || null]);
 
-        // Update staff totals
+        // Update staff totals in the permanent staff table
         await database.run(`
-            UPDATE staff_roster 
+            UPDATE staff 
             SET total_fees_paid = total_fees_paid + ?,
                 last_payment_date = ?,
                 last_payment_amount = ?,
-                last_payment_type = ?,
-                last_updated = CURRENT_TIMESTAMP
+                last_payment_type = ?
             WHERE id = ?
         `, [amount, today, amount, payment_type, id]);
 
-        // Get updated staff data from staff table (not staff_roster)
+        // Get updated staff data from staff table
         const updatedStaff = await database.get(
             'SELECT *, (total_fees_earned - total_fees_paid) as outstanding_balance FROM staff WHERE id = ?',
             [id]
@@ -458,7 +457,5 @@ router.get('/staff/rankings', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch staff rankings' });
     }
 });
-
-
 
 module.exports = router;

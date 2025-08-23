@@ -36,6 +36,7 @@
                     <div class="section-content">
                         <form id="transaction-form" method="POST" action="javascript:void(0)" onsubmit="return false;">
                             <input type="hidden" name="csrf_token" value="{{ an_actual_token }}">
+                            <input type="hidden" id="original-transaction-id" name="original_transaction_id">
                             <div class="form-group">
                                 <label for="masseuse">Masseuse Name:</label>
                                                                                 <select id="masseuse" name="masseuse" required>
@@ -207,6 +208,7 @@
                 populateDropdowns(); // Then populate dropdowns with loaded data
                 await updateAllDisplays();
                 handleURLParams();
+                checkForEdit(); // Check for a transaction to edit
             } catch (error) {
                 console.error('🚨 CRITICAL ERROR in DOMContentLoaded:', error);
             }
@@ -227,6 +229,49 @@
                 await updateAllDisplays();
             }, 30000);
         });
+
+        function checkForEdit() {
+            const transactionJSON = sessionStorage.getItem('transactionToEdit');
+            if (transactionJSON) {
+                try {
+                    const transaction = JSON.parse(transactionJSON);
+                    
+                    // Put form into Edit Mode
+                    document.getElementById('correction-banner').textContent = `✏️ EDIT MODE: Modifying Transaction #${transaction.id}`;
+                    document.getElementById('correction-banner').style.display = 'block';
+                    document.querySelector('.nav-header').textContent = 'EDIT TRANSACTION';
+                    document.getElementById('original-transaction-id').value = transaction.id;
+
+                    // Populate form fields
+                    document.getElementById('masseuse').value = transaction.masseuse;
+                    document.getElementById('location').value = transaction.location;
+                    
+                    // We need to trigger the 'change' event to load the correct service options
+                    document.getElementById('location').dispatchEvent(new Event('change'));
+
+                    // Use a short delay to allow service/duration dropdowns to populate
+                    setTimeout(() => {
+                        document.getElementById('service').value = transaction.service;
+                        document.getElementById('service').dispatchEvent(new Event('change'));
+
+                        setTimeout(() => {
+                            document.getElementById('duration').value = transaction.duration;
+                            document.getElementById('duration').dispatchEvent(new Event('change'));
+                        
+                            document.getElementById('payment').value = transaction.paymentMethod;
+                            document.getElementById('customerContact').value = transaction.customerContact;
+                        }, 100); 
+                    }, 100);
+
+                    // Clean up sessionStorage
+                    sessionStorage.removeItem('transactionToEdit');
+
+                } catch (error) {
+                    console.error('Error parsing transaction data for editing:', error);
+                    sessionStorage.removeItem('transactionToEdit');
+                }
+            }
+        }
 
         function handleURLParams() {
             const params = new URLSearchParams(window.location.search);
@@ -498,7 +543,8 @@
                 payment: document.getElementById('payment').value,
                 startTime: document.getElementById('startTime').value,
                 endTime: document.getElementById('endTime').value,
-                customerContact: document.getElementById('customerContact').value
+                customerContact: document.getElementById('customerContact').value,
+                original_transaction_id: document.getElementById('original-transaction-id').value || null
             };
 
             console.log('🔍 SUBMITTING FORM DATA:', formData);

@@ -16,6 +16,28 @@ This guide covers deploying your massage shop bookkeeping system to a production
 - A domain name for your business
 - DNS access to point domain to your VPS IP
 
+## Local Development Environment Setup (NEW)
+
+**Objective**: To ensure a consistent and reliable development environment that perfectly mirrors the production server, all local development **must** be done using Docker. This eliminates "it works on my machine" errors.
+
+### Prerequisites
+- Docker Desktop installed and running on your local machine.
+
+### First-Time Setup
+1.  **Get Production Data:** A snapshot of the production database has been included in `docker/data/massage_shop.db`.
+2.  **Build and Start:** Run the following command from the project root. This will build the container image, download the correct dependencies, and start the application.
+    ```bash
+    docker-compose -f docker/docker-compose.yml up --build -d
+    ```
+3.  **Access Application:** The application will be available at `http://localhost:3000`.
+
+### Daily Usage
+- **Start the application:** `docker-compose -f docker/docker-compose.yml up -d`
+- **Stop the application:** `docker-compose -f docker/docker-compose.yml down`
+- **View logs:** `docker-compose -f docker/docker-compose.yml logs -f app`
+
+For more details, see the `00-project-docs/docker/docker-system-documentation.md` file.
+
 ## Deployment Steps
 
 ### Step 1: Server Preparation

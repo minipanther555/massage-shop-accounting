@@ -44,7 +44,8 @@ class Database {
         customer_contact TEXT,
         status TEXT NOT NULL DEFAULT 'ACTIVE',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        corrected_from_id TEXT
       )`,
 
       // Staff roster (equivalent to Daily Entry roster section)
@@ -151,7 +152,10 @@ class Database {
         last_payment_amount DECIMAL(10,2),
         last_payment_type TEXT,
         notes TEXT
-      )`
+      )`,
+
+      // Add corrected_from_id to transactions table
+      `ALTER TABLE transactions ADD COLUMN corrected_from_id TEXT`,
     ];
 
     for (const table of tables) {
@@ -184,7 +188,8 @@ class Database {
       // Add missing columns to transactions table
       const transactionColumns = [
         { name: 'location', definition: 'TEXT' },
-        { name: 'duration', definition: 'INTEGER' }
+        { name: 'duration', definition: 'INTEGER' },
+        { name: 'corrected_from_id', definition: 'TEXT' }
       ];
 
       // Add missing columns to archived_transactions table

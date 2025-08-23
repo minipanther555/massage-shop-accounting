@@ -69,11 +69,17 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 
 ## Critical Issues
 
-### 🔴 CRITICAL: Staff Administration Page Database Architecture Issue (2025-08-18)
+### 🔴 CRITICAL: Staff Administration Page Database Architecture Issue (2025-08-18) - ✅ RESOLVED 2024-08-24
 **Issue**: Staff administration page completely broken due to wrong table structure for payment tracking
-**Root Cause**: Payment tracking fields stored in daily roster table instead of master staff table
-**Solution**: Restructure database schema to separate daily operations from long-term staff management
-**Status**: 🔴 **CRITICAL** - Staff administration page completely broken until fixed
+**Root Cause**: Payment tracking fields stored in daily roster table instead of master staff table. **Correction**: The database schema was correct, but the API endpoint logic was pointing to the wrong table (`staff_roster` instead of `staff`).
+**Solution**: Restructure database schema to separate daily operations from long-term staff management. **Correction**: Refactored the `POST /api/admin/staff/:id/payments` endpoint in `backend/routes/admin.js` to correctly use the `staff` table.
+**Status**: ✅ **RESOLVED** - Staff administration payment functionality is now working correctly.
+
+### 🔴 CRITICAL: Add New Staff Failing with Validation Error - ✅ RESOLVED 2024-08-24
+**Issue**: The "Add New Staff" feature was failing with a "Masseuse name is required" error.
+**Root Cause**: A field name mismatch between the frontend and backend. The frontend was sending `{ "name": "..." }` while the backend was expecting `{ "masseuse_name": "..." }`.
+**Solution**: Modified the `POST /api/admin/staff` endpoint in `backend/routes/admin.js` to expect `name`, aligning it with the frontend and improving consistency.
+**Status**: ✅ **RESOLVED** - Staff can now be added successfully through the admin interface.
 
 ### 🔴 CRITICAL: Staff Roster Dropdown and Database Permissions Issue ✅ RESOLVED (2025-08-18)
 **Issue**: Staff roster dropdown not populating and database permissions causing `SQLITE_READONLY` errors
@@ -118,6 +124,9 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 - Staff assignment and tracking
 - End-of-day processing and summaries
 - Financial data aggregation
+- **✅ NEW FEATURE (2024-08-24): Auditable Transaction Edits**
+  - Managers can now edit any transaction from the current day via the Daily Summary page.
+  - To preserve the audit trail, the original transaction is marked as `EDITED` and a new, corrected transaction is created, linked back to the original. This prevents malicious data alteration.
 - **🔴 CRITICAL ISSUE**: Database schema missing `duration` and `location` columns
 - **Status**: System cannot function until schema is fixed
 - **Current Status**: ✅ JavaScript function hoisting issues resolved, variable declaration conflicts fixed, form field names added, transaction form now fully functional with complete end-to-end operation

@@ -702,3 +702,29 @@ git commit -m "Remove second database from Git tracking and add to .gitignore"
 9. **Environment File Validation**: Add validation that .env files are in correct locations and contain required variables
 10. **Systemd Configuration Corruption Investigation**: Find what process corrupts systemd service configuration after database operations
 11. **Database Operation Impact Monitoring**: Monitor what happens to system configuration after ALTER TABLE operations
+
+### 🔴 NEW CRITICAL (FIXED): `invalid ELF header` on Local Docker Environment (2024-08-23)
+**Issue**: The application would not start in the newly created Docker environment, crashing immediately with an `Error: /usr/src/app/backend/node_modules/sqlite3/build/Release/node_sqlite3.node: invalid ELF header`. This error completely blocked all local development.
+
+**Root Cause Analysis**: The root cause was a conflict between the host machine's architecture (macOS) and the container's architecture (Linux). The `sqlite3` npm package contains a native binary (`.node` file) that must be compiled for the correct platform. The `docker-compose.yml` file was configured to mount the local `../backend` directory into the container. This action overwrote the Linux-compatible `node_modules` (correctly built inside the container during the `docker build` step) with the incompatible macOS `node_modules` from the host machine at runtime.
+
+**Debugging Journey & Learnings**:
+- **Initial Hypotheses Failed**: Early attempts to fix the issue by isolating `node_modules`, mirroring the server's dual `npm install` process, creating a `.dockerignore`, and changing the build order all failed. This was because the core problem was not in the *build* process, but in the *runtime* configuration from `docker-compose.yml`.
+- **Diagnostic Script**: A comprehensive diagnostic script (`diagnostics/elf_header_diag_2024-08-23.js`) was created to test 5 different hypotheses at once. This script's output definitively proved that a second, incompatible binary existed and was being loaded.
+- **Validated Cause**: The diagnostic run finally validated that the volume mount was the true source of the problem.
+
+**Solution**: The issue was resolved by adding a volume exception specifically for the nested `node_modules` directory within the `docker-compose.yml` file.
+
+```yaml
+# In docker/docker-compose.yml
+services:
+  app:
+    volumes:
+      # This mount caused the problem by bringing in the host's node_modules
+      - ../backend:/usr/src/app/backend
+      # This anonymous volume is the FIX. It tells Docker to preserve the container's
+      # version of this specific subdirectory, ignoring the one from the host.
+      - /usr/src/app/backend/node_modules
+```
+
+**Status**: ✅ **RESOLVED** - The local Docker environment is now fully operational.

@@ -68,6 +68,7 @@ router.get('/recent', async (req, res) => {
 
 // Create new transaction
 router.post('/', async (req, res) => {
+  console.log('--- [TX CREATE] Received POST request to /api/transactions ---');
   try {
     const {
       masseuse_name,
@@ -78,91 +79,92 @@ router.post('/', async (req, res) => {
       start_time,
       end_time,
       customer_contact = '',
-      corrected_transaction_id = null
+      original_transaction_id = null
     } = req.body;
+    console.log('[TX CREATE - STEP 1] Request body destructured:', req.body);
 
     // Validate required fields
     if (!masseuse_name || !service_type || !location || !duration || !payment_method || !start_time || !end_time) {
+      console.error('[TX CREATE - ERROR] Missing required fields.');
       return res.status(400).json({ 
         error: 'Missing required fields: masseuse_name, service_type, location, duration, payment_method, start_time, end_time' 
       });
     }
+    console.log('[TX CREATE - STEP 2] Field validation passed.');
 
     // Get service pricing with duration and location filtering
-    console.log('🔍 LOOKING FOR SERVICE:', service_type, 'DURATION:', duration, 'LOCATION:', location);
+    console.log(`[TX CREATE - STEP 3] Looking for service: ${service_type}, Duration: ${duration}, Location: ${location}`);
     const service = await database.get(
       'SELECT price, masseuse_fee FROM services WHERE service_name = ? AND duration_minutes = ? AND location = ? AND active = true',
       [service_type, parseInt(duration), location]
     );
-    console.log('🔍 FOUND SERVICE:', service);
-    console.log('✅ SERVICE LOOKUP SUCCESSFUL:', {
-      service_type,
-      duration,
-      location,
-      price: service.price,
-      masseuse_fee: service.masseuse_fee
-    });
-
+    
     if (!service) {
-      console.log('🚨 SERVICE NOT FOUND - available services:');
-      console.log('🚨 LOOKING FOR:', { service_type, duration, location });
-      const allServices = await database.all('SELECT service_name, duration_minutes, location, active FROM services WHERE service_name = ?', [service_type]);
-      console.log('🚨 ALL SERVICES WITH SAME NAME:', allServices);
-      return res.status(400).json({ 
-        error: `Service not found: ${service_type} (${duration} minutes, ${location})`,
-        availableServices: allServices
-      });
+        console.error('[TX CREATE - ERROR] Service not found in database.');
+        return res.status(400).json({ error: `Service not found: ${service_type} (${duration} minutes, ${location})`});
     }
+    console.log(`[TX CREATE - STEP 4] Service found: Price=${service.price}, Fee=${service.masseuse_fee}`);
 
-    // Generate transaction ID (timestamp-based like Google Sheets version)
     const timestamp = new Date();
     const transaction_id = timestamp.toISOString().replace(/[-:T.]/g, '').slice(0, 17);
     const date = timestamp.toISOString().split('T')[0];
+    console.log(`[TX CREATE - STEP 5] Generated Transaction ID: ${transaction_id}`);
 
-    // Determine status
-    const status = corrected_transaction_id 
-      ? `CORRECTED (Original: ${corrected_transaction_id})` 
-      : 'ACTIVE';
+    // --- Start of Edit Logic ---
+    if (original_transaction_id) {
+        console.log(`[TX CREATE - STEP 6a] EDIT MODE DETECTED. Original TX ID: ${original_transaction_id}`);
+        const originalTransaction = await database.get('SELECT masseuse_fee FROM transactions WHERE transaction_id = ?', [original_transaction_id]);
+        
+        if (originalTransaction) {
+            console.log(`[TX CREATE - STEP 6b] Original transaction found. Reversing fee of ${originalTransaction.masseuse_fee}`);
+            await database.run(
+              `UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?`,
+              [originalTransaction.masseuse_fee, masseuse_name]
+            );
 
-    // Insert transaction
+            console.log(`[TX CREATE - STEP 6c] Marking original transaction as EDITED.`);
+            await database.run(
+              'UPDATE transactions SET status = ? WHERE transaction_id = ?',
+              [`EDITED (Corrected by ${transaction_id})`, original_transaction_id]
+            );
+        }
+    }
+    // --- End of Edit Logic ---
+
+    console.log('[TX CREATE - STEP 7] Inserting new transaction into database...');
     const result = await database.run(
       `INSERT INTO transactions (
         transaction_id, timestamp, date, masseuse_name, service_type,
         location, duration, payment_amount, payment_method, masseuse_fee, 
-        start_time, end_time, customer_contact, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        start_time, end_time, status, corrected_from_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         transaction_id, timestamp, date, masseuse_name, service_type,
         location, duration, service.price, payment_method, service.masseuse_fee, 
-        start_time, end_time, customer_contact, status
+        start_time, end_time, 'ACTIVE', original_transaction_id
       ]
     );
+    console.log('[TX CREATE - STEP 8] New transaction inserted successfully.');
 
-    // Update staff total fees earned in staff table (not staff_roster)
+    console.log(`[TX CREATE - STEP 9] Updating staff total_fees_earned for ${masseuse_name} with amount ${service.masseuse_fee}`);
     await database.run(
       `UPDATE staff 
        SET total_fees_earned = total_fees_earned + ?
        WHERE name = ?`,
       [service.masseuse_fee, masseuse_name]
     );
+    console.log('[TX CREATE - STEP 10] Staff fees updated.');
 
-    // If this is a correction, mark original as VOID
-    if (corrected_transaction_id) {
-      await database.run(
-        'UPDATE transactions SET status = ? WHERE transaction_id = ?',
-        ['VOID', corrected_transaction_id]
-      );
-    }
-
-    // Get the created transaction
     const newTransaction = await database.get(
       'SELECT * FROM transactions WHERE id = ?',
       [result.id]
     );
+    console.log('[TX CREATE - STEP 11] Fetching and returning new transaction.');
 
     res.status(201).json(newTransaction);
   } catch (error) {
-    console.error('Error creating transaction:', error);
+    console.error('--- [TX CREATE - CATASTROPHIC ERROR] ---');
+    console.error(error);
     res.status(500).json({ error: 'Failed to create transaction' });
   }
 });
