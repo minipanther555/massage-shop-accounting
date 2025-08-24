@@ -1,4 +1,25 @@
+/* global Sentry, api */
+
 // Shared JavaScript for Massage Shop POS (API-backed version)
+
+// Sentry Initialization - MUST BE THE VERY FIRST THING
+if (typeof Sentry !== 'undefined') {
+  Sentry.onLoad(() => {
+    Sentry.init({
+      // CORRECT DSN for the frontend project.
+      dsn: 'https://6604be417c099671b7ee6e98970c90d6@o4509874071404544.ingest.de.sentry.io/4509893618368592',
+      release: 'massage-shop-pos@1.0.4', // Incrementing version for final test
+      // Performance Monitoring
+      tracesSampleRate: 1.0, // Capture 100% of the transactions
+      // Session Replay
+      replaysSessionSampleRate: 0.1, // This sets the sample rate at 10%.
+      replaysOnErrorSampleRate: 1.0 // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.
+    });
+    // Set a global flag for diagnostics
+    window.sentryInitialized = true;
+  });
+}
+
 // Configuration - loaded from backend API
 const CONFIG = {
   rosterSize: 20,
@@ -21,77 +42,39 @@ let appData = {
 // Make appData globally accessible to fix scope issues
 window.appData = appData;
 
-// Load data from API
-async function loadData() {
-  try {
-    console.log('🚀 DEBUG: Starting loadData() - loading configuration from API');
+// UTILITY FUNCTIONS (DEFINED BEFORE USE)
 
-    // Load configuration from API
-    console.log('🚀 DEBUG: Calling Promise.all for services, paymentMethods, roster');
-    const [services, paymentMethods, roster] = await Promise.all([
-      api.getServices(),
-      api.getPaymentMethods(),
-      api.getStaffRoster()
-    ]);
-
-    console.log('🚀 DEBUG: Promise.all completed successfully');
-    console.log('🚀 DEBUG: Services received:', services);
-    console.log('🚀 DEBUG: Payment methods received:', paymentMethods);
-    console.log('🚀 DEBUG: Roster received:', roster);
-
-    CONFIG.settings.services = services.map((s) => ({
-      name: s.service_name,
-      duration: s.duration_minutes,
-      location: s.location,
-      price: s.price,
-      fee: s.masseuse_fee
-    }));
-    CONFIG.settings.paymentMethods = paymentMethods.map((p) => p.method_name);
-
-    // Load roster
-    appData.roster = roster.map((r) => ({
-      position: r.position,
-      name: r.masseuse_name || '',
-      status: r.status || null,
-      busy_until: r.busy_until || null,
-      todayCount: r.today_massages || 0
-    }));
-
-    // Extract unique masseuse names for CONFIG
-    CONFIG.settings.masseuses = [...new Set(roster
-      .filter((r) => r.masseuse_name)
-      .map((r) => r.masseuse_name))];
-
-    // Load today's data
-    await loadTodayData();
-
-    console.log('Data loaded from API successfully');
-  } catch (error) {
-    console.error('🚨 ERROR in loadData():', error);
-    console.error('🚨 ERROR TYPE:', error.constructor.name);
-    console.error('🚨 ERROR MESSAGE:', error.message);
-    console.error('🚨 ERROR STACK:', error.stack);
-
-    console.log('🚨 SHOWING ERROR TOAST: Failed to connect to server');
-    showToast('Failed to connect to server', 'error');
-    // Fallback to localStorage if API fails
-    console.log('🚀 DEBUG: Attempting fallback to localStorage');
-    loadDataFromLocalStorage();
+function showToast(message, type = 'success') {
+  // Create toast if it doesn't exist
+  let toast = document.getElementById('toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
   }
+
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 3000);
 }
 
-// Fallback localStorage function
 function loadDataFromLocalStorage() {
   const saved = localStorage.getItem('massageShopData');
   if (saved) {
     appData = JSON.parse(saved);
     // Convert date strings back to Date objects
     appData.transactions.forEach((t) => {
-      if (typeof t.timestamp === 'string') t.timestamp = new Date(t.timestamp);
-      if (typeof t.date === 'string') t.date = new Date(t.date);
+      const transaction = t;
+      if (typeof transaction.timestamp === 'string') transaction.timestamp = new Date(transaction.timestamp);
+      if (typeof transaction.date === 'string') transaction.date = new Date(transaction.date);
     });
     appData.expenses.forEach((e) => {
-      if (typeof e.timestamp === 'string') e.timestamp = new Date(e.timestamp);
+      const expense = e;
+      if (typeof expense.timestamp === 'string') expense.timestamp = new Date(expense.timestamp);
     });
   }
   // Ensure all required arrays exist
@@ -100,7 +83,6 @@ function loadDataFromLocalStorage() {
   if (!appData.expenses) appData.expenses = [];
 }
 
-// Load today's transactions and expenses
 async function loadTodayData() {
   console.log('🔄 STEP 9: loadTodayData() called - starting data refresh...');
   console.log('🔄 STEP 9: Current appData.transactions BEFORE refresh:', appData.transactions);
@@ -193,16 +175,104 @@ async function loadTodayData() {
   }
 }
 
-// Save data to API (no-op since API handles persistence)
+function calculateTodayCounts() {
+  const today = new Date().toDateString();
+
+  // Reset all counts
+  appData.roster.forEach((masseuse) => {
+    const masseuseToUpdate = masseuse;
+    masseuseToUpdate.todayCount = 0;
+  });
+
+  // Count today's transactions
+  appData.transactions.forEach((transaction) => {
+    if (transaction.date && transaction.date.toDateString() === today
+            && (transaction.status === 'ACTIVE' || transaction.status.includes('CORRECTED'))) {
+      const masseuse = appData.roster.find((m) => m.name === transaction.masseuse);
+      if (masseuse) {
+        const masseuseToUpdate = masseuse;
+        masseuseToUpdate.todayCount += 1;
+      }
+    }
+  });
+}
+
+function exitCorrectionMode() {
+  appData.correctionMode = false;
+  appData.originalTransactionId = null;
+}
+
+// CORE DATA AND STATE MANAGEMENT FUNCTIONS
+
+async function loadData() {
+  try {
+    console.log('🚀 DEBUG: Starting loadData() - loading configuration from API');
+
+    // Load configuration from API
+    console.log('🚀 DEBUG: Calling Promise.all for services, paymentMethods, roster');
+    const [services, paymentMethods, roster] = await Promise.all([
+      api.getServices(),
+      api.getPaymentMethods(),
+      api.getStaffRoster()
+    ]);
+
+    console.log('🚀 DEBUG: Promise.all completed successfully');
+    console.log('🚀 DEBUG: Services received:', services);
+    console.log('🚀 DEBUG: Payment methods received:', paymentMethods);
+    console.log('🚀 DEBUG: Roster received:', roster);
+
+    CONFIG.settings.services = services.map((s) => ({
+      name: s.service_name,
+      duration: s.duration_minutes,
+      location: s.location,
+      price: s.price,
+      fee: s.masseuse_fee
+    }));
+    CONFIG.settings.paymentMethods = paymentMethods.map((p) => p.method_name);
+
+    // Load roster
+    appData.roster = roster.map((r) => ({
+      position: r.position,
+      name: r.masseuse_name || '',
+      status: r.status || null,
+      busy_until: r.busy_until || null,
+      todayCount: r.today_massages || 0
+    }));
+
+    // Extract unique masseuse names for CONFIG
+    CONFIG.settings.masseuses = [...new Set(roster
+      .filter((r) => r.masseuse_name)
+      .map((r) => r.masseuse_name))];
+
+    // Load today's data
+    await loadTodayData();
+
+    console.log('Data loaded from API successfully');
+  } catch (error) {
+    console.error('🚨 ERROR in loadData():', error);
+    console.error('🚨 ERROR TYPE:', error.constructor.name);
+    console.error('🚨 ERROR MESSAGE:', error.message);
+    console.error('🚨 ERROR STACK:', error.stack);
+
+    console.log('🚨 SHOWING ERROR TOAST: Failed to connect to server');
+    showToast('Failed to connect to server', 'error');
+    // Fallback to localStorage if API fails
+    console.log('🚀 DEBUG: Attempting fallback to localStorage');
+    loadDataFromLocalStorage();
+  }
+}
+
 function saveData() {
   // Data is automatically saved to API on each operation
   // Keep this function for compatibility with existing code
 }
 
+/* eslint-disable no-unused-vars */
+
 // Initialize roster with default masseuses
 function initializeRoster() {
   if (appData.roster.length === 0) {
-    for (let i = 0; i < CONFIG.rosterSize; i++) {
+    for (let i = 0; i < CONFIG.rosterSize; i += 1) {
       appData.roster.push({
         position: i + 1,
         name: i < CONFIG.settings.masseuses.length ? CONFIG.settings.masseuses[i] : '',
@@ -213,27 +283,6 @@ function initializeRoster() {
   }
   // Recalculate today's counts
   calculateTodayCounts();
-}
-
-// Calculate today's massage counts for each masseuse
-function calculateTodayCounts() {
-  const today = new Date().toDateString();
-
-  // Reset all counts
-  appData.roster.forEach((masseuse) => {
-    masseuse.todayCount = 0;
-  });
-
-  // Count today's transactions
-  appData.transactions.forEach((transaction) => {
-    if (transaction.date && transaction.date.toDateString() === today
-            && (transaction.status === 'ACTIVE' || transaction.status.includes('CORRECTED'))) {
-      const masseuse = appData.roster.find((m) => m.name === transaction.masseuse);
-      if (masseuse) {
-        masseuse.todayCount++;
-      }
-    }
-  });
 }
 
 // Format time as h:mm AM/PM in Bangkok timezone
@@ -430,11 +479,6 @@ function enterCorrectionMode() {
   appData.correctionMode = true;
 }
 
-function exitCorrectionMode() {
-  appData.correctionMode = false;
-  appData.originalTransactionId = null;
-}
-
 // Add expense - API version
 async function addExpense(description, amount) {
   if (!description || !amount || amount <= 0) {
@@ -464,7 +508,7 @@ async function addExpense(description, amount) {
 // Remove expense
 function removeExpense(index) {
   const expense = appData.expenses[index];
-  if (confirm(`Remove expense: ${expense.description} - ฿${expense.amount.toFixed(2)}?`)) {
+  if (window.confirm(`Remove expense: ${expense.description} - ฿${expense.amount.toFixed(2)}?`)) {
     appData.expenses.splice(index, 1);
     saveData();
     showToast('Expense removed');
@@ -477,7 +521,7 @@ function removeExpense(index) {
 async function endDay() {
   console.log('🌙 END DAY: Function called');
 
-  if (!confirm('Are you sure you want to end the day? This will archive today\'s data to the database and reset the system for tomorrow.')) {
+  if (!window.confirm('Are you sure you want to end the day? This will archive today\'s data to the database and reset the system for tomorrow.')) {
     console.log('🌙 END DAY: User cancelled');
     return false;
   }
@@ -504,7 +548,7 @@ async function endDay() {
     showToast(message);
 
     // Backup notification in case toast doesn't work
-    alert(message);
+    window.alert(message);
 
     return true;
   } catch (error) {
@@ -611,7 +655,7 @@ async function getTodaySummary() {
         paymentBreakdown[t.paymentMethod] = { revenue: 0, count: 0 };
       }
       paymentBreakdown[t.paymentMethod].revenue += t.paymentAmount;
-      paymentBreakdown[t.paymentMethod].count++;
+      paymentBreakdown[t.paymentMethod].count += 1;
     });
 
     return {
@@ -731,24 +775,7 @@ async function logout() {
   }
 }
 
-// Show toast notification
-function showToast(message, type = 'success') {
-  // Create toast if it doesn't exist
-  let toast = document.getElementById('toast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'toast';
-    toast.className = 'toast';
-    document.body.appendChild(toast);
-  }
-
-  toast.textContent = message;
-  toast.className = `toast ${type} show`;
-
-  setTimeout(() => {
-    toast.className = 'toast';
-  }, 3000);
-}
+/* eslint-enable no-unused-vars */
 
 // Auto-save periodically
 setInterval(saveData, 30000); // Save every 30 seconds

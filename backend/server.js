@@ -4,7 +4,7 @@ const express = require('express');
 const Sentry = require('@sentry/node');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
-// const helmet = require('helmet'); // Temporarily removed to prevent HSTS redirect issues
+
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
@@ -27,24 +27,7 @@ const PORT = process.env.PORT || 3000;
 
 // All middleware and routes must be defined BEFORE the Sentry error handler.
 
-// Security middleware - simplified for development
-// if (process.env.NODE_ENV === 'production') {
-//   app.use(helmet({
-//     contentSecurityPolicy: {
-//       directives: {
-//         defaultSrc: ["'self'"],
-//         styleSrc: ["'self'", "'unsafe-inline'"],
-//         scriptSrc: ["'self'"],
-//         imgSrc: ["'self'", "data:", "https:"],
-//       },
-//     },
-//   }));
-//   console.log('🛡️ Security headers enabled for production');
-// } else {
-//   // Minimal security for development
-//   app.use(helmet({ contentSecurityPolicy: false }));
-//   console.log('🔓 Security headers relaxed for development');
-// }
+// Security middleware handled by custom security-headers.js
 
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -75,6 +58,11 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Cookie parsing middleware
 app.use(cookieParser());
+
+// --- Static File Serving ---
+// Serve the web-app directory as a static folder.
+// This must come BEFORE any of our API routes.
+app.use(express.static('web-app'));
 
 // Apply our custom security middleware
 app.use(requestLogger); // Log all requests for monitoring
@@ -111,10 +99,7 @@ app.use('/api/admin', (req, res, next) => {
 
 app.use('/api/payment-types', validateCSRFToken, require('./routes/payment-types')); // Payment types CRUD management
 
-// Sentry: A debug route to test Sentry error capturing
-app.get('/debug-sentry', (req, res) => {
-  throw new Error('My first Sentry error!');
-});
+
 
 // Sentry: The error handler must be before any other error middleware and after all controllers.
 // This single line replaces the old requestHandler, tracingHandler, and errorHandler.

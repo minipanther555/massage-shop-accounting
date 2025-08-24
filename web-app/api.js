@@ -1,8 +1,10 @@
 // API client for backend communication
-const API_BASE_URL = 'https://109.123.238.197.sslip.io/api';
+const API_BASE_URL = '/api';
 
-class APIClient {
-  async request(endpoint, options = {}) {
+// Create global API instance
+// eslint-disable-next-line no-unused-vars
+const api = new (class APIClient {
+  static async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
 
     const config = {
@@ -300,7 +302,4 @@ class APIClient {
   async getStaffRankings() {
     return this.request('/admin/staff/rankings');
   }
-}
-
-// Create global API instance
-const api = new APIClient();
+})();

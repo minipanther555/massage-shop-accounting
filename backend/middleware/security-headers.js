@@ -12,13 +12,14 @@ function securityHeaders(req, res, next) {
   // This header tells the browser what resources (scripts, styles, images) are allowed to load
   // It's like a "whitelist" of trusted sources
   res.setHeader('Content-Security-Policy', [
-    "default-src 'self'", // Only allow resources from same origin
-    "script-src 'self' 'unsafe-inline'", // Allow scripts from same origin + inline scripts
-    "style-src 'self' 'unsafe-inline'", // Allow styles from same origin + inline styles
-    "img-src 'self' data: https:", // Allow images from same origin, data URLs, and HTTPS
-    "font-src 'self'", // Allow fonts from same origin
-    "connect-src 'self'", // Allow API calls to same origin
-    "frame-ancestors 'none'" // Prevent your site from being embedded in iframes
+    "default-src 'self'", // Base policy
+    "script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com", // Allow Sentry's CDN scripts
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self'",
+    "connect-src 'self' *.sentry.io", // Allow the SDK to send data to Sentry
+    "worker-src 'self' blob:", // REQUIRED for Sentry Session Replay to function
+    "frame-ancestors 'none'"
   ].join('; '));
 
   // 2. HTTP Strict Transport Security (HSTS) - Forces HTTPS

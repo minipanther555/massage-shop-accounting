@@ -29,9 +29,10 @@ This module does not export any functions or classes. It sets up and runs the Ex
         7.  `requestTimeout`: Sets a 30-second timeout for all requests.
         8.  `requestSizeLimits`: Enforces limits on request body size.
         9.  `securityHeaders`: Adds various security-related HTTP headers.
-        10. `validateInput`: A placeholder for input sanitization/validation.
-        11. `errorHandler`: A final, catch-all middleware to handle errors.
-        12. `notFoundHandler`: Catches any requests that don't match a defined route and returns a 404.
+        10. `express.static('web-app')`: **(Newly Added)** This crucial middleware is responsible for serving static files (HTML, CSS, JS) from the `web-app` directory. It is placed **before** the API routers to ensure that requests for frontend assets are handled by serving the file, rather than being passed to the API 404 handler.
+        11. `validateInput`: A placeholder for input sanitization/validation.
+        12. `errorHandler`: A final, catch-all middleware to handle errors.
+        13. `notFoundHandler`: Catches any requests that don't match a defined route and returns a 404.
 
 *   **Routing:**
     *   **Purpose:** To map API endpoints to their corresponding logic handlers.
@@ -85,4 +86,8 @@ This module does not export any functions or classes. It sets up and runs the Ex
     1.  Creating a dedicated `instrument.js` file to handle `Sentry.init()`, which must be the very first module required by the application.
     2.  Removing all references to the old `Sentry.Handlers` middleware.
     3.  Adding the single, correct `Sentry.setupExpressErrorHandler(app)` middleware after all routes and before any other custom error handlers. This single function replaces all three of the old handlers.
+
+*   **Bug Summary (August 2024):** Frontend pages (e.g., `/index.html`, `/sentry-test.html`) were returning a JSON `{"error":"Route not found"}` message instead of serving the HTML content.
+*   **Validated Hypothesis:** The Express server was not configured to serve static files. All incoming requests were being passed directly to the API router. Since no API route existed for `/index.html`, the API's `notFoundHandler` was correctly returning a 404 error in JSON format.
+*   **Resolution:** The `express.static('web-app')` middleware was added to the `server.js` middleware chain. Crucially, it was placed **before** the API routing middleware. This ensures that any request for a file that exists within the `web-app` directory is served directly, and only non-matching requests are passed on to the API router.
 
