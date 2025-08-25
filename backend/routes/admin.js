@@ -5,15 +5,14 @@ const path = require('path');
 const fs = require('fs');
 const database = require('../models/database');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
-const { addCSRFToken } = require('../middleware/csrf-protection');
 
 // Apply authentication and manager authorization to all admin routes
 router.use(authenticateToken);
 router.use(authorizeRole('manager'));
 
 // Serve the admin-staff.html page through the backend
-// This ensures that authentication and CSRF middleware are applied
-router.get('/staff-page', addCSRFToken, (req, res) => {
+// This ensures that authentication middleware is applied
+router.get('/staff-page', (req, res) => {
   // Set cache-busting headers to prevent browser/proxy caching
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
@@ -49,7 +48,7 @@ router.get('/staff-page', addCSRFToken, (req, res) => {
 });
 
 // Serve admin-services.html
-router.get('/services-page', addCSRFToken, (req, res) => {
+router.get('/services-page', (req, res) => {
   // Set cache-busting headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
@@ -68,7 +67,7 @@ router.get('/services-page', addCSRFToken, (req, res) => {
 });
 
 // Serve admin-reports.html
-router.get('/reports-page', addCSRFToken, (req, res) => {
+router.get('/reports-page', (req, res) => {
   // Set cache-busting headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
@@ -87,7 +86,7 @@ router.get('/reports-page', addCSRFToken, (req, res) => {
 });
 
 // Serve admin-payment-types.html
-router.get('/payment-types-page', addCSRFToken, (req, res) => {
+router.get('/payment-types-page', (req, res) => {
   // Set cache-busting headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');

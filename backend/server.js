@@ -5,13 +5,13 @@ const Sentry = require('@sentry/node');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
-const rateLimit = require('express-rate-limit');
+const rateLimiter = require('./middleware/rate-limiter');
 require('dotenv').config();
 
 // Import our custom security middleware
 const securityHeaders = require('./middleware/security-headers');
 const { validateInput } = require('./middleware/input-validation');
-const csrf = require('./middleware/csrf-protection'); // Import the csrf module
+const { csrfProtection } = require('./middleware/csrf-protection');
 const {
   requestSizeLimits,
   errorHandler,
@@ -41,38 +41,62 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting - only in production
-if (process.env.NODE_ENV === 'production') {
-  const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000,
-    message: 'Too many requests from this IP, please try again later.'
-  });
-  app.use(limiter);
-  console.log('🛡️ Rate limiting enabled for production');
-} else {
-  console.log('🔓 Rate limiting disabled for development');
-}
-
-// Body parsing middleware with reasonable limits
-app.use(express.json({ limit: '1mb' })); // Reduced from 10mb for security
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// Cookie parsing middleware
+// Apply general middleware
 app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(securityHeaders);
+app.use(validateInput);
+
+// Apply CSRF protection globally.
+// Our conditional middleware in csrf-protection.js will handle the bypass for tests.
+app.use(csrfProtection);
+
+// Middleware to make CSRF token available to templates/frontend
+app.use((req, res, next) => {
+  if (req.csrfToken) {
+    res.locals.csrfToken = req.csrfToken();
+  }
+  next();
+});
+
+// --- API Routes ---
+// These no longer need individual CSRF middleware
+app.use('/api/auth', require('./routes/auth').router);
+app.use('/api/transactions', require('./routes/transactions'));
+app.use('/api/staff', require('./routes/staff'));
+app.use('/api/services', require('./routes/services'));
+app.use('/api/payment-types', require('./routes/payment-types'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/main', require('./routes/main'));
+app.use('/api/expenses', require('./routes/expenses'));
+
+// Generic error handler for CSRF token errors
+app.use((err, req, res, next) => {
+  if (err.code !== 'EBADCSRFTOKEN') {
+    return next(err);
+  }
+  res.status(403).json({ error: 'Invalid CSRF token.' });
+});
 
 // --- Static File Serving ---
 // Serve the web-app directory as a static folder.
 // This must come BEFORE any of our API routes.
 app.use(express.static('web-app'));
 
-// Apply our custom security middleware
-app.use(requestLogger); // Log all requests for monitoring
-app.use(requestTimeout(30000)); // 30 second timeout for requests
-app.use(requestSizeLimits); // Check request size limits
-app.use(securityHeaders); // Add security headers
-app.use(validateInput); // Validate and sanitize input
-// Note: CSRF tokens are added per-route, not globally
+// Apply rate limiting only when NOT in the testing environment
+if (process.env.NODE_ENV !== 'testing') {
+  app.use(rateLimiter);
+  console.log('🔒 Rate limiting ENABLED.');
+} else {
+  console.log('🔓 Rate limiting DISABLED for testing environment.');
+}
+
+// --- DIAGNOSTIC LOGGING ---
+app.use('/api/admin', (req, res, next) => {
+  next();
+}, require('./routes/admin')); // Manager-only admin routes
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -82,30 +106,6 @@ app.get('/health', (req, res) => {
     version: '1.0.0'
   });
 });
-
-// API routes with CSRF protection
-app.use('/api/auth', require('./routes/auth').router); // No CSRF for login
-
-// Conditionally apply CSRF protection based on environment
-const csrfMiddleware = process.env.NODE_ENV === 'testing' ? (req, res, next) => next() : csrf.validateCSRFToken;
-
-app.use('/api/transactions', csrfMiddleware, require('./routes/transactions'));
-app.use('/api/staff', csrfMiddleware, require('./routes/staff'));
-app.use('/api/services', csrfMiddleware, require('./routes/services'));
-app.use('/api/expenses', csrfMiddleware, require('./routes/expenses'));
-app.use('/api/reports', csrfMiddleware, require('./routes/reports'));
-
-// Main application routes with authentication and CSRF token injection (accessible to both reception and manager)
-app.use('/api/main', require('./routes/main'));
-
-// --- DIAGNOSTIC LOGGING ---
-app.use('/api/admin', (req, res, next) => {
-  next();
-}, csrfMiddleware, require('./routes/admin')); // Manager-only admin routes
-
-app.use('/api/payment-types', csrfMiddleware, require('./routes/payment-types')); // Payment types CRUD management
-
-
 
 // Sentry: The error handler must be before any other error middleware and after all controllers.
 // This single line replaces the old requestHandler, tracingHandler, and errorHandler.
@@ -124,9 +124,6 @@ async function startServer() {
     await database.connect();
     console.log('Database initialized successfully');
     
-    // Start CSRF cleanup only when server starts
-    csrf.startCleanupInterval();
-
     return new Promise((resolve) => {
       server = app.listen(PORT, () => {
         console.log(`🚀 Massage Shop POS Backend running on port ${PORT}`);
@@ -143,13 +140,11 @@ async function startServer() {
   }
 }
 
-function closeServer() {
+async function closeServer() {
   return new Promise((resolve) => {
     if (server) {
       server.close(async () => {
         await database.close();
-        // Stop CSRF cleanup when server stops
-        csrf.stopCleanupInterval();
         console.log('Server and database connection closed.');
         resolve();
       });

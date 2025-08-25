@@ -1,3 +1,5 @@
+const { expect } = require('@playwright/test');
+
 class TransactionPage {
   constructor(page) {
     this.page = page;
@@ -23,60 +25,37 @@ class TransactionPage {
   }
 
   async waitForPageLoad() {
-    // This is the key fix. We wait for the network calls initiated by loadData() to complete.
-    // This is a reliable way to know the async data loading and dropdown population is finished.
-    await this.page.waitForResponse(resp => resp.url().includes('/api/staff/roster') && resp.status() === 200);
-    await this.page.waitForResponse(resp => resp.url().includes('/api/services') && resp.status() === 200);
-    console.log('✅ Page Object: All critical network requests for page load have completed.');
+    // THIS IS THE DEFINITIVE FIX.
+    // We are now waiting for the VISIBLE RESULT of the async operation.
+    // This waits for the SECOND <option> element to be attached to the DOM,
+    // which proves the entire chain (API call -> JS processing -> DOM update) is complete.
+    await expect(this.page.locator(`${this.selectors.masseuse} option`).nth(1)).toBeAttached({ timeout: 10000 });
+    console.log('✅ Page Object: Dropdown is populated. Page is ready.');
   }
 
   async selectMasseuse(masseuseName) {
-    // With the improved waitForPageLoad, we no longer need a complex waitForFunction here.
-    // By the time we call this, the options should already be in the DOM.
+    // With the improved waitForPageLoad, this becomes a simple, reliable action.
     await this.page.selectOption(this.selectors.masseuse, masseuseName);
   }
 
   async selectLocation(locationName) {
+    // This action triggers a CLIENT-SIDE filtering and re-population of the service dropdown.
+    // There is NO network request.
     await this.page.selectOption(this.selectors.location, locationName);
-    
-    // Wait for the service dropdown to be populated as a result
-    await this.page.waitForFunction(
-      (selector) => {
-        const select = document.querySelector(selector);
-        return select && select.options.length > 1; // More than just the default option
-      },
-      this.selectors.service,
-      { timeout: 10000 }
-    );
+    console.log(`✅ Page Object: Location selected "${locationName}".`);
   }
 
   async selectService(serviceName) {
-    // Wait for the specific service option to be available
-    await this.page.waitForFunction(
-      (selector, name) => {
-        const select = document.querySelector(selector);
-        return select && Array.from(select.options).some(option => option.value === name);
-      },
-      this.selectors.service,
-      serviceName,
-      { timeout: 10000 }
-    );
-    
+    // We must wait for the service dropdown to be repopulated by the client-side logic
+    // that runs after a location is selected. Waiting for our specific option to be attached
+    // is the most reliable way to do this.
+    await expect(this.page.locator(`${this.selectors.service} option[value="${serviceName}"]`)).toBeAttached({ timeout: 10000 });
     await this.page.selectOption(this.selectors.service, serviceName);
-    
-    // Wait for the duration dropdown to be populated
-    await this.page.waitForFunction(
-      (selector) => {
-        const select = document.querySelector(selector);
-        return select && select.options.length > 1;
-      },
-      this.selectors.duration,
-      { timeout: 10000 }
-    );
   }
 
   async selectDuration(durationValue) {
-    await this.page.selectOption(this.selectors.duration, durationValue);
+    // The value in the dropdown is the 'duration_minutes' from the API response.
+    await this.page.selectOption(this.selectors.duration, { value: durationValue });
     
     // Wait for the end time to be calculated and populated
     await this.page.waitForFunction(
@@ -95,28 +74,13 @@ class TransactionPage {
 
   async submitTransaction() {
     await this.page.click(this.selectors.submitButton);
+
+    // Use a robust locator-based wait and assertion.
+    // This will wait for the toast to appear and check its content in one step.
+    await expect(this.page.locator(this.selectors.toast)).toContainText('Transaction submitted!', { timeout: 10000 });
     
-    // Wait for the success toast to appear
-    await this.page.waitForSelector(this.selectors.toast, { 
-      state: 'visible',
-      timeout: 10000 
-    });
-    
-    // Wait for the toast to contain success message
-    await this.page.waitForFunction(
-      (selector) => {
-        const toast = document.querySelector(selector);
-        return toast && toast.textContent.includes('Transaction submitted!');
-      },
-      this.selectors.toast,
-      { timeout: 10000 }
-    );
-    
-    // Wait for the toast to disappear
-    await this.page.waitForSelector(this.selectors.toast, { 
-      state: 'hidden',
-      timeout: 15000 
-    });
+    // It's good practice to wait for the toast to disappear to ensure the app is ready for the next action.
+    await expect(this.page.locator(this.selectors.toast)).not.toBeVisible({ timeout: 10000 });
   }
 
   async isInEditMode() {
@@ -133,11 +97,12 @@ class TransactionPage {
 
   async fillTransactionData(data) {
     await this.selectMasseuse(data.masseuse);
+    // Select Location FIRST to trigger the service dropdown population
     await this.selectLocation(data.location);
     await this.selectService(data.service);
     await this.selectDuration(data.duration);
     await this.selectPayment(data.payment);
-    
+
     if (data.customerContact) {
       await this.page.fill(this.selectors.customerContact, data.customerContact);
     }

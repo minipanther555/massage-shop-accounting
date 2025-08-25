@@ -62,22 +62,26 @@ class SummaryPage {
   }
 
   async verifyTransactionExists(masseuseName, expectedData = {}) {
-    const transaction = await this.findTransactionByMasseuse(masseuseName);
+    // Force a reload to ensure we are not looking at stale data
+    await this.page.reload({ waitUntil: 'networkidle' });
+    await this.waitForTransactions();
+
+    const transactionLocator = await this.findTransactionByMasseuse(masseuseName);
     
     // Verify the transaction contains expected data
     if (expectedData.service) {
-      await expect(transaction).toContainText(expectedData.service);
+      await expect(transactionLocator).toContainText(expectedData.service);
     }
     
     if (expectedData.payment) {
-      await expect(transaction).toContainText(expectedData.payment);
+      await expect(transactionLocator).toContainText(expectedData.payment);
     }
     
     if (expectedData.amount) {
-      await expect(transaction).toContainText(expectedData.amount);
+      await expect(transactionLocator).toContainText(expectedData.amount);
     }
     
-    return transaction;
+    return transactionLocator;
   }
 
   async getTransactionCount() {

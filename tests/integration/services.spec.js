@@ -15,7 +15,7 @@ describe('Services API Endpoint Integration Tests', () => {
       expect(firstService).toHaveProperty('id');
       expect(firstService).toHaveProperty('service_name');
       expect(firstService).toHaveProperty('price');
-      expect(firstService).toHaveProperty('duration');
+      expect(firstService).toHaveProperty('duration_minutes');
     });
   });
 });

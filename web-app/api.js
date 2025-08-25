@@ -3,11 +3,9 @@ const API_BASE_URL = '/api';
 
 class APIClient {
   static async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
-
+    const url = `/api${endpoint}`;
     const config = {
-      mode: 'cors',
-      credentials: 'include', // Enable cookies to be sent with requests
+      method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers
@@ -15,65 +13,21 @@ class APIClient {
       ...options
     };
 
-    // --- CSRF TOKEN HANDLING ---
-    // For modifying requests, find and add the CSRF token from the page's meta tag.
-    const isModifyingRequest = options.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method.toUpperCase());
-    if (isModifyingRequest) {
-      const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
-      if (csrfTokenMeta) {
-        const csrfToken = csrfTokenMeta.getAttribute('content');
-        if (csrfToken && csrfToken !== '{{ an_actual_token }}') {
-          config.headers['X-CSRF-Token'] = csrfToken;
-          console.log('🚀 DEBUG: CSRF Token found and added to headers.');
-        } else {
-          console.warn('🚨 WARNING: CSRF meta tag found, but token is missing or is a placeholder.');
-        }
-      } else {
-        console.warn(`🚨 WARNING: CSRF meta tag not found for modifying request to ${url}.`);
-      }
-    }
-    // --- END CSRF TOKEN HANDLING ---
-
-    if (config.body && typeof config.body === 'object') {
+    if (config.body) {
       config.body = JSON.stringify(config.body);
     }
 
     try {
-      console.log(`🚀 DEBUG: Starting API request: ${config.method || 'GET'} ${url}`);
-      console.log('🚀 DEBUG: Request config:', config);
-
       const response = await fetch(url, config);
-
-      console.log(`🚀 DEBUG: Response received - Status: ${response.status} ${response.statusText}`);
-      console.log('🚀 DEBUG: Response headers:', [...response.headers.entries()]);
-
       if (!response.ok) {
-        console.log('🚀 DEBUG: Response not OK, attempting to parse error');
         const error = await response.json().catch(() => ({ error: `HTTP ${response.status} - ${response.statusText}` }));
-        console.error('🚨 API Error Response:', error);
         throw new Error(error.error || `HTTP ${response.status} - ${response.statusText}`);
       }
-
-      console.log('🚀 DEBUG: Attempting to parse response as JSON');
-      const data = await response.json();
-      console.log(`✅ API SUCCESS for ${endpoint}:`, data);
-      return data;
+      return await response.json();
     } catch (error) {
-      console.error('🚨 API Request FAILED:', {
-        url,
-        method: config.method || 'GET',
-        error: error.message,
-        errorType: error.constructor.name,
-        stack: error.stack
-      });
-
-      // Check for network connectivity issues
       if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('🚨 NETWORK ERROR: TypeError with fetch - throwing connection error');
         throw new Error('Cannot connect to server. Please ensure the backend is running.');
       }
-
-      console.error('🚨 RETHROWING ERROR:', error.message);
       throw error;
     }
   }

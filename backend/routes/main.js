@@ -4,13 +4,12 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const { authenticateToken } = require('../middleware/auth');
-const { addCSRFToken } = require('../middleware/csrf-protection');
 
 // Apply authentication to all main routes (both reception and manager can access)
 router.use(authenticateToken);
 
 // Serve staff.html with CSRF protection
-router.get('/staff-roster', addCSRFToken, (req, res) => {
+router.get('/staff-roster', (req, res) => {
   // Set cache-busting headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
@@ -29,7 +28,7 @@ router.get('/staff-roster', addCSRFToken, (req, res) => {
 });
 
 // Serve transaction.html with CSRF protection
-router.get('/transaction', addCSRFToken, (req, res) => {
+router.get('/transaction', (req, res) => {
   // Set cache-busting headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
@@ -48,7 +47,7 @@ router.get('/transaction', addCSRFToken, (req, res) => {
 });
 
 // Serve summary.html with CSRF protection
-router.get('/summary', addCSRFToken, (req, res) => {
+router.get('/summary', (req, res) => {
   // Set cache-busting headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');

@@ -70,23 +70,25 @@ async function stopServer() {
 }
 
 async function runTests() {
+  const jestArgs = process.argv.slice(2); // Get all arguments passed to this script
+  console.log(`🏃‍♂️ Running Jest tests with args: ${jestArgs.join(' ') || 'all tests'}`);
+
   try {
+    await stopServer(); // Ensure port is clear before starting
     await startServer();
-    console.log('🏃‍♂️ Running Jest tests...');
-    
-    // Run Jest programmatically
+
     const { results } = await jest.runCLI({
       roots: ['<rootDir>/tests/integration'],
       verbose: true,
+      // Pass the arguments directly to Jest
+      _: jestArgs,
     }, [process.cwd()]);
 
-    // Correctly check for test failures
     if (results.numFailedTests > 0) {
       throw new Error('Jest tests failed.');
     }
 
     console.log('✅ Jest tests passed.');
-    
   } catch (error) {
     console.error('🔥 Integration test run failed:', error.message);
     process.exit(1);
