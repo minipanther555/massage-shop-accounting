@@ -121,6 +121,7 @@ async function startServer() {
       console.log(`🚀 Massage Shop POS Backend running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log('✅✅✅ SERVER IS FULLY INITIALIZED AND READY TO ACCEPT REQUESTS ✅✅✅');
     });
   } catch (error) {
     console.error('Failed to start server:', error);

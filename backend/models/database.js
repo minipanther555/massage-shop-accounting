@@ -10,12 +10,13 @@ class Database {
 
   async connect() {
     return new Promise((resolve, reject) => {
+      console.log(' MDB_LOG: Attempting to connect to database at:', this.dbPath);
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {
-          console.error('Error connecting to SQLite database:', err);
+          console.error('❌ MDB_LOG: FATAL - Error connecting to SQLite database:', err);
           reject(err);
         } else {
-          console.log('Connected to SQLite database:', this.dbPath);
+          console.log('✅ MDB_LOG: Connection successful.');
           this.initializeTables()
             .then(() => resolve())
             .catch(reject);
@@ -25,6 +26,7 @@ class Database {
   }
 
   async initializeTables() {
+    console.log(' MDB_LOG: [Step 1] Starting table initialization...');
     const tables = [
       // Master transaction log (equivalent to Master Log sheet)
       `CREATE TABLE IF NOT EXISTS transactions (
@@ -158,17 +160,19 @@ class Database {
     for (const table of tables) {
       await this.run(table);
     }
+    console.log(' MDB_LOG: [Step 2] All CREATE TABLE IF NOT EXISTS statements executed.');
 
     // Add missing columns to existing tables
     await this.addMissingColumns();
 
     // Insert default data
     await this.insertDefaultData();
+    console.log(' MDB_LOG: [Step 5] Finished table initialization.');
   }
 
   async addMissingColumns() {
     try {
-      console.log('Checking and adding missing columns to existing tables...');
+      console.log(' MDB_LOG: [Step 3] Checking and adding missing columns...');
 
       // Add missing columns to staff table (payment tracking fields)
       const staffColumns = [
@@ -197,13 +201,15 @@ class Database {
       // Add payment tracking columns to staff table
       for (const column of staffColumns) {
         try {
+          console.log(` MDB_LOG: [Step 3a] Attempting to add column staff.${column.name}...`);
           await this.run(`ALTER TABLE staff ADD COLUMN ${column.name} ${column.definition}`);
-          console.log(`✅ Added column staff.${column.name}`);
+          console.log(`✅ MDB_LOG: Successfully added column staff.${column.name}`);
         } catch (error) {
           if (error.message.includes('duplicate column name')) {
-            console.log(`✅ Column staff.${column.name} already exists`);
+            console.log(`- MDB_LOG: Column staff.${column.name} already exists, skipping.`);
           } else {
-            console.error(`❌ Failed to add column staff.${column.name}:`, error.message);
+            console.error(`❌ MDB_LOG: FAILED to add column staff.${column.name}:`, error.message);
+            throw error; // Rethrow unexpected errors
           }
         }
       }
@@ -240,15 +246,16 @@ class Database {
       await this.run('UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL');
       await this.run('UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL');
 
-      console.log('✅ Missing columns check and update completed');
+      console.log(' MDB_LOG: [Step 4] Missing columns check and update completed.');
     } catch (error) {
-      console.error('❌ Error adding missing columns:', error);
+      console.error('❌ MDB_LOG: FATAL - Error adding missing columns:', error);
+      throw error; // Rethrow to stop server startup
     }
   }
 
   async insertDefaultData() {
     // Skip all default data insertion - data will be inserted via external script for clean data
-    console.log('Skipping default data insertion - using external script for clean data');
+    console.log(' MDB_LOG: Skipping default data insertion as per configuration.');
   }
 
   async run(sql, params = []) {

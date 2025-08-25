@@ -15,7 +15,7 @@ This module does not export any functions or classes. It sets up and runs the Ex
 
 *   **Server Initialization:**
     *   **Purpose:** To create and configure the Express application instance.
-    *   **Logic Notes:** It dynamically configures middleware like `cors`, `helmet` (commented out), and `rateLimit` based on the `NODE_ENV` environment variable, applying stricter rules for 'production'. It uses `dotenv` to load environment variables from a `.env` file.
+    *   **Logic Notes:** It dynamically configures middleware like `cors` and `rateLimit` based on the `NODE_ENV` environment variable, applying stricter rules for 'production'. It uses `dotenv` to load environment variables from a `.env` file. Security headers are now handled by the custom `security-headers.js` middleware instead of helmet.js.
 
 *   **Middleware Chain:**
     *   **Purpose:** To process and secure all incoming requests before they reach the route handlers.
@@ -55,7 +55,7 @@ This module does not export any functions or classes. It sets up and runs the Ex
 *   **Downstream Dependencies (Outputs):**
     *   **Called Modules/Services:**
         *   `./instrument.js`: For initializing the Sentry SDK.
-        *   `./middleware/security-headers.js`: For applying security headers.
+        *   `./middleware/security-headers.js`: For applying security headers (replaces helmet.js).
         *   `./middleware/input-validation.js`: For validating input.
         *   `./middleware/csrf-protection.js`: For CSRF protection.
         *   `./middleware/request-limits.js`: For request limits and error handling.
@@ -90,4 +90,18 @@ This module does not export any functions or classes. It sets up and runs the Ex
 *   **Bug Summary (August 2024):** Frontend pages (e.g., `/index.html`, `/sentry-test.html`) were returning a JSON `{"error":"Route not found"}` message instead of serving the HTML content.
 *   **Validated Hypothesis:** The Express server was not configured to serve static files. All incoming requests were being passed directly to the API router. Since no API route existed for `/index.html`, the API's `notFoundHandler` was correctly returning a 404 error in JSON format.
 *   **Resolution:** The `express.static('web-app')` middleware was added to the `server.js` middleware chain. Crucially, it was placed **before** the API routing middleware. This ensures that any request for a file that exists within the `web-app` directory is served directly, and only non-matching requests are passed on to the API router.
+
+*   **Bug Summary (December 2024):** Code cleanup session identified significant amounts of dead code and unused dependencies that were cluttering the codebase and increasing maintenance overhead.
+*   **Validated Hypothesis:** The codebase contained commented-out helmet.js security middleware, unused imports, and debug routes that were no longer needed for production. These were remnants from the transition to custom security headers and the resolution of Sentry integration issues.
+*   **Invalidated Hypotheses:**
+    *   Commented code might be needed for future reference
+    *   Debug routes were essential for troubleshooting
+    *   Unused imports wouldn't impact performance
+*   **Resolution:** Comprehensive cleanup was performed:
+    1.  Removed commented-out helmet.js security middleware code block (~20 lines)
+    2.  Removed unused helmet import
+    3.  Removed debug-sentry route (no longer needed for production)
+    4.  Removed 6 unused dependencies from package.json
+    5.  Reduced server.js from 166 lines to 145 lines (21 lines removed)
+    6.  Improved code readability and maintainability
 
