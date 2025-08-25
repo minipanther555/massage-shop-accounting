@@ -263,8 +263,29 @@ function cleanupExpiredTokens() {
   }
 }
 
-// Clean up expired tokens every hour
-setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
+// Periodically clean up expired tokens to prevent memory leaks
+let cleanupInterval;
+
+function startCleanupInterval() {
+  if (!cleanupInterval) {
+    cleanupInterval = setInterval(cleanupExpiredTokens, 60 * 60 * 1000);
+    // Unreference the timer so it doesn't keep the Node.js process alive
+    // if it's the only thing running (useful for graceful shutdowns).
+    cleanupInterval.unref();
+    console.log('CSRF token cleanup interval started.');
+  }
+}
+
+function stopCleanupInterval() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+    console.log('CSRF token cleanup interval stopped.');
+  }
+}
+
+// DO NOT Start the cleanup interval by default. Let the main app control it.
+// startCleanupInterval();
 
 /**
  * Get CSRF token for a session (useful for testing)
@@ -279,5 +300,6 @@ module.exports = {
   validateCSRFToken,
   addCSRFToken,
   getCSRFToken,
-  cleanupExpiredTokens
+  startCleanupInterval,
+  stopCleanupInterval,
 };

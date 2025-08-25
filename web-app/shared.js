@@ -13,7 +13,9 @@ if (typeof Sentry !== 'undefined') {
       tracesSampleRate: 1.0, // Capture 100% of the transactions
       // Session Replay
       replaysSessionSampleRate: 0.1, // This sets the sample rate at 10%.
-      replaysOnErrorSampleRate: 1.0 // If you're not already sampling the entire session, change the sample rate to 100% when sampling sessions where errors occur.
+      // If you're not already sampling the entire session, change the sample rate to 100%
+      // when sampling sessions where errors occur.
+      replaysOnErrorSampleRate: 1.0
     });
     // Set a global flag for diagnostics
     window.sentryInitialized = true;
@@ -116,7 +118,8 @@ async function loadTodayData() {
 
     console.log('🔄 STEP 9: Starting transaction mapping...');
     console.log('🔄 STEP 9: recentTransactions before mapping:', recentTransactions);
-    console.log('🔄 STEP 9: recentTransactions keys (if object):', recentTransactions ? Object.keys(recentTransactions) : 'N/A');
+    console.log('🔄 STEP 9: recentTransactions keys (if object):',
+      recentTransactions ? Object.keys(recentTransactions) : 'N/A');
     appData.transactions = recentTransactions.map((t) => ({
       id: t.transaction_id,
       timestamp: new Date(t.timestamp),

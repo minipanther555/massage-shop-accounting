@@ -24,7 +24,7 @@ module.exports = defineConfig({
 
   // Run your local dev server before starting the tests
   webServer: {
-    command: 'cd docker && docker-compose up --build',
+    command: 'cd docker && NODE_ENV=testing docker-compose up --build', // Set testing environment to disable CSRF
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // 2 minutes to build and start

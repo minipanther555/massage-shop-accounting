@@ -1,114 +1,135 @@
 const { test, expect } = require('@playwright/test');
+const AuthHelper = require('./helpers/authHelper');
+const TransactionPage = require('./page-objects/TransactionPage');
+const SummaryPage = require('./page-objects/SummaryPage');
 
 test.describe('Transaction Edit End-to-End Flow', () => {
+  let authHelper;
+  let transactionPage;
+  let summaryPage;
+
   test.beforeEach(async ({ page }) => {
-    // Capture and log all browser console messages
-    page.on('console', msg => {
+    // Initialize page objects and helpers
+    authHelper = new AuthHelper(page);
+    transactionPage = new TransactionPage(page);
+    summaryPage = new SummaryPage(page);
+
+    // Capture browser console logs for debugging
+    page.on('console', (msg) => {
       console.log(` BROWSER_LOG: ${msg.type()}: ${msg.text()}`);
     });
 
-    // Navigate to the login page (uses baseURL from config)
-    await page.goto('/login.html');
-
-    // Fill in the login form
-    await page.selectOption('#username', 'manager');
-    await page.fill('#password', 'manager456');
-
-    // Submit the form
-    await page.click('#login-btn');
-
-    // Wait for the main page to load
-    await expect(page).toHaveURL('/index.html');
+    // Login as manager before each test
+    await authHelper.loginAs('manager');
   });
 
   test('should allow a manager to edit a past transaction from the summary page', async ({ page }) => {
-    // Step 1: Navigate to the transaction page to create the initial data
-    await page.goto('/transaction.html');
+    // Step 1: Discover available data from the transaction page UI
+    console.log('🔄 Step 1: Discovering available data from the UI...');
+    await transactionPage.navigate();
+    await transactionPage.waitForPageLoad();
 
-    // --- Create Transaction 1 ---
-    // Wait for the masseuse dropdown to be populated by checking for a known value.
-    await expect(page.locator('#masseuse option[value="Alice"]')).toBeVisible({ timeout: 10000 });
-    await page.selectOption('#masseuse', 'Alice');
-    
-    // Select location and wait for the service dropdown to be populated as a result
-    await page.selectOption('#location', 'In-Shop');
-    await expect(page.locator('#service option[value="Thai Massage"]')).toBeVisible();
+    // Get the first 3 available masseuses from the dropdown
+    const masseuses = await page.locator('#masseuse option').allTextContents();
+    const availableMasseuses = masseuses.filter(name => name !== 'Select Masseuse').slice(0, 3);
+    expect(availableMasseuses.length).toBeGreaterThanOrEqual(3);
+    console.log(`✅ Discovered masseuses: ${availableMasseuses.join(', ')}`);
 
-    // Select service and wait for the duration dropdown to be populated
-    await page.selectOption('#service', 'Thai Massage');
-    await expect(page.locator('#duration option[value="60"]')).toBeVisible();
+    // Dynamically create test data using discovered names
+    const transaction1Data = {
+      masseuse: availableMasseuses[0],
+      location: 'In-Shop',
+      service: 'Aroma massage',
+      duration: '60',
+      payment: 'Cash'
+    };
 
-    // Select the rest of the options
-    await page.selectOption('#duration', '60');
-    await page.selectOption('#payment', 'Cash');
-    await page.click('button[type="submit"]');
+    const transaction2Data = {
+      masseuse: availableMasseuses[1],
+      location: 'In-Shop',
+      service: 'Back, Neck & shoulder',
+      duration: '90',
+      payment: 'Credit Card'
+    };
 
-    // Wait for a confirmation toast to appear and disappear, signaling completion
-    await expect(page.locator('.toast-message')).toContainText('Transaction submitted!');
-    await expect(page.locator('.toast-message')).not.toBeVisible({ timeout: 10000 });
+    const transaction3Data = {
+      masseuse: availableMasseuses[2],
+      location: 'In-Shop',
+      service: 'Foot massage',
+      duration: '30',
+      payment: 'QR Credit Pay'
+    };
 
-    // --- Create Transaction 2 (The one we will edit) ---
-    await page.selectOption('#masseuse', 'Bob');
-    await page.selectOption('#location', 'In-Shop');
-    await expect(page.locator('#service option[value="Oil Massage"]')).toBeVisible();
-    await page.selectOption('#service', 'Oil Massage');
-    await expect(page.locator('#duration option[value="90"]')).toBeVisible();
-    await page.selectOption('#duration', '90');
-    await page.selectOption('#payment', 'Credit Card');
-    await page.click('button[type="submit"]');
+    // Step 2: Create three distinct transactions
+    console.log('🔄 Step 2: Creating three distinct transactions...');
 
-    // Wait for confirmation
-    await expect(page.locator('.toast-message')).toContainText('Transaction submitted!');
-    await expect(page.locator('.toast-message')).not.toBeVisible({ timeout: 10000 });
+    // Create Transaction 1
+    await transactionPage.fillTransactionData(transaction1Data);
+    await transactionPage.submitTransaction();
+    console.log(`✅ Transaction 1 created for ${transaction1Data.masseuse}`);
 
-    // --- Create Transaction 3 ---
-    await page.selectOption('#masseuse', 'Charlie');
-    await page.selectOption('#location', 'Home Service');
-    await expect(page.locator('#service option[value="Foot Massage"]')).toBeVisible();
-    await page.selectOption('#service', 'Foot Massage');
-    await expect(page.locator('#duration option[value="60"]')).toBeVisible();
-    await page.selectOption('#duration', '60');
-    await page.selectOption('#payment', 'QR Code');
-    await page.click('button[type="submit"]');
+    // Create Transaction 2 (the one we will edit)
+    // Need to re-navigate or reset the form if it doesn't auto-reset
+    await transactionPage.navigate(); 
+    await transactionPage.waitForPageLoad();
+    await transactionPage.fillTransactionData(transaction2Data);
+    await transactionPage.submitTransaction();
+    console.log(`✅ Transaction 2 created for ${transaction2Data.masseuse}`);
 
-    // Wait for confirmation
-    await expect(page.locator('.toast-message')).toContainText('Transaction submitted!');
-    await expect(page.locator('.toast-message')).not.toBeVisible({ timeout: 10000 });
+    // Create Transaction 3
+    await transactionPage.navigate();
+    await transactionPage.waitForPageLoad();
+    await transactionPage.fillTransactionData(transaction3Data);
+    await transactionPage.submitTransaction();
+    console.log(`✅ Transaction 3 created for ${transaction3Data.masseuse}`);
 
-    // Step 2: Navigate to the summary page to find the transactions
-    await page.goto('/summary.html');
-    await expect(page.locator('#all-transactions')).toContainText('Bob');
+    // Step 3: Navigate to summary page to find the transactions
+    console.log('🔄 Step 3: Navigating to summary page...');
+    await summaryPage.navigate();
+    await summaryPage.waitForTransactions();
 
-    // Step 3: Find the transaction for "Bob" and click the Edit button
-    const transactionToEdit = page.locator('.transaction-item:has-text("Bob")');
-    await transactionToEdit.getByRole('button', { name: '✏️ Edit' }).click();
+    // Verify all three transactions exist
+    await summaryPage.verifyTransactionExists(transaction1Data.masseuse);
+    await summaryPage.verifyTransactionExists(transaction2Data.masseuse);
+    await summaryPage.verifyTransactionExists(transaction3Data.masseuse);
 
-    // Step 4: Verify the page has entered edit mode
-    await expect(page).toHaveURL('/transaction.html');
-    await expect(page.locator('#correction-banner')).toContainText('EDIT MODE');
+    console.log('✅ All three transactions verified on summary page');
 
-    // Step 5: Change the payment method and submit the correction
-    await page.selectOption('#payment', 'Cash');
-    await page.click('button[type="submit"]');
+    // Step 4: Edit the second transaction
+    console.log(`🔄 Step 4: Editing transaction for ${transaction2Data.masseuse}...`);
+    await summaryPage.editTransaction(transaction2Data.masseuse);
 
-    // Wait for confirmation
-    await expect(page.locator('.toast-message')).toContainText('Transaction submitted!');
-    await expect(page.locator('.toast-message')).not.toBeVisible({ timeout: 10000 });
+    // Step 5: Verify we're in edit mode
+    const isEditMode = await transactionPage.isInEditMode();
+    expect(isEditMode).toBe(true);
+    console.log('✅ Successfully entered edit mode');
 
-    // Step 6: Go back to the summary page to verify the changes
-    await page.goto('/summary.html');
+    // Step 6: Modify the transaction (change payment method to Cash)
+    console.log('🔄 Step 6: Modifying transaction payment method...');
+    await transactionPage.selectPayment('Cash');
+    await transactionPage.submitTransaction();
+    console.log('✅ Transaction modification submitted successfully');
 
-    // Step 7: Verify the transaction for "Bob" has been updated
-    const updatedTransaction = page.locator('.transaction-item:has-text("Bob")');
-    await expect(updatedTransaction).toBeVisible();
-    await expect(updatedTransaction).toContainText('Cash');
-    await expect(updatedTransaction).not.toContainText('Credit Card');
+    // Step 7: Go back to summary page to verify the changes
+    console.log('🔄 Step 7: Verifying changes on summary page...');
+    await summaryPage.navigate();
+    await summaryPage.waitForTransactions();
 
-    // Step 8: Verify the other transactions are untouched
-    const transaction1 = page.locator('.transaction-item:has-text("Alice")');
-    await expect(transaction1).toContainText('Cash'); // Original was Cash
+    // Step 8: Verify the transaction has been updated
+    await summaryPage.verifyTransactionExists(transaction2Data.masseuse, {
+      payment: 'Cash' // Should now show Cash
+    });
+    console.log(`✅ Transaction for ${transaction2Data.masseuse} updated successfully`);
 
-    const transaction3 = page.locator('.transaction-item:has-text("Charlie")');
-    await expect(transaction3).toContainText('QR Code'); // Original was QR Code
+    // Step 9: Verify other transactions are untouched
+    await summaryPage.verifyTransactionExists(transaction1Data.masseuse, {
+      payment: transaction1Data.payment
+    });
+    await summaryPage.verifyTransactionExists(transaction3Data.masseuse, {
+      payment: transaction3Data.payment
+    });
+
+    console.log('✅ Other transactions remain unchanged');
+    console.log('🎉 Transaction edit workflow test completed successfully!');
   });
 });

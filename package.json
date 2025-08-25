@@ -2,7 +2,9 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
-    "test": "mocha test_authentication_flow.js",
+    "test": "npm run test:e2e",
+    "test:e2e": "npx playwright test",
+    "test:integration": "node tests/run_integration_tests.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -30,8 +32,9 @@
     "eslint": "^8.57.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.32.0",
+    "jest": "^29.7.0",
     "mocha": "^11.7.1",
     "nodemon": "^3.0.1",
-    "supertest": "^7.0.0"
+    "supertest": "^7.1.4"
   }
 }

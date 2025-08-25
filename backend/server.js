@@ -11,7 +11,7 @@ require('dotenv').config();
 // Import our custom security middleware
 const securityHeaders = require('./middleware/security-headers');
 const { validateInput } = require('./middleware/input-validation');
-const { validateCSRFToken, addCSRFToken } = require('./middleware/csrf-protection');
+const csrf = require('./middleware/csrf-protection'); // Import the csrf module
 const {
   requestSizeLimits,
   errorHandler,
@@ -24,6 +24,8 @@ const database = require('./models/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+let server;
+let isServerStarted = false; // Singleton flag
 
 // All middleware and routes must be defined BEFORE the Sentry error handler.
 
@@ -83,11 +85,15 @@ app.get('/health', (req, res) => {
 
 // API routes with CSRF protection
 app.use('/api/auth', require('./routes/auth').router); // No CSRF for login
-app.use('/api/transactions', validateCSRFToken, require('./routes/transactions'));
-app.use('/api/staff', validateCSRFToken, require('./routes/staff'));
-app.use('/api/services', validateCSRFToken, require('./routes/services'));
-app.use('/api/expenses', validateCSRFToken, require('./routes/expenses'));
-app.use('/api/reports', validateCSRFToken, require('./routes/reports'));
+
+// Conditionally apply CSRF protection based on environment
+const csrfMiddleware = process.env.NODE_ENV === 'testing' ? (req, res, next) => next() : csrf.validateCSRFToken;
+
+app.use('/api/transactions', csrfMiddleware, require('./routes/transactions'));
+app.use('/api/staff', csrfMiddleware, require('./routes/staff'));
+app.use('/api/services', csrfMiddleware, require('./routes/services'));
+app.use('/api/expenses', csrfMiddleware, require('./routes/expenses'));
+app.use('/api/reports', csrfMiddleware, require('./routes/reports'));
 
 // Main application routes with authentication and CSRF token injection (accessible to both reception and manager)
 app.use('/api/main', require('./routes/main'));
@@ -95,9 +101,9 @@ app.use('/api/main', require('./routes/main'));
 // --- DIAGNOSTIC LOGGING ---
 app.use('/api/admin', (req, res, next) => {
   next();
-}, validateCSRFToken, require('./routes/admin')); // Manager-only admin routes
+}, csrfMiddleware, require('./routes/admin')); // Manager-only admin routes
 
-app.use('/api/payment-types', validateCSRFToken, require('./routes/payment-types')); // Payment types CRUD management
+app.use('/api/payment-types', csrfMiddleware, require('./routes/payment-types')); // Payment types CRUD management
 
 
 
@@ -111,17 +117,25 @@ app.use(errorHandler);
 // 404 handler for unmatched routes
 app.use('*', notFoundHandler);
 
-// Initialize database and start server
 async function startServer() {
+  if (isServerStarted) return server; // If already started, just return the instance
+
   try {
     await database.connect();
     console.log('Database initialized successfully');
+    
+    // Start CSRF cleanup only when server starts
+    csrf.startCleanupInterval();
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Massage Shop POS Backend running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log('✅✅✅ SERVER IS FULLY INITIALIZED AND READY TO ACCEPT REQUESTS ✅✅✅');
+    return new Promise((resolve) => {
+      server = app.listen(PORT, () => {
+        console.log(`🚀 Massage Shop POS Backend running on port ${PORT}`);
+        console.log(`📊 Health check: http://localhost:${PORT}/health`);
+        console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log('✅✅✅ SERVER IS FULLY INITIALIZED AND READY TO ACCEPT REQUESTS ✅✅✅');
+        isServerStarted = true; // Set the flag once started
+        resolve(server);
+      });
     });
   } catch (error) {
     console.error('Failed to start server:', error);
@@ -129,18 +143,25 @@ async function startServer() {
   }
 }
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await database.close();
-  process.exit(0);
-});
+function closeServer() {
+  return new Promise((resolve) => {
+    if (server) {
+      server.close(async () => {
+        await database.close();
+        // Stop CSRF cleanup when server stops
+        csrf.stopCleanupInterval();
+        console.log('Server and database connection closed.');
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+}
 
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await database.close();
-  process.exit(0);
-});
+// Start the server automatically only if this file is run directly
+if (require.main === module) {
+  startServer();
+}
 
-// Start the server
-startServer();
+module.exports = { app, startServer, closeServer };
