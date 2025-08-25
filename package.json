@@ -5,6 +5,7 @@
     "test": "npm run test:e2e",
     "test:e2e": "npx playwright test",
     "test:integration": "node tests/run_integration_tests.js",
+    "test:integration:services": "node tests/run_integration_tests.js -- tests/integration/services.spec.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
