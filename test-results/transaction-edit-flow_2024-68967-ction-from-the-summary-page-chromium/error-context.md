@@ -1,0 +1,140 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: NEW TRANSACTION
+    - generic [ref=e4]:
+      - link "🏠 Home" [ref=e5] [cursor=pointer]:
+        - /url: /index.html
+      - link "👥 Staff Roster" [ref=e6] [cursor=pointer]:
+        - /url: /api/main/staff-roster
+      - link "💳 New Transaction" [ref=e7] [cursor=pointer]:
+        - /url: /api/main/transaction
+      - link "📊 Daily Summary" [ref=e8] [cursor=pointer]:
+        - /url: /api/main/summary
+      - generic [ref=e10]: manager (manager)
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: TRANSACTION DETAILS
+          - generic [ref=e16]:
+            - generic [ref=e17]:
+              - generic [ref=e18]: "Masseuse Name:"
+              - combobox "Masseuse Name:" [ref=e19]:
+                - option "Select Masseuse" [selected]
+                - option "จิ้บ"
+                - option "Phyo พิว"
+                - option "พี่วัน"
+                - option "สา"
+                - option "พี่แจ๋ว"
+                - option "nine นาย"
+                - option "May เมย์"
+                - option "พี่พิมพ์"
+                - option "กี้"
+                - option "แอนนา"
+                - option "พี่นัท"
+            - generic [ref=e20]:
+              - generic [ref=e21]: "Service Location:"
+              - combobox "Service Location:" [ref=e22]:
+                - option "Select Location" [selected]
+                - option "In-Shop"
+                - option "Home Service"
+            - generic [ref=e23]:
+              - generic [ref=e24]: "Service Type:"
+              - combobox "Service Type:" [ref=e25]:
+                - option "Select Service" [selected]
+            - generic [ref=e26]:
+              - generic [ref=e27]: "Duration:"
+              - combobox "Duration:" [ref=e28]:
+                - option "Select Duration" [selected]
+            - generic [ref=e29]:
+              - generic [ref=e30]: "Payment Method:"
+              - combobox "Payment Method:" [ref=e31]:
+                - option "Select Payment Method" [selected]
+                - option "Alipay"
+                - option "Bank Transfer"
+                - option "Cash"
+                - option "Credit Card"
+                - option "QR Credit Pay"
+                - option "WeChat Payment"
+            - generic [ref=e32]:
+              - generic [ref=e33]: "Start Time:"
+              - textbox "Start Time:" [ref=e34]
+            - generic [ref=e35]:
+              - generic [ref=e36]: "End Time:"
+              - combobox "End Time:" [ref=e37]:
+                - option "Select End Time" [selected]
+            - generic [ref=e38]:
+              - generic [ref=e39]: "Customer Contact (Optional):"
+              - textbox "Customer Contact (Optional):" [ref=e40]
+            - generic [ref=e41]:
+              - generic [ref=e42]: "Service Price:"
+              - generic [ref=e43]: ฿0.00
+            - generic [ref=e44]:
+              - generic [ref=e45]: "Masseuse Fee:"
+              - generic [ref=e46]: ฿0.00
+            - button "💳 Submit Transaction" [ref=e47] [cursor=pointer]
+        - generic [ref=e48]:
+          - generic [ref=e49]: CORRECT MISTAKE
+          - generic [ref=e50]:
+            - generic [ref=e51]: No recent transaction to correct
+            - button "🔄 Load Last Transaction for Correction" [ref=e52] [cursor=pointer]
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - generic [ref=e55]: TODAY'S QUICK SUMMARY
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e58]: "Today's Revenue:"
+              - generic [ref=e59]: ฿0.00
+            - generic [ref=e60]:
+              - generic [ref=e61]: "Today's Transactions:"
+              - generic [ref=e62]: "0"
+            - generic [ref=e63]:
+              - generic [ref=e64]: "Today's Expenses:"
+              - generic [ref=e65]: ฿0.00
+            - heading "Today's Payment Breakdown:" [level=4] [ref=e66]
+            - generic [ref=e68]: No payments yet today
+        - generic [ref=e69]:
+          - generic [ref=e70]: RECENT TRANSACTIONS
+          - generic [ref=e72]:
+            - generic [ref=e73]:
+              - generic [ref=e74]: Payment
+              - generic [ref=e75]: Masseuse
+              - generic [ref=e76]: Service
+              - generic [ref=e77]: Amount
+            - generic [ref=e78]:
+              - generic [ref=e79]: Bank Transfer
+              - generic [ref=e80]: Saw ซอ
+              - generic [ref=e81]: Back, Neck & shoulder
+              - generic [ref=e82]: ฿500.00
+            - generic [ref=e83]:
+              - generic [ref=e84]: Bank Transfer
+              - generic [ref=e85]: May เมย์
+              - generic [ref=e86]: Aroma massage
+              - generic [ref=e87]: ฿1600.00
+            - generic [ref=e88]:
+              - generic [ref=e89]: Cash
+              - generic [ref=e90]: แอนนา
+              - generic [ref=e91]: Back, Neck & shoulder
+              - generic [ref=e92]: ฿700.00
+            - generic [ref=e93]:
+              - generic [ref=e94]: Cash
+              - generic [ref=e95]: พี่แจ๋ว
+              - generic [ref=e96]: Foot massage
+              - generic [ref=e97]: ฿650.00
+            - generic [ref=e98]:
+              - generic [ref=e99]: Cash
+              - generic [ref=e100]: พี่แจ๋ว
+              - generic [ref=e101]: Neck & shoulder
+              - generic [ref=e102]: ฿700.00
+        - generic [ref=e103]:
+          - generic [ref=e104]: DAILY EXPENSES
+          - generic [ref=e105]:
+            - generic [ref=e107]: No expenses recorded today
+            - generic [ref=e109]:
+              - textbox "Expense description" [ref=e110]
+              - spinbutton [ref=e111]
+              - button "Add" [ref=e112] [cursor=pointer]
+  - button "👋 Logout" [ref=e114] [cursor=pointer]
+```

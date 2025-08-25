@@ -26,9 +26,19 @@ test.describe('Transaction Edit End-to-End Flow', () => {
     await page.goto('/transaction.html');
 
     // --- Create Transaction 1 ---
-    await page.selectOption('#masseuse', 'Alice'); 
+    // Wait for the masseuse dropdown to be populated by checking for a known value.
+    await expect(page.locator('#masseuse option[value="Alice"]')).toBeVisible({ timeout: 10000 });
+    await page.selectOption('#masseuse', 'Alice');
+    
+    // Select location and wait for the service dropdown to be populated as a result
     await page.selectOption('#location', 'In-Shop');
+    await expect(page.locator('#service option[value="Thai Massage"]')).toBeVisible();
+
+    // Select service and wait for the duration dropdown to be populated
     await page.selectOption('#service', 'Thai Massage');
+    await expect(page.locator('#duration option[value="60"]')).toBeVisible();
+
+    // Select the rest of the options
     await page.selectOption('#duration', '60');
     await page.selectOption('#payment', 'Cash');
     await page.click('button[type="submit"]');
@@ -40,7 +50,9 @@ test.describe('Transaction Edit End-to-End Flow', () => {
     // --- Create Transaction 2 (The one we will edit) ---
     await page.selectOption('#masseuse', 'Bob');
     await page.selectOption('#location', 'In-Shop');
+    await expect(page.locator('#service option[value="Oil Massage"]')).toBeVisible();
     await page.selectOption('#service', 'Oil Massage');
+    await expect(page.locator('#duration option[value="90"]')).toBeVisible();
     await page.selectOption('#duration', '90');
     await page.selectOption('#payment', 'Credit Card');
     await page.click('button[type="submit"]');
@@ -52,7 +64,9 @@ test.describe('Transaction Edit End-to-End Flow', () => {
     // --- Create Transaction 3 ---
     await page.selectOption('#masseuse', 'Charlie');
     await page.selectOption('#location', 'Home Service');
+    await expect(page.locator('#service option[value="Foot Massage"]')).toBeVisible();
     await page.selectOption('#service', 'Foot Massage');
+    await expect(page.locator('#duration option[value="60"]')).toBeVisible();
     await page.selectOption('#duration', '60');
     await page.selectOption('#payment', 'QR Code');
     await page.click('button[type="submit"]');
