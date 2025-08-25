@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const AuthHelper = require('./helpers/authHelper');
 const TransactionPage = require('./page-objects/TransactionPage');
-const SummaryPage = require('./page-objects/SummaryPage');
+const { SummaryPage } = require('./page-objects/SummaryPage');
 const LoginPage = require('./page-objects/LoginPage');
 
 test.describe('Transaction Edit End-to-End Flow', () => {
@@ -63,7 +63,6 @@ test.describe('Transaction Edit End-to-End Flow', () => {
     await transactionPage.submitTransaction();
 
     // Create Transaction 2 (the one we will edit)
-    // Need to re-navigate or reset the form if it doesn't auto-reset
     await transactionPage.navigate(); 
     await transactionPage.waitForPageLoad();
     await transactionPage.fillTransactionData(transaction2Data);
@@ -76,13 +75,15 @@ test.describe('Transaction Edit End-to-End Flow', () => {
     await transactionPage.submitTransaction();
 
     // Step 3: Navigate to summary page to find the transactions
+    await summaryPage.navigate();
 
-    // Verify all three transactions exist
+    // Verify all three newly created transactions exist
     await summaryPage.verifyTransactionExists(transaction1Data.masseuse);
     await summaryPage.verifyTransactionExists(transaction2Data.masseuse);
     await summaryPage.verifyTransactionExists(transaction3Data.masseuse);
 
     // Step 4: Edit the second transaction
+    await summaryPage.editTransaction(transaction2Data.masseuse);
 
     // Step 5: Verify we're in edit mode
     const isEditMode = await transactionPage.isInEditMode();
@@ -93,6 +94,7 @@ test.describe('Transaction Edit End-to-End Flow', () => {
     await transactionPage.submitTransaction();
 
     // Step 7: Go back to summary page to verify the changes
+    await summaryPage.navigate();
 
     // Step 8: Verify the transaction has been updated
     await summaryPage.verifyTransactionExists(transaction2Data.masseuse, {

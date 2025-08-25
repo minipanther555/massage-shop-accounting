@@ -3,7 +3,7 @@
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
     "test": "npm run test:e2e",
-    "test:e2e": "npx playwright test",
+    "test:e2e": "scp massage:/opt/massage-shop/backend/data/massage_shop.db docker/data/massage_shop.db && npx playwright test",
     "test:integration": "node tests/run_integration_tests.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"

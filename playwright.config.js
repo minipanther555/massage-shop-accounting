@@ -24,7 +24,7 @@ module.exports = defineConfig({
 
   // Run your local dev server before starting the tests
   webServer: {
-    command: 'rm -f docker/data/massage_shop.db && cd docker && NODE_ENV=testing docker-compose up --build',
+    command: 'cd docker && NODE_ENV=testing docker-compose up --build',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // 2 minutes to build and start
