@@ -93,11 +93,11 @@
                 <span class="close" onclick="closeDeleteModal()">&times;</span>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to deactivate the payment type "<span id="delete-payment-name"></span>"?</p>
-                <p><strong>Note:</strong> This will only deactivate the payment type. It cannot be deleted if it's being used in existing transactions.</p>
+                <p>Are you sure you want to permanently delete the payment type "<span id="delete-payment-name"></span>"?</p>
+                <p><strong>Note:</strong> This action cannot be undone.</p>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">Deactivate</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
                 </div>
             </div>
         </div>
@@ -154,11 +154,11 @@
             }
 
             grid.innerHTML = currentPaymentTypes.map(paymentType => `
-                <div class="payment-type-card ${!paymentType.active ? 'inactive' : ''}">
+                <div class="payment-type-card">
                     <div class="payment-type-header">
                         <h4>${paymentType.method_name}</h4>
-                        <span class="status-badge ${paymentType.active ? 'active' : 'inactive'}">
-                            ${paymentType.active ? 'Active' : 'Inactive'}
+                        <span class="status-badge active">
+                            Active
                         </span>
                     </div>
                     ${paymentType.description ? `<p class="description">${paymentType.description}</p>` : ''}
@@ -167,7 +167,7 @@
                             ✏️ Edit
                         </button>
                         <button class="btn btn-small btn-danger" onclick="deletePaymentType(${paymentType.id})">
-                            🗑️ Deactivate
+                            🗑️ Delete
                         </button>
                     </div>
                     <div class="payment-type-meta">
@@ -233,10 +233,10 @@
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.error || 'Failed to deactivate payment type');
+                    throw new Error(error.error || 'Failed to delete payment type');
                 }
 
-                showToast('Payment type deactivated successfully', 'success');
+                showToast('Payment type deleted successfully', 'success');
                 closeDeleteModal();
                 await loadPaymentTypes();
             } catch (error) {

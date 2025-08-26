@@ -17,16 +17,28 @@
     *   **Notes**: Used Playwright Codegen to create `tests/e2e/transaction-edit-flow_2025-08-26.spec.js`. This process immediately uncovered a **new critical bug**: editing a transaction creates a duplicate entry instead of updating the original. This is now the highest priority bug to fix. Co-located documentation was created for this test, logging the bug.
 
 3.  **[Bugfix] Investigate and Fix "Edit Transaction Creates Duplicate" Bug.**
-    *   **Status**: 🔵 `next_up`
+    *   **Status**: ⚪ `pending`
     *   **Priority**: CRITICAL (BLOCKER)
     *   **Required**: Analyze the backend route responsible for updating transactions (likely `PUT /api/transactions/:id`) and correct the logic to perform an `UPDATE` rather than an `INSERT`.
 
-4.  **[Test] Create E2E Test for "Add New Staff" Workflow.**
-    *   **Status**: ⚪ `pending`
+4.  **[Test] Create E2E Tests for Admin Workflows and Debug Environment.**
+    *   **Status**: ✅ `completed`
     *   **Priority**: High
-    *   **Required**: Once the server is stable, create the originally planned E2E test for adding a new staff member.
+    *   **Required**: Create E2E tests for adding a new staff member and a new payment type.
+    *   **Notes**: This task evolved into a deep debugging session.
+        *   **Discovered Bug 1: CSRF Race Condition.** Uncovered a non-deterministic race condition during server startup that caused intermittent "Invalid CSRF Token" errors in the interactive `codegen` browser. The root cause was the server accepting requests before the CSRF middleware was fully initialized.
+        *   **Resolution 1:** Implemented a dedicated `testing` environment (`docker/.env.testing`) that correctly sets `NODE_ENV=testing`, disabling CSRF protection for reliable test generation.
+        *   **Discovered Bug 2: Modal UI Failure.** The "Add New Payment Type" form was not appearing in a modal. The root cause was missing modal CSS, which was defined locally in the staff admin page but not globally.
+        *   **Resolution 2:** Migrated the modal CSS to the shared `web-app/styles.css` file and removed the redundant local styles.
+        *   **Discovered Bug 3: Test Data Pollution.** The new tests were not cleaning up the data they created.
+        *   **Resolution 3:** Implemented robust teardown logic in both new E2E tests (`staff-add-flow.spec.js`, `payment-type-add-flow.spec.js`) to ensure they are atomic and idempotent.
 
-5. **[Next Phase] Address remaining linting issues and prepare for production deployment.**
+5.  **[Bugfix] Investigate and Fix Payment Type Deletion UI/Logic.**
+    *   **Status**: 🔵 `next_up`
+    *   **Priority**: High
+    *   **Required**: The UI only allows "deactivation" and not permanent deletion, which is confusing and leaves inactive test data visible. The next step is to investigate the backend `DELETE` logic and the frontend rendering logic in `admin-payment-types.html` to implement a proper deletion or filtering mechanism.
+
+6.  **[Next Phase] Address remaining linting issues and prepare for production deployment.**
     *   **Status**: ⚪ `pending`
     *   **Priority**: Medium
     *   **Required**: Address remaining non-critical linting errors in core application files and prepare the system for production deployment.

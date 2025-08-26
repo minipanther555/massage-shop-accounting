@@ -47,9 +47,9 @@ test('test', async ({ page }) => {
   // Confirm the deletion in the confirmation modal.
   const deleteModal = page.locator('#delete-modal');
   await expect(deleteModal).toBeVisible();
-  await deleteModal.getByRole('button', { name: 'Deactivate' }).click();
+  await deleteModal.getByRole('button', { name: 'Delete' }).click();
 
-  // Verify the item is now marked as inactive.
+  // Verify the item is now fully removed from the DOM.
   await expect(deleteModal).not.toBeVisible();
-  await expect(newPaymentCard.getByText('Inactive')).toBeVisible();
+  await expect(newPaymentCard).not.toBeVisible();
 });

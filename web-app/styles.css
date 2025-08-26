@@ -779,3 +779,28 @@ body {
         align-self: flex-start;
     }
 }
+
+.btn-group {
+    display: flex;
+    gap: 5px;
+}
+
+/* Styling for edited transactions */
+.transaction-item.edited-transaction {
+    background-color: #ffebee; /* Light red background */
+    color: #b71c1c; /* Darker red text */
+    text-decoration: line-through;
+}
+
+.transaction-item.edited-transaction div {
+    opacity: 0.7;
+}
+
+.edited-status-badge {
+    font-size: 0.75em;
+    font-weight: bold;
+    color: #b71c1c;
+    margin-left: 10px;
+    display: inline-block;
+    vertical-align: middle;
+}

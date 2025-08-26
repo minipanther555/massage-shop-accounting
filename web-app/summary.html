@@ -237,17 +237,13 @@
 
         function updateAllTransactions() {
             const container = document.getElementById('all-transactions');
-            const today = new Date().toDateString();
-            const todayTransactions = appData.transactions.filter(t => 
-                t.date && t.date.toDateString && t.date.toDateString() === today && 
-                (t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
-            ).reverse(); // Most recent first
+            const allTransactions = appData.transactions.slice().reverse(); // Show all, most recent first
 
             const header = container.querySelector('.transaction-item');
             container.innerHTML = '';
             container.appendChild(header);
 
-            if (todayTransactions.length === 0) {
+            if (allTransactions.length === 0) {
                 const div = document.createElement('div');
                 div.className = 'empty-state';
                 div.innerHTML = '<div class="icon">📋</div><div>No transactions today</div>';
@@ -255,16 +251,27 @@
                 return;
             }
 
-            todayTransactions.forEach(transaction => {
+            allTransactions.forEach(transaction => {
                 const div = document.createElement('div');
                 div.className = 'transaction-item';
+                
+                // Check if the transaction has been edited
+                if (transaction.status && transaction.status.includes('EDITED')) {
+                    div.classList.add('edited-transaction');
+                }
+
+                let statusBadge = '';
+                if (transaction.status && transaction.status.includes('EDITED')) {
+                    statusBadge = `<span class="edited-status-badge">(EDITED)</span>`;
+                }
+
                 div.innerHTML = `
                     <div>${formatTime(transaction.timestamp)}</div>
-                    <div>${transaction.service}</div>
+                    <div>${transaction.service} ${statusBadge}</div>
                     <div>${transaction.masseuse}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
                     <div class="btn-group">
-                        <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary">✏️ Edit</button>
+                        <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary" ${transaction.status.includes('EDITED') ? 'disabled' : ''}>✏️ Edit</button>
                     </div>
                 `;
                 container.appendChild(div);

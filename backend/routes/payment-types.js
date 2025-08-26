@@ -14,11 +14,11 @@ const requireManagerAuth = (req, res, next) => {
   next();
 };
 
-// GET /api/payment-types - List all payment types
+// GET /api/payment-types - List all active payment types
 router.get('/', async (req, res) => {
   try {
     const paymentTypes = await database.all(
-      'SELECT * FROM payment_methods ORDER BY method_name ASC'
+      'SELECT * FROM payment_methods WHERE active = true ORDER BY method_name ASC'
     );
     res.json(paymentTypes);
   } catch (error) {
@@ -118,12 +118,11 @@ router.put('/:id', requireManagerAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/payment-types/:id - Soft delete payment type
+// DELETE /api/payment-types/:id - Hard delete payment type
 router.delete('/:id', requireManagerAuth, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if payment method exists
     const existing = await database.get(
       'SELECT * FROM payment_methods WHERE id = ?',
       [id]
@@ -133,29 +132,15 @@ router.delete('/:id', requireManagerAuth, async (req, res) => {
       return res.status(404).json({ error: 'Payment method not found' });
     }
 
-    // Check if payment method is being used in transactions
-    const usageCount = await database.get(
-      'SELECT COUNT(*) as count FROM transactions WHERE payment_method = ?',
-      [existing.method_name]
-    );
-
-    if (usageCount.count > 0) {
-      return res.status(400).json({
-        error: 'Cannot delete payment method that is being used in transactions',
-        usageCount: usageCount.count
-      });
-    }
-
-    // Soft delete by setting active to false
+    // This is the critical change: Use DELETE, not UPDATE.
     await database.run(
-      'UPDATE payment_methods SET active = ?, updated_at = ? WHERE id = ?',
-      [false, new Date().toISOString(), id]
+      'DELETE FROM payment_methods WHERE id = ?',
+      [id]
     );
 
-    console.log(`✅ Payment type soft deleted: ${existing.method_name}`);
+    console.log(`✅ Payment type PERMANENTLY DELETED: ${existing.method_name}`);
     res.json({
-      message: 'Payment type deleted successfully',
-      deletedPaymentType: existing.method_name
+      message: 'Payment type deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting payment type:', error);
