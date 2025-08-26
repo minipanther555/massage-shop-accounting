@@ -85,75 +85,31 @@ function loadDataFromLocalStorage() {
   if (!appData.expenses) appData.expenses = [];
 }
 
+let loadTodayDataCounter = 0;
 async function loadTodayData() {
-  console.log('🔄 STEP 9: loadTodayData() called - starting data refresh...');
-  console.log('🔄 STEP 9: Current appData.transactions BEFORE refresh:', appData.transactions);
-  console.log('🔄 STEP 9: Current appData.transactions length BEFORE refresh:', appData.transactions?.length);
-
+  loadTodayDataCounter++;
+  console.log(`[SHARED] ${new Date().toISOString()} - loadTodayData START (Call #${loadTodayDataCounter})`);
   try {
-    const today = new Date().toISOString().split('T')[0];
-    console.log('🔄 STEP 9: Target date for data refresh:', today);
-
-    console.log('🔄 STEP 9: Calling Promise.all for recentTransactions and expenses...');
     const [recentTransactions, expenses] = await Promise.all([
       api.getRecentTransactions(50), // Get more for today's view
-      api.getExpenses(today)
+      api.getExpenses(new Date().toISOString().split('T')[0])
     ]);
 
-    console.log('🔄 STEP 9: API responses received:');
-    console.log('🔄 STEP 9: recentTransactions API response:', recentTransactions);
-    console.log('🔄 STEP 9: recentTransactions length:', recentTransactions?.length);
-    console.log('🔄 STEP 9: recentTransactions type:', typeof recentTransactions);
-    console.log('🔄 STEP 9: recentTransactions is array:', Array.isArray(recentTransactions));
-    console.log('🔄 STEP 9: expenses API response:', expenses);
-    console.log('🔄 STEP 9: expenses length:', expenses?.length);
-
-    // Check if recentTransactions has the expected structure
-    if (recentTransactions && recentTransactions.length > 0) {
-      console.log('🔄 STEP 9: First transaction structure check:');
-      const firstTransaction = recentTransactions[0];
-      console.log('🔄 STEP 9: First transaction keys:', Object.keys(firstTransaction));
-      console.log('🔄 STEP 9: First transaction sample:', firstTransaction);
-    }
-
-    console.log('🔄 STEP 9: Starting transaction mapping...');
-    console.log('🔄 STEP 9: recentTransactions before mapping:', recentTransactions);
-    console.log('🔄 STEP 9: recentTransactions keys (if object):',
-      recentTransactions ? Object.keys(recentTransactions) : 'N/A');
     appData.transactions = recentTransactions.map((t) => ({
       id: t.transaction_id,
       timestamp: new Date(t.timestamp),
       date: new Date(t.date),
       masseuse: t.masseuse_name,
       service: t.service_type,
+      duration: t.duration,
       paymentAmount: t.payment_amount,
       paymentMethod: t.payment_method,
-      masseuseeFee: t.masseuse_fee,
+      masseuseFee: t.masseuse_fee,
       startTime: t.start_time,
       endTime: t.end_time,
       customerContact: t.customer_contact || '',
       status: t.status
     }));
-
-    console.log('🔄 STEP 9: Transaction mapping completed:');
-    console.log('🔄 STEP 9: Mapped transactions count:', appData.transactions.length);
-    console.log('🔄 STEP 9: First mapped transaction:', appData.transactions[0]);
-    console.log('🔄 STEP 9: All mapped transactions:', appData.transactions);
-
-    // Check if our new transaction (May เมย์, Foot massage, ฿650) is in the mapped data
-    if (appData.transactions.length > 0) {
-      const newTransactionFound = appData.transactions.some((t) => t.masseuse === 'May เมย์'
-                && t.service === 'Foot massage'
-                && t.paymentAmount === 650);
-      console.log('🔍 STEP 9: New transaction (May เมย์, Foot massage, ฿650) found in mapped data:', newTransactionFound);
-
-      if (newTransactionFound) {
-        const foundTransaction = appData.transactions.find((t) => t.masseuse === 'May เมย์'
-                    && t.service === 'Foot massage'
-                    && t.paymentAmount === 650);
-        console.log('✅ STEP 9: Found new transaction details:', foundTransaction);
-      }
-    }
 
     appData.expenses = expenses.map((e) => ({
       id: e.id.toString(),
@@ -161,14 +117,6 @@ async function loadTodayData() {
       amount: e.amount,
       timestamp: new Date(e.timestamp)
     }));
-
-    console.log('🔄 STEP 9: Expenses mapping completed:');
-    console.log('🔄 STEP 9: Mapped expenses count:', appData.expenses.length);
-    console.log('🔄 STEP 9: All mapped expenses:', appData.expenses);
-
-    console.log('✅ STEP 9: loadTodayData() completed successfully');
-    console.log('✅ STEP 9: Final appData.transactions length:', appData.transactions.length);
-    console.log('✅ STEP 9: Final appData.expenses length:', appData.expenses.length);
   } catch (error) {
     console.error('❌ STEP 9: loadTodayData() failed with error:', error);
     console.error('❌ STEP 9: Error stack:', error.stack);
@@ -687,7 +635,7 @@ function getRecentTransactions(limit = 5) {
 
   console.log('🔄 STEP 10: Filtering transactions by status...');
   const filtered = appData.transactions
-    .filter((t) => t.status === 'ACTIVE' || t.status.includes('CORRECTED'));
+    .filter((t) => t.status === 'ACTIVE' || t.status.includes('CORRECTED') || t.status.includes('EDITED'));
   console.log('🔄 STEP 10: Filtered transactions count:', filtered.length);
   console.log('🔄 STEP 10: Filtered transactions:', filtered);
 
@@ -783,8 +731,7 @@ async function logout() {
 // Auto-save periodically
 setInterval(saveData, 30000); // Save every 30 seconds
 
-// Initialize data when any page loads
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadData();
-  // Don't call initializeRoster - data comes from API now
-});
+// REMOVED redundant initializer. Each page should be responsible for calling loadData().
+// document.addEventListener('DOMContentLoaded', async () => {
+//   await loadData();
+// });

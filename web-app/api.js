@@ -1,9 +1,17 @@
 // API client for backend communication
-const API_BASE_URL = '/api';
-
 class APIClient {
-  static async request(endpoint, options = {}) {
-    const url = `/api${endpoint}`;
+  constructor(baseURL = '') {
+    this.baseURL = baseURL;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    // H4: Disable cache to test caching hypothesis
+    if (options.method === 'GET' || options.method === undefined) {
+      options.cache = 'no-cache';
+    }
+
     const config = {
       method: options.method || 'GET',
       headers: {
@@ -17,14 +25,19 @@ class APIClient {
       config.body = JSON.stringify(config.body);
     }
 
+    console.log(`[API_CLIENT] ${new Date().toISOString()} - Making request: ${config.method} ${url}`);
+
     try {
       const response = await fetch(url, config);
+      console.log(`[API_CLIENT] ${new Date().toISOString()} - Response received for ${config.method} ${url}. Status: ${response.status}`);
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: `HTTP ${response.status} - ${response.statusText}` }));
         throw new Error(error.error || `HTTP ${response.status} - ${response.statusText}`);
       }
       return await response.json();
     } catch (error) {
+      console.error(`[API_CLIENT] ${new Date().toISOString()} - Request failed for ${config.method} ${url}:`, error);
       if (error instanceof TypeError && error.message.includes('fetch')) {
         throw new Error('Cannot connect to server. Please ensure the backend is running.');
       }
@@ -32,101 +45,102 @@ class APIClient {
     }
   }
 
+  // All other methods (login, getTransactions, etc.) will be instance methods
   // Transactions
   async getTransactions(params = {}) {
     const query = new URLSearchParams(params).toString();
-    return this.constructor.request(`/transactions${query ? `?${query}` : ''}`);
+    return this.request(`/transactions${query ? `?${query}` : ''}`);
   }
 
   async getRecentTransactions(limit = 5) {
-    return this.constructor.request(`/transactions/recent?limit=${limit}`);
+    return this.request(`/transactions/recent?limit=${limit}`);
   }
-
+  
   async createTransaction(transactionData) {
-    return this.constructor.request('/transactions', {
+    return this.request('/transactions', {
       method: 'POST',
       body: transactionData
     });
   }
 
   async getLatestTransactionForCorrection() {
-    return this.constructor.request('/transactions/latest-for-correction');
+    return this.request('/transactions/latest-for-correction');
   }
 
   async getTodayTransactionSummary() {
-    return this.constructor.request('/reports/summary/today');
+    return this.request('/reports/summary/today');
   }
 
   // Staff
   async getStaffRoster() {
-    return this.constructor.request('/staff/roster');
+    return this.request('/staff/roster');
   }
 
   async getAllStaff() {
-    return this.constructor.request('/staff/allstaff');
+    return this.request('/staff/allstaff');
   }
 
   async updateStaff(position, data) {
-    return this.constructor.request(`/staff/roster/${position}`, {
+    return this.request(`/staff/roster/${position}`, {
       method: 'PUT',
       body: data
     });
   }
 
   async removeStaffFromRoster(position) {
-    return this.constructor.request(`/staff/roster/${position}`, {
+    return this.request(`/staff/roster/${position}`, {
       method: 'DELETE'
     });
   }
 
   async clearRoster() {
-    return this.constructor.request('/staff/roster', {
+    return this.request('/staff/roster', {
       method: 'DELETE'
     });
   }
 
   async serveNextCustomer() {
-    return this.constructor.request('/staff/serve-next', {
+    return this.request('/staff/serve-next', {
       method: 'POST'
     });
   }
 
   async advanceQueue(currentMasseuse) {
-    return this.constructor.request('/staff/advance-queue', {
+    return this.request('/staff/advance-queue', {
       method: 'POST',
       body: { currentMasseuse }
     });
   }
 
   async setMasseuseBusy(masseuseName, endTime) {
-    return this.constructor.request('/staff/set-busy', {
+    return this.request('/staff/set-busy', {
       method: 'POST',
       body: { masseuseName, endTime }
     });
   }
 
   async getTodayStaffPerformance() {
-    return this.constructor.request('/staff/performance/today');
+    return this.request('/staff/performance/today');
   }
 
   // Services
   async getServices() {
-    return this.constructor.request('/services');
+    return this.request('/services');
   }
 
   async getPaymentMethods() {
-    return this.constructor.request('/services/payment-methods');
+    return this.request('/services/payment-methods');
   }
 
   async createService(serviceData) {
-    return this.constructor.request('/services', {
+    return this.request('/services', {
       method: 'POST',
       body: serviceData
     });
   }
 
   async createPaymentMethod(methodData) {
-    return this.constructor.request('/services/payment-methods', {
+    return this.request('/services/payment-methods', {
       method: 'POST',
       body: methodData
     });
@@ -135,34 +149,34 @@ class APIClient {
   // Expenses
   async getExpenses(date = null) {
     const query = date ? `?date=${date}` : '';
-    return this.constructor.request(`/expenses${query}`);
+    return this.request(`/expenses${query}`);
   }
 
   async createExpense(expenseData) {
-    return this.constructor.request('/expenses', {
+    return this.request('/expenses', {
       method: 'POST',
       body: expenseData
     });
   }
 
   async deleteExpense(expenseId) {
-    return this.constructor.request(`/expenses/${expenseId}`, {
+    return this.request(`/expenses/${expenseId}`, {
       method: 'DELETE'
     });
   }
 
   async getTodayExpenseSummary() {
-    return this.constructor.request('/expenses/summary/today');
+    return this.request('/expenses/summary/today');
   }
 
   // Reports
   async getDailyReport(date = null) {
     const endpoint = date ? `/reports/daily/${date}` : '/reports/daily';
-    return this.constructor.request(endpoint);
+    return this.request(endpoint);
   }
 
   async getWeeklyReport() {
-    return this.constructor.request('/reports/weekly');
+    return this.request('/reports/weekly');
   }
 
   async getMonthlyReport(year = null, month = null) {
@@ -170,92 +184,90 @@ class APIClient {
     if (year && month) {
       endpoint += `/${year}/${month}`;
     }
-    return this.constructor.request(endpoint);
+    return this.request(endpoint);
   }
 
   async endDay() {
-    return this.constructor.request('/reports/end-day', {
+    return this.request('/reports/end-day', {
       method: 'POST'
     });
   }
 
   // Authentication
   async login(username, password = '') {
-    return this.constructor.request('/auth/login', {
+    return this.request('/auth/login', {
       method: 'POST',
       body: { username, password }
     });
   }
 
   async logout() {
-    return this.constructor.request('/auth/logout', {
+    return this.request('/auth/logout', {
       method: 'POST'
     });
   }
 
   async checkSession() {
-    return this.constructor.request('/auth/session');
+    return this.request('/auth/session');
   }
 
   async getActiveSessions() {
-    return this.constructor.request('/auth/sessions');
+    return this.request('/auth/sessions');
   }
 
-  // =============================================================================
-  // ADMIN API METHODS (Manager Only)
-  // =============================================================================
-
-  // Staff Administration
+  // ADMIN METHODS...
   async getAdminStaff() {
-    return this.constructor.request('/admin/staff');
+    return this.request('/admin/staff');
   }
 
   async addStaff(staffData) {
-    return this.constructor.request('/admin/staff', {
+    return this.request('/admin/staff', {
       method: 'POST',
       body: staffData
     });
   }
 
   async updateAdminStaff(staffId, staffData) {
-    return this.constructor.request(`/admin/staff/${staffId}`, {
+    return this.request(`/admin/staff/${staffId}`, {
       method: 'PUT',
       body: staffData
     });
   }
 
   async removeStaff(staffId) {
-    return this.constructor.request(`/admin/staff/${staffId}`, {
+    return this.request(`/admin/staff/${staffId}`, {
       method: 'DELETE'
     });
   }
 
-  // Payment Management
   async getStaffPayments(staffId) {
-    return this.constructor.request(`/admin/staff/${staffId}/payments`);
+    return this.request(`/admin/staff/${staffId}/payments`);
   }
 
   async recordPayment(staffId, paymentData) {
-    return this.constructor.request(`/admin/staff/${staffId}/payments`, {
+    return this.request(`/admin/staff/${staffId}/payments`, {
       method: 'POST',
       body: paymentData
     });
   }
 
   async getOutstandingFees() {
-    return this.constructor.request('/admin/staff/outstanding-fees');
+    return this.request('/admin/staff/outstanding-fees');
   }
 
-  // Staff Performance
   async getStaffPerformance(period = 'week') {
-    return this.constructor.request(`/admin/staff/performance?period=${period}`);
+    return this.request(`/admin/staff/performance?period=${period}`);
   }
 
   async getStaffRankings() {
-    return this.constructor.request('/admin/staff/rankings');
+    return this.request('/admin/staff/rankings');
   }
 }
 
 // Create and export a single instance of the client
 // eslint-disable-next-line no-unused-vars
-const api = new APIClient();
+const api = new APIClient('/api');
+
+// Legacy static-like methods for pages that haven't been updated
+// This ensures old pages calling APIClient.request() don't break.
+APIClient.request = api.request.bind(api);

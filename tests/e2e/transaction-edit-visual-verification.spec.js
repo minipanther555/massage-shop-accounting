@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test';
+
+test('test', async ({ page }) => {
+  await page.goto('http://localhost:3000/login.html');
+  await page.getByLabel('Username').selectOption('manager');
+  await page.getByRole('textbox', { name: 'Password' }).click();
+  await page.getByRole('textbox', { name: 'Password' }).fill('manager456');
+  await page.getByRole('textbox', { name: 'Password' }).press('Enter');
+  await page.getByRole('link', { name: '💳 New Transaction' }).click();
+  await page.getByLabel('Masseuse Name:').selectOption('พี่แจ๋ว');
+  await page.getByLabel('Service Location:').selectOption('In-Shop');
+  await page.getByLabel('Service Type:').selectOption('Foot + back, neck & shoulder');
+  await page.getByLabel('Duration:').selectOption('90');
+  await page.getByLabel('Payment Method:').selectOption('QR Credit Pay');
+  await page.getByRole('button', { name: '💳 Submit Transaction' }).click();
+  await page.getByLabel('Masseuse Name:').selectOption('May เมย์');
+  await page.getByLabel('Service Location:').selectOption('Home Service');
+  await page.getByLabel('Service Type:').selectOption('Foot spa');
+  await page.getByLabel('Duration:').selectOption('30');
+  await page.getByLabel('Payment Method:').selectOption('Cash');
+  await page.getByRole('button', { name: '💳 Submit Transaction' }).click();
+  await page.getByRole('link', { name: '📊 Daily Summary' }).click();
+  await page.locator('#all-transactions div').filter({ hasText: '4:38 PM Aroma massage May' }).getByRole('button').click();
+  await page.getByLabel('Service Location:').selectOption('Home Service');
+  await page.getByLabel('Service Type:').selectOption('Body scrub + Aroma massage');
+  await page.getByLabel('Duration:').selectOption('120');
+  await page.getByLabel('Payment Method:').selectOption('QR Credit Pay');
+  await page.getByRole('button', { name: '💳 Submit Transaction' }).click();
+  await page.getByRole('link', { name: '📊 Daily Summary' }).click();
+});

@@ -554,66 +554,22 @@
                 original_transaction_id: document.getElementById('original-transaction-id').value || null
             };
 
-            console.log('🔍 SUBMITTING FORM DATA:', formData);
             const success = await submitTransaction(formData);
             if (success) {
-                console.log('🔄 STEP 11: Transaction submission successful, starting post-submission operations...');
-                
+                // CRITICAL FIX: Only refresh the data AFTER the submission is confirmed successful.
+                await loadTodayData();
+
                 // If using next in line, advance the queue
                 if (isUsingNextInLine) {
-                    console.log('🔄 STEP 11: Advancing queue for next in line...');
                     await advanceQueue(selectedMasseuse);
                 }
                 
                 // Mark masseuse as busy until end time
-                console.log('🔄 STEP 11: Setting masseuse as busy...');
                 await setMasseuseBusy(selectedMasseuse, formData.endTime);
                 
                 clearForm();
-                
-                // 🔧 STEP 11: Add fallback refresh mechanism
-                console.log('🔄 STEP 11: Starting fallback refresh mechanism...');
-                try {
-                    console.log('🔄 STEP 11: Calling updateAllDisplays()...');
-                    await updateAllDisplays();
-                    console.log('✅ STEP 11: updateAllDisplays() completed successfully');
-                } catch (displayError) {
-                    console.error('❌ STEP 11: updateAllDisplays() failed:', displayError);
-                    console.log('🔄 STEP 11: Attempting manual refresh as fallback...');
-                    
-                    // Manual fallback refresh
-                    try {
-                        console.log('🔄 STEP 11: Manual fallback - calling loadTodayData()...');
-                        if (typeof loadTodayData === 'function') {
-                            await loadTodayData();
-                            console.log('✅ STEP 11: Manual fallback loadTodayData() successful');
-                            
-                            console.log('🔄 STEP 11: Manual fallback - calling updateRecentTransactions()...');
-                            if (typeof updateRecentTransactions === 'function') {
-                                updateRecentTransactions();
-                                console.log('✅ STEP 11: Manual fallback updateRecentTransactions() successful');
-                            } else {
-                                console.log('❌ STEP 11: Manual fallback - updateRecentTransactions function not found');
-                            }
-                        } else {
-                            console.log('❌ STEP 11: Manual fallback - loadTodayData function not found');
-                        }
-                    } catch (fallbackError) {
-                        console.error('❌ STEP 11: Manual fallback also failed:', fallbackError);
-                        console.log('🔄 STEP 11: Last resort - forcing page reload...');
-                        
-                        // Last resort: force page reload
-                        setTimeout(() => {
-                            console.log('🔄 STEP 11: Forcing page reload as last resort...');
-                            window.location.reload();
-                        }, 2000);
-                    }
-                }
-                
+                await updateAllDisplays(); // This will now use the fresh data
                 showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
-                console.log('✅ STEP 11: handleSubmit() completed successfully');
-            } else {
-                console.log('❌ STEP 11: Transaction submission failed');
             }
         }
 

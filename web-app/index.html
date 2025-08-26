@@ -151,11 +151,11 @@
             const allActivity = [
                 ...recentTransactions.map(t => ({
                     type: 'transaction', timestamp: t.timestamp, description: t.service,
-                    masseuse: t.masseuse, amount: t.paymentAmount
+                    masseuse: t.masseuse, amount: t.paymentAmount, status: t.status // Pass status through
                 })),
                 ...recentExpenses.map(e => ({
                     type: 'expense', timestamp: e.timestamp, description: e.description,
-                    masseuse: 'Expense', amount: e.amount
+                    masseuse: 'Expense', amount: e.amount, status: 'N/A' // Expenses don't have a status
                 }))
             ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
 
@@ -174,12 +174,19 @@
             allActivity.forEach(activity => {
                 const div = document.createElement('div');
                 div.className = 'transaction-item';
+
+                let statusBadge = '';
+                if (activity.type === 'transaction' && activity.status && activity.status.includes('EDITED')) {
+                    div.classList.add('edited-transaction');
+                    statusBadge = `<span class="edited-status-badge">(EDITED)</span>`;
+                }
+                
                 const icon = activity.type === 'transaction' ? '💳' : '💰';
                 const color = activity.type === 'transaction' ? '#34a853' : '#ea4335';
                 const prefix = activity.type === 'transaction' ? '+' : '-';
                 div.innerHTML = `
                     <div>${formatTime(activity.timestamp)}</div>
-                    <div>${icon} ${activity.description}</div>
+                    <div>${icon} ${activity.description} ${statusBadge}</div>
                     <div>${activity.masseuse}</div>
                     <div style="color: ${color}">${prefix}฿${activity.amount.toFixed(2)}</div>
                 `;

@@ -128,8 +128,7 @@
             }
             
             // Load data from API first
-            
-            await loadData();
+            await loadTodayData();
             await updateAllDisplays();
             setInterval(async () => {
                 await loadData(); // Ensure fresh data on interval
@@ -271,7 +270,7 @@
                     <div>${transaction.masseuse}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
                     <div class="btn-group">
-                        <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary" ${transaction.status.includes('EDITED') ? 'disabled' : ''}>✏️ Edit</button>
+                        <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary" ${transaction.status && transaction.status.includes('EDITED') ? 'disabled' : ''}>✏️ Edit</button>
                     </div>
                 `;
                 container.appendChild(div);

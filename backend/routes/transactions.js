@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
       start_time: startTime,
       end_time: endTime,
       customer_contact: customerContact = '',
-      original_transaction_id: originalTransactionId = null
+      corrected_transaction_id: originalTransactionId = null
     } = req.body;
     console.log('[TX CREATE - STEP 1] Request body destructured:', req.body);
 
@@ -155,7 +155,7 @@ router.post('/', async (req, res) => {
       [
         transactionId, timestamp, date, masseuseName, serviceType,
         location, duration, service.price, paymentMethod, service.masseuse_fee,
-        startTime, endTime, 'ACTIVE', originalTransactionId
+        startTime, endTime, originalTransactionId ? 'CORRECTED' : 'ACTIVE', originalTransactionId
       ]
     );
     console.log('[TX CREATE - STEP 8] New transaction inserted successfully.');

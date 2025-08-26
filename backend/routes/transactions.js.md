@@ -34,6 +34,19 @@
 
 ## 4. Bug & Resolution History
 
+*   **Bug Summary (August 2025):** The transaction edit styling feature is not working. When a transaction is edited, the original transaction should be marked with "EDITED" status and the new transaction should have "CORRECTED" status, but both remain "ACTIVE".
+*   **Validated Hypothesis:** The backend editing logic in the `POST /` endpoint is not working correctly. When `originalTransactionId` is provided, the endpoint should:
+        1. Set the new transaction status to 'CORRECTED'
+        2. Update the original transaction status to 'EDITED (Corrected by [new_id])'
+        3. Set the `corrected_from_id` field on the new transaction
+    However, none of these actions are being performed - both transactions remain with "ACTIVE" status.
+*   **Invalidated Hypotheses:**
+    *   The issue is NOT in the frontend styling logic - the backend is not sending the correct status data
+    *   The issue is NOT in the frontend data loading - the API is returning incorrect status values
+    *   The issue is NOT in the UI rendering - there's no "EDITED" data to render
+*   **Root Cause:** Backend editing logic failure in the `POST /` endpoint when handling transactions with `originalTransactionId`.
+*   **Status:** 🔍 **INVESTIGATING** - Backend code examination needed to identify why the editing logic is not executing.
+
 *   **Bug Summary (August 2024):** The integration test for the transaction edit feature was failing. It successfully created two transactions but the subsequent `GET /api/transactions` call returned an empty array, causing the test's verification step to fail.
 *   **Validated Hypothesis:** The logic for building the pagination `COUNT` query in the `GET /` handler was flawed. When no filters were applied (like `status=all`), the `if (conditions.length > 0)` block was skipped, and the `countParams` array was not correctly populated, leading to an incorrect total count and a failure to retrieve the correct set of transactions.
 *   **Invalidated Hypotheses:**

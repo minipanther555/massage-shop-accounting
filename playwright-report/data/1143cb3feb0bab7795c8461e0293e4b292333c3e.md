@@ -1,0 +1,170 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]: NEW TRANSACTION
+    - generic [ref=e4]:
+      - link "🏠 Home" [ref=e5] [cursor=pointer]:
+        - /url: /index.html
+      - link "👥 Staff Roster" [ref=e6] [cursor=pointer]:
+        - /url: /api/main/staff-roster
+      - link "💳 New Transaction" [ref=e7] [cursor=pointer]:
+        - /url: /api/main/transaction
+      - link "📊 Daily Summary" [ref=e8] [cursor=pointer]:
+        - /url: /api/main/summary
+      - generic [ref=e10]: manager (manager)
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: TRANSACTION DETAILS
+          - generic [ref=e16]:
+            - generic [ref=e17]:
+              - generic [ref=e18]: "Masseuse Name:"
+              - combobox "Masseuse Name:" [ref=e19]:
+                - option "Select Masseuse"
+                - option "จิ้บ"
+                - option "Phyo พิว"
+                - option "พี่วัน" [selected]
+                - option "สา"
+                - option "พี่แจ๋ว"
+                - option "nine นาย"
+                - option "May เมย์"
+                - option "พี่พิมพ์"
+                - option "กี้"
+                - option "แอนนา"
+                - option "พี่นัท"
+            - generic [ref=e20]:
+              - generic [ref=e21]: "Service Location:"
+              - combobox "Service Location:" [ref=e22]:
+                - option "Select Location"
+                - option "In-Shop" [selected]
+                - option "Home Service"
+            - generic [ref=e23]:
+              - generic [ref=e24]: "Service Type:"
+              - combobox "Service Type:" [ref=e25]:
+                - option "Select Service"
+                - option "Aroma massage"
+                - option "Back, Neck & shoulder"
+                - option "Back, neck & shoulder with herbal compress"
+                - option "Body Scrub"
+                - option "Body Scrub + oil massage" [selected]
+                - option "Body scrub + Aroma massage"
+                - option "Coconut lovers - coconut oil massage"
+                - option "Foot + Aroma Massage"
+                - option "Foot + Thai Massage"
+                - option "Foot + back, neck & shoulder"
+                - option "Foot + oil Massage"
+                - option "Foot massage"
+                - option "Foot massage with herbal compress"
+                - option "Foot spa"
+                - option "Foot spa with foot massage"
+                - option "Oil massage"
+                - option "Thai Massage"
+                - option "Thai massage with Herbal compress"
+            - generic [ref=e26]:
+              - generic [ref=e27]: "Duration:"
+              - combobox "Duration:" [ref=e28]:
+                - option "Select Duration"
+                - option "90 minutes" [selected]
+                - option "120 minutes"
+            - generic [ref=e29]:
+              - generic [ref=e30]: "Payment Method:"
+              - combobox "Payment Method:" [ref=e31]:
+                - option "Select Payment Method" [selected]
+                - option "Alipay"
+                - option "Bank Transfer"
+                - option "Cash"
+                - option "Credit Card"
+                - option "QR Credit Pay"
+                - option "WeChat Payment"
+            - generic [ref=e32]:
+              - generic [ref=e33]: "Start Time:"
+              - textbox "Start Time:" [ref=e34]: 4:38 PM
+            - generic [ref=e35]:
+              - generic [ref=e36]: "End Time:"
+              - combobox "End Time:" [ref=e37]:
+                - option "Select End Time"
+                - option "6:08 PM" [selected]
+            - generic [ref=e38]:
+              - generic [ref=e39]: "Customer Contact (Optional):"
+              - textbox "Customer Contact (Optional):" [ref=e40]
+            - generic [ref=e41]:
+              - generic [ref=e42]: "Service Price:"
+              - generic [ref=e43]: ฿1300.00
+            - generic [ref=e44]:
+              - generic [ref=e45]: "Masseuse Fee:"
+              - generic [ref=e46]: ฿240.00
+            - button "💳 Submit Transaction" [ref=e47] [cursor=pointer]
+        - generic [ref=e48]:
+          - generic [ref=e49]: CORRECT MISTAKE
+          - generic [ref=e50]:
+            - generic [ref=e51]: No recent transaction to correct
+            - button "🔄 Load Last Transaction for Correction" [ref=e52] [cursor=pointer]
+      - generic [ref=e53]:
+        - generic [ref=e54]:
+          - generic [ref=e55]: TODAY'S QUICK SUMMARY
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e58]: "Today's Revenue:"
+              - generic [ref=e59]: ฿27900.00
+            - generic [ref=e60]:
+              - generic [ref=e61]: "Today's Transactions:"
+              - generic [ref=e62]: "22"
+            - generic [ref=e63]:
+              - generic [ref=e64]: "Today's Expenses:"
+              - generic [ref=e65]: ฿0.00
+            - heading "Today's Payment Breakdown:" [level=4] [ref=e66]
+            - generic [ref=e67]:
+              - generic [ref=e68]:
+                - generic [ref=e69]: "Bank Transfer:"
+                - generic [ref=e70]: ฿16900.00 (13)
+              - generic [ref=e71]:
+                - generic [ref=e72]: "Cash:"
+                - generic [ref=e73]: ฿8100.00 (7)
+              - generic [ref=e74]:
+                - generic [ref=e75]: "QR Credit Pay:"
+                - generic [ref=e76]: ฿2900.00 (2)
+        - generic [ref=e77]:
+          - generic [ref=e78]: RECENT TRANSACTIONS
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]: Payment
+              - generic [ref=e83]: Masseuse
+              - generic [ref=e84]: Service
+              - generic [ref=e85]: Amount
+            - generic [ref=e86]:
+              - generic [ref=e87]: Cash
+              - generic [ref=e88]: นา
+              - generic [ref=e89]: Foot massage
+              - generic [ref=e90]: ฿450.00
+            - generic [ref=e91]:
+              - generic [ref=e92]: Cash
+              - generic [ref=e93]: Saw ซอ
+              - generic [ref=e94]: Back, Neck & shoulder
+              - generic [ref=e95]: ฿500.00
+            - generic [ref=e96]:
+              - generic [ref=e97]: Bank Transfer
+              - generic [ref=e98]: พี่วัน
+              - generic [ref=e99]: Foot massage
+              - generic [ref=e100]: ฿650.00
+            - generic [ref=e101]:
+              - generic [ref=e102]: Credit Card
+              - generic [ref=e103]: แพท
+              - generic [ref=e104]: Thai Massage
+              - generic [ref=e105]: ฿650.00
+            - generic [ref=e106]:
+              - generic [ref=e107]: Cash
+              - generic [ref=e108]: Phyo พิว
+              - generic [ref=e109]: Foot massage
+              - generic [ref=e110]: ฿450.00
+        - generic [ref=e111]:
+          - generic [ref=e112]: DAILY EXPENSES
+          - generic [ref=e113]:
+            - generic [ref=e115]: No expenses recorded today
+            - generic [ref=e117]:
+              - textbox "Expense description" [ref=e118]
+              - spinbutton [ref=e119]
+              - button "Add" [ref=e120] [cursor=pointer]
+  - button "👋 Logout" [ref=e122] [cursor=pointer]
+```
