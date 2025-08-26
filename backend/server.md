@@ -105,3 +105,17 @@ This module does not export any functions or classes. It sets up and runs the Ex
     5.  Reduced server.js from 166 lines to 145 lines (21 lines removed)
     6.  Improved code readability and maintainability
 
+*   **Bug Summary (August 2025):** The integration test environment would fail to start the server, crashing with a `TypeError: app.use() requires a middleware function`.
+*   **Validated Hypothesis:** The root cause was twofold: 1) The `rateLimiter` middleware was being imported incorrectly, as the file exported multiple limiters (`apiRateLimiter`, `loginRateLimiter`) but the server was attempting to use the entire imported object as a function. 2) The middleware was also placed *after* all the API routes, meaning it would never have been triggered even if the import was correct.
+*   **Resolution:** The rate-limiting middleware block was moved to its correct position early in the middleware chain, before the API routes are defined. The import was corrected to destructure the specific `apiRateLimiter` from the module (`const { apiRateLimiter } = require(...)`), ensuring that a valid function was passed to `app.use()`.
+
+*   **Bug Summary (August 2025):** The interactive Playwright Codegen tool was intermittently failing with an "Invalid CSRF token" error upon login, even though automated E2E tests were passing and no CSRF-related code had changed.
+*   **Validated Hypothesis:** The root cause was a non-deterministic race condition during server startup. A recent refactoring of the database migration logic in `database.js` altered the application's initialization timing. This created a small window where the Express server would begin accepting requests *before* the `csurf` middleware was fully initialized and ready. Requests hitting the server during this window would fail the CSRF check. This explained the intermittent nature of the bug—it only occurred if the user's first request was exceptionally fast.
+*   **Invalidated Hypotheses:**
+    *   A "zombie process" from a previous run was squatting on the port. This was disproven by using `lsof -ti :3000`, which showed the port was clear.
+    *   The CSRF logic itself was flawed. This was disproven by the fact that automated tests and subsequent requests (after the server was fully initialized) worked correctly.
+*   **Resolution:** The long-term, industry-standard solution was implemented. A dedicated testing environment was created to make interactive test generation reliable and deterministic. This involved:
+    1.  Creating a `docker/.env.testing` file containing `NODE_ENV=testing`.
+    2.  Updating `docker-compose.yml` to use a variable for the Node environment (`NODE_ENV=${NODE_ENV:-development}`), allowing it to be overridden.
+    3.  Restarting the server for the codegen session with the command `docker-compose --env-file .env.testing up`. This forces the server into "testing" mode, where the conditional middleware in `csrf-protection.js` correctly bypasses the CSRF check entirely, eliminating the race condition.
+

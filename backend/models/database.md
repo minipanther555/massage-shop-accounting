@@ -26,7 +26,7 @@ This module exports a single instance of the `Database` class.
 
 *   **`addMissingColumns()` method:**
     *   **Purpose:** To add new columns to existing tables without dropping them, allowing for schema evolution.
-    *   **Logic Notes:** It attempts to execute `ALTER TABLE ... ADD COLUMN` for a predefined list of columns. It wraps each attempt in a `try...catch` block to gracefully handle cases where the column already exists, preventing crashes on subsequent application starts. The `corrected_from_id` column was added to the `transactions` table using this method to support the auditable transaction edit feature.
+    *   **Logic Notes:** It iterates through a predefined list of columns for multiple tables. It wraps each `ALTER TABLE ... ADD COLUMN` attempt in a `try...catch` block. This makes the database initialization idempotent and resilient, as it gracefully handles cases where a column already exists by logging it and continuing, which prevents the server from crashing on startup if it's connected to an already-migrated database. Any error *other* than "duplicate column name" is considered fatal and is re-thrown to halt the server startup process.
 
 *   **`run(sql, params)` method:**
     *   **Purpose:** To execute SQL statements that do not return data (e.g., `INSERT`, `UPDATE`, `DELETE`).
@@ -72,4 +72,8 @@ This module exports a single instance of the `Database` class.
 *   **Bug Summary (August 2024):** The application server was crashing immediately on startup with a `SQLITE_ERROR: duplicate column name: corrected_from_id`.
 *   **Validated Hypothesis:** A hardcoded `ALTER TABLE transactions ADD COLUMN corrected_from_id` statement was mistakenly placed inside the main `initializeTables` loop instead of within the `addMissingColumns` function. Unlike the statements in `addMissingColumns`, this one was not wrapped in a `try...catch` block, causing a fatal error on any startup after the first one.
 *   **Resolution:** The erroneous `ALTER TABLE` statement was removed from the `initializeTables` loop. The existing, correct logic within the `addMissingColumns` function was already sufficient to add the column safely.
+
+*   **Bug Summary (August 2025):** The application server, when connected to a production database copy, would crash on startup with an unhandled `SQLITE_ERROR: duplicate column name: hire_date`.
+*   **Validated Hypothesis:** The error handling within the `addMissingColumns` function was inconsistent and brittle. While it attempted to catch "duplicate column" errors, the logic was flawed and did not prevent the error from being re-thrown by an outer `try...catch` block, which would then crash the server process. This prevented the local Docker-based development environment from starting.
+*   **Resolution:** The `addMissingColumns` function was refactored into a single, unified loop that iterates over a list of all required columns across all tables. The error handling was simplified and made robust: it now correctly logs and ignores "duplicate column name" errors while re-throwing any other unexpected, fatal errors. This makes the database initialization process fully idempotent and resilient.
 
