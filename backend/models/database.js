@@ -171,11 +171,11 @@ class Database {
   }
 
   async addMissingColumns() {
-    try {
-      console.log(' MDB_LOG: [Step 3] Checking and adding missing columns...');
+    console.log(' MDB_LOG: [Step 3] Checking and adding missing columns...');
 
-      // Add missing columns to staff table (payment tracking fields)
-      const staffColumns = [
+    const columnTasks = [
+      // Staff table columns
+      ...[
         { name: 'hire_date', definition: 'DATE' },
         { name: 'total_fees_earned', definition: 'DECIMAL(10,2) DEFAULT 0' },
         { name: 'total_fees_paid', definition: 'DECIMAL(10,2) DEFAULT 0' },
@@ -183,74 +183,42 @@ class Database {
         { name: 'last_payment_amount', definition: 'DECIMAL(10,2)' },
         { name: 'last_payment_type', definition: 'TEXT' },
         { name: 'notes', definition: 'TEXT' }
-      ];
+      ].map(c => ({ table: 'staff', ...c })),
 
-      // Add missing columns to transactions table
-      const transactionColumns = [
+      // Transactions table columns
+      ...[
         { name: 'location', definition: 'TEXT' },
         { name: 'duration', definition: 'INTEGER' },
         { name: 'corrected_from_id', definition: 'TEXT' }
-      ];
+      ].map(c => ({ table: 'transactions', ...c })),
 
-      // Add missing columns to archived_transactions table
-      const archivedTransactionColumns = [
+      // Archived transactions table columns
+      ...[
         { name: 'location', definition: 'TEXT' },
         { name: 'duration', definition: 'INTEGER' }
-      ];
+      ].map(c => ({ table: 'archived_transactions', ...c }))
+    ];
 
-      // Add payment tracking columns to staff table
-      for (const column of staffColumns) {
-        try {
-          console.log(` MDB_LOG: [Step 3a] Attempting to add column staff.${column.name}...`);
-          await this.run(`ALTER TABLE staff ADD COLUMN ${column.name} ${column.definition}`);
-          console.log(`✅ MDB_LOG: Successfully added column staff.${column.name}`);
-        } catch (error) {
-          if (error.message.includes('duplicate column name')) {
-            console.log(`- MDB_LOG: Column staff.${column.name} already exists, skipping.`);
-          } else {
-            console.error(`❌ MDB_LOG: FAILED to add column staff.${column.name}:`, error.message);
-            throw error; // Rethrow unexpected errors
-          }
+    for (const task of columnTasks) {
+      try {
+        console.log(` MDB_LOG: Checking/adding column ${task.table}.${task.name}...`);
+        await this.run(`ALTER TABLE ${task.table} ADD COLUMN ${task.name} ${task.definition}`);
+        console.log(`✅ MDB_LOG: Successfully added column ${task.table}.${task.name}`);
+      } catch (error) {
+        if (error && error.message.includes('duplicate column name')) {
+          console.log(`- MDB_LOG: Column ${task.table}.${task.name} already exists, skipping.`);
+        } else {
+          console.error(`❌ MDB_LOG: FATAL - Failed to add column ${task.table}.${task.name}:`, error);
+          throw error; // Rethrow unexpected and fatal errors
         }
       }
-
-      // Add missing columns to transactions table
-      for (const column of transactionColumns) {
-        try {
-          await this.run(`ALTER TABLE transactions ADD COLUMN ${column.name} ${column.definition}`);
-          console.log(`✅ Added column transactions.${column.name}`);
-        } catch (error) {
-          if (error.message.includes('duplicate column name')) {
-            console.log(`✅ Column transactions.${column.name} already exists`);
-          } else {
-            console.error(`❌ Failed to add column transactions.${column.name}:`, error.message);
-          }
-        }
-      }
-
-      // Add missing columns to archived_transactions table
-      for (const column of archivedTransactionColumns) {
-        try {
-          await this.run(`ALTER TABLE archived_transactions ADD COLUMN ${column.name} ${column.definition}`);
-          console.log(`✅ Added column archived_transactions.${column.name}`);
-        } catch (error) {
-          if (error.message.includes('duplicate column name')) {
-            console.log(`✅ Column archived_transactions.${column.name} already exists`);
-          } else {
-            console.error(`❌ Failed to add column archived_transactions.${column.name}:`, error.message);
-          }
-        }
-      }
-
-      // Update existing records with default values for staff table
-      await this.run('UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL');
-      await this.run('UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL');
-
-      console.log(' MDB_LOG: [Step 4] Missing columns check and update completed.');
-    } catch (error) {
-      console.error('❌ MDB_LOG: FATAL - Error adding missing columns:', error);
-      throw error; // Rethrow to stop server startup
     }
+
+    // Update existing records with default values for staff table
+    await this.run('UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL');
+    await this.run('UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL');
+
+    console.log(' MDB_LOG: [Step 4] Missing columns check and update completed.');
   }
 
   async insertDefaultData() {

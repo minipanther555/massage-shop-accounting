@@ -48,6 +48,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(securityHeaders);
 app.use(validateInput);
 
+// Apply rate limiting early in the middleware stack
+// Apply rate limiting only when NOT in the testing environment
+if (process.env.NODE_ENV !== 'testing') {
+  const { apiRateLimiter } = require('./middleware/rate-limiter');
+  app.use(apiRateLimiter);
+  console.log('🔒 Rate limiting ENABLED.');
+} else {
+  console.log('🔓 Rate limiting DISABLED for testing environment.');
+}
+
 // Apply CSRF protection globally.
 // Our conditional middleware in csrf-protection.js will handle the bypass for tests.
 app.use(csrfProtection);
@@ -84,14 +94,6 @@ app.use((err, req, res, next) => {
 // Serve the web-app directory as a static folder.
 // This must come BEFORE any of our API routes.
 app.use(express.static('web-app'));
-
-// Apply rate limiting only when NOT in the testing environment
-if (process.env.NODE_ENV !== 'testing') {
-  app.use(rateLimiter);
-  console.log('🔒 Rate limiting ENABLED.');
-} else {
-  console.log('🔓 Rate limiting DISABLED for testing environment.');
-}
 
 // --- DIAGNOSTIC LOGGING ---
 app.use('/api/admin', (req, res, next) => {
