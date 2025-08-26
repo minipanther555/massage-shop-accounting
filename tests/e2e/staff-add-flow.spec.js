@@ -16,10 +16,28 @@ test('test', async ({ page }) => {
   await expect(modalContainer).toHaveCSS('display', 'block');
 
   await page.getByRole('textbox', { name: 'Staff Name:' }).click();
-  await page.getByRole('textbox', { name: 'Staff Name:' }).fill('test');
+  const newStaffName = `test-${Date.now()}`;
+  await page.getByRole('textbox', { name: 'Staff Name:' }).fill(newStaffName);
   await page.getByRole('textbox', { name: 'Hire Date:' }).fill('2025-08-26');
   await page.getByRole('textbox', { name: 'Notes:' }).click();
-  await page.getByRole('textbox', { name: 'Notes:' }).click();
-  await page.getByRole('textbox', { name: 'Notes:' }).fill('test');
+  await page.getByRole('textbox', { name: 'Notes:' }).fill('test notes');
   await page.getByRole('button', { name: 'Save Staff Member' }).click();
+
+  // --- Verify it was created ---
+  await expect(modalContainer).not.toBeVisible();
+  await expect(page.getByText(newStaffName)).toBeVisible();
+
+  // --- Teardown: Clean up the created data ---
+  // Re-confirm the staff member is in the list and then delete them.
+  const newStaffRow = page.locator('.staff-grid', { hasText: newStaffName });
+  await expect(newStaffRow).toBeVisible();
+  
+  // Handle the confirmation dialog for deletion
+  page.on('dialog', dialog => dialog.accept());
+  
+  await newStaffRow.getByRole('button', { name: '❌' }).click();
+
+  // --- Verify it was deleted ---
+  // The row should no longer be visible on the page.
+  await expect(newStaffRow).not.toBeVisible();
 });

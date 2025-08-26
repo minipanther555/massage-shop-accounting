@@ -28,4 +28,28 @@ test('test', async ({ page }) => {
   const modalContainer = page.locator('#payment-type-modal');
   await expect(modalContainer).toHaveCSS('display', 'block');
   await expect(modalContainer).toHaveCSS('position', 'fixed');
+
+  // --- Create a new Payment Type ---
+  const newPaymentTypeName = `Test Payment ${Date.now()}`;
+  await page.getByRole('textbox', { name: /payment method name/i }).fill(newPaymentTypeName);
+  await page.getByRole('button', { name: 'Save Payment Type' }).click();
+
+  // --- Verify it was created ---
+  // The modal should close, and the new payment type should appear on the page.
+  await expect(modalContainer).not.toBeVisible();
+  await expect(page.getByRole('heading', { name: newPaymentTypeName })).toBeVisible();
+
+  // --- Teardown: Clean up the created data ---
+  // Find the new payment type card and click its deactivate button.
+  const newPaymentCard = page.locator('.payment-type-card', { hasText: newPaymentTypeName });
+  await newPaymentCard.getByRole('button', { name: 'Deactivate' }).click();
+
+  // Confirm the deletion in the confirmation modal.
+  const deleteModal = page.locator('#delete-modal');
+  await expect(deleteModal).toBeVisible();
+  await deleteModal.getByRole('button', { name: 'Deactivate' }).click();
+
+  // Verify the item is now marked as inactive.
+  await expect(deleteModal).not.toBeVisible();
+  await expect(newPaymentCard.getByText('Inactive')).toBeVisible();
 });
