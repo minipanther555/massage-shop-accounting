@@ -236,7 +236,7 @@
 
         function updateAllTransactions() {
             const container = document.getElementById('all-transactions');
-            const allTransactions = appData.transactions.slice().reverse(); // Show all, most recent first
+            const allTransactions = appData.transactions.slice(); // Show all, oldest first
 
             const header = container.querySelector('.transaction-item');
             container.innerHTML = '';
