@@ -122,6 +122,17 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ## Recent Bug Fixes and Improvements
 
+### ✅ Transaction Editing Styling Bug Resolution (August 27, 2025)
+**Issue**: When transactions were edited, the original transaction was not being displayed with proper styling (light red background, strikethrough text, "(EDITED)" badge) on the daily summary page, making it appear as if the edit never happened.
+**Root Cause**: The `/api/transactions/recent` endpoint was explicitly filtering out EDITED transactions with `WHERE status IN ('ACTIVE', 'CORRECTED')`, preventing them from reaching the frontend where styling would be applied.
+**Solution**: Modified the SQL query in `GET /api/transactions/recent` from `WHERE status IN ('ACTIVE', 'CORRECTED')` to `WHERE status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%'` to include EDITED transactions.
+**Technical Implementation**: 
+  - Updated `backend/routes/transactions.js` to include EDITED transactions in the recent transactions query
+  - Created comprehensive test suite (`tests/integration/transaction-status-integration.test.js`) to validate the fix
+  - Created visual verification test (`tests/diagnostics/verify-styling-works.spec.js`) to confirm end-to-end functionality
+  - Verified that EDITED transactions now appear with correct styling (edited-transaction class, edited-status-badge, disabled edit button)
+**Result**: Transaction editing now works correctly with proper visual styling on the daily summary page
+
 ### ✅ Critical 500 Internal Server Error Resolution (August 18, 2025)
 **Issue**: Frontend was getting 500 errors during transaction creation, completely blocking business operations
 **Root Cause**: Multiple interconnected issues including conflicting .env file locations, incorrect systemd WorkingDirectory, and Git tracking of configuration files

@@ -67,7 +67,7 @@ router.get('/recent', async (req, res) => {
 
     const transactions = await database.all(
       `SELECT * FROM transactions 
-       WHERE status IN ('ACTIVE', 'CORRECTED') 
+       WHERE status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%'
        ORDER BY timestamp DESC 
        LIMIT ?`,
       [parseInt(limit)]
@@ -180,6 +180,52 @@ router.post('/', async (req, res) => {
     console.error('--- [TX CREATE - CATASTROPHIC ERROR] ---');
     console.error(error);
     res.status(500).json({ error: 'Failed to create transaction' });
+  }
+});
+
+// Fix existing transactions that should be marked as EDITED
+router.post('/fix-edited-status', async (req, res) => {
+  try {
+    console.log('🔧 [TX FIX] === FIXING EDITED STATUS ===');
+    
+    // Find all transactions with corrected_from_id that are still ACTIVE
+    const transactionsToFix = await database.all(
+      `SELECT transaction_id, corrected_from_id FROM transactions 
+       WHERE corrected_from_id IS NOT NULL AND status = 'ACTIVE'`
+    );
+    
+    console.log('🔧 [TX FIX] Found transactions to fix:', transactionsToFix.length);
+    
+    let fixedCount = 0;
+    for (const tx of transactionsToFix) {
+      // Find the CORRECTED transaction that references this one
+      const correctedTx = await database.get(
+        'SELECT transaction_id FROM transactions WHERE corrected_from_id = ? AND status = "CORRECTED"',
+        [tx.transaction_id]
+      );
+      
+      if (correctedTx) {
+        console.log(`🔧 [TX FIX] Fixing transaction ${tx.transaction_id} -> EDITED (Corrected by ${correctedTx.transaction_id})`);
+        
+        await database.run(
+          'UPDATE transactions SET status = ? WHERE transaction_id = ?',
+          [`EDITED (Corrected by ${correctedTx.transaction_id})`, tx.transaction_id]
+        );
+        
+        fixedCount++;
+      }
+    }
+    
+    console.log(`🔧 [TX FIX] Fixed ${fixedCount} transactions`);
+    res.json({ 
+      message: `Fixed ${fixedCount} transactions`, 
+      fixedCount,
+      totalFound: transactionsToFix.length 
+    });
+    
+  } catch (error) {
+    console.error('❌ [TX FIX] ERROR OCCURRED:', error);
+    res.status(500).json({ error: 'Failed to fix edited status' });
   }
 });
 
