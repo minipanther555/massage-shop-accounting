@@ -824,11 +824,19 @@
                 
                 const div = document.createElement('div');
                 div.className = 'transaction-item';
+                
+                // Add EDITED styling logic (missing from original code)
+                if (transaction.status && transaction.status.includes('EDITED')) {
+                    div.classList.add('edited-transaction');
+                    console.log(`🔄 STEP 12: Applied edited-transaction class to transaction ${index + 1}`);
+                }
+                
                 div.innerHTML = `
                     <div>${transaction.paymentMethod}</div>
                     <div>${transaction.masseuse}</div>
                     <div>${transaction.service}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
+                    ${transaction.status && transaction.status.includes('EDITED') ? '<div class="edited-status-badge">(EDITED)</div>' : ''}
                 `;
                 container.appendChild(div);
                 console.log(`🔄 STEP 12: Transaction item ${index + 1} added to container`);
