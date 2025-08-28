@@ -15,8 +15,15 @@ A comprehensive bookkeeping and management system for a massage shop, designed t
 - **Technology Stack**: Node.js with Express.js
 - **Database**: SQLite with SQLite3 driver
 - **API Design**: RESTful endpoints with JSON responses
-- **Authentication**: JWT-based session management
+- **Authentication**: Cookie-based session management (see `authentication-system.md` for complete details)
 - **Data Validation**: Input sanitization and business rule enforcement
+
+### Authentication System ✅ COMPLETED
+- **Current Method**: Cookie-based sessions with HTTP-only cookies
+- **User Accounts**: Manager (`manager/manager456`) and Reception (`reception/reception123`)
+- **Security**: CSRF protection, rate limiting, secure cookie settings
+- **Documentation**: Complete authentication workflow in `authentication-system.md`
+- **Status**: Fully operational with automatic cookie handling
 
 ### Database Schema
 - **Staff Management**: Staff profiles, roles, and permissions

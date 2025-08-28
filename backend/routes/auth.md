@@ -63,5 +63,31 @@ This module exports an Express `router` object and the `sessions` Map.
         *   The `logout` endpoint clears the `sessionId` cookie.
 
 ## 4. Bug & Resolution History
-*   (This section will be populated as bugs are identified and resolved.)
+
+### **Authentication System Refactoring (2024-08-25)**
+- **Issue**: Documentation was confusing about current vs. deprecated authentication methods
+- **Resolution**: Created comprehensive authentication documentation in `00-project-docs/authentication-system.md`
+- **Current Status**: Cookie-based system fully operational with automatic cookie handling
+
+### **Testing Authentication (Current Methods)**
+```bash
+# Method 1: See cookie in response headers
+curl -v -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# Method 2: Save cookie to file and use it
+curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+curl -b cookies.txt -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-08-25"
+
+# Method 3: Automatic cookie handling (normal operation)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+curl -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-08-25"
+```
+
+**Complete Authentication Documentation**: See `00-project-docs/authentication-system.md`
 

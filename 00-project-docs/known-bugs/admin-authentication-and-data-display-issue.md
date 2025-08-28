@@ -130,17 +130,47 @@ CREATE TABLE IF NOT EXISTS staff_payments (
 
 ### Authentication Testing:
 ```bash
-# Manager login successful
+# Manager login successful (OLD METHOD - DEPRECATED)
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"manager","password":""}'
 # Result: {"success":true,"sessionId":"d3e24u7helqme47pgvv","user":{"id":2,"username":"manager","role":"manager"}}
 
-# Admin API access successful  
+# Admin API access successful (OLD METHOD - DEPRECATED)
 curl -X GET http://localhost:3000/api/admin/staff \
   -H "Authorization: Bearer d3e24u7helqme47pgvv"
 # Result: ✅ AUTH: User authenticated, ✅ AUTH: Role authorized: manager
+
+## 🚫 DEPRECATED AUTHENTICATION METHODS (DO NOT USE)
+
+**IMPORTANT**: The examples above show the OLD authentication system that has been replaced.
+
+### Current Working Authentication Method:
+**User Credentials**: 
+- Manager: `manager/manager456`
+- Reception: `reception/reception123`
+
+**Testing Methods**:
+```bash
+# Method 1: See cookie in response headers
+curl -v -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# Method 2: Save cookie to file and use it
+curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+curl -b cookies.txt -X GET "http://localhost:3000/api/admin/staff"
+
+# Method 3: Automatic cookie handling (normal operation)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+curl -X GET "http://localhost:3000/api/admin/staff"
 ```
+
+**Complete Documentation**: See `00-project-docs/authentication-system.md` for full details.
 
 ### Data Display Results:
 

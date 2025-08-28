@@ -1,0 +1,157 @@
+# Authentication System Documentation
+
+**Date**: 2024-08-25  
+**Status**: CURRENT - Single Source of Truth  
+**Purpose**: Complete authentication workflow and examples  
+
+## **🔐 CURRENT AUTHENTICATION SYSTEM (COOKIE-BASED)**
+
+This system uses **HTTP-only cookies** for session management. No manual session handling required.
+
+### **User Credentials**
+- **Manager**: `manager/manager456`
+- **Reception**: `reception/reception123`
+
+### **Authentication Endpoints**
+- **Login**: `POST /api/auth/login`
+- **Session Check**: `GET /api/auth/session`
+- **Logout**: `POST /api/auth/logout`
+
+---
+
+## **📋 THREE WAYS TO TEST AUTHENTICATION**
+
+### **Method 1: See Cookie in Response Headers (Verbose Mode)**
+```bash
+# See the actual sessionId cookie in the HTTP response headers
+curl -v -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# Response will show in headers:
+# < Set-Cookie: sessionId=crm5jzk0jepmeuqfqk8; Max-Age=7776000; Path=/; Expires=Wed, 26 Nov 2025 01:35:52 GMT; HttpOnly; SameSite=Strict
+```
+
+**What This Shows**: The actual `sessionId` value (`crm5jzk0jepmeuqfqk8`) in the HTTP response headers.
+
+### **Method 2: Save Cookie to File and Use It (For Debugging)**
+```bash
+# Save cookie to file and use it for authenticated request
+curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# Use the saved cookie for authenticated requests
+curl -b cookies.txt -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-08-25"
+```
+
+**What This Shows**: How to manually manage cookies for testing/debugging purposes.
+
+### **Method 3: Automatic Cookie Handling (Normal Operation)**
+```bash
+# Login (sets cookie automatically)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# Subsequent requests automatically include the cookie
+curl -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-08-25"
+```
+
+**What This Shows**: How the system normally works - no manual cookie management needed.
+
+---
+
+## **🔍 KEY POINTS TO REMEMBER**
+
+### **Where the Cookie Is (and Isn't)**
+- ✅ **Cookie IS in response headers**: `Set-Cookie: sessionId=...`
+- ❌ **Cookie is NOT in response body**: The JSON response doesn't contain sessionId
+- ✅ **Cookie is automatically handled**: Browsers and curl include it automatically
+
+### **Cookie Properties**
+- **Type**: `httpOnly` (not accessible via JavaScript)
+- **Security**: `SameSite=Strict` (CSRF protection)
+- **Duration**: 90 days (`Max-Age=7776000`)
+- **Path**: `/` (available across the entire domain)
+
+### **Authentication Flow**
+1. **Login**: `POST /api/auth/login` with credentials
+2. **Server Response**: Sets `sessionId` cookie in HTTP headers
+3. **Subsequent Requests**: Cookie automatically included
+4. **Session Validation**: Server reads `sessionId` from cookies
+5. **Access Control**: Based on user role and permissions
+
+---
+
+## **🚫 DEPRECATED METHODS (DO NOT USE)**
+
+### **Old Bearer Token System (OUTDATED)**
+```bash
+# ❌ THIS NO LONGER WORKS
+curl -H "Authorization: Bearer {sessionId}" http://localhost:3000/api/...
+```
+
+### **Old localStorage System (OUTDATED)**
+```javascript
+// ❌ THIS NO LONGER WORKS
+localStorage.setItem('sessionToken', response.sessionId);
+```
+
+### **Old sessionId in Response Body (OUTDATED)**
+```json
+// ❌ THIS NO LONGER HAPPENS
+{
+  "success": true,
+  "sessionId": "abc123",  // This field doesn't exist anymore
+  "user": {...}
+}
+```
+
+---
+
+## **🧪 TESTING AUTHENTICATION**
+
+### **Complete Test Workflow**
+```bash
+# 1. Login and see cookie in headers
+curl -v -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# 2. Test authenticated endpoint
+curl -X GET "http://localhost:3000/api/auth/session"
+
+# 3. Test protected API
+curl -X GET "http://localhost:3000/api/transactions/recent?limit=10"
+
+# 4. Logout
+curl -X POST http://localhost:3000/api/auth/logout
+```
+
+### **Troubleshooting**
+- **Rate Limiting**: Use `POST /api/auth/reset-rate-limit` to reset limits
+- **Cookie Issues**: Check if cookies are being set with `-v` flag
+- **Session Expired**: Re-login to get new session
+
+---
+
+## **📚 RELATED DOCUMENTATION**
+
+- **API Routes**: `backend/routes/auth.js`
+- **Middleware**: `backend/middleware/auth.js`
+- **Frontend**: `web-app/shared.js` (authentication utilities)
+- **Security**: `backend/middleware/csrf-protection.js`
+
+---
+
+## **🔄 CHANGELOG**
+
+- **2024-08-25**: Created comprehensive authentication documentation
+- **2024-08-25**: Documented current cookie-based system
+- **2024-08-25**: Marked old bearer token system as deprecated
+- **2024-08-25**: Added three testing methods with examples
+
+---
+
+**Status**: ✅ COMPLETE - Single source of truth for authentication

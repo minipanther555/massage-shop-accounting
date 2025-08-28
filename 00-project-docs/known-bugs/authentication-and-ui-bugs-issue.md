@@ -29,6 +29,43 @@ After successful implementation of authentication system, several UI display and
    - ✅ Page protection working - redirects to login when not authenticated
    - ✅ Role-based access control foundation implemented
 
+## 🚫 DEPRECATED AUTHENTICATION METHODS (DO NOT USE)
+
+**IMPORTANT**: The information above describes the OLD authentication system that has been replaced.
+
+### What Changed:
+- **Old System**: Bearer token authentication with `Authorization: Bearer {sessionId}` headers
+- **New System**: Cookie-based sessions with HTTP-only cookies
+- **Old Response**: Included `sessionId` in JSON response body
+- **New Response**: Sets `sessionId` cookie in HTTP headers (`Set-Cookie`)
+
+### Current Working Authentication Method:
+**User Credentials**: 
+- Manager: `manager/manager456`
+- Reception: `reception/reception123`
+
+**Testing Methods**:
+```bash
+# Method 1: See cookie in response headers
+curl -v -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+
+# Method 2: Save cookie to file and use it
+curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+curl -b cookies.txt -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-08-25"
+
+# Method 3: Automatic cookie handling (normal operation)
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manager","password":"manager456"}'
+curl -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-08-25"
+```
+
+**Complete Documentation**: See `00-project-docs/authentication-system.md` for full details.
+
 ## Current UI Display Issues 🔄 IN PROGRESS
 
 ### Issue 1: Staff Roster Card Height Problem

@@ -78,6 +78,15 @@
 *   **Resolution:** Fixed the SQL query by adding parentheses: `WHERE (status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%') AND date = ?` to ensure the date filter applies to all status conditions.
 *   **Status:** ✅ **RESOLVED** - Date filtering now works correctly, returning only today's transactions from the `/recent` endpoint.
 
+*   **Bug Summary (August 2025):** Transaction editing styling is not working on the new transaction page, while it works correctly on the daily summary page. EDITED transactions should appear with red highlight and strikethrough styling, but they appear unstyled on the new transaction page.
+*   **Validated Hypothesis:** The backend transaction editing logic is working correctly - it properly sets `EDITED` status on original transactions and `CORRECTED` status on new transactions. The issue is in the frontend styling logic, not the backend.
+*   **Invalidated Hypotheses:**
+    *   The issue was NOT in the backend transaction editing logic - statuses are set correctly
+    *   The issue was NOT in the API endpoints - both `/transactions` and `/transactions/recent` return correct data
+    *   The issue was NOT in the database - transaction statuses are stored correctly
+*   **Root Cause:** Frontend styling logic is missing or different between the daily summary page (where styling works) and the new transaction page (where styling doesn't work).
+*   **Status:** 🔄 **IN PROGRESS** - Backend confirmed working, frontend styling issue needs investigation.
+
 *   **Bug Summary (August 2024):** The integration test for the transaction edit feature was failing. It successfully created two transactions but the subsequent `GET /api/transactions` call returned an empty array, causing the test's verification step to fail.
 *   **Validated Hypothesis:** The logic for building the pagination `COUNT` query in the `GET /` handler was flawed. When no filters were applied (like `status=all`), the `if (conditions.length > 0)` block was skipped, and the `countParams` array was not correctly populated, leading to an incorrect total count and a failure to retrieve the correct set of transactions.
 *   **Invalidated Hypotheses:**
