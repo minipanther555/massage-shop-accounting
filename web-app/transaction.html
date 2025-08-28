@@ -788,8 +788,9 @@
             }
             console.log('🔄 STEP 12: Found recent-transactions container');
             
-            console.log('🔄 STEP 12: Calling getRecentTransactions(5)...');
-            const recentTransactions = getRecentTransactions(5);
+            console.log('🔄 STEP 12: Calling getRecentTransactions(5) with date filter...');
+            const today = new Date().toISOString().split('T')[0];
+            const recentTransactions = getRecentTransactions(5, today);
             console.log('🔄 STEP 12: getRecentTransactions(5) returned:', recentTransactions);
             console.log('🔄 STEP 12: getRecentTransactions(5) length:', recentTransactions?.length);
 

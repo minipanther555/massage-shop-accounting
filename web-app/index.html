@@ -145,7 +145,8 @@
 
         function updateRecentActivity() {
             const container = document.getElementById('recent-activity');
-            const recentTransactions = getRecentTransactions(5);
+            const today = new Date().toISOString().split('T')[0];
+            const recentTransactions = getRecentTransactions(5, today);
             const recentExpenses = appData.expenses.slice(-3).reverse();
             
             const allActivity = [

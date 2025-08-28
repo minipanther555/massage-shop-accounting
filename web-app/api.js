@@ -52,8 +52,9 @@ class APIClient {
     return this.request(`/transactions${query ? `?${query}` : ''}`);
   }
 
-  async getRecentTransactions(limit = 5) {
-    return this.request(`/transactions/recent?limit=${limit}`);
+  async getRecentTransactions(limit = 5, date = null) {
+    const query = date ? `?limit=${limit}&date=${date}` : `?limit=${limit}`;
+    return this.request(`/transactions/recent${query}`);
   }
   
   async createTransaction(transactionData) {

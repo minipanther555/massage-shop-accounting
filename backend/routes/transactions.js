@@ -63,15 +63,40 @@ router.get('/', async (req, res) => {
 // Get recent transactions (for dashboard)
 router.get('/recent', async (req, res) => {
   try {
-    const { limit = 5 } = req.query;
+    const { limit = 5, date } = req.query;
+    console.log('🔍 [RECENT] Query params:', { limit, date });
 
-    const transactions = await database.all(
-      `SELECT * FROM transactions 
-       WHERE status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%'
-       ORDER BY timestamp DESC 
-       LIMIT ?`,
-      [parseInt(limit)]
-    );
+    let sql = `SELECT * FROM transactions 
+               WHERE (status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%')`;
+    const params = [];
+
+    if (date) {
+      sql += ` AND date = ?`;
+      params.push(date);
+      console.log('🔍 [RECENT] Added date filter for:', date);
+    }
+
+    sql += ` ORDER BY timestamp ASC LIMIT ?`;
+    params.push(parseInt(limit));
+
+    console.log('🔍 [RECENT] Final SQL (raw):', JSON.stringify(sql));
+    console.log('🔍 [RECENT] Final params:', params);
+
+    console.log('🔍 [RECENT] Executing SQL with params:', { sql, params });
+    const transactions = await database.all(sql, params);
+    console.log('🔍 [RECENT] Query returned', transactions.length, 'transactions');
+    
+    // Log first few results to debug
+    if (transactions.length > 0) {
+      console.log('🔍 [RECENT] First 3 results:');
+      transactions.slice(0, 3).forEach((t, i) => {
+        console.log(`🔍 [RECENT] Result ${i + 1}:`, {
+          id: t.transaction_id,
+          date: t.date,
+          status: t.status
+        });
+      });
+    }
 
     res.json(transactions);
   } catch (error) {

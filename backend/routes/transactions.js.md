@@ -67,6 +67,17 @@
 *   **Resolution:** Modified the SQL query from `WHERE status IN ('ACTIVE', 'CORRECTED')` to `WHERE status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%'` to include EDITED transactions.
 *   **Status:** ✅ **RESOLVED** - EDITED transactions are now returned by the API and properly styled on the frontend.
 
+*   **Bug Summary (August 2025):** The `/recent` endpoint was not properly filtering transactions by date, causing the daily summary page to show transactions from multiple days instead of just today's transactions. Additionally, the new transaction page was showing different data than the daily summary page due to inconsistent API calls.
+*   **Validated Hypothesis:** The SQL query construction in the `GET /recent` endpoint had a critical syntax error. The query was written as `WHERE status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%' AND date = ?` which, due to missing parentheses, caused the `AND date = ?` condition to only apply to the last status condition, not to all of them. This meant that `ACTIVE` and `CORRECTED` transactions were returned regardless of date, bypassing the date filter entirely.
+*   **Invalidated Hypotheses:**
+    *   The issue was NOT in the database schema - the `date` field was properly defined as `DATE NOT NULL`
+    *   The issue was NOT in the data types - all dates were stored as strings in consistent format
+    *   The issue was NOT in the parameter passing - the date parameter was correctly received and passed to the SQL query
+    *   The issue was NOT in the frontend API calls - the frontend was correctly passing the date parameter
+*   **Root Cause:** Missing parentheses in the SQL WHERE clause caused the date filter to only apply to `EDITED%` transactions, not to `ACTIVE` and `CORRECTED` transactions.
+*   **Resolution:** Fixed the SQL query by adding parentheses: `WHERE (status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%') AND date = ?` to ensure the date filter applies to all status conditions.
+*   **Status:** ✅ **RESOLVED** - Date filtering now works correctly, returning only today's transactions from the `/recent` endpoint.
+
 *   **Bug Summary (August 2024):** The integration test for the transaction edit feature was failing. It successfully created two transactions but the subsequent `GET /api/transactions` call returned an empty array, causing the test's verification step to fail.
 *   **Validated Hypothesis:** The logic for building the pagination `COUNT` query in the `GET /` handler was flawed. When no filters were applied (like `status=all`), the `if (conditions.length > 0)` block was skipped, and the `countParams` array was not correctly populated, leading to an incorrect total count and a failure to retrieve the correct set of transactions.
 *   **Invalidated Hypotheses:**

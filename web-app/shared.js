@@ -90,9 +90,10 @@ async function loadTodayData() {
   loadTodayDataCounter++;
   console.log(`[SHARED] ${new Date().toISOString()} - loadTodayData START (Call #${loadTodayDataCounter})`);
   try {
+    const today = new Date().toISOString().split('T')[0];
     const [recentTransactions, expenses] = await Promise.all([
-      api.getRecentTransactions(50), // Get more for today's view
-      api.getExpenses(new Date().toISOString().split('T')[0])
+      api.getRecentTransactions(50, today), // Get today's transactions only
+      api.getExpenses(today)
     ]);
 
     appData.transactions = recentTransactions.map((t) => ({
