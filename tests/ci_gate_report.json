@@ -1,0 +1,101 @@
+{
+  "ci_gates": {
+    "checkForEdit_regression_test": {
+      "file_path": "tests/unit/checkForEdit.regression.test.js",
+      "test_count": 9,
+      "required_status": "PASS",
+      "max_flake_rate": "0%",
+      "max_retries": 1,
+      "critical_path": true,
+      "description": "Ensures the global state bug fix remains working",
+      "current_status": "PASS",
+      "last_run": "2024-12-19"
+    },
+    "checkForEdit_side_effects_test": {
+      "file_path": "tests/unit/checkForEdit.side_effects.test.js",
+      "test_count": 8,
+      "required_status": "PASS",
+      "max_flake_rate": "0%",
+      "max_retries": 1,
+      "critical_path": true,
+      "description": "Ensures the fix doesn't introduce side effects",
+      "current_status": "PASS",
+      "last_run": "2024-12-19"
+    },
+    "checkForEdit_edge_cases_test": {
+      "file_path": "tests/unit/checkForEdit.edge_cases.test.js",
+      "test_count": 16,
+      "required_status": "PASS",
+      "max_flake_rate": "1%",
+      "max_retries": 1,
+      "critical_path": false,
+      "description": "Ensures edge cases are handled correctly",
+      "current_status": "PASS",
+      "last_run": "2024-12-19"
+    }
+  },
+  "quality_standards": {
+    "overall_flake_rate": "<1%",
+    "max_retries_per_test": 1,
+    "critical_tests_must_pass": true,
+    "regression_prevention": "MANDATORY",
+    "side_effect_guards": "MANDATORY",
+    "edge_case_coverage": "RECOMMENDED"
+  },
+  "test_categories": {
+    "regression_tests": {
+      "purpose": "Prevent the original bug from reoccurring",
+      "files": [
+        "tests/unit/checkForEdit.regression.test.js"
+      ],
+      "execution_frequency": "every_commit",
+      "failure_action": "block_merge"
+    },
+    "side_effect_guards": {
+      "purpose": "Ensure fixes don't break existing functionality",
+      "files": [
+        "tests/unit/checkForEdit.side_effects.test.js"
+      ],
+      "execution_frequency": "every_commit",
+      "failure_action": "block_merge"
+    },
+    "edge_case_tests": {
+      "purpose": "Handle boundary conditions and prevent future bugs",
+      "files": [
+        "tests/unit/checkForEdit.edge_cases.test.js"
+      ],
+      "execution_frequency": "every_commit",
+      "failure_action": "warn_but_allow"
+    }
+  },
+  "ci_pipeline": {
+    "pre_commit": [
+      "npm run test:unit -- --testPathPattern=checkForEdit"
+    ],
+    "pull_request": [
+      "npm run test:unit -- --testPathPattern=checkForEdit",
+      "npm run test:integration -- --testPathPattern=transaction"
+    ],
+    "main_branch": [
+      "npm run test:unit -- --testPathPattern=checkForEdit",
+      "npm run test:integration -- --testPathPattern=transaction",
+      "npm run test:e2e -- --testPathPattern=edit_transaction"
+    ]
+  },
+  "monitoring": {
+    "flakiness_tracking": true,
+    "performance_baselines": true,
+    "regression_detection": true,
+    "alert_thresholds": {
+      "flake_rate": ">1%",
+      "test_failures": ">0",
+      "performance_degradation": ">10%"
+    }
+  },
+  "documentation": {
+    "bug_history": "checkForEdit function was missing global state management",
+    "fix_applied": "Added appData.correctionMode and appData.originalTransactionId setting",
+    "regression_prevention": "Comprehensive test suite prevents bug reoccurrence",
+    "maintenance_notes": "Tests must pass before any changes to checkForEdit function"
+  }
+}

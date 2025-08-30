@@ -3,6 +3,12 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 
+// Helper function to parse time string to minutes since midnight
+function parseTimeToMinutes(timeStr) {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
 // Helper function to reset expired busy statuses
 async function resetExpiredBusyStatuses() {
   try {
@@ -54,9 +60,11 @@ async function resetExpiredBusyStatuses() {
             }
           }
 
-          // Compare times
-          const isExpired = normalizedBusyTime < currentTime;
-          console.log(`⏰ Time comparison: ${normalizedBusyTime} < ${currentTime} = ${isExpired}`);
+          // Compare times - FIXED: Use numeric comparison instead of string comparison
+          const busyMinutes = parseTimeToMinutes(normalizedBusyTime);
+          const currentMinutes = parseTimeToMinutes(currentTime);
+          const isExpired = busyMinutes <= currentMinutes;
+          console.log(`⏰ Time comparison: ${normalizedBusyTime} (${busyMinutes} min) <= ${currentTime} (${currentMinutes} min) = ${isExpired}`);
 
           if (isExpired) {
             console.log(`🔄 Resetting expired status for ${staff.masseuse_name || 'unnamed staff'}`);

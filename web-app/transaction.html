@@ -232,8 +232,22 @@
             
             // Event listeners will be added in populateDropdowns function after elements are populated
             
+            // Auto-refresh displays and roster every 30 seconds to clear expired busy statuses
             setInterval(async () => {
                 await updateAllDisplays();
+                // Refresh roster to trigger expired busy status clearing
+                try {
+                    const roster = await api.getStaffRoster();
+                    appData.roster = roster.map((r) => ({
+                        name: r.masseuse_name,
+                        status: r.status,
+                        position: r.position,
+                        today_massages: r.today_massages || 0
+                    }));
+                    console.log('🔄 Auto-refreshed roster, cleared expired busy statuses');
+                } catch (error) {
+                    console.error('❌ Error auto-refreshing roster:', error);
+                }
             }, 30000);
         });
 

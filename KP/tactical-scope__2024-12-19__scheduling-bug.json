@@ -1,0 +1,51 @@
+{
+  "tactical_scope": {
+    "datetime": "2024-12-19",
+    "trace_id": "scheduling-bug",
+    "immediate_objective": "Investigate and fix the scheduling bug where staff busy status is not being cleared after service end time passes",
+    "next_5_steps": [
+      "Frontend Logic Trace - Start with edit button click, trace through all frontend data transformations",
+      "State Management Analysis - Examine busy status in global state",
+      "API Endpoint Investigation - Check backend staff status management",
+      "Time-Based Logic Review - Examine service end time calculations",
+      "Bug Reproduction & Fix - Create MRE and implement solution"
+    ],
+    "tactical_files": {
+      "source_files": [
+        "web-app/transaction.html",
+        "web-app/shared.js",
+        "backend/routes/staff.js",
+        "backend/models/database.js"
+      ],
+      "co_located_docs": [
+        "web-app/transaction.html.md",
+        "web-app/shared.js.md"
+      ],
+      "missing_co_located_docs": [
+        "backend/routes/staff.js.md",
+        "backend/models/database.js.md"
+      ]
+    },
+    "one_hop_dependencies": {
+      "imports": [
+        "web-app/api.js",
+        "backend/middleware/",
+        "backend/config/"
+      ],
+      "callers": [
+        "web-app/index.html",
+        "web-app/summary.html"
+      ],
+      "callees": [
+        "backend/routes/transactions.js",
+        "backend/routes/services.js"
+      ]
+    },
+    "docker_environment": {
+      "docker_compose": "docker/docker-compose.yml",
+      "dockerfile": "docker/Dockerfile",
+      "data_volume": "docker/data/",
+      "port_mapping": "3000:3000"
+    }
+  }
+}

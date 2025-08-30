@@ -1,0 +1,48 @@
+{
+  "docker_files": [
+    {
+      "path": "docker/.env.testing",
+      "sha256": "7473ee995876223a56320bf8f8e5783d255bc7d3c4cc43d0f918fb5d82925841",
+      "bytes": 0
+    },
+    {
+      "path": "docker/Dockerfile.md",
+      "sha256": "cf08135ddc6b3291e04dbaee51bd8bd26788526332e68f3f66489bfa8bd52ba7",
+      "bytes": 0
+    },
+    {
+      "path": "docker/docker-compose.yml.md",
+      "sha256": "4a99bc7c290834eebb4d1e1a30c1da24c7bf7d6eb48b6b5909540da2fa80bc80",
+      "bytes": 0
+    },
+    {
+      "path": "docker/Dockerfile",
+      "sha256": "62e11ee7acc5bc57fbed3188c030756b861a887c296bd8ea67ecca5564cbe619",
+      "bytes": 0
+    },
+    {
+      "path": "docker/docker-compose.yml",
+      "sha256": "112df1b5b4c4294d6db0929161bd5727383797eb3eefa2b1b63af9f80ee0e8c9",
+      "bytes": 0
+    },
+    {
+      "path": "docker/data/massage_shop.db",
+      "sha256": "966ecaccf67319db3b04ea0e1ab10e1cd8a0a7d17f308b942920d576e3201995",
+      "bytes": 0
+    },
+    {
+      "path": "docker/nohup.out",
+      "sha256": "d2a649abb2135922bc13c113ce1a3c532ba5286ab7e046d97c81b34348bcb92d",
+      "bytes": 0
+    }
+  ],
+  "generated": "2024-12-19",
+  "trace_id": "checkForEdit-bug-fix",
+  "total_files": 7,
+  "critical_files": [
+    "docker/Dockerfile",
+    "docker/docker-compose.yml",
+    "docker/docker-compose.yml.md",
+    "docker/Dockerfile.md"
+  ]
+}

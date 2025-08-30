@@ -122,6 +122,17 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ## Recent Bug Fixes and Improvements
 
+### ✅ checkForEdit Global State Bug Resolution (December 19, 2024)
+**Issue**: When editing transactions, the edited transaction's status remained "ACTIVE" instead of becoming "EDITED", causing incorrect transaction tracking and status display.
+**Root Cause**: The `checkForEdit()` function in `web-app/transaction.html` was failing to set critical global state variables (`appData.correctionMode` and `appData.originalTransactionId`) that the `submitTransaction()` function relies on to identify corrections.
+**Solution**: Added the missing global state management logic to the `checkForEdit()` function to properly track correction mode and original transaction ID.
+**Technical Implementation**: 
+  - Updated `web-app/transaction.html` to set `appData.correctionMode = true` and `appData.originalTransactionId = transaction.id`
+  - Fixed DOM manipulation order for transaction styling to prevent CSS class application issues
+  - Created comprehensive test suite including regression tests, side-effect guards, and edge-case handling
+  - Established CI gates and quality controls to prevent future regressions
+**Result**: Edited transactions now properly show as "EDITED" status and are correctly tracked as corrections in the backend
+
 ### ✅ Transaction Editing Styling Bug Resolution (August 27, 2025)
 **Issue**: When transactions were edited, the original transaction was not being displayed with proper styling (light red background, strikethrough text, "(EDITED)" badge) on the daily summary page, making it appear as if the edit never happened.
 **Root Cause**: The `/api/transactions/recent` endpoint was explicitly filtering out EDITED transactions with `WHERE status IN ('ACTIVE', 'CORRECTED')`, preventing them from reaching the frontend where styling would be applied.
@@ -158,14 +169,25 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ## Next Steps
 
-### Immediate Priorities (August 18, 2025)
-1. **🔴 CRITICAL: Database Architecture Restructuring** - Staff administration page broken due to wrong table structure
-   - **Priority**: CRITICAL - Required to fix staff administration page
+### Immediate Priorities (December 19, 2024)
+1. **🔴 CRITICAL: Scheduling Bug Investigation** - Staff busy status not being cleared after service end time passes
+   - **Priority**: CRITICAL - Critical for staff scheduling and customer service
+   - **Impact**: Staff appear unavailable when they should be free, blocking new appointments
+   - **Required**: End-to-end logic trace to identify where busy status clearing logic fails
+   - **Status**: 🔴 **NEXT** - Ready to begin investigation following frontend-first approach
+   - **Next Steps**: 
+     - Trace edit button click through frontend logic
+     - Check all data transformation points
+     - Identify where busy status clearing fails
+     - Implement fix with comprehensive testing
+
+2. **🔴 CRITICAL: Database Architecture Restructuring** - Staff administration page broken due to wrong table structure
+   - **Priority**: HIGH - Required to fix staff administration page
    - **Impact**: Staff administration page completely broken until fixed
    - **Required**: Database schema migration and API endpoint updates
-   - **Status**: 🔴 **IN PROGRESS** - Database schema restructuring required
+   - **Status**: 🔴 **PENDING** - After scheduling bug is resolved
 
-2. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
+3. **Fix 'Busy Until' Time Reset Issue** - Staff status shows "busy" perpetually even after time passes
    - **Priority**: HIGH - Critical for staff scheduling and customer service
    - **Impact**: Staff appear unavailable when they should be free
    - **Required**: Implement automatic status reset mechanism for expired busy times

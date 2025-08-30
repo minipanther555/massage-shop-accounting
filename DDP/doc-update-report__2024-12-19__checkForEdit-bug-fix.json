@@ -1,0 +1,53 @@
+{
+  "files_changed": 5,
+  "docs_updated": 3,
+  "docs_missing": 0,
+  "docs_created": 2,
+  "coverage": [
+    {
+      "path": "web-app/transaction.html",
+      "doc": "web-app/transaction.html.md",
+      "updated": true,
+      "changes": [
+        "Updated Bug & Resolution History section",
+        "Updated Module API & Logic Breakdown for checkForEdit function",
+        "Added comprehensive bug documentation with root cause analysis"
+      ]
+    },
+    {
+      "path": "tests/ci_gate_report.json",
+      "doc": "tests/ci_gate_report.json.md",
+      "updated": false,
+      "reason": "Configuration file, no co-located doc required"
+    },
+    {
+      "path": "tests/unit/checkForEdit.edge_cases.test.js",
+      "doc": "tests/unit/checkForEdit.edge_cases.test.js.md",
+      "updated": false,
+      "reason": "Test file, no co-located doc required"
+    },
+    {
+      "path": "tests/unit/checkForEdit.regression.test.js",
+      "doc": "tests/unit/checkForEdit.regression.test.js.md",
+      "updated": false,
+      "reason": "Test file, no co-located doc required"
+    },
+    {
+      "path": "tests/unit/checkForEdit.side_effects.test.js",
+      "doc": "tests/unit/checkForEdit.side_effects.test.js.md",
+      "updated": false,
+      "reason": "Test file, no co-located doc required"
+    }
+  ],
+  "project_docs_updated": [
+    "00-project-docs/steps/current-status-summary.md"
+  ],
+  "docker_docs_created": [
+    "DDP/docker-execution-model__2024-12-19__checkForEdit-bug-fix.md",
+    "DDP/docker-hashlist__2024-12-19__checkForEdit-bug-fix.json"
+  ],
+  "session_summary": "Successfully completed Doc Delta Protocol for checkForEdit bug fix session. All modified source files have updated co-located documentation, Docker canonicals have been created, and project documentation has been updated to reflect the completed work and next priorities.",
+  "next_bug_target": "Scheduling bug: masseuse busy status not being cleared after service end time passes",
+  "generated": "2024-12-19",
+  "trace_id": "checkForEdit-bug-fix"
+}

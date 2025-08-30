@@ -44,7 +44,7 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
 *   **Correction Logic (`loadCorrection()`, `checkForEdit()`):**
     *   **Purpose:** To handle the editing/correction of a transaction.
-    *   **Logic:** The `checkForEdit` function checks `sessionStorage` for a transaction to be edited (placed there by another page). The `loadCorrection` button fetches the most recent transaction via the API. Both will pre-populate the form with the details of an existing transaction and set a hidden input field (`original-transaction-id`) to link the new, corrected transaction to the old one.
+    *   **Logic:** The `checkForEdit` function checks `sessionStorage` for a transaction to be edited (placed there by another page). It pre-populates the form with the transaction details, sets critical global state variables (`appData.correctionMode` and `appData.originalTransactionId`), and sets a hidden input field (`original-transaction-id`) to link the new, corrected transaction to the old one. The `loadCorrection` button fetches the most recent transaction via the API. Both functions ensure that corrections are properly tracked in the global state for downstream processing.
 
 ## 3. Dependency Mapping
 
@@ -76,4 +76,23 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
 ## 4. Bug & Resolution History
 
-*   *(This is the first documentation for this file, so the history is blank.)*
+### Bug #1: checkForEdit Global State Management (2024-12-19)
+**Bug Summary:** The `checkForEdit()` function was failing to set global state variables `appData.correctionMode` and `appData.originalTransactionId` when editing transactions, causing edited transactions to remain with "ACTIVE" status instead of becoming "EDITED".
+
+**Validated Hypothesis:** The `checkForEdit()` function was missing implementation to set critical global state variables that the `submitTransaction()` function relies on to identify corrections.
+
+**Invalidated Hypotheses:**
+- The bug was in the backend API logic
+- The issue was with the database schema
+- The problem was in the transaction submission flow
+
+**Resolution:** Added the missing global state management logic to the `checkForEdit()` function:
+```javascript
+// Set global state for correction mode
+appData.correctionMode = true;
+appData.originalTransactionId = transaction.id;
+```
+
+**Impact:** Edited transactions now properly show as "EDITED" status and are correctly tracked as corrections in the backend.
+
+**Testing:** Comprehensive test suite created including regression tests, side-effect guards, and edge-case handling to prevent future regressions.

@@ -1,0 +1,67 @@
+{
+  "docker_hashlist": {
+    "datetime": "2024-12-19",
+    "trace_id": "scheduling-bug",
+    "docker_files": {
+      "docker_compose_yml": {
+        "path": "docker/docker-compose.yml",
+        "purpose": "Service orchestration and volume mounting",
+        "critical_features": [
+          "Port mapping 3000:3000",
+          "Source code live reloading",
+          "Database persistence",
+          "Anonymous volume for node_modules"
+        ]
+      },
+      "dockerfile": {
+        "path": "docker/Dockerfile",
+        "purpose": "Container image definition",
+        "critical_features": [
+          "Node.js 18.20.8-slim base",
+          "SQLite3 command-line tools",
+          "Working directory /usr/src/app",
+          "CMD node backend/server.js"
+        ]
+      },
+      "data_directory": {
+        "path": "docker/data/",
+        "purpose": "Database persistence volume",
+        "contents": [
+          "massage_shop.db (SQLite database)",
+          "Persistent across container restarts"
+        ]
+      }
+    },
+    "environment_variables": {
+      "DATABASE_PATH": "/usr/src/app/data/massage_shop.db",
+      "NODE_ENV": "development",
+      "PORT": "3000"
+    },
+    "volume_mounts": {
+      "source_code": {
+        "backend": "../backend:/usr/src/app/backend",
+        "web_app": "../web-app:/usr/src/app/web-app",
+        "data": "./data:/usr/src/app/data",
+        "node_modules": "/usr/src/app/backend/node_modules (anonymous)"
+      }
+    },
+    "network_config": {
+      "host_port": "3000",
+      "container_port": "3000",
+      "protocol": "HTTP",
+      "access_url": "http://localhost:3000"
+    },
+    "dependencies": {
+      "base_image": "node:18.20.8-slim",
+      "system_packages": ["sqlite3"],
+      "node_packages": "Installed via npm install in container"
+    },
+    "operational_commands": {
+      "start": "docker-compose up --build",
+      "stop": "docker-compose down",
+      "logs": "docker-compose logs -f app",
+      "shell": "docker-compose exec app sh",
+      "database": "docker-compose exec app sqlite3 /usr/src/app/data/massage_shop.db"
+    }
+  }
+}
