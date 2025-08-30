@@ -1,5 +1,30 @@
 /* Shared CSS for Massage Shop POS */
 
+/* Bilingual Navigation Labels (EN + TH) */
+.label-en { 
+    display: block; 
+    font-size: 16px; 
+    font-weight: 600; 
+    line-height: 1.15; 
+}
+
+.label-th { 
+    display: block; 
+    font-size: 14px; 
+    margin-top: 2px; 
+    line-height: 1.15; 
+}
+
+/* Buttons comfortable for two lines */
+.nav-btn { 
+    min-height: 80px; /* was 60px; grid auto-fit absorbs this */
+}
+
+/* Thai-capable font stack (non-breaking) */
+html, body, .nav-btn {
+    font-family: 'Noto Sans Thai', 'Sarabun', system-ui, -apple-system, Arial, sans-serif;
+}
+
 /* Mobile-first responsive design */
 * {
     margin: 0;
@@ -52,7 +77,7 @@ body {
     text-decoration: none;
     text-align: center;
     transition: all 0.2s ease;
-    min-height: 60px;
+    min-height: 80px; /* Updated for bilingual labels */
     display: flex;
     align-items: center;
     justify-content: center;

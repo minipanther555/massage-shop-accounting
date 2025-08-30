@@ -16,11 +16,23 @@
             MASSAGE SHOP POS SYSTEM
         </div>
 
-        <div class="nav-buttons">
-            <a href="index.html" class="nav-btn home active">🏠 Home</a>
-            <a href="/api/main/staff-roster" class="nav-btn staff">👥 Staff Roster</a>
-            <a href="/api/main/transaction" class="nav-btn transaction">💳 New Transaction</a>
-            <a href="/api/main/summary" class="nav-btn summary">📊 Daily Summary</a>
+                    <div class="nav-buttons">
+                <a href="index.html" class="nav-btn home active">
+                    <span class="label-en">🏠 Home</span>
+                    <span class="label-th">🏠 หน้าแรก</span>
+                </a>
+                <a href="/api/main/staff-roster" class="nav-btn staff">
+                    <span class="label-en">👥 Daily Staff</span>
+                    <span class="label-th">👥 พนักงานประจำวัน</span>
+                </a>
+                <a href="/api/main/transaction" class="nav-btn transaction">
+                    <span class="label-en">💳 New Transaction</span>
+                    <span class="label-th">💳 ธุรกรรมใหม่</span>
+                </a>
+                <a href="/api/main/summary" class="nav-btn summary">
+                    <span class="label-en">📊 Daily Summary</span>
+                    <span class="label-th">📊 สรุปรายวัน</span>
+                </a>
             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                 <span id="current-user" style="color: #666; font-size: 14px;"></span>
             </div>
@@ -46,11 +58,7 @@
                 <div class="subtitle" id="expense-count">0 expenses</div>
             </div>
             
-            <div class="dashboard-card">
-                <h3>All-Time Revenue</h3>
-                <div class="big-number" id="total-revenue">฿0.00</div>
-                <div class="subtitle">Historical total</div>
-            </div>
+
         </div>
 
         <!-- Admin Access (Manager Only) -->
@@ -58,18 +66,22 @@
             <div class="section-header">ADMINISTRATION (Manager Only)</div>
             <div class="section-content">
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <a href="/api/admin/staff-page" class="btn btn-primary btn-large">
-                        👥 Staff Administration
-                    </a>
-                    <a href="/api/admin/services-page" class="btn btn-secondary btn-large">
-                        💰 Services & Pricing
-                    </a>
-                    <a href="/api/admin/reports-page" class="btn btn-secondary btn-large">
-                        📊 Financial Reports
-                    </a>
-                    <a href="/api/admin/payment-types-page" class="btn btn-secondary btn-large">
-                        💳 Payment Types
-                    </a>
+                                            <a href="/api/admin/staff-page" class="btn btn-primary btn-large">
+                            <span class="label-en">💰 Payday Tracking</span>
+                            <span class="label-th">💰 ติดตามการจ่ายเงิน</span>
+                        </a>
+                        <a href="/api/admin/services-page" class="btn btn-secondary btn-large">
+                            <span class="label-en">💰 Services & Pricing</span>
+                            <span class="label-th">💰 บริการและราคา</span>
+                        </a>
+                        <a href="/api/admin/reports-page" class="btn btn-secondary btn-large">
+                            <span class="label-en">📊 Financial Reports</span>
+                            <span class="label-th">📊 รายงานการเงิน</span>
+                        </a>
+                        <a href="/api/admin/payment-types-page" class="btn btn-secondary btn-large">
+                            <span class="label-en">💳 Payment Types</span>
+                            <span class="label-th">💳 ประเภทการชำระเงิน</span>
+                        </a>
                 </div>
             </div>
         </div>
@@ -140,7 +152,7 @@
             
             document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
             document.getElementById('expense-count').textContent = `${appData.expenses.length} expense${appData.expenses.length !== 1 ? 's' : ''}`;
-            document.getElementById('total-revenue').textContent = `฿${summary.allTimeRevenue.toFixed(2)}`;
+
         }
 
         function updateRecentActivity() {
@@ -219,7 +231,10 @@
     
     <!-- Logout Button at Bottom -->
     <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
-        <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">👋 Logout</button>
+                    <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">
+                <span class="label-en">👋 Logout</span>
+                <span class="label-th">👋 ออกจากระบบ</span>
+            </button>
     </div>
 </body>
 </html>

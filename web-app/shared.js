@@ -2,6 +2,29 @@
 
 // Shared JavaScript for Massage Shop POS (API-backed version)
 
+// Bilingual Navigation Labels (EN + TH)
+window.NAV_LABELS = {
+  home: { en: "🏠 Home", th: "🏠 หน้าแรก" },
+  daily_staff: { en: "👥 Daily Staff", th: "👥 พนักงานประจำวัน" },
+  new_transaction: { en: "💳 New Transaction", th: "💳 ธุรกรรมใหม่" },
+  daily_summary: { en: "📊 Daily Summary", th: "📊 สรุปรายวัน" },
+  payday_tracking: { en: "💰 Payday Tracking", th: "💰 ติดตามการจ่ายเงิน" },
+  services_pricing: { en: "💰 Services & Pricing", th: "💰 บริการและราคา" },
+  financial_reports: { en: "📊 Financial Reports", th: "📊 รายงานการเงิน" },
+  payment_types: { en: "💳 Payment Types", th: "💳 ประเภทการชำระเงิน" },
+  logout: { en: "👋 Logout", th: "👋 ออกจากระบบ" }
+};
+
+// Helper function to render bilingual labels
+window.renderBilingualLabel = function(key) {
+  const entry = (window.NAV_LABELS || {})[key];
+  if (!entry) return '';
+  return `
+    <span class="label-en">${entry.en}</span>
+    <span class="label-th">${entry.th}</span>
+  `;
+};
+
 // Sentry Initialization - MUST BE THE VERY FIRST THING
 if (typeof Sentry !== 'undefined') {
   Sentry.onLoad(() => {

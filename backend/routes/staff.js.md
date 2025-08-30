@@ -122,14 +122,21 @@
 ## 4. Bug & Resolution History
 
 ### Bug Summary
-No major bugs have been reported in this module. The automatic status clearing mechanism works correctly.
+**CRITICAL BUG FIXED (2024-12-19):** The `resetExpiredBusyStatuses()` function had a string comparison bug that prevented staff busy statuses from expiring, causing scheduling conflicts and perpetually busy staff.
 
 ### Validated Hypothesis
-The `resetExpiredBusyStatuses()` function successfully clears expired busy statuses when the roster endpoint is accessed.
+**Root Cause:** The function used string comparison (`normalizedBusyTime < currentTime`) instead of numeric time comparison, causing times like "15:30" to never be considered "less than" "09:00" alphabetically.
 
 ### Invalidated Hypotheses
 - Initial concerns about time format parsing were resolved through robust format handling
 - Worries about database performance were unfounded due to efficient queries
+- Frontend auto-refresh frequency was not the issue (was already calling roster endpoint every 30 seconds)
 
 ### Resolution
-The module provides reliable staff status management with automatic cleanup of expired busy statuses. The scheduling bug identified in the frontend is not caused by this backend module.
+**FIX IMPLEMENTED:** Replaced string comparison with numeric time comparison using a new `parseTimeToMinutes()` helper function. The fix:
+1. Converts HH:MM time strings to minutes since midnight
+2. Uses numeric comparison (`busyMinutes <= currentMinutes`) for accurate expiration logic
+3. Maintains all existing functionality while fixing the core bug
+4. Includes enhanced logging for debugging and monitoring
+
+**Status:** Production-ready fix deployed. Staff busy statuses now correctly expire when their end time passes, resolving the original scheduling bug.

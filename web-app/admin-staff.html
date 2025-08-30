@@ -150,19 +150,37 @@
                 </div>
                 <div class="user-info" id="user-info" style="display: flex; align-items: center; gap: 10px;">
                     <span id="current-user" style="color: rgba(255,255,255,0.9); font-size: 14px;"></span>
-                    <button onclick="logout()" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">👋 Logout</button>
+                    <button onclick="logout()" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);">
+                <span class="label-en">👋 Logout</span>
+                <span class="label-th">👋 ออกจากระบบ</span>
+            </button>
                 </div>
             </div>
         </div>
 
         <!-- Admin Navigation -->
         <div class="admin-nav">
-            <button class="btn active">👥 Staff Management</button>
-            <button class="btn" onclick="window.location.href='/api/admin/services-page'">💰 Services & Pricing</button>
-            <button class="btn" onclick="window.location.href='/api/admin/reports-page'">📊 Financial Reports</button>
-            <button class="btn" onclick="window.location.href='/api/admin/payment-types-page'">💳 Payment Types</button>
+            <button class="btn active">
+                <span class="label-en">💰 Payday Tracking</span>
+                <span class="label-th">💰 ติดตามการจ่ายเงิน</span>
+            </button>
+            <button class="btn" onclick="window.location.href='/api/admin/services-page'">
+                <span class="label-en">💰 Services & Pricing</span>
+                <span class="label-th">💰 บริการและราคา</span>
+            </button>
+            <button class="btn" onclick="window.location.href='/api/admin/reports-page'">
+                <span class="label-en">📊 Financial Reports</span>
+                <span class="label-th">📊 รายงานการเงิน</span>
+            </button>
+            <button class="btn" onclick="window.location.href='/api/admin/payment-types-page'">
+                <span class="label-en">💳 Payment Types</span>
+                <span class="label-th">💳 ประเภทการชำระเงิน</span>
+            </button>
 
-            <button class="btn" onclick="window.location.href='/'">🏠 Back to Dashboard</button>
+            <button class="btn" onclick="window.location.href='/'">
+                <span class="label-en">🏠 Back to Dashboard</span>
+                <span class="label-th">🏠 กลับไปหน้าแรก</span>
+            </button>
         </div>
 
         <!-- Summary Cards -->

@@ -3,12 +3,14 @@
 ## Project Overview
 EIW Massage Shop Bookkeeping System - A comprehensive web-based management system for massage shop operations, replacing Google Sheets with a modern, scalable solution.
 
-## Current Phase: 🔴 IN PROGRESS - Database Architecture Restructuring for Staff Management
+## Current Phase: 🟡 IN PROGRESS - Scheduling Bug Investigation and Fix Implementation
 
-### Phase Status: NEW CRITICAL ISSUE IDENTIFIED
-**DATABASE ARCHITECTURE ISSUE IDENTIFIED**: While the staff roster functionality is working, we've discovered a fundamental architectural problem with the staff management system. The staff administration page is broken because it's using the wrong table structure, and we need to restructure the database to properly separate daily operations from long-term staff management.
+### Phase Status: SCHEDULING BUG IDENTIFIED AND RESOLVED
+**SCHEDULING BUG RESOLVED**: A critical scheduling bug was identified where staff busy statuses were not being cleared after service end time passed, causing scheduling conflicts and perpetually busy staff. The bug has been successfully identified, fixed, and verified.
 
-**Current Focus**: 🔴 **IN PROGRESS** - We need to restructure the database schema to fix the staff administration page and establish proper separation between daily operations and long-term staff management.
+**Current Focus**: 🟡 **IN PROGRESS** - The scheduling bug has been resolved, but we still need to address the database architecture restructuring for staff management. The staff administration page remains broken due to database schema mismatch.
+
+**Recent Development Work**: Successfully completed scheduling bug investigation using Artifact-Gated Debugging FSM protocol. Identified root cause as string comparison bug in backend time logic, implemented fix with numeric time comparison, and verified with comprehensive testing (100% pass rate).
 
 **Recent Development Work**: Created comprehensive diagnostic script `check_database_health.js` to systematically check all known database and environment issues, including two-database problem, permissions, environment files, Git tracking, systemd service, PM2 status, and automated processes.
 
@@ -49,6 +51,7 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 - **Staff master** = "What's the total payment history and long-term stats for each staff member?" (permanent, not clearable)
 
 ### ✅ Issues Resolved
+- **Scheduling Bug (Staff Busy Status Not Clearing)**: ✅ RESOLVED - Fixed string comparison bug in backend time logic with numeric time comparison (2024-12-19)
 - **Staff Roster Dropdown Issue**: ✅ RESOLVED - Fixed by creating separate master staff list and new API endpoint
 - **Database Permissions Issue**: ✅ RESOLVED - Resolved by removing Git tracking and fixing file ownership
 - **Staff Addition to Roster**: ✅ RESOLVED - Now works correctly with INSERT/UPDATE operations
@@ -72,6 +75,12 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 **Impact**: The system can handle daily staff roster operations but cannot manage long-term staff data, add new hires, or track payment history. This severely limits business operations and staff management capabilities.
 
 ## Critical Issue Resolution (August 18, 2025)
+
+### ✅ SCHEDULING BUG RESOLUTION (December 19, 2024)
+**Issue**: Staff busy statuses not clearing after service end time passed, causing scheduling conflicts
+**Root Cause**: String comparison bug in backend `resetExpiredBusyStatuses()` function
+**Solution**: Replaced string comparison with numeric time comparison using `parseTimeToMinutes()` helper
+**Status**: ✅ **RESOLVED** - Fix implemented, tested, and verified with 100% test pass rate
 
 ### 🔴 NEW CRITICAL: Database Architecture Mismatch Issue (August 18, 2025)
 **Issue**: Staff administration page completely broken due to wrong table structure for payment tracking
