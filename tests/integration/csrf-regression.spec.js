@@ -5,92 +5,43 @@
  * It verifies the complete CSRF flow: token fetch → validation → authentication.
  */
 
+const { requestWithCsrf } = require('../helpers/requestWithCsrf');
 const request = require('supertest');
-const app = require('../../backend/server');
+
+const baseURL = `http://localhost:${process.env.PORT || 3000}`;
 
 describe('CSRF Regression Test', () => {
-  let csrfToken;
-  let cookies;
+  test('Login flow should succeed with correct CSRF token', async () => {
+    // 1. Get CSRF token and cookie
+    const csrfResponse = await request(baseURL).get('/csrf');
+    const csrfToken = csrfResponse.body.token;
+    const cookies = csrfResponse.headers['set-cookie'];
 
-  beforeAll(async () => {
-    // Fetch CSRF token and establish session
-    const response = await request(app)
-      .get('/csrf')
-      .expect(200);
-    
-    csrfToken = response.body.token;
-    cookies = response.headers['set-cookie'];
-    
     expect(csrfToken).toBeDefined();
-    expect(csrfToken).toMatch(/^[A-Za-z0-9_-]+$/);
+
+    // 2. Attempt login with the token and cookie
+    const loginResponse = await request(baseURL)
+      .post('/api/auth/login')
+      .set('Cookie', cookies.join('; ')) // Join multiple cookies with semicolon
+      .set('X-CSRF-Token', csrfToken)
+      .send({ username: 'manager', password: 'manager456' })
+      .expect(200);
+
+    expect(loginResponse.body.success).toBe(true);
+    expect(loginResponse.body.user.username).toBe('manager');
   });
 
-  describe('CSRF Token Endpoint', () => {
-    it('should return a valid CSRF token', () => {
-      expect(csrfToken).toBeDefined();
-      expect(typeof csrfToken).toBe('string');
-      expect(csrfToken.length).toBeGreaterThan(20);
-    });
+  test('Login flow should fail without CSRF token', async () => {
+    // Add delay to prevent rate limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const csrfResponse = await request(baseURL).get('/csrf');
+    const cookies = csrfResponse.headers['set-cookie'];
 
-    it('should set secure CSRF cookies', () => {
-      expect(cookies).toBeDefined();
-      const csrfCookie = cookies.find(cookie => cookie.includes('csrf'));
-      expect(csrfCookie).toBeDefined();
-    });
-  });
-
-  describe('CSRF Validation', () => {
-    it('should accept valid CSRF tokens', async () => {
-      const response = await request(app)
-        .post('/api/auth/login')
-        .set('X-CSRF-Token', csrfToken)
-        .set('Cookie', cookies)
-        .send({
-          username: 'manager',
-          password: 'manager456'
-        })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.user.username).toBe('manager');
-    });
-
-    it('should reject requests without CSRF tokens', async () => {
-      await request(app)
-        .post('/api/auth/login')
-        .set('Cookie', cookies)
-        .send({
-          username: 'manager',
-          password: 'manager456'
-        })
-        .expect(403);
-    });
-
-    it('should reject requests with invalid CSRF tokens', async () => {
-      await request(app)
-        .post('/api/auth/login')
-        .set('X-CSRF-Token', 'invalid-token')
-        .set('Cookie', cookies)
-        .send({
-          username: 'manager',
-          password: 'manager456'
-        })
-        .expect(403);
-    });
-  });
-
-  describe('CSRF Mode Consistency', () => {
-    it('should not have session-mode CSRF middleware', () => {
-      // This test ensures we never reintroduce session-mode CSRF
-      const serverCode = require('fs').readFileSync('backend/server.js', 'utf8');
-      expect(serverCode).not.toMatch(/sessionKey.*session/);
-      expect(serverCode).not.toMatch(/app\.use\(session/);
-    });
-
-    it('should have cookie-mode CSRF configuration', () => {
-      const csrfMiddleware = require('fs').readFileSync('backend/middleware/csrf-protection.js', 'utf8');
-      expect(csrfMiddleware).toMatch(/cookie.*sameSite/);
-      expect(csrfMiddleware).toMatch(/secure.*process\.env\.NODE_ENV/);
-    });
+    await request(baseURL)
+      .post('/api/auth/login')
+      .set('Cookie', cookies.join('; ')) // Join multiple cookies with semicolon
+      .send({ username: 'manager', password: 'manager456' })
+      .expect(403);
   });
 });

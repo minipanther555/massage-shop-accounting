@@ -35,7 +35,7 @@ describe('Transaction Status Integration Tests', () => {
           filteredTransactions = mockTransactions.filter(t => 
             t.status === 'ACTIVE' || 
             t.status === 'CORRECTED' || 
-            t.status.includes('EDITED')
+            (t.status && t.status.includes('EDITED'))
           );
         } else if (sql.includes("WHERE status IN ('ACTIVE', 'CORRECTED')")) {
           filteredTransactions = mockTransactions.filter(t => 

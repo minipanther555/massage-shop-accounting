@@ -1,27 +1,11 @@
-const request = require('supertest');
-const { expect } = require('chai');
+const { requestWithCsrf } = require('../helpers/requestWithCsrf');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
-const { app, closeServer, startServer } = require('../../backend/server');
 
 // The path to the database we just copied from production
 const dbPath = path.resolve(__dirname, '../../docker/data/massage_shop.db');
 
 describe('Transaction Creation API Endpoint', () => {
-  before((done) => {
-    // We need to make sure the server is running before tests
-    startServer().then(() => {
-      done();
-    }).catch(done);
-  });
-
-  after((done) => {
-    // And that it's closed after we're done
-    closeServer().then(() => {
-      done();
-    }).catch(done);
-  });
-
   it('should create a transaction successfully when provided with a valid payload', (done) => {
     const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
       if (err) { return done(err); }
@@ -30,17 +14,17 @@ describe('Transaction Creation API Endpoint', () => {
     db.serialize(() => {
       let staff, service, paymentMethod;
 
-      db.get("SELECT name FROM staff WHERE status = 'active' LIMIT 1", [], (err, row) => {
+      db.get("SELECT name FROM staff WHERE active = 1 LIMIT 1", [], (err, row) => {
         if (err) { return done(err); }
         staff = row;
       });
 
-      db.get("SELECT service_name, duration, price FROM services LIMIT 1", [], (err, row) => {
+      db.get("SELECT service_name, duration_minutes, location FROM services LIMIT 1", [], (err, row) => {
         if (err) { return done(err); }
         service = row;
       });
 
-      db.get("SELECT name FROM payment_methods LIMIT 1", [], (err, row) => {
+      db.get("SELECT method_name FROM payment_methods LIMIT 1", [], (err, row) => {
         if (err) { return done(err); }
         paymentMethod = row;
       });
@@ -49,26 +33,30 @@ describe('Transaction Creation API Endpoint', () => {
         if (err) { return done(err); }
         
         const transactionData = {
-          masseuse: staff.name,
-          service: service.service_name,
-          duration: service.duration,
-          paymentMethod: paymentMethod.name,
-          location: 'In-Shop',
-          customerName: 'Integration Test',
-          notes: 'Test transaction from integration test suite.'
+          masseuse_name: staff.name,
+          service_type: service.service_name,
+          duration: service.duration_minutes,
+          payment_method: paymentMethod.method_name,
+          location: service.location,
+          start_time: '10:00',
+          end_time: '11:00',
+          customer_contact: 'Integration Test'
         };
         
-        request(app)
-          .post('/api/transactions')
-          .send(transactionData)
-          .end((err, res) => {
-            if (err) { return done(err); }
-            
-            expect(res.status).to.equal(201);
-            expect(res.body).to.be.an('object');
-            expect(res.body.message).to.equal('Transaction created successfully');
-            done();
-          });
+        // Use requestWithCsrf helper to handle CSRF token automatically
+        requestWithCsrf({
+          url: '/api/transactions',
+          method: 'POST',
+          body: transactionData
+        }).then(async response => {
+          expect(response.status).toBe(201);
+          const body = await response.json();
+          expect(body).toBeInstanceOf(Object);
+          expect(body.transaction_id).toBeDefined();
+          done();
+        }).catch(error => {
+          done(error);
+        });
       });
     });
   });

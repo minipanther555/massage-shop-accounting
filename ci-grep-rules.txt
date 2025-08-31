@@ -1,0 +1,29 @@
+# CI Grep Rules for CSRF Contract Enforcement
+# These rules MUST be enforced in CI to prevent CSRF regressions
+
+# Rule 1: Forbid POST to /auth/* without X-CSRF-Token header
+# Pattern: POST.*\/api\/auth.*(?!.*X-CSRF-Token)
+# Action: FAIL - Must include X-CSRF-Token header for all auth endpoints
+
+# Rule 2: Forbid credentials: 'omit' or withCredentials: false in tests to protected routes
+# Pattern: (credentials:\s*['"]omit['"]|withCredentials:\s*false)
+# Action: FAIL - Must include credentials for CSRF-protected endpoints
+
+# Rule 3: Forbid app.use(csurf()) without {cookie:...} configuration
+# Pattern: app\.use\(csurf\(\)\)|app\.use\(csurf\(\{\s*\}\)\)
+# Action: FAIL - Must use cookie-mode CSRF configuration
+
+# Rule 4: Forbid supertest(app) imports in integration tests
+# Pattern: const.*=.*require\(.*backend\/server.*\)|supertest\(app\)
+# Action: FAIL - Must use live server URL pattern
+
+# Rule 5: Forbid Playwright tests in /tests/integration directory
+# Pattern: @playwright/test.*tests\/integration
+# Action: FAIL - Playwright tests must be in /tests/e2e
+
+# Implementation in CI:
+# grep -r "POST.*\/api\/auth" tests/ | grep -v "X-CSRF-Token" && exit 1
+# grep -r "credentials:\s*['\"]omit['\"]\|withCredentials:\s*false" tests/ && exit 1
+# grep -r "app\.use(csurf())" backend/ | grep -v "cookie:" && exit 1
+# grep -r "supertest(app)" tests/integration/ && exit 1
+# grep -r "@playwright/test" tests/integration/ && exit 1

@@ -203,9 +203,13 @@ describe('Transaction Rendering Component', () => {
     updateAllTransactions(mockTransactions);
 
     // Assert: Check that the Edit button is enabled
-    const activeTransaction = container.querySelector('.transaction-item:not(.edited-transaction)');
-    const editButton = activeTransaction.querySelector('button');
+    // Use a more explicit selector that works in jsdom
+    const activeTransaction = container.querySelector('.transaction-item:last-child');
+    expect(activeTransaction).toBeTruthy();
+    expect(activeTransaction.classList.contains('edited-transaction')).toBe(false);
     
+    const editButton = activeTransaction.querySelector('button');
+    expect(editButton).toBeTruthy();
     expect(editButton.disabled).toBe(false);
     expect(editButton.textContent).toBe('✏️ Edit');
   });
