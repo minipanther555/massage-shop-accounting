@@ -665,3 +665,205 @@ This document tracks the detailed testing progress for each phase of the EIW Mas
 **Next Phase**: Ready for enhancement testing (busy time reset, financial reports)
 
 The system has successfully completed comprehensive testing of all critical functionality. The staff roster system is fully operational, database permissions are stable, and all major issues have been completely resolved. The system is ready for the next phase of enhancements and testing.
+
+## Phase 11: CSRF Regression Remediation & Test Suite Restoration ✅ COMPLETED
+
+### Status: ✅ COMPLETED - Test Suite Fully Restored and CSRF Contract Enforced
+**Date**: December 20, 2024
+**Objective**: Resolve test suite regressions after CSRF contract change and establish CI gates to prevent future issues
+**Methodology**: Post-CSRF Regression Remediation FSM (Artifact-Gated Debugging State Machine)
+
+### ✅ CSRF Testing Infrastructure - COMPLETED
+**Status**: ✅ **COMPLETED** - Comprehensive CSRF testing infrastructure established
+
+**What Was Implemented**:
+1. **Jest Helper**: `tests/helpers/requestWithCsrf.js` - Automated CSRF token management for integration tests
+2. **Playwright Helper**: `tests/e2e/helpers/authFlow.ts` - CSRF-aware requests for E2E tests
+3. **Testing Contract**: `tests/CONTRACT.md` - Standardized testing patterns and requirements
+4. **CSRF Guide**: `tests/CSRF.md` - Comprehensive CSRF testing documentation
+5. **CI Grep Rules**: `ci-grep-rules.txt` - Automated contract enforcement
+
+**Implementation Details**:
+- **CSRF Flow**: GET /csrf → token + cookie → POST with X-CSRF-Token header
+- **Automatic Management**: Helpers handle token fetching and attachment automatically
+- **Standardized Pattern**: All tests use consistent CSRF handling approach
+- **Contract Enforcement**: CI rules prevent forbidden patterns
+
+### ✅ Test Suite Restoration - COMPLETED
+**Status**: ✅ **COMPLETED** - All 52 integration tests now passing
+
+**Issues Resolved**:
+1. **C1 CSRF-Contract**: Tests now use `requestWithCsrf()` helper for protected endpoints
+2. **C2 Harness Mismatch**: Standardized on live-server HTTP pattern, removed `supertest(app)` imports
+3. **C3 E2E Placement**: Moved Playwright tests to `/tests/e2e`, updated Jest config
+4. **C4 Module/Runner**: Replaced chai with Jest expect, fixed import paths
+5. **C5 App Logic/Fixtures**: Fixed database schema mismatches and DOM selector issues
+
+**Test Results**:
+- ✅ **Integration Tests**: 14/14 suites passing, 52/52 tests passing
+- ✅ **E2E Tests**: 1/1 suite passing (login CSRF flow verified)
+- ✅ **Test Pattern**: Consistent live-server HTTP approach across all tests
+- ✅ **CSRF Compliance**: All protected endpoint tests properly validate security contract
+
+### ✅ CI Gates & Prevention - COMPLETED
+**Status**: ✅ **COMPLETED** - Automated regression prevention established
+
+**Gates Installed**:
+1. **CSRF Contract**: Forbid POST to /auth/* without X-CSRF-Token header
+2. **Testing Pattern**: Forbid supertest(app) imports in integration tests
+3. **CSRF Mode**: Forbid app.use(csurf()) without {cookie:...} configuration
+4. **Test Structure**: Forbid Playwright tests in integration directory
+5. **Credentials**: Forbid credentials: 'omit' for protected routes
+
+**Prevention Measures**:
+- **Standardized Helpers**: All tests use consistent CSRF handling
+- **Testing Contract**: Clear documentation of required patterns
+- **Automated Checks**: CI grep rules enforce compliance
+- **Documentation**: Comprehensive guides prevent knowledge gaps
+
+### ✅ Root Cause Analysis - COMPLETED
+**Status**: ✅ **COMPLETED** - Complete analysis documented
+
+**Root Causes Identified**:
+1. **Mixed CSRF Modes**: Tests were incompatible with new cookie-mode CSRF implementation
+2. **Inconsistent Patterns**: Mixed testing approaches caused harness conflicts
+3. **Missing Infrastructure**: No standardized helpers for CSRF-protected requests
+4. **Documentation Gaps**: Lack of clear testing contract led to inconsistent implementations
+
+**Resolution Strategy**:
+- **Contract Reset**: Established single, consistent CSRF testing contract
+- **Infrastructure Build**: Created standardized helpers for all test types
+- **Pattern Normalization**: Standardized on live-server HTTP approach
+- **Gate Installation**: Automated checks prevent future regressions
+
+### Testing Results Summary
+**Overall Status**: ✅ **COMPLETED** - Test suite fully restored and secured
+**Test Coverage**: 100% of integration tests passing with CSRF compliance
+**Security Validation**: All protected endpoints properly tested with CSRF tokens
+**Regression Prevention**: CI gates and standardized patterns prevent future issues
+**Documentation**: Comprehensive guides and contracts ensure maintainability
+
+### Files Modified/Created
+**New Files**:
+- `tests/helpers/requestWithCsrf.js` - Jest CSRF helper
+- `tests/e2e/helpers/authFlow.ts` - Playwright CSRF helper
+- `tests/CONTRACT.md` - Testing contract documentation
+- `tests/CSRF.md` - CSRF testing guide
+- `ci-grep-rules.txt` - CI contract enforcement
+
+**Modified Files**:
+- `tests/integration/transaction-creation.spec.js` - CSRF integration and schema fixes
+- `tests/integration/transaction-rendering.test.js` - DOM selector fixes
+- `tests/integration/transaction-status-integration.test.js` - Null safety fixes
+- `tests/integration/csrf-regression.spec.js` - Rate limiting and cookie handling fixes
+- `tests/integration/csrf-contract.spec.js` - Rate limiting fixes
+- `tests/jest.config.js` - E2E directory exclusion
+
+**Dependencies Added**:
+- `node-fetch@2` - Required for requestWithCsrf helper
+
+### Next Phase Testing Priorities
+**Phase 12**: Multi-Location Authentication Implementation - Ready to start
+**Dependencies**: ✅ All resolved - Test suite fully operational, CSRF contract enforced
+**Status**: Ready for next phase development with robust testing infrastructure in place
+
+## Phase 11: CSRF Regression Remediation & Test Suite Restoration ✅ COMPLETED
+
+### Status: ✅ COMPLETED - Test Suite Fully Restored and CSRF Contract Enforced
+**Date**: December 20, 2024
+**Objective**: Resolve test suite regressions after CSRF contract change and establish CI gates to prevent future issues
+**Methodology**: Post-CSRF Regression Remediation FSM (Artifact-Gated Debugging State Machine)
+
+### ✅ CSRF Testing Infrastructure - COMPLETED
+**Status**: ✅ **COMPLETED** - Comprehensive CSRF testing infrastructure established
+
+**What Was Implemented**:
+1. **Jest Helper**: `tests/helpers/requestWithCsrf.js` - Automated CSRF token management for integration tests
+2. **Playwright Helper**: `tests/e2e/helpers/authFlow.ts` - CSRF-aware requests for E2E tests
+3. **Testing Contract**: `tests/CONTRACT.md` - Standardized testing patterns and requirements
+4. **CSRF Guide**: `tests/CSRF.md` - Comprehensive CSRF testing documentation
+5. **CI Grep Rules**: `ci-grep-rules.txt` - Automated contract enforcement
+
+**Implementation Details**:
+- **CSRF Flow**: GET /csrf → token + cookie → POST with X-CSRF-Token header
+- **Automatic Management**: Helpers handle token fetching and attachment automatically
+- **Standardized Pattern**: All tests use consistent CSRF handling approach
+- **Contract Enforcement**: CI rules prevent forbidden patterns
+
+### ✅ Test Suite Restoration - COMPLETED
+**Status**: ✅ **COMPLETED** - All 52 integration tests now passing
+
+**Issues Resolved**:
+1. **C1 CSRF-Contract**: Tests now use `requestWithCsrf()` helper for protected endpoints
+2. **C2 Harness Mismatch**: Standardized on live-server HTTP pattern, removed `supertest(app)` imports
+3. **C3 E2E Placement**: Moved Playwright tests to `/tests/e2e`, updated Jest config
+4. **C4 Module/Runner**: Replaced chai with Jest expect, fixed import paths
+5. **C5 App Logic/Fixtures**: Fixed database schema mismatches and DOM selector issues
+
+**Test Results**:
+- ✅ **Integration Tests**: 14/14 suites passing, 52/52 tests passing
+- ✅ **E2E Tests**: 1/1 suite passing (login CSRF flow verified)
+- ✅ **Test Pattern**: Consistent live-server HTTP approach across all tests
+- ✅ **CSRF Compliance**: All protected endpoint tests properly validate security contract
+
+### ✅ CI Gates & Prevention - COMPLETED
+**Status**: ✅ **COMPLETED** - Automated regression prevention established
+
+**Gates Installed**:
+1. **CSRF Contract**: Forbid POST to /auth/* without X-CSRF-Token header
+2. **Testing Pattern**: Forbid supertest(app) imports in integration tests
+3. **CSRF Mode**: Forbid app.use(csurf()) without {cookie:...} configuration
+4. **Test Structure**: Forbid Playwright tests in integration directory
+5. **Credentials**: Forbid credentials: 'omit' for protected routes
+
+**Prevention Measures**:
+- **Standardized Helpers**: All tests use consistent CSRF handling
+- **Testing Contract**: Clear documentation of required patterns
+- **Automated Checks**: CI grep rules enforce compliance
+- **Documentation**: Comprehensive guides prevent knowledge gaps
+
+### ✅ Root Cause Analysis - COMPLETED
+**Status**: ✅ **COMPLETED** - Complete analysis documented
+
+**Root Causes Identified**:
+1. **Mixed CSRF Modes**: Tests were incompatible with new cookie-mode CSRF implementation
+2. **Inconsistent Patterns**: Mixed testing approaches caused harness conflicts
+3. **Missing Infrastructure**: No standardized helpers for CSRF-protected requests
+4. **Documentation Gaps**: Lack of clear testing contract led to inconsistent implementations
+
+**Resolution Strategy**:
+- **Contract Reset**: Established single, consistent CSRF testing contract
+- **Infrastructure Build**: Created standardized helpers for all test types
+- **Pattern Normalization**: Standardized on live-server HTTP approach
+- **Gate Installation**: Automated checks prevent future regressions
+
+### Testing Results Summary
+**Overall Status**: ✅ **COMPLETED** - Test suite fully restored and secured
+**Test Coverage**: 100% of integration tests passing with CSRF compliance
+**Security Validation**: All protected endpoints properly tested with CSRF tokens
+**Regression Prevention**: CI gates and standardized patterns prevent future issues
+**Documentation**: Comprehensive guides and contracts ensure maintainability
+
+### Files Modified/Created
+**New Files**:
+- `tests/helpers/requestWithCsrf.js` - Jest CSRF helper
+- `tests/e2e/helpers/authFlow.ts` - Playwright CSRF helper
+- `tests/CONTRACT.md` - Testing contract documentation
+- `tests/CSRF.md` - CSRF testing guide
+- `ci-grep-rules.txt` - CI contract enforcement
+
+**Modified Files**:
+- `tests/integration/transaction-creation.spec.js` - CSRF integration and schema fixes
+- `tests/integration/transaction-rendering.test.js` - DOM selector fixes
+- `tests/integration/transaction-status-integration.test.js` - Null safety fixes
+- `tests/integration/csrf-regression.spec.js` - Rate limiting and cookie handling fixes
+- `tests/integration/csrf-contract.spec.js` - Rate limiting fixes
+- `tests/jest.config.js` - E2E directory exclusion
+
+**Dependencies Added**:
+- `node-fetch@2` - Required for requestWithCsrf helper
+
+### Next Phase Testing Priorities
+**Phase 12**: Multi-Location Authentication Implementation - Ready to start
+**Dependencies**: ✅ All resolved - Test suite fully operational, CSRF contract enforced
+**Status**: Ready for next phase development with robust testing infrastructure in place
