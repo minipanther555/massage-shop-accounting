@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <script
+      src="https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <title>Massage Shop POS - Staff Roster</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        /* Mobile-friendly reorder controls */
+        .mobile-reorder {
+            display: none; /* Hidden by default, shown on mobile */
+        }
+        
+        .mobile-reorder .btn {
+            margin: 2px;
+            padding: 8px 12px;
+            font-size: 14px;
+            min-width: 44px; /* Touch-friendly minimum size */
+            min-height: 44px;
+        }
+        
+        /* Hide mobile controls on desktop */
+        @media (min-width: 768px) {
+            .mobile-reorder {
+                display: none !important;
+            }
+        }
+        
+        /* Show mobile controls on small screens */
+        @media (max-width: 767px) {
+            .mobile-reorder {
+                display: block !important;
+            }
+            
+            /* Make buttons more touch-friendly on mobile */
+            .btn-small {
+                min-width: 44px;
+                min-height: 44px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            STAFF ROSTER MANAGEMENT
+        </div>
+
+        <div class="nav-buttons">
+            <a href="/index.html" class="nav-btn home">
+                <span class="label-en">🏠 Home</span>
+                <span class="label-th">🏠 หน้าแรก</span>
+            </a>
+            <a href="/api/main/staff-roster" class="nav-btn staff active">
+                <span class="label-en">👥 Daily Staff</span>
+                <span class="label-th">👥 พนักงานประจำวัน</span>
+            </a>
+            <a href="/api/main/transaction" class="nav-btn transaction">
+                <span class="label-en">💳 New Transaction</span>
+                <span class="label-th">💳 ธุรกรรมใหม่</span>
+            </a>
+            <a href="/api/main/summary" class="nav-btn summary">
+                <span class="label-en">📊 Daily Summary</span>
+                <span class="label-th">📊 สรุปรายวัน</span>
+            </a>
+            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="current-user" style="color: #666; font-size: 14px;"></span>
+            </div>
+        </div>
+
+
+
+        <!-- Add Staff Section -->
+        <div class="section">
+            <div class="section-header">ADD STAFF FOR TODAY</div>
+            <div class="section-content">
+                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                    <select id="available-staff" style="flex: 1;">
+                        <option value="">Select masseuse to add...</option>
+                    </select>
+                    <button onclick="addStaffToRoster()" class="btn">Add to Roster</button>
+                    <button onclick="clearTodayRoster()" class="btn btn-secondary">Clear All</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Staff Roster -->
+        <div class="section">
+            <div class="section-header">TODAY'S STAFF ROSTER</div>
+            <div class="section-content">
+                <div class="roster-grid">
+                    <div><strong>Position</strong></div>
+                    <div><strong>Masseuse Name</strong></div>
+                    <div><strong>Next in Line</strong></div>
+                    <div><strong>Today's Count</strong></div>
+                    <div><strong>Actions</strong></div>
+                </div>
+                <div id="roster-list">
+                    <!-- Today's roster items will be populated by JavaScript -->
+                </div>
+                <div id="empty-roster" style="text-align: center; padding: 20px; color: #666; display: none;">
+                    No staff added for today. Use the dropdown above to add masseuses to today's roster.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/api.js"></script>
+    <script src="/shared.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            if (!requireAuth()) {
+                return;
+            }
+            
+            // Display current user
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+            }
+            
+            // Mobile detection and responsive controls
+            setupMobileControls();
+            
+            await loadData(); // Load data from API first
+            updateAvailableStaffDropdown(); // Populate the dropdown
+            updateRosterDisplay(); // Then display the roster
+            setInterval(async () => {
+                await loadData();
+                updateAvailableStaffDropdown();
+                updateRosterDisplay();
+            }, 30000);
+        });
+
+        // Mobile detection and responsive controls
+        function setupMobileControls() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Show mobile controls, hide desktop drag-and-drop
+                document.querySelectorAll('.mobile-reorder').forEach(el => el.style.display = 'block');
+                document.querySelectorAll('[draggable="true"]').forEach(el => {
+                    el.draggable = false;
+                    el.style.cursor = 'default';
+                });
+                console.log('📱 Mobile device detected - showing touch-friendly controls');
+            } else {
+                // Show desktop controls, hide mobile controls
+                document.querySelectorAll('.mobile-reorder').forEach(el => el.style.display = 'none');
+                console.log('💻 Desktop device detected - showing drag-and-drop controls');
+            }
+        }
+
+        function updateAvailableStaffDropdown() {
+            const dropdown = document.getElementById('available-staff');
+            dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
+            
+            // Get all staff names from the API
+            api.getAllStaff().then(allStaffNames => {
+                // Get masseuses not already in the current roster
+                const usedNames = appData.roster
+                    .filter(r => r.name && r.name.trim() !== '')
+                    .map(r => r.name);
+                
+                const availableStaff = allStaffNames.filter(name => !usedNames.includes(name));
+                
+                availableStaff.forEach(name => {
+                    dropdown.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+                
+                console.log(`✅ Populated dropdown with ${availableStaff.length} available staff out of ${allStaffNames.length} total staff`);
+            }).catch(error => {
+                console.error('❌ Error fetching all staff names:', error);
+                showToast('Error loading available staff', 'error');
+            });
+        }
+
+        function updateRosterDisplay() {
+            const rosterList = document.getElementById('roster-list');
+            const emptyMessage = document.getElementById('empty-roster');
+            
+            // Get staff with names from database roster
+            const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+            
+            if (activeStaff.length === 0) {
+                rosterList.innerHTML = '';
+                emptyMessage.style.display = 'block';
+                return;
+            }
+            
+            emptyMessage.style.display = 'none';
+            rosterList.innerHTML = '';
+
+            activeStaff.forEach((staff, index) => {
+                const div = document.createElement('div');
+                div.className = 'roster-grid';
+                div.draggable = true;
+                div.dataset.index = index;
+                const statusText = staff.status || null;
+                const busyUntil = staff.busy_until || null;
+                const isNext = staff.status === 'Next';
+                const isBusy = staff.status && staff.status.startsWith('Busy until');
+                
+                div.innerHTML = `
+                    <div style="cursor: grab;">#${staff.position}</div>
+                    <div><strong>${staff.name}</strong></div>
+                    <div>
+                        <button onclick="setNextInLine(${staff.position})" 
+                                class="btn ${isNext ? 'btn-next' : 'btn-secondary'}" 
+                                style="font-size: 12px; padding: 5px 10px;">
+                            ${isNext ? '👤 NEXT' : 'Set Next'}
+                        </button>
+                        ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
+                        ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
+                    </div>
+                    <div><strong>${staff.todayCount}</strong></div>
+                    <div>
+                        <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
+                        <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
+                        <button onclick="removeFromRoster(${staff.position})" class="btn btn-danger btn-small">✕</button>
+                        <!-- Mobile-friendly reorder buttons -->
+                        <div class="mobile-reorder" style="display: none;">
+                            <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>⬆️</button>
+                            <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>⬇️</button>
+                        </div>
+                    </div>
+                `;
+                
+                // Add drag and drop event listeners
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                div.addEventListener('dragend', handleDragEnd);
+                
+                rosterList.appendChild(div);
+            });
+            
+            updateAvailableStaffDropdown();
+            setupMobileControls(); // Ensure mobile controls are applied after roster rendering
+        }
+
+        async function addStaffToRoster() {
+            const dropdown = document.getElementById('available-staff');
+            const selectedName = dropdown.value;
+            
+            if (!selectedName) {
+                showToast('Please select a masseuse to add', 'error');
+                return;
+            }
+            
+            try {
+                // Get the next available position number
+                const nextPosition = appData.roster.length + 1;
+                
+                // Create a new roster entry via API
+                await api.updateStaff(nextPosition, {
+                    masseuse_name: selectedName,
+                    status: null // Will be set to Next if it's the first person
+                });
+                
+                // Check if this is the first person, set as Next
+                const currentActiveStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+                if (currentActiveStaff.length === 0) {
+                    await api.updateStaff(nextPosition, {
+                        masseuse_name: selectedName,
+                        status: 'Next'
+                    });
+                }
+                
+                // Reload data and update display
+                await loadData();
+                updateRosterDisplay();
+                updateAvailableStaffDropdown();
+                showToast(`Added ${selectedName} to today's roster at position ${nextPosition}`);
+            } catch (error) {
+                console.error('Error adding staff:', error);
+                showToast('Error adding staff to roster', 'error');
+            }
+        }
+
+        async function removeFromRoster(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name) {
+                    showToast('Staff member not found', 'error');
+                    return;
+                }
+
+                await api.removeStaffFromRoster(position);
+
+                // Reload data and update display
+                await loadData();
+                updateRosterDisplay();
+                updateAvailableStaffDropdown();
+                showToast(`Removed ${staffMember.name} from today's roster`);
+            } catch (error) {
+                console.error('Error removing staff:', error);
+                showToast('Error removing staff from roster', 'error');
+            }
+        }
+
+        async function setNextInLine(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name) {
+                    showToast('Staff member not found', 'error');
+                    return;
+                }
+                
+                // Clear all "next" statuses
+                const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
+                for (const staff of activeStaff) {
+                    if (staff.status === 'Next') {
+                        await api.updateStaff(staff.position, {
+                            masseuse_name: staff.name,
+                            status: null
+                        });
+                    }
+                }
+                
+                // Set selected person as next
+                await api.updateStaff(position, {
+                    masseuse_name: staffMember.name,
+                    status: 'Next'
+                });
+                
+                // Reload data and update display
+                await loadData();
+                updateRosterDisplay();
+                showToast(`${staffMember.name} is now next in line`);
+            } catch (error) {
+                console.error('Error setting next in line:', error);
+                showToast('Error setting next in line', 'error');
+            }
+        }
+
+        async function moveUp(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name || position === 1) {
+                    return; // Can't move up from position 1
+                }
+                
+                // Find the staff member in the previous position
+                const previousPosition = position - 1;
+                const previousStaff = appData.roster.find(r => r.position === previousPosition);
+                
+                if (previousStaff && previousStaff.name) {
+                    // Swap the two staff members
+                    await api.updateStaff(position, {
+                        masseuse_name: previousStaff.name,
+                        status: previousStaff.status
+                    });
+                    await api.updateStaff(previousPosition, {
+                        masseuse_name: staffMember.name,
+                        status: staffMember.status
+                    });
+                    
+                    await loadData();
+                    updateRosterDisplay();
+                    showToast(`Moved ${staffMember.name} up in queue`);
+                }
+            } catch (error) {
+                console.error('Error moving staff up:', error);
+                showToast('Error moving staff up', 'error');
+            }
+        }
+
+        async function moveDown(position) {
+            try {
+                const staffMember = appData.roster.find(r => r.position === position);
+                if (!staffMember || !staffMember.name || position === 20) {
+                    return; // Can't move down from position 20
+                }
+                
+                // Find the staff member in the next position
+                const nextPosition = position + 1;
+                const nextStaff = appData.roster.find(r => r.position === nextPosition);
+                
+                if (nextStaff && nextStaff.name) {
+                    // Swap the two staff members
+                    await api.updateStaff(position, {
+                        masseuse_name: nextStaff.name,
+                        status: nextStaff.status
+                    });
+                    await api.updateStaff(nextPosition, {
+                        masseuse_name: staffMember.name,
+                        status: staffMember.status
+                    });
+                    
+                    await loadData();
+                    updateRosterDisplay();
+                    showToast(`Moved ${staffMember.name} down in queue`);
+                }
+            } catch (error) {
+                console.error('Error moving staff down:', error);
+                showToast('Error moving staff down', 'error');
+            }
+        }
+
+        async function clearTodayRoster() {
+            if (confirm('Clear all staff from today\'s roster?')) {
+                try {
+                    await api.clearRoster();
+                    
+                    await loadData();
+                    updateRosterDisplay();
+                    updateAvailableStaffDropdown();
+                    showToast('Today\'s roster cleared');
+                } catch (error) {
+                    console.error('Error clearing roster:', error);
+                    showToast('Error clearing roster', 'error');
+                }
+            }
+        }
+
+
+
+        // Drag and drop functionality
+        let draggedElement = null;
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+            e.target.style.cursor = 'grabbing';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedElement !== e.currentTarget) {
+                const draggedIndex = parseInt(draggedElement.dataset.index);
+                const targetIndex = parseInt(e.currentTarget.dataset.index);
+                
+                // Swap items in the array
+                const draggedItem = todayRoster[draggedIndex];
+                todayRoster.splice(draggedIndex, 1);
+                todayRoster.splice(targetIndex, 0, draggedItem);
+                
+                updateRosterDisplay();
+                showToast(`Moved ${draggedItem.name} to position ${targetIndex + 1}`);
+            }
+        }
+
+        function handleDragEnd(e) {
+            e.target.style.opacity = '';
+            e.target.style.cursor = 'grab';
+            draggedElement = null;
+        }
+    </script>
+    
+    <!-- Logout Button at Bottom -->
+    <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
+        <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">
+            <span class="label-en">👋 Logout</span>
+            <span class="label-th">👋 ออกจากระบบ</span>
+        </button>
+    </div>
+</body>
+</html>

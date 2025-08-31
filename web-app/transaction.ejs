@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <script
+      src="https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <title>Massage Shop POS - New Transaction</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            NEW TRANSACTION
+        </div>
+
+        <div class="nav-buttons">
+            <a href="/index.html" class="nav-btn home">
+                <span class="label-en">🏠 Home</span>
+                <span class="label-th">🏠 หน้าแรก</span>
+            </a>
+            <a href="/api/main/staff-roster" class="nav-btn staff">
+                <span class="label-en">👥 Staff Roster</span>
+                <span class="label-th">👥 รายชื่อพนักงาน</span>
+            </a>
+            <a href="/api/main/transaction" class="nav-btn transaction active">
+                <span class="label-en">💳 New Transaction</span>
+                <span class="label-th">💳 ธุรกรรมใหม่</span>
+            </a>
+            <a href="/api/main/summary" class="nav-btn summary">
+                <span class="label-en">📊 Daily Summary</span>
+                <span class="label-th">📊 สรุปรายวัน</span>
+            </a>
+                            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                    <span id="current-user" style="color: #666; font-size: 14px;"></span>
+                </div>
+        </div>
+
+        <!-- Correction Mode Banner -->
+        <div id="correction-banner" class="correction-banner" style="display: none;">
+            🔄 CORRECTION MODE: Editing previous transaction
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Column: Transaction Form -->
+            <div>
+                <div class="section">
+                    <div class="section-header">TRANSACTION DETAILS</div>
+                    <div class="section-content">
+                        <form id="transaction-form" method="POST" action="javascript:void(0)" onsubmit="return false;">
+                            <input type="hidden" name="csrf_token" value="<%= csrfToken %>">
+                            <input type="hidden" id="original-transaction-id" name="original_transaction_id">
+                            <div class="form-group">
+                                <label for="masseuse">Masseuse Name:</label>
+                                                                                <select id="masseuse" name="masseuse" required>
+                                    <option value="">Select Masseuse</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="location">Service Location:</label>
+                                <select id="location" name="location" required>
+                                    <option value="">Select Location</option>
+                                    <option value="In-Shop">In-Shop</option>
+                                    <option value="Home Service">Home Service</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="service">Service Type:</label>
+                                <select id="service" name="service" required>
+                                    <option value="">Select Service</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="duration">Duration:</label>
+                                <select id="duration" name="duration" required>
+                                    <option value="">Select Duration</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="payment">Payment Method:</label>
+                                <select id="payment" name="payment" required>
+                                    <option value="">Select Payment Method</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="startTime">Start Time:</label>
+                                <input type="text" id="startTime" name="startTime" required readonly class="readonly">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="endTime">End Time:</label>
+                                <select id="endTime" name="endTime" required>
+                                    <option value="">Select End Time</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="customerContact">Customer Contact (Optional):</label>
+                                <input type="text" id="customerContact" maxlength="100" placeholder="Phone or name (optional)">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Service Price:</label>
+                                <div id="servicePrice" class="summary-value">฿0.00</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Masseuse Fee:</label>
+                                <div id="masseuseeFee" class="summary-value">฿0.00</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-large" style="width: 100%; margin-top: 20px;">
+                                💳 Submit Transaction
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Correction Section -->
+                <div class="section">
+                    <div class="section-header">CORRECT MISTAKE</div>
+                    <div class="section-content">
+                        <div id="correction-info" style="margin: 10px 0; font-style: italic; color: #666;">
+                            No recent transaction to correct
+                        </div>
+                        <button class="btn btn-secondary" onclick="loadCorrection()" style="width: 100%;">
+                            🔄 Load Last Transaction for Correction
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Mini Summary and Recent Transactions -->
+            <div>
+                <!-- Quick Daily Summary -->
+                <div class="section">
+                    <div class="section-header">TODAY'S QUICK SUMMARY</div>
+                    <div class="section-content">
+                        <div class="summary-grid">
+                            <div class="summary-label">Today's Revenue:</div>
+                            <div class="summary-value" id="today-revenue">฿0.00</div>
+                        </div>
+                        <div class="summary-grid">
+                            <div class="summary-label">Today's Transactions:</div>
+                            <div class="summary-value" id="today-count">0</div>
+                        </div>
+                        <div class="summary-grid">
+                            <div class="summary-label">Today's Expenses:</div>
+                            <div class="summary-value" id="today-expenses">฿0.00</div>
+                        </div>
+                        
+                        <!-- Payment Breakdown -->
+                        <h4 style="margin: 15px 0 10px 0; color: #4a86e8;">Today's Payment Breakdown:</h4>
+                        <div id="payment-breakdown-mini"></div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="section">
+                    <div class="section-header">RECENT TRANSACTIONS</div>
+                    <div class="section-content">
+                        <div class="transaction-log" id="recent-transactions">
+                            <div class="transaction-item">
+                                <div>Payment</div>
+                                <div>Masseuse</div>
+                                <div>Service</div>
+                                <div>Amount</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Expenses -->
+                <div class="section">
+                    <div class="section-header">DAILY EXPENSES</div>
+                    <div class="section-content">
+                        <div id="expense-list"></div>
+                        <div style="margin-top: 15px;">
+                            <div class="expense-grid">
+                                <input type="text" id="newExpenseDesc" placeholder="Expense description">
+                                <input type="number" id="newExpenseAmount" placeholder="Amount" step="0.01" min="0">
+                                <button class="btn btn-primary" onclick="handleAddExpense()">Add</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/api.js"></script>
+    <script src="/shared.js"></script>
+    <script>
+        console.log('🚀 TRANSACTION.HTML SCRIPT LOADING...');
+        
+        let correctionMode = false;
+
+        // =========================================================================
+        // INITIALIZATION LOGIC
+        // =========================================================================
+        console.log('🚀 ADDING DOM CONTENT LOADED LISTENER...');
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('🚀 DOM LOADED - Starting initialization');
+                
+                // Check authentication first
+                if (!requireAuth()) {
+                    return;
+                }
+                
+                // Display current user
+                const user = getCurrentUser();
+                if (user) {
+                    document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                }
+                
+                await loadData(); // Load data from API first
+                console.log('🚀 DATA LOADED - CONFIG:', CONFIG);
+                populateDropdowns(); // Then populate dropdowns with loaded data
+                await updateAllDisplays();
+                handleURLParams();
+                checkForEdit(); // Check for a transaction to edit
+            } catch (error) {
+                console.error('🚨 CRITICAL ERROR in DOMContentLoaded:', error);
+            }
+            
+            console.log('🔍 ATTACHING SUBMIT EVENT LISTENER...');
+            const form = document.getElementById('transaction-form');
+            console.log('🔍 Form element found:', !!form);
+            if (form) {
+                form.addEventListener('submit', handleSubmit);
+                console.log('✅ Submit event listener attached successfully');
+            } else {
+                console.error('❌ Form element not found for event listener');
+            }
+            
+            // Event listeners will be added in populateDropdowns function after elements are populated
+            
+            // Auto-refresh displays and roster every 30 seconds to clear expired busy statuses
+            setInterval(async () => {
+                await updateAllDisplays();
+                // Refresh roster to trigger expired busy status clearing
+                try {
+                    const roster = await api.getStaffRoster();
+                    appData.roster = roster.map((r) => ({
+                        name: r.masseuse_name,
+                        status: r.status,
+                        position: r.position,
+                        today_massages: r.today_massages || 0
+                    }));
+                    console.log('🔄 Auto-refreshed roster, cleared expired busy statuses');
+                } catch (error) {
+                    console.error('❌ Error auto-refreshing roster:', error);
+                }
+            }, 30000);
+        });
+
+        function checkForEdit() {
+            const transactionJSON = sessionStorage.getItem('transactionToEdit');
+            if (transactionJSON) {
+                try {
+                    const transaction = JSON.parse(transactionJSON);
+                    
+                    // Put form into Edit Mode
+                    document.getElementById('correction-banner').textContent = `✏️ EDIT MODE: Modifying Transaction #${transaction.id}`;
+                    document.getElementById('correction-banner').style.display = 'block';
+                    document.querySelector('.nav-header').textContent = 'EDIT TRANSACTION';
+                    document.getElementById('original-transaction-id').value = transaction.id;
+
+                    // Populate form fields
+                    document.getElementById('masseuse').value = transaction.masseuse;
+                    document.getElementById('location').value = transaction.location;
+                    
+                    // We need to trigger the 'change' event to load the correct service options
+                    document.getElementById('location').dispatchEvent(new Event('change'));
+
+                    // Use a short delay to allow service/duration dropdowns to populate
+                    setTimeout(() => {
+                        document.getElementById('service').value = transaction.service;
+                        document.getElementById('service').dispatchEvent(new Event('change'));
+
+                        setTimeout(() => {
+                            document.getElementById('duration').value = transaction.duration;
+                            document.getElementById('duration').dispatchEvent(new Event('change'));
+                        
+                            document.getElementById('payment').value = transaction.paymentMethod;
+                            document.getElementById('customerContact').value = transaction.customerContact;
+                        }, 100); 
+                    }, 100);
+
+                    // Set global state for correction mode
+                    appData.correctionMode = true;
+                    appData.originalTransactionId = transaction.id;
+
+                    // Clean up sessionStorage
+                    sessionStorage.removeItem('transactionToEdit');
+
+                } catch (error) {
+                    console.error('Error parsing transaction data for editing:', error);
+                    sessionStorage.removeItem('transactionToEdit');
+                }
+            }
+        }
+
+        function handleURLParams() {
+            const params = new URLSearchParams(window.location.search);
+            const masseuse = params.get('masseuse');
+            if (masseuse) {
+                document.getElementById('masseuse').value = masseuse;
+            }
+        }
+
+        function getNextInLineFromStaff() {
+            // Helper function to find next in line from roster data
+            const nextStaff = appData.roster.find(r => r.status === 'Next');
+            return nextStaff ? nextStaff.name : null;
+        }
+
+        function updateServiceOptions() {
+            const location = document.getElementById('location').value;
+            let serviceSelect = document.getElementById('service');
+            let durationSelect = document.getElementById('duration');
+            
+            // Defensive programming: check if elements exist
+            if (!serviceSelect || !durationSelect) {
+                console.error('❌ updateServiceOptions: Required DOM elements not found');
+                return;
+            }
+            
+            serviceSelect.innerHTML = '<option value="">Select Service</option>';
+            durationSelect.innerHTML = '<option value="">Select Duration</option>';
+            
+            if (location) {
+                // Find unique service names for this location
+                const locationServices = CONFIG.settings.services.filter(s => s.location === location);
+                const uniqueServices = [...new Set(locationServices.map(s => s.name))];
+                uniqueServices.forEach(serviceName => {
+                    serviceSelect.innerHTML += `<option value="${serviceName}">${serviceName}</option>`;
+                });
+            }
+        }
+
+        function updateDurationOptions() {
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            let durationSelect = document.getElementById('duration');
+            
+            // Defensive programming: check if element exists
+            if (!durationSelect) {
+                console.error('❌ updateDurationOptions: Duration select element not found');
+                return;
+            }
+            
+            durationSelect.innerHTML = '<option value="">Select Duration</option>';
+            
+            if (location && serviceName) {
+                // Find all durations for this service type and location
+                const serviceOptions = CONFIG.settings.services.filter(s => 
+                    s.name === serviceName && s.location === location
+                );
+                serviceOptions.forEach(service => {
+                    durationSelect.innerHTML += `<option value="${service.duration}">${service.duration} minutes</option>`;
+                });
+            }
+        }
+
+        function updatePricing() {
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            const duration = document.getElementById('duration').value;
+            
+            if (location && serviceName && duration) {
+                const service = CONFIG.settings.services.find(s => 
+                    s.name === serviceName && s.duration == duration && s.location === location
+                );
+                
+                if (service) {
+                    document.getElementById('servicePrice').textContent = `฿${service.price.toFixed(2)}`;
+                    document.getElementById('masseuseeFee').textContent = `฿${service.fee.toFixed(2)}`;
+                } else {
+                    document.getElementById('servicePrice').textContent = '฿0.00';
+                    document.getElementById('masseuseeFee').textContent = '฿0.00';
+                }
+            } else {
+                document.getElementById('servicePrice').textContent = '฿0.00';
+                document.getElementById('masseuseeFee').textContent = '฿0.00';
+            }
+        }
+
+        function formatTime(date) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
+            const displayMinutes = minutes.toString().padStart(2, '0');
+            return `${displayHours}:${displayMinutes} ${ampm}`;
+        }
+
+        function updateTimeDropdowns() {
+            console.log('🔍 STEP 1: updateTimeDropdowns() CALLED');
+            
+            // Get Bangkok time (UTC+7) instead of device time
+            console.log('🔍 STEP 2: Getting current time');
+            const now = new Date();
+            console.log('🔍 STEP 2a: Current time:', now);
+            const bangkokOffset = 7 * 60; // UTC+7 in minutes
+            console.log('🔍 STEP 2b: Bangkok offset:', bangkokOffset, 'minutes');
+            const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+            console.log('🔍 STEP 2c: UTC time:', utcTime);
+            const bangkokTime = new Date(utcTime + (bangkokOffset * 60000));
+            console.log('🔍 STEP 2d: Bangkok time:', bangkokTime);
+            
+            // Get preparation delay based on service (10min default, 15min for Oil)
+            console.log('🔍 STEP 3: Getting service info');
+            const serviceElement = document.getElementById('service');
+            console.log('🔍 STEP 3a: Service element found:', !!serviceElement);
+            const serviceName = serviceElement ? serviceElement.value : '';
+            console.log('🔍 STEP 3b: Service name:', serviceName);
+            const isOilService = serviceName && serviceName.toLowerCase().includes('oil');
+            console.log('🔍 STEP 3c: Is oil service:', isOilService);
+            const preparationMinutes = isOilService ? 15 : 10;
+            console.log('🔍 STEP 3d: Preparation minutes:', preparationMinutes);
+            
+            // Start time = Bangkok time + preparation delay
+            console.log('🔍 STEP 4: Calculating start time');
+            const startTime = new Date(bangkokTime.getTime() + preparationMinutes * 60000);
+            console.log('🔍 STEP 4a: Start time (Date object):', startTime);
+            const formattedStartTime = formatTime(startTime);
+            console.log('🔍 STEP 4b: Formatted start time:', formattedStartTime);
+            
+            console.log('🔍 STEP 5: Setting start time in DOM');
+            const startTimeElement = document.getElementById('startTime');
+            console.log('🔍 STEP 5a: Start time element found:', !!startTimeElement);
+            if (startTimeElement) {
+                startTimeElement.value = formattedStartTime;
+                console.log('🔍 STEP 5b: Start time set to:', startTimeElement.value);
+            } else {
+                console.log('❌ STEP 5c: Start time element not found!');
+            }
+
+            console.log('🔍 STEP 6: Getting end time select element');
+            const endTimeSelect = document.getElementById('endTime');
+            console.log('🔍 STEP 6a: End time select element found:', !!endTimeSelect);
+            if (!endTimeSelect) {
+                console.log('❌ STEP 6b: End time select element not found!');
+                return;
+            }
+            
+            console.log('🔍 STEP 7: Clearing end time options');
+            endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+            console.log('🔍 STEP 7a: End time options cleared, current innerHTML length:', endTimeSelect.innerHTML.length);
+
+            // Get the selected duration value to calculate end time
+            console.log('🔍 STEP 8: Getting duration info');
+            const durationElement = document.getElementById('duration');
+            console.log('🔍 STEP 8a: Duration element found:', !!durationElement);
+            
+            if (!durationElement) {
+                console.log('❌ STEP 8b: Duration element not found!');
+                return;
+            }
+            
+            const selectedDuration = durationElement.value;
+            console.log('🔍 STEP 8c: Selected duration value:', selectedDuration);
+            console.log('🔍 STEP 8d: Selected duration type:', typeof selectedDuration);
+            
+            if (selectedDuration) {
+                console.log('🔍 STEP 9: Duration selected, calculating end time');
+                // Convert duration string to minutes (e.g., "60" -> 60)
+                const durationMinutes = parseInt(selectedDuration);
+                console.log('🔍 STEP 9a: Duration parsed to minutes:', durationMinutes);
+                console.log('🔍 STEP 9b: Is duration a valid number:', !isNaN(durationMinutes));
+                
+                if (!isNaN(durationMinutes)) {
+                    console.log('🔍 STEP 10: Duration is valid, calculating end time');
+                    const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+                    console.log('🔍 STEP 10a: End time (Date object):', endTime);
+                    const formattedEndTime = formatTime(endTime);
+                    console.log('🔍 STEP 10b: Formatted end time:', formattedEndTime);
+                    
+                    console.log('🔍 STEP 11: Adding end time option to dropdown');
+                    // Clear existing options and add the calculated end time
+                    endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+                    console.log('🔍 STEP 11a: Cleared options, innerHTML length:', endTimeSelect.innerHTML.length);
+                    endTimeSelect.innerHTML += `<option value="${formattedEndTime}">${formattedEndTime}</option>`;
+                    console.log('🔍 STEP 11b: Added end time option, innerHTML length:', endTimeSelect.innerHTML.length);
+                    console.log('🔍 STEP 11c: Current innerHTML:', endTimeSelect.innerHTML);
+                    
+                    console.log('🔍 STEP 12: Setting end time value');
+                    // IMPORTANT: Set the value after setting innerHTML
+                    endTimeSelect.value = formattedEndTime;
+                    console.log('🔍 STEP 12a: End time value set to:', endTimeSelect.value);
+                    
+                    console.log('🔍 STEP 13: Setting selected index');
+                    // Also set the selectedIndex to ensure the option is visually selected
+                    endTimeSelect.selectedIndex = 1; // Index 1 is the calculated end time (index 0 is "Select End Time")
+                    console.log('🔍 STEP 13a: Selected index set to:', endTimeSelect.selectedIndex);
+                    
+                    console.log('🔍 STEP 14: Final verification');
+                    console.log('🔍 STEP 14a: Final end time value:', endTimeSelect.value);
+                    console.log('🔍 STEP 14b: Final selected index:', endTimeSelect.selectedIndex);
+                    console.log('🔍 STEP 14c: Final innerHTML length:', endTimeSelect.innerHTML.length);
+                    console.log('🔍 STEP 14d: Final innerHTML:', endTimeSelect.innerHTML);
+                    
+                    console.log('✅ SUCCESS: End time auto-selected for duration:', durationMinutes, 'minutes');
+                } else {
+                    console.log('❌ STEP 9c: Duration parsing failed:', selectedDuration);
+                }
+            } else {
+                console.log('🔍 STEP 9: No duration selected, showing all options');
+                // If no duration selected, show all possible end times
+                endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+                const durations = [30, 60, 90, 120];
+                durations.forEach(duration => {
+                    const endTime = new Date(startTime.getTime() + duration * 60000);
+                    const formattedEndTime = formatTime(endTime);
+                    endTimeSelect.innerHTML += `<option value="${formattedEndTime}">${formattedEndTime}</option>`;
+                });
+                console.log('🔍 STEP 9a: All duration options added, innerHTML length:', endTimeSelect.innerHTML.length);
+            }
+            
+            console.log('🔍 STEP 15: Function completed successfully');
+        }
+
+        async function handleSubmit(event) {
+            event.preventDefault();
+            
+            console.log('🔄 STEP 11: handleSubmit() called - starting transaction submission...');
+            
+            const selectedMasseuse = document.getElementById('masseuse').value;
+            const isUsingNextInLine = selectedMasseuse.includes('(NEXT IN LINE)');
+            
+            if (!selectedMasseuse || selectedMasseuse === 'Select Masseuse') {
+                showToast('Please select a masseuse', 'error');
+                return;
+            }
+            
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            const duration = document.getElementById('duration').value;
+            
+            if (!location || location === 'Select Location') {
+                showToast('Please select a location', 'error');
+                return;
+            }
+            
+            if (!serviceName || serviceName === 'Select Service') {
+                showToast('Please select a service', 'error');
+                return;
+            }
+            
+            if (!duration || duration === 'Select Duration') {
+                showToast('Please select a duration', 'error');
+                return;
+            }
+            
+            const price = parseFloat(document.getElementById('servicePrice').textContent.replace('฿', ''));
+            const masseuseFee = parseFloat(document.getElementById('masseuseeFee').textContent.replace('฿', ''));
+            
+            if (isNaN(price) || price <= 0) {
+                showToast('Invalid price. Please select a service and duration.', 'error');
+                return;
+            }
+            
+            const formData = {
+                masseuse: selectedMasseuse,
+                location: location,
+                service: serviceName, // Send exact service_name, not constructed string
+                duration: duration,
+                price: price,
+                masseuseFee: masseuseFee,
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value,
+                original_transaction_id: document.getElementById('original-transaction-id').value || null
+            };
+
+            const success = await submitTransaction(formData);
+            if (success) {
+                // CRITICAL FIX: Only refresh the data AFTER the submission is confirmed successful.
+                await loadTodayData();
+
+                // If using next in line, advance the queue
+                if (isUsingNextInLine) {
+                    await advanceQueue(selectedMasseuse);
+                }
+                
+                // Mark masseuse as busy until end time
+                await setMasseuseBusy(selectedMasseuse, formData.endTime);
+                
+                clearForm();
+                await updateAllDisplays(); // This will now use the fresh data
+                showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
+            }
+        }
+
+        async function advanceQueue(currentMasseuse) {
+            try {
+                // Advance to next person in line
+                await api.advanceQueue(currentMasseuse);
+                console.log(`🔄 Queue advanced from ${currentMasseuse}`);
+            } catch (error) {
+                console.error('Error advancing queue:', error);
+            }
+        }
+        
+        async function setMasseuseBusy(masseuseName, endTime) {
+            try {
+                // Set masseuse as busy until end time
+                await api.setMasseuseBusy(masseuseName, endTime);
+                console.log(`🔒 ${masseuseName} marked as busy until ${endTime}`);
+            } catch (error) {
+                console.error('Error setting masseuse busy:', error);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('transaction-form').reset();
+            document.getElementById('servicePrice').textContent = '฿0.00';
+            document.getElementById('masseuseeFee').textContent = '฿0.00';
+            exitCorrectionMode();
+        }
+
+        async function loadCorrection() {
+            const transaction = loadTransactionForCorrection();
+            if (transaction) {
+                document.getElementById('masseuse').value = transaction.masseuse;
+                document.getElementById('service').value = transaction.service;
+                document.getElementById('payment').value = transaction.paymentMethod;
+                document.getElementById('startTime').value = transaction.startTime;
+                document.getElementById('endTime').value = transaction.endTime;
+                document.getElementById('customerContact').value = transaction.customerContact;
+                
+                updatePricing();
+                enterCorrectionMode();
+                await updateAllDisplays();
+            }
+        }
+
+        function enterCorrectionMode() {
+            correctionMode = true;
+            document.getElementById('correction-banner').style.display = 'block';
+            document.getElementById('transaction-form').classList.add('correction-mode');
+            document.getElementById('correction-info').textContent = `Correcting transaction: ${appData.originalTransactionId}`;
+        }
+
+        function exitCorrectionMode() {
+            correctionMode = false;
+            document.getElementById('correction-banner').style.display = 'none';
+            document.getElementById('transaction-form').classList.remove('correction-mode');
+            document.getElementById('correction-info').textContent = 'No recent transaction to correct';
+        }
+
+        async function updateAllDisplays() {
+            
+            const location = document.getElementById('location').value;
+            const serviceName = document.getElementById('service').value;
+            const duration = document.getElementById('duration').value;
+            
+            console.log('🔍 FORM VALUES:', {
+                masseuse: selectedMasseuse,
+                location: location,
+                service: serviceName,
+                duration: duration,
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value
+            });
+            
+            const formData = {
+                masseuse: selectedMasseuse,
+                service: serviceName, // Send exact service_name, not constructed string
+                payment: document.getElementById('payment').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                customerContact: document.getElementById('customerContact').value
+            };
+
+            console.log('🔍 SUBMITTING FORM DATA:', formData);
+            const success = await submitTransaction(formData);
+            if (success) {
+                // If using next in line, advance the queue
+                if (isUsingNextInLine) {
+                    await advanceQueue(selectedMasseuse);
+                }
+                
+                // Mark masseuse as busy until end time
+                await setMasseuseBusy(selectedMasseuse, formData.endTime);
+                
+                clearForm();
+                await updateAllDisplays();
+                showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
+            }
+        }
+
+        async function advanceQueue(currentMasseuse) {
+            try {
+                // Advance to next person in line
+                await api.advanceQueue(currentMasseuse);
+                console.log(`🔄 Queue advanced from ${currentMasseuse}`);
+            } catch (error) {
+                console.error('Error advancing queue:', error);
+            }
+        }
+        
+        async function setMasseuseBusy(masseuseName, endTime) {
+            try {
+                // Set masseuse as busy until end time
+                await api.setMasseuseBusy(masseuseName, endTime);
+                console.log(`🔒 ${masseuseName} marked as busy until ${endTime}`);
+            } catch (error) {
+                console.error('Error setting masseuse busy:', error);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('transaction-form').reset();
+            document.getElementById('servicePrice').textContent = '฿0.00';
+            document.getElementById('masseuseeFee').textContent = '฿0.00';
+            exitCorrectionMode();
+        }
+
+        async function loadCorrection() {
+            const transaction = loadTransactionForCorrection();
+            if (transaction) {
+                document.getElementById('masseuse').value = transaction.masseuse;
+                document.getElementById('service').value = transaction.service;
+                document.getElementById('payment').value = transaction.paymentMethod;
+                document.getElementById('startTime').value = transaction.startTime;
+                document.getElementById('endTime').value = transaction.endTime;
+                document.getElementById('customerContact').value = transaction.customerContact;
+                
+                updatePricing();
+                enterCorrectionMode();
+                await updateAllDisplays();
+            }
+        }
+
+        function enterCorrectionMode() {
+            correctionMode = true;
+            document.getElementById('correction-banner').style.display = 'block';
+            document.getElementById('transaction-form').classList.add('correction-mode');
+            document.getElementById('correction-info').textContent = `Correcting transaction: ${appData.originalTransactionId}`;
+        }
+
+        function exitCorrectionMode() {
+            correctionMode = false;
+            document.getElementById('correction-banner').style.display = 'none';
+            document.getElementById('transaction-form').classList.remove('correction-mode');
+            document.getElementById('correction-info').textContent = 'No recent transaction to correct';
+        }
+
+        async function updateAllDisplays() {
+            await updateQuickSummary();
+            updateRecentTransactions();
+            updateExpenseDisplay();
+        }
+
+        async function updateQuickSummary() {
+            const summary = await getTodaySummary();
+            
+            // Safely handle summary data with defaults
+            const todayRevenue = (summary && typeof summary.todayRevenue === 'number') ? summary.todayRevenue : 0;
+            const todayCount = (summary && typeof summary.todayCount === 'number') ? summary.todayCount : 0;
+            const todayExpenses = (summary && typeof summary.todayExpenses === 'number') ? summary.todayExpenses : 0;
+            
+            document.getElementById('today-revenue').textContent = `฿${todayRevenue.toFixed(2)}`;
+            document.getElementById('today-count').textContent = todayCount;
+            document.getElementById('today-expenses').textContent = `฿${todayExpenses.toFixed(2)}`;
+            
+            // Update payment breakdown
+            if (summary) {
+                updatePaymentBreakdownMini(summary);
+            }
+        }
+
+        function updatePaymentBreakdownMini(summary) {
+            const container = document.getElementById('payment-breakdown-mini');
+            
+            if (!summary || !summary.paymentBreakdown || Object.keys(summary.paymentBreakdown).length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666; font-style: italic;">No payments yet today</div>';
+                return;
+            }
+
+            let html = '';
+            Object.entries(summary.paymentBreakdown)
+                .sort(([,a], [,b]) => b.revenue - a.revenue)
+                .forEach(([method, data]) => {
+                    html += `
+                        <div class="summary-grid" style="margin-bottom: 8px;">
+                            <div style="font-size: 14px;">${method}:</div>
+                            <div style="font-size: 14px; font-weight: bold; color: #34a853;">฿${data.revenue.toFixed(2)} (${data.count})</div>
+                        </div>
+                    `;
+                });
+            container.innerHTML = html;
+        }
+
+        function updateRecentTransactions() {
+            console.log('🔄 STEP 12: updateRecentTransactions() called - starting display update...');
+            console.log('🔄 STEP 12: Current appData.transactions:', window.appData?.transactions);
+            console.log('🔄 STEP 12: Current appData.transactions length:', window.appData?.transactions?.length);
+            
+            const container = document.getElementById('recent-transactions');
+            if (!container) {
+                console.log('❌ STEP 12: ERROR - recent-transactions container not found');
+                return;
+            }
+            console.log('🔄 STEP 12: Found recent-transactions container');
+            
+            console.log('🔄 STEP 12: Calling getRecentTransactions(5) with date filter...');
+            const today = new Date().toISOString().split('T')[0];
+            const recentTransactions = getRecentTransactions(5, today);
+            console.log('🔄 STEP 12: getRecentTransactions(5) returned:', recentTransactions);
+            console.log('🔄 STEP 12: getRecentTransactions(5) length:', recentTransactions?.length);
+
+            // Preserve the header before clearing
+            const headerHTML = `
+                <div class="transaction-item">
+                    <div>Payment</div>
+                    <div>Masseuse</div>
+                    <div>Service</div>
+                    <div>Amount</div>
+                </div>
+            `;
+            
+            console.log('🔄 STEP 12: Setting container HTML to header...');
+            container.innerHTML = headerHTML;
+            console.log('🔄 STEP 12: Container HTML after header:', container.innerHTML.substring(0, 200));
+
+            if (recentTransactions.length === 0) {
+                console.log('🔄 STEP 12: No recent transactions, showing empty state...');
+                const div = document.createElement('div');
+                div.className = 'empty-state';
+                div.innerHTML = '<div>No transactions yet today</div>';
+                container.appendChild(div);
+                console.log('🔄 STEP 12: Empty state added to container');
+                return;
+            }
+
+            console.log('🔄 STEP 12: Adding transaction items to container...');
+            recentTransactions.forEach((transaction, index) => {
+                console.log(`🔄 STEP 12: Processing transaction ${index + 1}:`, transaction);
+                
+                const div = document.createElement('div');
+                div.className = 'transaction-item';
+                
+                div.innerHTML = `
+                    <div>${transaction.paymentMethod}</div>
+                    <div>${transaction.masseuse}</div>
+                    <div>${transaction.service}</div>
+                    <div>฿${transaction.paymentAmount.toFixed(2)}</div>
+                    ${transaction.status && transaction.status.includes('EDITED') ? '<div class="edited-status-badge">(EDITED)</div>' : ''}
+                `;
+                
+                // Add EDITED styling logic AFTER setting innerHTML (FIXED)
+                if (transaction.status && transaction.status.includes('EDITED')) {
+                    div.classList.add('edited-transaction');
+                    console.log(`🔄 STEP 12: Applied edited-transaction class to transaction ${index + 1}`);
+                }
+                container.appendChild(div);
+                console.log(`🔄 STEP 12: Transaction item ${index + 1} added to container`);
+            });
+            
+            console.log('🔄 STEP 12: Final container HTML:', container.innerHTML.substring(0, 500));
+            console.log('✅ STEP 12: updateRecentTransactions() completed successfully');
+        }
+
+        function updateExpenseDisplay() {
+            const expenseList = document.getElementById('expense-list');
+            
+            if (appData.expenses.length === 0) {
+                expenseList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No expenses recorded today</div>';
+                return;
+            }
+
+            expenseList.innerHTML = appData.expenses.map((expense, index) => `
+                <div class="expense-grid">
+                    <div>${expense.description}</div>
+                    <div>฿${expense.amount.toFixed(2)}</div>
+                    <div><button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="handleRemoveExpense(${index})">Remove</button></div>
+                    <div class="expense-time">${formatTime(expense.timestamp)}</div>
+                </div>
+            `).join('');
+        }
+
+        async function handleAddExpense() {
+            const description = document.getElementById('newExpenseDesc').value.trim();
+            const amount = parseFloat(document.getElementById('newExpenseAmount').value);
+
+            if (addExpense(description, amount)) {
+                document.getElementById('newExpenseDesc').value = '';
+                document.getElementById('newExpenseAmount').value = '';
+                await updateAllDisplays();
+            }
+        }
+
+        async function handleRemoveExpense(index) {
+            if (removeExpense(index)) {
+                await updateAllDisplays();
+            }
+        }
+
+        function populateDropdowns() {
+            try {
+                console.log('🔍 POPULATE DROPDOWNS - CONFIG.settings:', CONFIG.settings);
+                console.log('🔍 Masseuses:', CONFIG.settings.masseuses);
+                console.log('🔍 Services:', CONFIG.settings.services);
+                console.log('🔍 Payment Methods:', CONFIG.settings.paymentMethods);
+                
+                // Wait for all required DOM elements to be ready
+                console.log('🔍 WAITING FOR DOM ELEMENTS TO BE READY...');
+                const requiredElements = ['masseuse', 'service', 'duration', 'payment', 'location'];
+                const missingElements = [];
+                
+                requiredElements.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (!element) {
+                        missingElements.push(id);
+                        console.log(`❌ Missing element: ${id}`);
+                    } else {
+                        console.log(`✅ Element found: ${id}`);
+                    }
+                });
+                
+                if (missingElements.length > 0) {
+                    console.log(`❌ Cannot proceed - missing elements: ${missingElements.join(', ')}`);
+                    return;
+                }
+                
+                console.log('✅ All required DOM elements are ready, proceeding...');
+            
+                console.log('🔍 STEP 1: Getting masseuse select element...');
+                const masseuseSelect = document.getElementById('masseuse');
+                console.log('🔍 STEP 1a: Masseuse select element found:', !!masseuseSelect);
+                
+                console.log('🔍 STEP 2: Setting masseuse innerHTML...');
+                masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+                console.log('🔍 STEP 2a: Masseuse innerHTML set successfully');
+                
+                console.log('🔍 STEP 3: Finding next in line masseuse...');
+                // Find next in line masseuse for auto-selection
+                const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
+                let nextInLineName = nextInLine ? nextInLine.name : null;
+                console.log('🔍 STEP 3a: Next in line found:', nextInLineName);
+                
+                console.log('🔍 STEP 4: Adding masseuse options...');
+                CONFIG.settings.masseuses.forEach(name => {
+                    const isSelected = name === nextInLineName ? 'selected' : '';
+                    masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
+                });
+                console.log('🔍 STEP 4a: Masseuse options added successfully');
+
+                console.log('🔍 STEP 5: Initializing service and duration dropdowns...');
+                // Initialize service and duration dropdowns with default state
+                let serviceSelect = document.getElementById('service');
+                let durationSelect = document.getElementById('duration');
+                
+                console.log('🔍 STEP 5a: Service select element found:', !!serviceSelect);
+                if (serviceSelect) {
+                    serviceSelect.innerHTML = '<option value="">Select Service</option>';
+                    console.log('✅ Service dropdown initialized');
+                } else {
+                    console.log('❌ Service dropdown element not found');
+                }
+                
+                console.log('🔍 STEP 5b: Duration select element found:', !!durationSelect);
+                if (durationSelect) {
+                    durationSelect.innerHTML = '<option value="">Select Duration</option>';
+                    console.log('✅ Duration dropdown initialized');
+                } else {
+                    console.log('❌ Duration dropdown element not found');
+                }
+
+                console.log('🔍 STEP 6: Setting up payment methods...');
+                let paymentSelect = document.getElementById('payment');
+                console.log('🔍 STEP 6a: Payment select element found:', !!paymentSelect);
+                
+                if (paymentSelect) {
+                    paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
+                    console.log('🔍 STEP 6b: Payment options cleared, adding methods...');
+                    CONFIG.settings.paymentMethods.forEach(method => {
+                        paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
+                    });
+                    console.log('🔍 STEP 6c: Payment methods added successfully');
+                } else {
+                    console.log('❌ Payment select element not found');
+                }
+                
+                console.log('🔍 STEP 7: DROPDOWNS POPULATED - Next in line:', nextInLineName);
+                
+                // Add event listeners for dropdown changes after elements are populated
+                console.log('🔍 ADDING EVENT LISTENERS...');
+                
+                console.log('🔍 CHECKING IF LOCATION ELEMENT EXISTS...');
+                const locationSelect = document.getElementById('location');
+                console.log('🔍 Location element found:', !!locationSelect);
+                if (locationSelect) {
+                    console.log('🔍 Location element properties:', {
+                        tagName: locationSelect.tagName,
+                        id: locationSelect.id,
+                        innerHTML: locationSelect.innerHTML.substring(0, 100) + '...'
+                    });
+                }
+                
+                console.log('🔍 CHECKING IF SERVICE ELEMENT EXISTS...');
+                // Reassign existing variables (don't redeclare)
+                serviceSelect = document.getElementById('service');
+                console.log('🔍 Service element found:', !!serviceSelect);
+                
+                console.log('🔍 CHECKING IF DURATION ELEMENT EXISTS...');
+                durationSelect = document.getElementById('duration');
+                console.log('🔍 Duration element found:', !!durationSelect);
+                
+                console.log('🔍 CHECKING IF PAYMENT ELEMENT EXISTS...');
+                paymentSelect = document.getElementById('payment');
+                console.log('🔍 Payment element found:', !!paymentSelect);
+                
+                // Ensure all variables are properly assigned before logging
+                console.log('🔍 Elements found:', {
+                    location: !!locationSelect,
+                    service: !!serviceSelect,
+                    duration: !!durationSelect,
+                    payment: !!paymentSelect
+                });
+                
+                console.log('🔍 ABOUT TO ADD LOCATION EVENT LISTENER...');
+                if (locationSelect) {
+                    console.log('🔍 LOCATION ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        console.log('🔍 Creating location event listener function...');
+                        const locationChangeHandler = function() {
+                            console.log('🔍 LOCATION CHANGED TO:', this.value);
+                            updateServiceOptions();
+                            updatePricing();
+                            updateTimeDropdowns();
+                        };
+                        console.log('🔍 Location event listener function created successfully');
+                        
+                        console.log('🔍 Adding location event listener to DOM...');
+                        locationSelect.addEventListener('change', locationChangeHandler);
+                        console.log('✅ Location event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding location event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
+                } else {
+                    console.log('❌ Location element not found');
+                }
+                
+                console.log('🔍 ABOUT TO ADD SERVICE EVENT LISTENER...');
+                if (serviceSelect) {
+                    console.log('🔍 SERVICE ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        console.log('🔍 Creating service event listener function...');
+                        const serviceChangeHandler = function() {
+                            console.log('🔍 SERVICE CHANGED TO:', this.value);
+                            updateDurationOptions();
+                            updatePricing();
+                            updateTimeDropdowns();
+                        };
+                        console.log('🔍 Service event listener function created successfully');
+                        
+                        console.log('🔍 Adding service event listener to DOM...');
+                        serviceSelect.addEventListener('change', serviceChangeHandler);
+                        console.log('✅ Service event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding service event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
+                } else {
+                    console.log('❌ Service element not found');
+                }
+                
+                console.log('🔍 ABOUT TO ADD DURATION EVENT LISTENER...');
+                if (durationSelect) {
+                    console.log('🔍 DURATION ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        console.log('🔍 Creating duration event listener function...');
+                        const durationChangeHandler = function() {
+                            console.log('🔍 DURATION CHANGED TO:', this.value);
+                            updatePricing();
+                            updateTimeDropdowns();
+                        };
+                        console.log('🔍 Duration event listener function created successfully');
+                        
+                        console.log('🔍 Adding duration event listener to DOM...');
+                        durationSelect.addEventListener('change', durationChangeHandler);
+                        console.log('✅ Duration event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding duration event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
+                } else {
+                    console.log('❌ Duration element not found');
+                }
+                
+                console.log('🔍 ABOUT TO ADD PAYMENT EVENT LISTENER...');
+                if (paymentSelect) {
+                    console.log('🔍 PAYMENT ELEMENT FOUND, ADDING EVENT LISTENER...');
+                    try {
+                        console.log('🔍 Creating payment event listener function...');
+                        const paymentChangeHandler = function() {
+                            console.log('🔍 PAYMENT CHANGED TO:', this.value);
+                            updateTimeDropdowns();
+                        };
+                        console.log('🔍 Payment event listener function created successfully');
+                        
+                        console.log('🔍 Adding payment event listener to DOM...');
+                        paymentSelect.addEventListener('change', paymentChangeHandler);
+                        console.log('✅ Payment event listener added');
+                    } catch (e) {
+                        console.error('❌ ERROR adding payment event listener:', e.message);
+                        console.error('❌ ERROR stack:', e.stack);
+                    }
+                } else {
+                    console.log('❌ Payment element not found');
+                }
+                
+                console.log('🔍 ALL EVENT LISTENERS PROCESSED - FUNCTION COMPLETING...');
+            } catch (error) {
+                console.error('❌ ERROR in populateDropdowns:', error);
+            }
+        }
+    </script>
+    
+    <!-- Logout Button at Bottom -->
+    <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
+                    <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">
+                <span class="label-en">👋 Logout</span>
+                <span class="label-th">👋 ออกจากระบบ</span>
+            </button>
+    </div>
+</body>
+</html>

@@ -28,7 +28,8 @@ class APIClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-
+    
+    // H4: Disable cache to test caching hypothesis
     if (options.method === 'GET' || options.method === undefined) {
       options.cache = 'no-cache';
     }
@@ -37,27 +38,10 @@ class APIClient {
       method: options.method || 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...options.headers
       },
-      credentials: 'include', // Ensures cookies (incl. CSRF secret) are sent
-      ...options,
+      ...options
     };
-
-    // For non-GET requests, first fetch a CSRF token, then proceed.
-    if (config.method !== 'GET') {
-      try {
-        const csrfToken = await this.getCsrfToken();
-        if (csrfToken) {
-          config.headers['X-CSRF-Token'] = csrfToken;
-        } else {
-          // If we can't get a token, we must stop the request.
-          throw new Error('CSRF token not available. Request blocked.');
-        }
-      } catch (error) {
-        console.error(`[API_CLIENT] CSRF token fetch failed, blocking request to ${url}:`, error);
-        throw error; // Re-throw to prevent the request from proceeding
-      }
-    }
 
     if (config.body) {
       config.body = JSON.stringify(config.body);
@@ -71,12 +55,9 @@ class APIClient {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: `HTTP ${response.status} - ${response.statusText}` }));
-        // Use the detailed error from the server if available
-        throw new Error(error.details || error.error || `HTTP ${response.status} - ${response.statusText}`);
+        throw new Error(error.error || `HTTP ${response.status} - ${response.statusText}`);
       }
-      // Handle cases where the response body might be empty
-      const text = await response.text();
-      return text ? JSON.parse(text) : {};
+      return await response.json();
     } catch (error) {
       console.error(`[API_CLIENT] ${new Date().toISOString()} - Request failed for ${config.method} ${url}:`, error);
       if (error instanceof TypeError && error.message.includes('fetch')) {

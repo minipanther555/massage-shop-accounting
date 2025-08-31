@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <script
+      src="https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js"
+      crossorigin="anonymous"
+    ></script>
+    <title>Massage Shop POS - Daily Summary</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="nav-header">
+            DAILY SUMMARY & REPORTS
+        </div>
+
+        <div class="nav-buttons">
+            <a href="/index.html" class="nav-btn home">
+                <span class="label-en">🏠 Home</span>
+                <span class="label-th">🏠 หน้าแรก</span>
+            </a>
+            <a href="/api/main/staff-roster" class="nav-btn staff">
+                <span class="label-en">👥 Staff Roster</span>
+                <span class="label-th">👥 รายชื่อพนักงาน</span>
+            </a>
+            <a href="/api/main/transaction" class="nav-btn transaction">
+                <span class="label-en">💳 New Transaction</span>
+                <span class="label-th">💳 ธุรกรรมใหม่</span>
+            </a>
+            <a href="/api/main/summary" class="nav-btn summary active">
+                <span class="label-en">📊 Daily Summary</span>
+                <span class="label-th">📊 สรุปรายวัน</span>
+            </a>
+            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                <span id="current-user" style="color: #666; font-size: 14px;"></span>
+            </div>
+        </div>
+
+        <!-- Daily Overview -->
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h3>Today's Revenue</h3>
+                <div class="big-number" id="today-revenue">฿0.00</div>
+                <div class="subtitle" id="today-transactions">0 transactions</div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Today's Fees</h3>
+                <div class="big-number" id="today-fees">฿0.00</div>
+                <div class="subtitle">Masseuse earnings</div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Today's Expenses</h3>
+                <div class="big-number" id="today-expenses">฿0.00</div>
+                <div class="subtitle" id="expense-count">0 expenses</div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Net Profit</h3>
+                <div class="big-number" id="net-profit">฿0.00</div>
+                <div class="subtitle">Revenue - Fees - Expenses</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Column -->
+            <div>
+                <!-- Payment Method Breakdown -->
+                <div class="section">
+                    <div class="section-header">TODAY'S PAYMENT BREAKDOWN</div>
+                    <div class="section-content">
+                        <div id="payment-breakdown"></div>
+                    </div>
+                </div>
+
+                <!-- Masseuse Performance -->
+                <div class="section">
+                    <div class="section-header">TODAY'S MASSEUSE PERFORMANCE</div>
+                    <div class="section-content">
+                        <div id="masseuse-performance"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <!-- All Transactions Today -->
+                <div class="section">
+                    <div class="section-header">ALL TRANSACTIONS TODAY</div>
+                    <div class="section-content">
+                        <div class="transaction-log" id="all-transactions">
+                            <div class="transaction-item">
+                                <div>Time</div>
+                                <div>Service</div>
+                                <div>Masseuse</div>
+                                <div>Amount</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- All Expenses Today -->
+                <div class="section">
+                    <div class="section-header">ALL EXPENSES TODAY</div>
+                    <div class="section-content">
+                        <div id="all-expenses"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- End Day Actions -->
+        <div class="section">
+            <div class="section-header">END DAY OPERATIONS</div>
+            <div class="section-content" style="text-align: center;">
+                <button class="btn btn-danger btn-large" onclick="handleEndDay()">
+                    🌙 End Day & Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/api.js"></script>
+    <script src="/shared.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Check authentication first
+            if (!requireAuth()) {
+                return;
+            }
+            
+            // Display current user
+            const user = getCurrentUser();
+            if (user) {
+                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+            }
+            
+            // Load data from API first
+            await loadTodayData();
+            await updateAllDisplays();
+            setInterval(async () => {
+                await loadData(); // Ensure fresh data on interval
+                await updateAllDisplays();
+            }, 30000);
+        });
+
+        async function updateAllDisplays() {
+            await updateDashboard();
+            await updatePaymentBreakdown();
+            updateMasseusePerformance();
+            updateAllTransactions();
+            updateAllExpenses();
+        }
+
+        async function updateDashboard() {
+            const summary = await getTodaySummary();
+            
+            // Safely handle summary data with defaults
+            const todayRevenue = (summary && typeof summary.todayRevenue === 'number') ? summary.todayRevenue : 0;
+            const todayCount = (summary && typeof summary.todayCount === 'number') ? summary.todayCount : 0;
+            const todayFees = (summary && typeof summary.todayFees === 'number') ? summary.todayFees : 0;
+            const todayExpenses = (summary && typeof summary.todayExpenses === 'number') ? summary.todayExpenses : 0;
+            
+            document.getElementById('today-revenue').textContent = `฿${todayRevenue.toFixed(2)}`;
+            document.getElementById('today-transactions').textContent = `${todayCount} transaction${todayCount !== 1 ? 's' : ''}`;
+            document.getElementById('today-fees').textContent = `฿${todayFees.toFixed(2)}`;
+            document.getElementById('today-expenses').textContent = `฿${todayExpenses.toFixed(2)}`;
+            document.getElementById('expense-count').textContent = `${appData.expenses.length} expense${appData.expenses.length !== 1 ? 's' : ''}`;
+            
+            const netProfit = todayRevenue - todayFees - todayExpenses;
+            document.getElementById('net-profit').textContent = `฿${netProfit.toFixed(2)}`;
+            document.getElementById('net-profit').style.color = netProfit >= 0 ? '#34a853' : '#ea4335';
+        }
+
+        async function updatePaymentBreakdown() {
+            const summary = await getTodaySummary();
+            const container = document.getElementById('payment-breakdown');
+            
+            if (!summary || !summary.paymentBreakdown || Object.keys(summary.paymentBreakdown).length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">💳</div><div>No payments processed today</div></div>';
+                return;
+            }
+
+            let html = '<table class="payment-table"><tr><th>Payment Method</th><th>Count</th><th class="amount">Revenue</th><th class="amount">Percentage</th></tr>';
+            const total = summary.todayRevenue;
+            
+            Object.entries(summary.paymentBreakdown)
+                .sort(([,a], [,b]) => b.revenue - a.revenue)
+                .forEach(([method, data]) => {
+                    const percentage = total > 0 ? (data.revenue / total * 100).toFixed(1) : 0;
+                    html += `
+                        <tr>
+                            <td>${method}</td>
+                            <td>${data.count}</td>
+                            <td class="amount">฿${data.revenue.toFixed(2)}</td>
+                            <td class="amount">${percentage}%</td>
+                        </tr>
+                    `;
+                });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function updateMasseusePerformance() {
+            const container = document.getElementById('masseuse-performance');
+            const today = new Date().toDateString();
+            const todayTransactions = appData.transactions.filter(t => 
+                t.date && t.date.toDateString && t.date.toDateString() === today && 
+                (t.status === 'ACTIVE' || t.status.includes('CORRECTED'))
+            );
+
+            // Group by masseuse
+            const masseuseStats = {};
+            todayTransactions.forEach(t => {
+                if (!masseuseStats[t.masseuse]) {
+                    masseuseStats[t.masseuse] = { count: 0, revenue: 0, fees: 0 };
+                }
+                masseuseStats[t.masseuse].count++;
+                masseuseStats[t.masseuse].revenue += t.paymentAmount;
+                masseuseStats[t.masseuse].fees += t.masseuseeFee;
+            });
+
+            if (Object.keys(masseuseStats).length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">👥</div><div>No transactions by any masseuse today</div></div>';
+                return;
+            }
+
+            let html = '<table class="payment-table"><tr><th>Masseuse</th><th>Services</th><th class="amount">Revenue Generated</th><th class="amount">Fees Earned</th></tr>';
+            Object.entries(masseuseStats)
+                .sort(([,a], [,b]) => b.revenue - a.revenue)
+                .forEach(([masseuse, stats]) => {
+                    html += `
+                        <tr>
+                            <td><strong>${masseuse}</strong></td>
+                            <td>${stats.count}</td>
+                            <td class="amount">฿${stats.revenue.toFixed(2)}</td>
+                            <td class="amount">฿${stats.fees.toFixed(2)}</td>
+                        </tr>
+                    `;
+                });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        function updateAllTransactions() {
+            const container = document.getElementById('all-transactions');
+            const allTransactions = appData.transactions.slice(); // Show all, oldest first
+
+            const header = container.querySelector('.transaction-item');
+            container.innerHTML = '';
+            container.appendChild(header);
+
+            if (allTransactions.length === 0) {
+                const div = document.createElement('div');
+                div.className = 'empty-state';
+                div.innerHTML = '<div class="icon">📋</div><div>No transactions today</div>';
+                container.appendChild(div);
+                return;
+            }
+
+            allTransactions.forEach(transaction => {
+                const div = document.createElement('div');
+                div.className = 'transaction-item';
+                
+                // Check if the transaction has been edited
+                if (transaction.status && transaction.status.includes('EDITED')) {
+                    div.classList.add('edited-transaction');
+                }
+
+                let statusBadge = '';
+                if (transaction.status && transaction.status.includes('EDITED')) {
+                    statusBadge = `<span class="edited-status-badge">(EDITED)</span>`;
+                }
+
+                div.innerHTML = `
+                    <div>${formatTime(transaction.timestamp)}</div>
+                    <div>${transaction.service} ${statusBadge}</div>
+                    <div>${transaction.masseuse}</div>
+                    <div>฿${transaction.paymentAmount.toFixed(2)}</div>
+                    <div class="btn-group">
+                        <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary" ${transaction.status && transaction.status.includes('EDITED') ? 'disabled' : ''}>✏️ Edit</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function editTransaction(transactionId) {
+            // Find the transaction in the appData
+            const transaction = appData.transactions.find(t => t.id === transactionId);
+            if (!transaction) {
+                showToast('Transaction not found. It may have been recently modified.', 'error');
+                return;
+            }
+
+            // Store the transaction data in sessionStorage to pass it to the form page
+            sessionStorage.setItem('transactionToEdit', JSON.stringify(transaction));
+
+            // Redirect to the new transaction page
+            window.location.href = '/api/main/transaction';
+        }
+
+        async function updateAllExpenses() {
+            const container = document.getElementById('all-expenses');
+            
+            if (appData.expenses.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">💰</div><div>No expenses recorded today</div></div>';
+                return;
+            }
+
+            let html = '<table class="payment-table"><tr><th>Time</th><th>Description</th><th class="amount">Amount</th></tr>';
+            appData.expenses.slice().reverse().forEach(expense => {
+                html += `
+                    <tr>
+                        <td>${formatTime(expense.timestamp)}</td>
+                        <td>${expense.description}</td>
+                        <td class="amount">฿${expense.amount.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        async function handleEndDay() {
+            if (typeof endDay === 'undefined') {
+                console.error('❌ endDay function not found in scope!');
+                alert('Error: endDay function not found. Check console for details.');
+                return;
+            }
+            
+            const success = await endDay();
+            if (success) {
+                updateAllDisplays();
+            }
+        }
+    </script>
+    
+    <!-- Logout Button at Bottom -->
+    <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
+                    <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">
+                <span class="label-en">👋 Logout</span>
+                <span class="label-th">👋 ออกจากระบบ</span>
+            </button>
+    </div>
+</body>
+</html>

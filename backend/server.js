@@ -23,6 +23,8 @@ const {
 const database = require('./models/database');
 
 const app = express();
+// Trust proxy for production/proxy correctness
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3000;
 let server;
 let isServerStarted = false; // Singleton flag
@@ -68,6 +70,11 @@ app.use((req, res, next) => {
     res.locals.csrfToken = req.csrfToken();
   }
   next();
+});
+
+// CSRF token endpoint for cookie-mode CSRF
+app.get('/csrf', (req, res) => {
+  res.json({ token: req.csrfToken() });
 });
 
 // --- API Routes ---
