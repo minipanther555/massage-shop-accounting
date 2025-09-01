@@ -35,3 +35,13 @@ backend/scripts/deploy.sh
 # Test results and reports
 tests/test-results/
 tests/playwright-report/
+
+# Build artifacts & archives
+*.tar.gz
+*.zip
+*.rar
+
+# Temporary files from deployment scripts
+deploy-logs/
+.cursor-last-image.txt
+.cursor-last-ts.txt
