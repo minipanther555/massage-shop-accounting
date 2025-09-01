@@ -14,6 +14,7 @@
  */
 
 const path = require('path');
+const DB_PATH = require('./dbPath'); // Use the centralized path
 
 // Determine current environment
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -31,7 +32,7 @@ const baseConfig = {
   // Database settings
   database: {
     type: 'sqlite', // Could be 'postgresql' or 'mysql' in production
-    filename: path.join(__dirname, '../data/massage_shop.db'),
+    filename: DB_PATH, // Use the centralized and env-aware path
     // Production database settings (when you move to PostgreSQL/MySQL)
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,

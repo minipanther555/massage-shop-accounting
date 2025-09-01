@@ -1,11 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const DB_PATH = require('./dbPath'); // Use the centralized path
 require('dotenv').config();
 
 class Database {
   constructor() {
     this.db = null;
-    this.dbPath = process.env.DATABASE_PATH || './data/massage_shop.db';
+    this.dbPath = DB_PATH; // Use the imported path
   }
 
   async connect() {
