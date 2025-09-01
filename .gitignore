@@ -16,9 +16,6 @@ node_modules/
 .vscode/
 .idea/
 
-# Docker
-docker/
-
 # Diagnostics and temporary files
 diagnostics/
 logs/

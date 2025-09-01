@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount specific source code directories instead of the whole project
+      - ../backend:/usr/src/app/backend
+      - ../web-app:/usr/src/app/web-app
+      # Preserve the container's backend/node_modules to prevent overwrite
+      - /usr/src/app/backend/node_modules
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+    depends_on:
+      - db
+
+  db:
+    image: alpine
+    command: "true"
