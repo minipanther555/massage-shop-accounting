@@ -2,7 +2,6 @@
 const SENTRY_DSN = process.env.SENTRY_DSN;
 if (SENTRY_DSN) {
   const Sentry = require("@sentry/node");
-  const Tracing = require("@sentry/tracing");
 
   Sentry.init({
     dsn: SENTRY_DSN,
@@ -10,7 +9,7 @@ if (SENTRY_DSN) {
     environment: process.env.NODE_ENV || "production",
   });
 
-  module.exports = { Sentry, Tracing, enabled: true };
+  module.exports = { Sentry, enabled: true };
 } else {
-  module.exports = { Sentry: null, Tracing: null, enabled: false };
+  module.exports = { Sentry: null, enabled: false };
 }
