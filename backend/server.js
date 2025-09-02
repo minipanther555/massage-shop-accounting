@@ -1,8 +1,14 @@
-// Must exist in image; the module itself guards if DSN missing.
-require('./instrument.js');
-
 const express = require('express');
 const Sentry = require('@sentry/node');
+
+// Initialize Sentry if DSN is provided
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_RATE || 0.0),
+    environment: process.env.NODE_ENV || "production",
+  });
+}
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
