@@ -1,5 +1,3 @@
-require('./instrument.js');
-
 const express = require('express');
 const Sentry = require('@sentry/node');
 const cors = require('cors');
@@ -7,6 +5,15 @@ const cookieParser = require('cookie-parser');
 
 const rateLimiter = require('./middleware/rate-limiter');
 require('dotenv').config();
+
+// Initialize Sentry if DSN is provided
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    sendDefaultPii: true,
+    tracesSampleRate: 1.0
+  });
+}
 
 // Import our custom security middleware
 const securityHeaders = require('./middleware/security-headers');
