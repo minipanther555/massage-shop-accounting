@@ -15,8 +15,9 @@
   ],
   "author": "",
   "license": "ISC",
-  "dependencies": {},
-  "devDependencies": {},
+  "dependencies": {
+    "@sentry/node": "^7.120.0"
+  },
   "engines": {
     "node": ">=18.0.0"
   }
