@@ -1,11 +1,16 @@
-// backend/instrument.js
-const Sentry = require('@sentry/node');
+// Safe Sentry init: only activates when SENTRY_DSN is set
+const SENTRY_DSN = process.env.SENTRY_DSN;
+if (SENTRY_DSN) {
+  const Sentry = require("@sentry/node");
+  const Tracing = require("@sentry/tracing");
 
-// This must be called before any other modules are required.
-Sentry.init({
-  dsn: 'https://d4242c087cd79901c4b3010987399915@o4509874071404544.ingest.de.sentry.io/4509891783163984',
-  sendDefaultPii: true,
-  tracesSampleRate: 1.0
-  // Per the official documentation for v8+, Express and HTTP integrations
-  // are enabled automatically. They do not need to be added here.
-});
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    tracesSampleRate: Number(process.env.SENTRY_TRACES_RATE || 0.0),
+    environment: process.env.NODE_ENV || "production",
+  });
+
+  module.exports = { Sentry, Tracing, enabled: true };
+} else {
+  module.exports = { Sentry: null, Tracing: null, enabled: false };
+}
