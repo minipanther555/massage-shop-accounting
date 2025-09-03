@@ -1,0 +1,1 @@
+["NODE_ENV=production","PORT=3000","TRUST_PROXY=1","DB_PATH=/app/backend/data/massage_shop.db","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin","NODE_VERSION=18.20.8","YARN_VERSION=1.22.22"]

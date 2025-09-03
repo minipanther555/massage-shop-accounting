@@ -1,0 +1,14 @@
+name: massage-shop
+services:
+  app:
+    image: massage-app:main28-20250902-102456
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TRUST_PROXY=1
+      - DB_PATH=/app/backend/data/massage_shop.db
+    ports:
+      - "3000:3000"
+    volumes:
+      - /opt/massage-shop/KEEP/backend/data:/app/backend/data:rw
