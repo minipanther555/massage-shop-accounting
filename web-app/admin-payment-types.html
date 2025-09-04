@@ -238,18 +238,11 @@
             if (!deletingPaymentType) return;
 
             try {
-                const response = await fetch(`/api/payment-types/${deletingPaymentType.id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + localStorage.getItem('token') // TODO: Implement proper auth
-                    }
+                // FIX: Use centralized API client instead of direct fetch
+                const api = new APIClient();
+                await api.request(`/api/payment-types/${deletingPaymentType.id}`, {
+                    method: 'DELETE'
                 });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to delete payment type');
-                }
 
                 showToast('Payment type deleted successfully', 'success');
                 closeDeleteModal();
@@ -279,19 +272,12 @@
                 
                 const method = editingPaymentType ? 'PUT' : 'POST';
 
-                const response = await fetch(url, {
+                // FIX: Use centralized API client instead of direct fetch
+                const api = new APIClient();
+                const response = await api.request(url, {
                     method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + localStorage.getItem('token') // TODO: Implement proper auth
-                    },
-                    body: JSON.stringify(formData)
+                    body: formData
                 });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to save payment type');
-                }
 
                 showToast(
                     editingPaymentType 

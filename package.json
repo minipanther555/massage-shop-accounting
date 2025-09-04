@@ -6,8 +6,9 @@
     "test:e2e": "scp massage:/opt/massage-shop/backend/data/massage_shop.db docker/data/massage_shop.db && npx playwright test",
     "test:integration": "node tests/run_integration_tests.js",
     "test:integration:transaction": "lsof -ti :3000 | xargs -r kill -9 && mocha tests/integration/transaction-creation.spec.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:api-guard": "bash scripts/pre-commit-hook.sh",
+    "lint": "npm run lint:api-guard",
+    "lint:fix": "npm run lint:api-guard"
   },
   "keywords": [
     "pos",
