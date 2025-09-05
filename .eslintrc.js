@@ -27,6 +27,13 @@ module.exports = {
     'no-console': 'off', // Allows console.log for our debugging
     'comma-dangle': ['error', 'never'], // Prevents trailing commas
     'no-unused-vars': ['warn', { args: 'none' }], // Warns about unused variables, but not unused function arguments
-    'max-len': ['warn', { code: 120 }] // Warns if a line is longer than 120 characters
+    'max-len': ['warn', { code: 120 }], // Warns if a line is longer than 120 characters
+    'no-restricted-syntax': [
+      'error',
+      {
+        'selector': 'CallExpression[callee.name="fetch"][arguments.0.value^="/api/"]',
+        'message': 'Use APIClient for /api/ calls instead of raw fetch. This ensures proper CSRF token handling and authentication.'
+      }
+    ]
   }
 };

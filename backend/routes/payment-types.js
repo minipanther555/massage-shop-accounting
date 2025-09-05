@@ -2,17 +2,10 @@ const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
-// Middleware to check if user is authenticated and has manager role
-const requireManagerAuth = (req, res, next) => {
-  // For now, we'll use a simple check - in production this should use JWT tokens
-  // This will be enhanced when we integrate with the existing auth system
-  if (!req.headers.authorization) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  // TODO: Implement proper JWT token validation for manager role
-  next();
-};
+// Use the same auth middleware as other admin routes for consistency
+const requireManagerAuth = [authenticateToken, authorizeRole('manager')];
 
 // GET /api/payment-types - List all active payment types
 router.get('/', async (req, res) => {
@@ -28,7 +21,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/payment-types - Create new payment type
-router.post('/', requireManagerAuth, async (req, res) => {
+router.post('/', ...requireManagerAuth, async (req, res) => {
   try {
     const { method_name, description } = req.body;
 
@@ -68,7 +61,7 @@ router.post('/', requireManagerAuth, async (req, res) => {
 });
 
 // PUT /api/payment-types/:id - Update existing payment type
-router.put('/:id', requireManagerAuth, async (req, res) => {
+router.put('/:id', ...requireManagerAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { method_name, description, active } = req.body;
@@ -119,7 +112,7 @@ router.put('/:id', requireManagerAuth, async (req, res) => {
 });
 
 // DELETE /api/payment-types/:id - Hard delete payment type
-router.delete('/:id', requireManagerAuth, async (req, res) => {
+router.delete('/:id', ...requireManagerAuth, async (req, res) => {
   try {
     const { id } = req.params;
 

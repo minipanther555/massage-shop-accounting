@@ -1,0 +1,10 @@
+services:
+  app:
+    ports: ["3007:3000"]
+    platform: linux/amd64
+    environment:
+      - NODE_ENV=development
+      - TRUST_PROXY=0
+      - DB_PATH=/app/backend/data/massage_shop.db
+    volumes:
+      - ./.local-data/backend/data:/app/backend/data:rw   # local throwaway copy
