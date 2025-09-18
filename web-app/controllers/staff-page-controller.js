@@ -128,11 +128,32 @@ function createStaffPageController({
     const rosterList = document.getElementById('roster-list');
     if (!rosterList) return undefined;
 
-    // Simulate roster rendering logic
+    // Clear existing roster
     rosterList.innerHTML = '';
 
-    // FIXED: Removed duplicate call to updateAvailableStaffDropdown()
-    // The dropdown is already updated in init() - no need to call it again
+    // Render roster from appData
+    if (appData.roster && appData.roster.length > 0) {
+      const fragment = document.createDocumentFragment();
+      
+      appData.roster.forEach((staff, index) => {
+        const rosterItem = document.createElement('div');
+        rosterItem.className = 'roster-item';
+        rosterItem.innerHTML = `
+          <span class="staff-name">${staff.name || 'Unknown'}</span>
+          <span class="staff-status">${staff.status || 'Available'}</span>
+          <span class="staff-count">${staff.todayCount || 0} today</span>
+          <button class="remove-staff" data-index="${index}">Remove</button>
+        `;
+        fragment.appendChild(rosterItem);
+      });
+      
+      rosterList.appendChild(fragment);
+      logger.log(`✅ Rendered ${appData.roster.length} staff in roster`);
+    } else {
+      rosterList.innerHTML = '<div class="no-staff">No staff currently on roster</div>';
+      logger.log('ℹ️ No staff in roster to display');
+    }
+
     setupMobileControls();
     return undefined;
   };
