@@ -136,19 +136,26 @@ function createStaffPageController({
       const fragment = document.createDocumentFragment();
       
       appData.roster.forEach((staff, index) => {
-        const rosterItem = document.createElement('div');
+        const rosterItem = document.createElement('li');
         rosterItem.className = 'roster-item';
+        rosterItem.setAttribute('data-id', staff.id || `staff-${index}`);
+        rosterItem.setAttribute('data-name', staff.name || 'Unknown');
+        rosterItem.setAttribute('data-position', staff.position || 'Unknown');
         rosterItem.innerHTML = `
           <span class="staff-name">${staff.name || 'Unknown'}</span>
           <span class="staff-status">${staff.status || 'Available'}</span>
           <span class="staff-count">${staff.todayCount || 0} today</span>
-          <button class="remove-staff" data-index="${index}">Remove</button>
         `;
         fragment.appendChild(rosterItem);
       });
       
       rosterList.appendChild(fragment);
       logger.log(`✅ Rendered ${appData.roster.length} staff in roster`);
+      
+      // Wire up UI behavior after rendering
+      if (window.rosterUI?.wireRosterUI) {
+        window.rosterUI.wireRosterUI(document);
+      }
     } else {
       rosterList.innerHTML = '<div class="no-staff">No staff currently on roster</div>';
       logger.log('ℹ️ No staff in roster to display');

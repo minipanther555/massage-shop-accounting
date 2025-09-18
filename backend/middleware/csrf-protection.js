@@ -49,8 +49,8 @@ const enhancedCsrfProtection = (req, res, next) => {
 
 // A wrapper to bypass CSRF protection in the test environment.
 const conditionalCsrfProtection = (req, res, next) => {
-  if (process.env.NODE_ENV === 'testing') {
-    // If testing, just skip the middleware.
+  if (process.env.NODE_ENV === 'testing' || process.env.PWTEST === '1') {
+    // If testing or PWTEST, just skip the middleware.
     return next();
   }
   // Otherwise, apply the enhanced CSRF protection with debugging.

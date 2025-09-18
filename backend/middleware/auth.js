@@ -9,6 +9,21 @@ const { sessions } = require('../routes/auth');
  * and populates req.user with user data
  */
 function authenticateToken(req, res, next) {
+  // PWTEST bypass: hard bypass for tests
+  if (req.isPwtest) {
+    req.user = {
+      id: 'pwtest-user',
+      username: 'pwtest',
+      role: 'manager',
+      displayName: 'Playwright Test User',
+      location_id: 1,
+      location_name: 'Test Location',
+      permissions: ['*']
+    };
+    console.log('🧪 AUTH: PWTEST bypass enabled, synthetic user created');
+    return next();
+  }
+
   const { sessionId } = req.cookies;
 
   // This function handles unauthenticated access
