@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Beacon Test</title>
+</head>
+<body>
+    <h1>Testing Beacons</h1>
+    <script>
+        // Simulate the controller load
+        console.info('[STAFF_CTRL/LOAD]', { sha: 'testing30-fix', file: 'staff-page-controller.js', stamp: new Date().toISOString(), version: '1.0.0-duplicate-fix' });
+        
+        // Simulate the inline script load
+        console.info('[STAFF_INLINE/LOAD]', { sha: 'legacy-inline', file: 'staff.ejs', stamp: new Date().toISOString() });
+        
+        // Test init guard
+        if (window.__staffCtrlInit) {
+            console.warn('[STAFF_INLINE] Controller already initialized, skipping legacy init');
+        } else {
+            window.__staffCtrlInit = true;
+            console.log('[STAFF_INLINE] Setting init guard');
+        }
+        
+        console.log('Beacon test complete - check console for output');
+    </script>
+</body>
+</html>

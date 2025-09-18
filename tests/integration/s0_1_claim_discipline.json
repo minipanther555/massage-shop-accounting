@@ -1,0 +1,14 @@
+{
+  "claim": "Root cause found: Controller not initialized due to missing bootstrap",
+  "test_ref": "S2.9_PageBundleHarness",
+  "failing_artifact_path": "tests/integration/s2_9_page_bundle_harness.spec.js",
+  "timestamp": "2025-01-18T12:30:00Z",
+  "status": "VERIFIED_FIXED",
+  "verification_timestamp": "2025-01-18T12:45:00Z",
+  "results": {
+    "INIT_BEACONS": 2,
+    "INIT_WINDOW_GETS": 1,
+    "DROPDOWN_UNIQUE_COUNT": 14,
+    "all_gates_passed": true
+  }
+}

@@ -56,3 +56,7 @@ deploy/.local-data/**
 deploy-logs/
 .cursor-last-image.txt
 .cursor-last-ts.txt
+
+# quarantine
+deploy/compose.local-override.yml
+deploy/compose.local-override.yml.DISABLED
