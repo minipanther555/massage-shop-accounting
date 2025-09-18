@@ -93,7 +93,7 @@
       const countText = staff.today_massages || 0;
       
       el.innerHTML = `
-        <div>${staff.position || index + 1}</div>
+        <div>${index + 1}</div>
         <div><strong>${name}</strong></div>
         <div>
           <button class="btn ${isNext ? 'btn-next' : 'btn-secondary'} btn-small" data-action="setNext" data-position="${staff.position || index + 1}" ${isNext ? 'disabled' : ''}>${isNext ? '👤 NEXT' : 'Set Next'}</button>
@@ -297,7 +297,17 @@
             
             if (selectedOption.value) {
               const masseuseName = selectedOption.text;
-              const nextPosition = roster.length + 1;
+              
+              // Get current roster state to calculate correct position
+              const currentRoster = await api.getStaffRoster();
+              
+              // Calculate first empty slot, otherwise append to end
+              const positions = currentRoster.map(r => r.position).sort((a,b) => a - b);
+              let nextPosition = 1;
+              for (const pos of positions) {
+                if (pos === nextPosition) nextPosition++;
+                else if (pos > nextPosition) break;
+              }
               console.log('🔧 Adding staff:', masseuseName, 'at position:', nextPosition);
               
               await api.addToRoster(nextPosition, { masseuse_name: masseuseName });
