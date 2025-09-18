@@ -279,6 +279,29 @@
       renderRoster(roster);
       renderDropdown(all, roster);
 
+      // Bind the Add to Roster button
+      const addBtn = document.getElementById('add-to-roster-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', async () => {
+          try {
+            const select = document.getElementById('available-staff');
+            const selectedOption = select.options[select.selectedIndex];
+            if (selectedOption.value) {
+              const masseuseName = selectedOption.text;
+              const nextPosition = roster.length + 1;
+              
+              await api.addToRoster(nextPosition, { masseuse_name: masseuseName });
+              const updatedRoster = await api.getStaffRoster();
+              renderRoster(updatedRoster);
+              
+              select.value = '';
+            }
+          } catch (error) {
+            console.error('Error adding staff to roster:', error);
+          }
+        });
+      }
+
       document.documentElement.setAttribute('data-staff-ctrl','init');
       console.log('✅ Staff controller initialized successfully');
       

@@ -92,8 +92,9 @@
                     <select id="available-staff" style="flex: 1;">
                         <option value="">Select masseuse to add...</option>
                     </select>
-                    <button onclick="addStaffToRoster()" class="btn">Add to Roster</button>
-                    <button onclick="clearTodayRoster()" class="btn btn-secondary">Clear All</button>
+                    <button id="add-to-roster-btn" class="btn">Add to Roster</button>
+                    <button id="clear-roster-btn" class="btn btn-secondary">Clear All</button>
+                    <button id="save-roster-btn" class="btn btn-success">Save Roster</button>
                 </div>
             </div>
         </div>
@@ -114,10 +115,6 @@
                 </div>
                 <div id="empty-roster" style="text-align: center; padding: 20px; color: #666; display: none;">
                     No staff added for today. Use the dropdown above to add masseuses to today's roster.
-                </div>
-            </div>
-        </div>
-
                 </div>
             </div>
         </div>

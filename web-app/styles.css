@@ -197,13 +197,13 @@ body {
 }
 
 .btn-danger {
-    background: #e06666;
-    color: white;
+    background: #e06666 !important;
+    color: white !important;
 }
 
 .btn-next {
-    background: #4285f4;
-    color: white;
+    background: #28a745 !important;
+    color: white !important;
 }
 
 .btn-large {
@@ -493,6 +493,12 @@ body {
     margin: 2px;
     font-size: 12px;
     min-height: 28px;
+}
+
+/* Default btn-small color - only when no specific color class */
+.btn-small:not(.btn-danger):not(.btn-next):not(.btn-secondary) {
+    background: #6c757d;
+    color: white;
 }
 
 /* Drag and drop styles */
@@ -900,15 +906,7 @@ body {
     font-style: italic;
 }
 
-.btn {
-    padding: 8px 16px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: white;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.2s;
-}
+/* Removed duplicate .btn rule that was overriding button colors */
 
 .btn:hover {
     background: #f8f9fa;

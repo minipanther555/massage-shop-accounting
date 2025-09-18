@@ -141,6 +141,13 @@ class APIClient {
     });
   }
 
+  async addToRoster(position, { masseuse_name, status = null }) {
+    return this.request(`/staff/roster/${position}`, {
+      method: 'PUT',
+      body: { masseuse_name, status }
+    });
+  }
+
   async serveNextCustomer() {
     return this.request('/staff/serve-next', {
       method: 'POST'
