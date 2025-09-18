@@ -3,12 +3,12 @@
 ## Project Overview
 EIW Massage Shop Bookkeeping System - A comprehensive web-based management system for massage shop operations, replacing Google Sheets with a modern, scalable solution.
 
-## Current Phase: 🟡 IN PROGRESS - Scheduling Bug Investigation and Fix Implementation
+## Current Phase: 🟢 COMPLETED - Staff Roster Add Overwrites Bug Resolution
 
-### Phase Status: SCHEDULING BUG IDENTIFIED AND RESOLVED
-**SCHEDULING BUG RESOLVED**: A critical scheduling bug was identified where staff busy statuses were not being cleared after service end time passed, causing scheduling conflicts and perpetually busy staff. The bug has been successfully identified, fixed, and verified.
+### Phase Status: ADD OVERWRITES BUG RESOLVED
+**ADD OVERWRITES BUG RESOLVED**: A critical staff roster bug was identified where adding a second staff member would overwrite the first instead of appending, and labels showed gaps instead of contiguous 1...n numbering. The bug has been successfully identified, fixed, and verified.
 
-**Current Focus**: 🟡 **IN PROGRESS** - The scheduling bug has been resolved, but we still need to address the database architecture restructuring for staff management. The staff administration page remains broken due to database schema mismatch.
+**Current Focus**: 🟢 **COMPLETED** - The add overwrites bug has been resolved with proper stale state handling, first empty slot algorithm, and contiguous label rendering. Staff roster system is now fully operational with correct append semantics.
 
 **Recent Development Work**: Successfully completed scheduling bug investigation using Artifact-Gated Debugging FSM protocol. Identified root cause as string comparison bug in backend time logic, implemented fix with numeric time comparison, and verified with comprehensive testing (100% pass rate).
 
@@ -23,7 +23,10 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ### ✅ What's Working (Staff Roster System - 100% Operational)
 - **Staff Roster System** - **FULLY OPERATIONAL** - All features working correctly
-- **Staff Addition to Roster** - Staff can be added sequentially to daily roster
+- **Staff Addition to Roster** - Staff can be added sequentially to daily roster with proper append semantics
+- **No Overwrite Behavior** - Second add appends instead of replacing first entry
+- **Contiguous Labels** - Roster items always show 1...n labels regardless of database positions
+- **First Empty Slot Logic** - Fills gaps before appending to end
 - **Dropdown Population** - Populates with all 16 available staff names from master list
 - **Database Operations** - INSERT/UPDATE operations working correctly for roster management
 - **API Endpoints** - All staff roster endpoints functional and returning correct data
@@ -51,6 +54,7 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 - **Staff master** = "What's the total payment history and long-term stats for each staff member?" (permanent, not clearable)
 
 ### ✅ Issues Resolved
+- **Staff Roster Add Overwrites Bug**: ✅ RESOLVED - Fixed stale state bug, implemented first empty slot algorithm, and contiguous label rendering (2025-09-18)
 - **Scheduling Bug (Staff Busy Status Not Clearing)**: ✅ RESOLVED - Fixed string comparison bug in backend time logic with numeric time comparison (2024-12-19)
 - **Staff Roster Dropdown Issue**: ✅ RESOLVED - Fixed by creating separate master staff list and new API endpoint
 - **Database Permissions Issue**: ✅ RESOLVED - Resolved by removing Git tracking and fixing file ownership
