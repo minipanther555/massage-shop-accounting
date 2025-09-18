@@ -40,7 +40,7 @@ backend/scripts/deploy.sh
 
 # Test results and reports
 tests/test-results/
-tests/playwright-report/
+tests/playwright-report/ 
 
 # Build artifacts & archives
 *.tar.gz

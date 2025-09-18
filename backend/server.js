@@ -123,6 +123,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Version endpoint for code identity verification
+app.get('/health/version', (req, res) => {
+  res.json({ 
+    commit: 'testing30-fix',
+    buildTime: new Date().toISOString(),
+    nodeVersion: process.version,
+    platform: process.platform
+  });
+});
+
 // DB Identity endpoint (non-prod only)
 if (process.env.NODE_ENV !== 'production') {
   app.get('/health/db-identity', (req, res) => {

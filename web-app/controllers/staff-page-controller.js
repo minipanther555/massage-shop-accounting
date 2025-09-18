@@ -5,6 +5,15 @@
  * dependency-injectable module. No behavior change for production.
  */
 
+// Build-time beacon for code identity verification
+const BUILD = { 
+  sha: 'testing30-fix', 
+  file: 'staff-page-controller.js', 
+  stamp: new Date().toISOString(),
+  version: '1.0.0-duplicate-fix'
+};
+console.info('[STAFF_CTRL/LOAD]', BUILD);
+
 function createStaffPageController({ fetch, clock, logger, singleFlight = null }) {
   // Use injected single-flight guard or create a new one
   const globalInflightRequests = singleFlight || new Map();
@@ -52,6 +61,11 @@ function createStaffPageController({ fetch, clock, logger, singleFlight = null }
     
     const requestKey = 'GET:/api/staff/allstaff';
     
+    // Request tap for network transcript (dev only)
+    if (typeof window !== 'undefined' && !window._requestTranscript) {
+      window._requestTranscript = [];
+    }
+    
     // Global single-flight guard to prevent overlapping calls across all instances
     if (globalInflightRequests.has(requestKey)) {
       logger.log('⏳ Staff dropdown update already in progress globally, skipping...');
@@ -60,6 +74,16 @@ function createStaffPageController({ fetch, clock, logger, singleFlight = null }
     
     // Get all staff names from the API
     const requestPromise = api.getAllStaff().then(allStaffNames => {
+      // Record request in transcript
+      if (typeof window !== 'undefined' && window._requestTranscript) {
+        window._requestTranscript.push({
+          timestamp: Date.now(),
+          url: '/api/staff/allstaff',
+          method: 'GET',
+          source: 'controller'
+        });
+        logger.log(`[REQUEST_TAP] GET /api/staff/allstaff (total: ${window._requestTranscript.length})`);
+      }
       // Get masseuses not already in the current roster
       const usedNames = appData.roster
         .filter(r => r.name && r.name.trim() !== '')
@@ -118,6 +142,7 @@ function createStaffPageController({ fetch, clock, logger, singleFlight = null }
     }
     
     logger.log('🚀 Initializing staff page controller...');
+    logger.log('[STAFF_CTRL/INIT]', BUILD);
     
     // Check authentication first
     if (!requireAuth()) {

@@ -121,8 +121,18 @@
 
     <script src="/api.js"></script>
     <script src="/shared.js"></script>
-    <script src="/controllers/staff-page-controller.js"></script>
+    <script src="/controllers/staff-page-controller.js?v=testing30-fix"></script>
     <script>
+        // Legacy inline script beacon
+        console.info('[STAFF_INLINE/LOAD]', { sha: 'legacy-inline', file: 'staff.ejs', stamp: new Date().toISOString() });
+        
+        // Init guard to prevent dual initialization
+        if (window.__staffCtrlInit) {
+            console.warn('[STAFF_INLINE] Controller already initialized, skipping legacy init');
+            return;
+        }
+        window.__staffCtrlInit = true;
+        
         document.addEventListener('DOMContentLoaded', async function() {
             // Check authentication first
             if (!requireAuth()) {
