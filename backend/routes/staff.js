@@ -460,9 +460,9 @@ router.get('/allstaff', async (req, res) => {
   try {
     console.log('📋 Fetching all staff names...');
 
-    // Get all staff names from the master staff table
+    // Get all staff names from the master staff table (no active filter)
     const allStaff = await database.all(
-      'SELECT id, name FROM staff WHERE active = TRUE ORDER BY name ASC'
+      'SELECT id, name FROM staff ORDER BY name COLLATE NOCASE ASC'
     );
 
     // Extract just the names for the dropdown
@@ -474,6 +474,32 @@ router.get('/allstaff', async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching all staff names:', error);
     res.status(500).json({ error: 'Failed to fetch all staff names' });
+  }
+});
+
+
+// Get staff counts for parity checks
+router.get('/counts', async (req, res) => {
+  try {
+    console.log('📊 Fetching staff counts...');
+
+    const [[{cnt: total}], [{cnt: roster}]] = await Promise.all([
+      database.all(`SELECT COUNT(*) AS cnt FROM staff`),
+      database.all(`SELECT COUNT(*) AS cnt FROM roster WHERE date = DATE('now')`)
+    ]);
+
+    const counts = { 
+      total, 
+      roster, 
+      availableTotal: total - roster 
+    };
+
+    console.log(`📊 Staff counts:`, counts);
+
+    res.json(counts);
+  } catch (error) {
+    console.error('❌ Error fetching staff counts:', error);
+    res.status(500).json({ error: 'Failed to fetch staff counts' });
   }
 });
 
