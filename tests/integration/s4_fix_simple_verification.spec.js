@@ -1,0 +1,133 @@
+/**
+ * S4_Fix: Simple Verification Test
+ * 
+ * This test verifies that the global single-flight guard fix
+ * prevents duplicate requests using the working controller approach
+ */
+
+const { createStaffPageController } = require('../../web-app/controllers/staff-page-controller.js');
+const { JSDOM } = require('jsdom');
+
+// Request transcript capture
+const requestTranscript = [];
+
+// Mock fetch with transcript capture
+global.fetch = jest.fn((url, options) => {
+  const timestamp = Date.now();
+  
+  requestTranscript.push({
+    timestamp,
+    url,
+    method: options?.method || 'GET'
+  });
+  
+  console.log(`🌐 [${timestamp}ms] ${options?.method || 'GET'} ${url}`);
+  
+  // Mock responses
+  if (url.includes('/api/staff/allstaff')) {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(['Alice', 'Bob', 'Charlie'])
+    });
+  }
+  
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve([])
+  });
+});
+
+describe('S4_Fix: Simple Verification Test', () => {
+  let dom;
+  let window;
+  let document;
+  
+  beforeEach(() => {
+    requestTranscript.length = 0;
+    
+    dom = new JSDOM(`
+      <!DOCTYPE html>
+      <html><body>
+        <select id="available-staff">
+          <option value="">Select masseuse to add...</option>
+        </select>
+        <div id="roster-list"></div>
+      </body></html>
+    `, { url: 'http://localhost:3000/staff.html' });
+    
+    window = dom.window;
+    document = window.document;
+    global.window = window;
+    global.document = document;
+    global.console = window.console;
+  });
+  
+  afterEach(() => {
+    dom.window.close();
+  });
+  
+  test('Fix Verification: Multiple simultaneous calls should result in 1 request', async () => {
+    console.log('\n=== FIX VERIFICATION ===');
+    
+    // Create multiple controllers (simulating different call sites)
+    const controller1 = createStaffPageController({
+      fetch: global.fetch,
+      clock: { setInterval: jest.fn(), clearInterval: jest.fn() },
+      logger: console
+    });
+    
+    const controller2 = createStaffPageController({
+      fetch: global.fetch,
+      clock: { setInterval: jest.fn(), clearInterval: jest.fn() },
+      logger: console
+    });
+    
+    const controller3 = createStaffPageController({
+      fetch: global.fetch,
+      clock: { setInterval: jest.fn(), clearInterval: jest.fn() },
+      logger: console
+    });
+    
+    // Call all simultaneously (simulating production scenario)
+    console.log('Calling controller1.updateAvailableStaffDropdown()');
+    const promise1 = controller1.updateAvailableStaffDropdown();
+    
+    console.log('Calling controller2.updateAvailableStaffDropdown()');
+    const promise2 = controller2.updateAvailableStaffDropdown();
+    
+    console.log('Calling controller3.updateAvailableStaffDropdown()');
+    const promise3 = controller3.updateAvailableStaffDropdown();
+    
+    // Wait for all to complete
+    await Promise.all([promise1, promise2, promise3]);
+    
+    // Analyze results
+    const allStaffRequests = requestTranscript.filter(r => r.url.includes('/api/staff/allstaff'));
+    
+    console.log('\n=== REQUEST TRANSCRIPT ===');
+    allStaffRequests.forEach((r, i) => {
+      console.log(`${i+1}. ${r.timestamp}ms: ${r.method} ${r.url}`);
+    });
+    
+    console.log('\n=== DROPDOWN ANALYSIS ===');
+    const dropdown = document.getElementById('available-staff');
+    const options = dropdown.querySelectorAll('option');
+    console.log(`Total options: ${options.length}`);
+    options.forEach((opt, i) => {
+      console.log(`  ${i}: "${opt.value}" - "${opt.textContent}"`);
+    });
+    
+    // Should be 1 request due to global guard
+    expect(allStaffRequests).toHaveLength(1);
+    expect(options).toHaveLength(4); // 1 default + 3 staff
+    
+    console.log('\n=== FIX VERIFICATION SUCCESSFUL ===');
+    console.log('✅ Global single-flight guard prevents duplicate requests');
+    console.log('✅ Multiple simultaneous calls result in only 1 network request');
+    console.log('✅ Dropdown renders correctly with unique options');
+    
+    controller1.dispose();
+    controller2.dispose();
+    controller3.dispose();
+  });
+});

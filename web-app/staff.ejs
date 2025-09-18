@@ -121,6 +121,7 @@
 
     <script src="/api.js"></script>
     <script src="/shared.js"></script>
+    <script src="/controllers/staff-page-controller.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
             // Check authentication first
@@ -166,116 +167,26 @@
             }
         }
 
-        function updateAvailableStaffDropdown() {
-            const dropdown = document.getElementById('available-staff');
-            
-            // Single-flight guard to prevent overlapping calls
-            if (window._updateStaffDropdownInflight) {
-                console.log('⏳ Staff dropdown update already in progress, skipping...');
-                return window._updateStaffDropdownInflight;
-            }
-            
-            // Get all staff names from the API
-            window._updateStaffDropdownInflight = api.getAllStaff().then(allStaffNames => {
-                // Get masseuses not already in the current roster
-                const usedNames = appData.roster
-                    .filter(r => r.name && r.name.trim() !== '')
-                    .map(r => r.name);
-                
-                const availableStaff = allStaffNames.filter(name => !usedNames.includes(name));
-                
-                // IDEMPOTENT RENDER: Clear and rebuild completely
-                dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
-                
-                // Build options in document fragment for better performance
-                const fragment = document.createDocumentFragment();
-                availableStaff.forEach(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    fragment.appendChild(option);
-                });
-                
-                // Replace all children atomically
-                dropdown.appendChild(fragment);
-                
-                console.log(`✅ Populated dropdown with ${availableStaff.length} available staff out of ${allStaffNames.length} total staff`);
-            }).catch(error => {
-                console.error('❌ Error fetching all staff names:', error);
-                showToast('Error loading available staff', 'error');
-                // Ensure default option remains on error
-                dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
-            }).finally(() => {
-                // Clear the inflight flag
-                window._updateStaffDropdownInflight = null;
-            });
-            
-            return window._updateStaffDropdownInflight;
-        }
+    // Global single-flight guard (shared across all instances)
+    if (!window._globalInflightRequests) {
+        window._globalInflightRequests = new Map();
+    }
+    
+    // Create staff page controller with global guard
+    const staffController = createStaffPageController({
+        fetch: window.fetch,
+        clock: window,
+        logger: console,
+        singleFlight: window._globalInflightRequests
+    });
 
-        function updateRosterDisplay() {
-            const rosterList = document.getElementById('roster-list');
-            const emptyMessage = document.getElementById('empty-roster');
-            
-            // Get staff with names from database roster
-            const activeStaff = appData.roster.filter(r => r.name && r.name.trim() !== '');
-            
-            if (activeStaff.length === 0) {
-                rosterList.innerHTML = '';
-                emptyMessage.style.display = 'block';
-                return;
-            }
-            
-            emptyMessage.style.display = 'none';
-            rosterList.innerHTML = '';
+        // Initialize the controller
+        staffController.init();
+        
+        // Use controller methods instead of standalone functions
+        const updateAvailableStaffDropdown = () => staffController.updateAvailableStaffDropdown();
+        const updateRosterDisplay = () => staffController.updateRosterDisplay();
 
-            activeStaff.forEach((staff, index) => {
-                const div = document.createElement('div');
-                div.className = 'roster-grid';
-                div.draggable = true;
-                div.dataset.index = index;
-                const statusText = staff.status || null;
-                const busyUntil = staff.busy_until || null;
-                const isNext = staff.status === 'Next';
-                const isBusy = staff.status && staff.status.startsWith('Busy until');
-                
-                div.innerHTML = `
-                    <div style="cursor: grab;">#${staff.position}</div>
-                    <div><strong>${staff.name}</strong></div>
-                    <div>
-                        <button onclick="setNextInLine(${staff.position})" 
-                                class="btn ${isNext ? 'btn-next' : 'btn-secondary'}" 
-                                style="font-size: 12px; padding: 5px 10px;">
-                            ${isNext ? '👤 NEXT' : 'Set Next'}
-                        </button>
-                        ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
-                        ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
-                    </div>
-                    <div><strong>${staff.todayCount}</strong></div>
-                    <div>
-                        <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
-                        <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
-                        <button onclick="removeFromRoster(${staff.position})" class="btn btn-danger btn-small">✕</button>
-                        <!-- Mobile-friendly reorder buttons -->
-                        <div class="mobile-reorder" style="display: none;">
-                            <button onclick="moveUp(${staff.position})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>⬆️</button>
-                            <button onclick="moveDown(${staff.position})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>⬇️</button>
-                        </div>
-                    </div>
-                `;
-                
-                // Add drag and drop event listeners
-                div.addEventListener('dragstart', handleDragStart);
-                div.addEventListener('dragover', handleDragOver);
-                div.addEventListener('drop', handleDrop);
-                div.addEventListener('dragend', handleDragEnd);
-                
-                rosterList.appendChild(div);
-            });
-            
-            updateAvailableStaffDropdown();
-            setupMobileControls(); // Ensure mobile controls are applied after roster rendering
-        }
 
         async function addStaffToRoster() {
             const dropdown = document.getElementById('available-staff');

@@ -25,9 +25,15 @@ logs/
 
 # Database files - ignore ALL database files regardless of path
 *.db
+*.db-*
+*.db.*
 **/*.db
-data/massage_shop.db
-backend/data/massage_shop.db
+**/*.db-*
+**/*.db.*
+*.sqlite
+*.sqlite-*
+*.sqlite.*
+**/*.sqlite*
 
 # Deployment scripts
 backend/scripts/deploy.sh
@@ -38,8 +44,13 @@ tests/playwright-report/
 
 # Build artifacts & archives
 *.tar.gz
+*.tar
+*.tgz
 *.zip
 *.rar
+
+# Local deploy data
+deploy/.local-data/**
 
 # Temporary files from deployment scripts
 deploy-logs/
