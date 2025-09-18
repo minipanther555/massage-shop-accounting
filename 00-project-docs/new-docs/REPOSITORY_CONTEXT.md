@@ -129,9 +129,11 @@ erDiagram
 
 3.  **`web-app/api.js` (`APIClient` class)**: A crucial abstraction on the frontend. This class centralizes all `fetch` calls to the backend, automatically handling CSRF tokens for non-GET requests. This keeps the UI logic clean from the complexities of API communication.
 
-4.  **`web-app/shared.js` (`loadData` function)**: This function is the primary data hydrator for the frontend. It orchestrates multiple API calls to fetch all necessary configuration and state (roster, services, transactions) and populates the global `appData` object.
+4.  **`web-app/controllers/staff-page-controller.js` (`staffControllerInit` function)**: A modular controller that handles the staff roster page initialization. It fetches all available staff names from `/api/staff/allstaff`, gets the current roster from `/api/staff/roster`, filters out already-selected staff for the dropdown, and renders the roster grid. This represents a move away from the monolithic approach in `shared.js` toward more focused, page-specific controllers.
 
-5.  **`backend/routes/staff.js` (`resetExpiredBusyStatuses` function)**: This function contains important business logic for the staff roster. It automatically transitions a staff member's status from "Busy" back to "Available" when their scheduled busy time has passed, ensuring the roster reflects real-time availability.
+5.  **`web-app/shared.js` (`loadData` function)**: This function is the primary data hydrator for the frontend. It orchestrates multiple API calls to fetch all necessary configuration and state (roster, services, transactions) and populates the global `appData` object.
+
+6.  **`backend/routes/staff.js` (`resetExpiredBusyStatuses` function)**: This function contains important business logic for the staff roster. It automatically transitions a staff member's status from "Busy" back to "Available" when their scheduled busy time has passed, ensuring the roster reflects real-time availability.
     ```javascript
     // backend/routes/staff.js
     async function resetExpiredBusyStatuses() {
@@ -162,7 +164,7 @@ The backend exposes a RESTful API under the `/api/` prefix. Key entry points inc
 | `GET`  | `/api/staff/roster`            | Fetches the current daily staff roster with updated massage counts. |
 | `PUT`  | `/api/staff/roster/:position`  | Updates or creates a staff member entry at a specific position. |
 | `DEL`  | `/api/staff/roster/:position`  | Removes a staff member from the roster and re-indexes.          |
-| `GET`  | `/api/staff/allstaff`          | Gets a list of all staff names for populating dropdowns.        |
+| `GET`  | `/api/staff/allstaff`          | Gets a list of all staff names (28 total) for populating dropdowns. |
 | `POST` | `/api/transactions`            | Creates a new financial transaction.                            |
 | `GET`  | `/api/transactions/recent`     | Gets a list of recent transactions.                             |
 | `GET`  | `/api/reports/summary/today`   | Gets a summary of today's financial performance.                |
@@ -176,7 +178,7 @@ The backend exposes a RESTful API under the `/api/` prefix. Key entry points inc
 *   **MVC-like Pattern:** The backend loosely follows a Model-View-Controller pattern. The `routes` act as controllers, the `models/database.js` is the model layer, and the `.ejs` files in `web-app` are the views.
 *   **Co-Located Documentation:** The presence of `.md` files alongside source files (e.g., `backend/routes/staff.js.md`) indicates a deliberate practice of keeping documentation close to the code it describes.
 *   **Global State on Frontend:** The frontend relies on a global `appData` object (`shared.js`) for state management. Data is loaded into this object, and UI components read from it to render themselves. This is a simple pattern that avoids the complexity of a formal state management library.
-*   **Legacy Code Pattern:** The staff page UI logic is embedded directly within a `<script>` tag in `staff.html`, a common pattern in older web applications. Newer logic (like the dropdown population) is being modularized into separate controller files (`staff-page-controller.js`), indicating a gradual refactoring effort.
+*   **Modular Controller Pattern:** The staff page uses a new modular architecture where `staff-page-controller.js` handles the core logic (dropdown population, roster rendering), while `roster-ui.js` provides drag-and-drop functionality. The main `staff.html` contains minimal inline scripts for initialization and PWTEST support, representing a move toward cleaner separation of concerns.
 
 ### Dependency Management
 
@@ -205,36 +207,45 @@ Based on the API routes, UI files, and project documentation, the epic-level fea
 
 **User Flow: Managing the Daily Staff Roster**
 
-This flow describes how a manager sets up and manages the staff roster for the day.
+This flow describes how a manager sets up and manages the staff roster for the day using the new modular architecture.
 
 ```mermaid
 sequenceDiagram
     participant User as Manager
     participant FE as Frontend (staff.html)
+    participant Ctrl as Staff Controller
     participant BE as Backend API
     participant DB as Database
 
     User->>FE: Navigates to Staff Roster page
-    FE->>BE: GET /api/staff/roster
-    BE->>DB: SELECT * FROM staff_roster
-    DB-->>BE: Roster data
-    BE-->>FE: Returns roster JSON
-    FE->>FE: Renders the current roster
+    FE->>Ctrl: staffControllerInit() called
+    Ctrl->>BE: GET /api/staff/allstaff
+    BE->>DB: SELECT name FROM staff ORDER BY name
+    DB-->>BE: All staff names (28 total)
+    BE-->>Ctrl: Returns staff names array
+    Ctrl->>BE: GET /api/staff/roster
+    BE->>DB: SELECT * FROM staff_roster ORDER BY position
+    DB-->>BE: Current roster data
+    BE-->>Ctrl: Returns roster JSON
+    Ctrl->>Ctrl: Filter available staff (all - roster)
+    Ctrl->>FE: Populate dropdown with available staff
+    Ctrl->>FE: Render roster grid with current staff
 
-    User->>FE: Selects a staff member from the "Add Staff" dropdown
-    User->>FE: Clicks "Add to Roster" button
+    User->>FE: Selects staff from dropdown, clicks "Add to Roster"
     FE->>BE: PUT /api/staff/roster/:position (with masseuse_name)
     BE->>DB: INSERT INTO staff_roster...
     DB-->>BE: Success
     BE-->>FE: Returns new roster item JSON
-    FE->>FE: Re-fetches roster and re-renders the list with the new person
+    FE->>Ctrl: Re-initialize controller
+    Ctrl->>FE: Re-render dropdown and roster
 
-    User->>FE: Clicks "Set Next" on a staff member
+    User->>FE: Clicks "Next" button on staff member
     FE->>BE: PUT /api/staff/roster/:position (with status: "Next")
     BE->>DB: UPDATE staff_roster SET status='Next'...
     DB-->>BE: Success
     BE-->>FE: Returns updated roster item JSON
-    FE->>FE: Re-fetches roster and re-renders list, highlighting the "Next" person
+    FE->>Ctrl: Re-initialize controller
+    Ctrl->>FE: Re-render roster with "Next" highlighted
 
 ```
 
@@ -242,7 +253,7 @@ sequenceDiagram
 
 | Feature                 | Primary Source Code Modules                                                                                               |
 |-------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| Staff Roster Management | `web-app/staff.html`, `web-app/roster-ui.js`, `web-app/controllers/staff-page-controller.js`, `backend/routes/staff.js`       |
+| Staff Roster Management | `web-app/staff.html` (UI template), `web-app/controllers/staff-page-controller.js` (dropdown population), `web-app/roster-ui.js` (drag-and-drop), `backend/routes/staff.js` (API endpoints) |
 | Transaction Management  | `web-app/transaction.html`, `web-app/shared.js`, `backend/routes/transactions.js`                                           |
 | Reporting & Analytics   | `web-app/summary.html`, `backend/routes/reports.js`                                                                         |
 | Authentication          | `web-app/login.html`, `web-app/shared.js` (auth functions), `backend/routes/auth.js`, `backend/middleware/` (security files) |
@@ -305,13 +316,14 @@ Configuration is primarily managed through environment variables, loaded by `dot
 
 **Flow 1: Loading the Staff Roster Page**
 
-This sequence shows what happens when a user first loads the staff management page.
+This sequence shows what happens when a user first loads the staff management page using the new modular controller architecture.
 
 ```mermaid
 sequenceDiagram
     actor User
     participant Browser
     participant Express as "Express Server"
+    participant Controller as "Staff Controller"
     participant staff.js as "Staff Route"
     participant database.js as "Database Model"
 
@@ -319,8 +331,16 @@ sequenceDiagram
     Browser->>Express: GET /staff.html
     Express-->>Browser: Serves static staff.html file
 
-    Browser->>Browser: Executes inline script on DOMContentLoaded
-    Browser->>Express: GET /api/staff/roster (via api.js -> loadData())
+    Browser->>Browser: Executes initialization script
+    Browser->>Controller: staffControllerInit() called
+    Controller->>Express: GET /api/staff/allstaff
+    Express->>staff.js: Handles /allstaff route
+    staff.js->>database.js: SELECT name FROM staff ORDER BY name
+    database.js-->>staff.js: Returns all staff names (28 total)
+    staff.js-->>Express: Returns staff names array
+    Express-->>Controller: Returns staff names
+
+    Controller->>Express: GET /api/staff/roster
     Express->>staff.js: Handles /roster route
     staff.js->>staff.js: resetExpiredBusyStatuses()
     staff.js->>database.js: SELECT * FROM staff_roster WHERE status LIKE 'Busy until %'
@@ -333,19 +353,22 @@ sequenceDiagram
     staff.js->>database.js: Loops to get today's massage count for each staff member
     database.js-->>staff.js: Returns counts
     staff.js-->>Express: Returns final enriched roster JSON
-    Express-->>Browser: Responds with roster JSON
+    Express-->>Controller: Returns roster data
 
-    Browser->>Browser: updateRosterDisplay() renders the roster grid
+    Controller->>Controller: Filter available staff (all - roster)
+    Controller->>Browser: Populate dropdown with available staff
+    Controller->>Browser: Render roster grid with current staff
 ```
 
 **Flow 2: Adding a New Staff Member to the Roster**
 
-This sequence traces the process of adding a new person to the daily roster.
+This sequence traces the process of adding a new person to the daily roster using the new controller architecture.
 
 ```mermaid
 sequenceDiagram
     actor User
     participant Browser
+    participant Controller as "Staff Controller"
     participant Express as "Express Server"
     participant Middleware
     participant staff.js as "Staff Route"
@@ -364,5 +387,11 @@ sequenceDiagram
     database.js-->>staff.js: Insert success
     staff.js-->>Express: Returns new roster item JSON
     Express-->>Browser: Responds with success
-    Browser->>Browser: Reloads all data via loadData() and re-renders the UI
+    Browser->>Controller: Re-initialize controller
+    Controller->>Express: GET /api/staff/allstaff
+    Express-->>Controller: Returns all staff names
+    Controller->>Express: GET /api/staff/roster
+    Express-->>Controller: Returns updated roster
+    Controller->>Controller: Filter available staff (all - roster)
+    Controller->>Browser: Re-populate dropdown and re-render roster
 ```
