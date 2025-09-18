@@ -168,10 +168,15 @@
 
         function updateAvailableStaffDropdown() {
             const dropdown = document.getElementById('available-staff');
-            dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
+            
+            // Single-flight guard to prevent overlapping calls
+            if (window._updateStaffDropdownInflight) {
+                console.log('⏳ Staff dropdown update already in progress, skipping...');
+                return window._updateStaffDropdownInflight;
+            }
             
             // Get all staff names from the API
-            api.getAllStaff().then(allStaffNames => {
+            window._updateStaffDropdownInflight = api.getAllStaff().then(allStaffNames => {
                 // Get masseuses not already in the current roster
                 const usedNames = appData.roster
                     .filter(r => r.name && r.name.trim() !== '')
@@ -179,15 +184,33 @@
                 
                 const availableStaff = allStaffNames.filter(name => !usedNames.includes(name));
                 
+                // IDEMPOTENT RENDER: Clear and rebuild completely
+                dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
+                
+                // Build options in document fragment for better performance
+                const fragment = document.createDocumentFragment();
                 availableStaff.forEach(name => {
-                    dropdown.innerHTML += `<option value="${name}">${name}</option>`;
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    fragment.appendChild(option);
                 });
+                
+                // Replace all children atomically
+                dropdown.appendChild(fragment);
                 
                 console.log(`✅ Populated dropdown with ${availableStaff.length} available staff out of ${allStaffNames.length} total staff`);
             }).catch(error => {
                 console.error('❌ Error fetching all staff names:', error);
                 showToast('Error loading available staff', 'error');
+                // Ensure default option remains on error
+                dropdown.innerHTML = '<option value="">Select masseuse to add...</option>';
+            }).finally(() => {
+                // Clear the inflight flag
+                window._updateStaffDropdownInflight = null;
             });
+            
+            return window._updateStaffDropdownInflight;
         }
 
         function updateRosterDisplay() {

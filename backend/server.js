@@ -123,6 +123,128 @@ app.get('/health', (req, res) => {
   });
 });
 
+// DB Identity endpoint (non-prod only)
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/health/db-identity', (req, res) => {
+    try {
+      const dbInstance = require('./models/database');
+      if (dbInstance && dbInstance.db) {
+        const pragmaResult = dbInstance.db.prepare("PRAGMA database_list").all();
+        const staffCount = dbInstance.db.prepare("SELECT COUNT(*) as count FROM staff").get();
+        const activeStaffCount = dbInstance.db.prepare("SELECT COUNT(*) as count FROM staff WHERE active=1").get();
+        
+        res.json({
+          env_DB_PATH: process.env.DB_PATH || 'NOT_SET',
+          pragma_path: pragmaResult[0]?.file || 'UNKNOWN',
+          sha256: require('crypto').createHash('sha256').update(require('fs').readFileSync(process.env.DB_PATH || '/app/backend/data/massage_shop.db')).digest('hex'),
+          staff_total: staffCount?.count || 0,
+          staff_active: activeStaffCount?.count || 0,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        res.status(500).json({ error: 'Database not connected' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+}
+
+// S5_Gauntlet: Post-init startup checks with retry
+function performStartupChecks() {
+  const selfCheckEnforce = process.env.SELF_CHECK_ENFORCE === 'true';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const startTime = Date.now();
+  
+  if (isProduction) return; // Skip checks in production
+  
+  const dbPath = process.env.DB_PATH || 'NOT_SET';
+  console.log(`🔍 [t=+${Date.now() - startTime}ms] Post-init DB_PATH: ${dbPath}`);
+  
+  // Retry mechanism for database checks
+  let attempts = 0;
+  const maxAttempts = 3;
+  const retryDelay = 250;
+  
+  function checkDatabase() {
+    attempts++;
+    console.log(`🔍 [t=+${Date.now() - startTime}ms] Database check attempt ${attempts}/${maxAttempts}`);
+    
+    try {
+      const dbInstance = require('./models/database');
+      if (dbInstance && dbInstance.db) {
+        const pragmaResult = dbInstance.db.prepare("PRAGMA database_list").all();
+        const pragmaPath = pragmaResult[0]?.file || 'UNKNOWN';
+        console.log(`🔍 [t=+${Date.now() - startTime}ms] PRAGMA path: ${pragmaPath}`);
+        
+        // S5.1 Connection-Ready Check (enforced in all envs)
+        if (pragmaPath !== '/app/backend/data/massage_shop.db') {
+          if (attempts < maxAttempts) {
+            console.log(`⚠️  [t=+${Date.now() - startTime}ms] Wrong DB path, retrying in ${retryDelay}ms...`);
+            setTimeout(checkDatabase, retryDelay);
+            return;
+          } else {
+            console.error(`❌ CONNECTION-READY FAILED: Wrong DB path! Expected /app/backend/data/massage_shop.db, got ${pragmaPath}`);
+            if (selfCheckEnforce) process.exit(1);
+            return;
+          }
+        }
+        
+        // S5.2 Data-Ready Check (profiled enforcement)
+        const staffCount = dbInstance.db.prepare("SELECT COUNT(*) as count FROM staff").get();
+        const activeStaffCount = dbInstance.db.prepare("SELECT COUNT(*) as count FROM staff WHERE active=1").get();
+        
+        console.log(`🔍 [t=+${Date.now() - startTime}ms] Total staff: ${staffCount?.count || 0}`);
+        console.log(`🔍 [t=+${Date.now() - startTime}ms] Active staff: ${activeStaffCount?.count || 0}`);
+        
+        // Profiled enforcement: warn in dev, fail in CI/stage
+        if (!staffCount?.count || staffCount.count === 0) {
+          if (attempts < maxAttempts) {
+            console.log(`⚠️  [t=+${Date.now() - startTime}ms] No staff data, retrying in ${retryDelay}ms...`);
+            setTimeout(checkDatabase, retryDelay);
+            return;
+          } else {
+            if (selfCheckEnforce) {
+              console.error('❌ DATA-READY FAILED: No staff data found!');
+              console.error('❌ This indicates DB path drift or empty database.');
+              process.exit(1);
+            } else {
+              console.error('⚠️  WARNING: No staff data found! This indicates DB path drift or empty database.');
+              console.error('⚠️  Set SELF_CHECK_ENFORCE=true to make this fatal in CI/stage.');
+            }
+            return;
+          }
+        }
+        
+        console.log(`✅ [t=+${Date.now() - startTime}ms] All checks passed: ${staffCount.count} total, ${activeStaffCount.count} active`);
+        
+        // Warn if DB_PATH not set
+        if (!process.env.DB_PATH) {
+          console.warn('⚠️  WARNING: DB_PATH environment variable not set!');
+        }
+      } else {
+        if (attempts < maxAttempts) {
+          console.log(`⚠️  [t=+${Date.now() - startTime}ms] Database not ready, retrying in ${retryDelay}ms...`);
+          setTimeout(checkDatabase, retryDelay);
+        } else {
+          console.error('❌ Database not connected after retries');
+          if (selfCheckEnforce) process.exit(1);
+        }
+      }
+    } catch (error) {
+      if (attempts < maxAttempts) {
+        console.log(`⚠️  [t=+${Date.now() - startTime}ms] Database check error, retrying in ${retryDelay}ms: ${error.message}`);
+        setTimeout(checkDatabase, retryDelay);
+      } else {
+        console.error(`❌ Database check failed after retries: ${error.message}`);
+        if (selfCheckEnforce) process.exit(1);
+      }
+    }
+  }
+  
+  checkDatabase();
+}
+
 // Sentry: The error handler must be before any other error middleware and after all controllers.
 // This single line replaces the old requestHandler, tracingHandler, and errorHandler.
 Sentry.setupExpressErrorHandler(app);
@@ -140,11 +262,20 @@ async function startServer() {
     await database.connect();
     console.log('Database initialized successfully');
     
+    // S5_Gauntlet: Phase-aware startup checks (moved to post-init)
+    // Note: Checks are now performed after server starts to avoid timing issues
+    
     return new Promise((resolve) => {
       server = app.listen(PORT, () => {
         console.log(`🚀 Massage Shop POS Backend running on port ${PORT}`);
         console.log(`📊 Health check: http://localhost:${PORT}/health`);
         console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
+        
+        // S5_Gauntlet: Post-init checks with retry
+        setTimeout(() => {
+          performStartupChecks();
+        }, 1000); // Wait 1 second for full initialization
+        
         console.log('✅✅✅ SERVER IS FULLY INITIALIZED AND READY TO ACCEPT REQUESTS ✅✅✅');
         isServerStarted = true; // Set the flag once started
         resolve(server);

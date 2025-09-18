@@ -1,5 +1,7 @@
-const DEFAULT_DB = "/app/backend/data/massage_shop.db"; // safe default
-const DB_PATH = process.env.DB_PATH && process.env.DB_PATH.trim()
-  ? process.env.DB_PATH.trim()
-  : DEFAULT_DB;
+// S5_Gauntlet: No defaults - require explicit DB_PATH
+if (!process.env.DB_PATH || !process.env.DB_PATH.trim()) {
+  throw new Error('DB_PATH environment variable is required but not set. This prevents accidental DB path drift.');
+}
+
+const DB_PATH = process.env.DB_PATH.trim();
 module.exports = DB_PATH;
