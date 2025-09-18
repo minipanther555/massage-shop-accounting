@@ -113,6 +113,9 @@
       
       list.appendChild(el);
     });
+    
+    // Render beacon for test harness
+    document.documentElement.dataset.staffRender = String(Date.now());
   }
 
   // DROPDOWN POPULATION — uses projector for consistency
@@ -131,6 +134,9 @@
       o.value = o.textContent = name;
       dd.appendChild(o);
     });
+    
+    // Dropdown beacon for test harness
+    document.documentElement.dataset.staffDropdown = String(Date.now());
   }
 
   // API ACTION HANDLERS — follow Dropdown→API→Re-fetch→Render discipline
@@ -284,20 +290,66 @@
       if (addBtn) {
         addBtn.addEventListener('click', async () => {
           try {
+            console.log('🔧 Add button clicked');
             const select = document.getElementById('available-staff');
             const selectedOption = select.options[select.selectedIndex];
+            console.log('🔧 Selected option:', selectedOption.value, selectedOption.text);
+            
             if (selectedOption.value) {
               const masseuseName = selectedOption.text;
               const nextPosition = roster.length + 1;
+              console.log('🔧 Adding staff:', masseuseName, 'at position:', nextPosition);
               
               await api.addToRoster(nextPosition, { masseuse_name: masseuseName });
+              console.log('🔧 API call completed');
+              
               const updatedRoster = await api.getStaffRoster();
+              console.log('🔧 Updated roster:', updatedRoster);
+              
               renderRoster(updatedRoster);
+              console.log('🔧 Roster rendered');
+              
+              // Update dropdown to remove added staff member
+              const allStaff = await api.getAllStaff();
+              renderDropdown(allStaff, updatedRoster);
+              console.log('🔧 Dropdown updated');
               
               select.value = '';
+            } else {
+              console.log('🔧 No staff selected');
             }
           } catch (error) {
             console.error('Error adding staff to roster:', error);
+          }
+        });
+      }
+      
+      // Bind the Clear All button
+      const clearBtn = document.getElementById('clear-roster-btn');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', async () => {
+          try {
+            console.log('🔧 Clear All button clicked');
+            if (confirm('Clear all staff from today\'s roster?')) {
+              console.log('🔧 Confirm dialog accepted, calling clearRoster');
+              await api.clearRoster();
+              console.log('🔧 clearRoster completed');
+              
+              const updatedRoster = await api.getStaffRoster();
+              console.log('🔧 getStaffRoster completed, roster:', updatedRoster);
+              
+              renderRoster(updatedRoster);
+              console.log('🔧 renderRoster completed');
+              
+              // Update dropdown to show all staff again
+              const allStaff = await api.getAllStaff();
+              renderDropdown(allStaff, updatedRoster);
+              console.log('🔧 renderDropdown completed');
+            } else {
+              console.log('🔧 Confirm dialog cancelled');
+            }
+          } catch (error) {
+            console.error('Error clearing roster:', error);
           }
         });
       }
