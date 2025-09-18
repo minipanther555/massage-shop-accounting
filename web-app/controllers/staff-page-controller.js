@@ -33,6 +33,38 @@
     return '[invalid]';
   }
 
+  // BIND ROSTER ITEM HANDLERS — controller-based event binding
+  function bindRosterItemHandlers(element) {
+    const buttons = element.querySelectorAll('button[data-action]');
+    buttons.forEach(button => {
+      const action = button.dataset.action;
+      const position = parseInt(button.dataset.position);
+      
+      button.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        try {
+          switch (action) {
+            case 'setNext':
+              await setNextInLine(position);
+              break;
+            case 'moveUp':
+              await moveUp(position);
+              break;
+            case 'moveDown':
+              await moveDown(position);
+              break;
+            case 'remove':
+              await removeFromRoster(position);
+              break;
+          }
+        } catch (error) {
+          console.error(`Error handling ${action} for position ${position}:`, error);
+        }
+      });
+    });
+  }
+
   // RENDER — uses projector; writes cards with backup classes only
   function renderRoster(roster) {
     const list = document.querySelector(SELECTORS.rosterList);
@@ -62,16 +94,23 @@
       
       el.innerHTML = `
         <div>${staff.position || index + 1}</div>
-        <div>${name}</div>
-        <div>${isNext ? 'Next' : (isBusy ? `Busy until ${busyUntil || 'unknown'}` : 'Available')}</div>
-        <div>${countText} today</div>
+        <div><strong>${name}</strong></div>
         <div>
-          <button onclick="setNextInLine(${staff.position || index + 1})" class="btn btn-small" ${isNext ? 'disabled' : ''}>Next</button>
-          <button onclick="moveUp(${staff.position || index + 1})" class="btn btn-small" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
-          <button onclick="moveDown(${staff.position || index + 1})" class="btn btn-small" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
-          <button onclick="removeFromRoster(${staff.position || index + 1})" class="btn btn-danger btn-small">✕</button>
+          <button class="btn ${isNext ? 'btn-next' : 'btn-secondary'} btn-small" data-action="setNext" data-position="${staff.position || index + 1}" ${isNext ? 'disabled' : ''}>${isNext ? '👤 NEXT' : 'Set Next'}</button>
+          ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
+          ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
+        </div>
+        <div><strong>${countText} today</strong></div>
+        <div>
+          <button class="btn btn-small" data-action="moveUp" data-position="${staff.position || index + 1}" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
+          <button class="btn btn-small" data-action="moveDown" data-position="${staff.position || index + 1}" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
+          <button class="btn btn-danger btn-small" data-action="remove" data-position="${staff.position || index + 1}">✕</button>
         </div>
       `;
+      
+      // Bind event handlers
+      bindRosterItemHandlers(el);
+      
       list.appendChild(el);
     });
   }
@@ -94,22 +133,144 @@
     });
   }
 
-  window.staffControllerInit = async function(){
+  // API ACTION HANDLERS — follow Dropdown→API→Re-fetch→Render discipline
+  async function setNextInLine(position) {
+    try {
+      // Clear all existing "Next" statuses
+      const roster = await api.getStaffRoster();
+      const activeStaff = roster.filter(r => r.masseuse_name && r.masseuse_name.trim() !== '');
+      
+      for (const staff of activeStaff) {
+        if (staff.status === 'Next') {
+          await api.updateStaff(staff.position, {
+            masseuse_name: staff.masseuse_name,
+            status: null
+          });
+        }
+      }
+      
+      // Set selected person as next
+      const staffMember = roster.find(r => r.position === position);
+      if (staffMember) {
+        await api.updateStaff(position, {
+          masseuse_name: staffMember.masseuse_name,
+          status: 'Next'
+        });
+      }
+      
+      // Re-fetch and render
+      const updatedRoster = await api.getStaffRoster();
+      renderRoster(updatedRoster);
+      
+    } catch (error) {
+      console.error('Error setting next in line:', error);
+    }
+  }
+
+  async function moveUp(position) {
+    try {
+      if (position === 1) return; // Can't move up from position 1
+      
+      const roster = await api.getStaffRoster();
+      const previousPosition = position - 1;
+      const staffMember = roster.find(r => r.position === position);
+      const previousStaff = roster.find(r => r.position === previousPosition);
+      
+      if (staffMember && previousStaff) {
+        // Swap the two staff members
+        await api.updateStaff(position, {
+          masseuse_name: previousStaff.masseuse_name,
+          status: previousStaff.status
+        });
+        await api.updateStaff(previousPosition, {
+          masseuse_name: staffMember.masseuse_name,
+          status: staffMember.status
+        });
+        
+        // Re-fetch and render
+        const updatedRoster = await api.getStaffRoster();
+        renderRoster(updatedRoster);
+      }
+    } catch (error) {
+      console.error('Error moving staff up:', error);
+    }
+  }
+
+  async function moveDown(position) {
+    try {
+      if (position === 20) return; // Can't move down from position 20
+      
+      const roster = await api.getStaffRoster();
+      const nextPosition = position + 1;
+      const staffMember = roster.find(r => r.position === position);
+      const nextStaff = roster.find(r => r.position === nextPosition);
+      
+      if (staffMember && nextStaff) {
+        // Swap the two staff members
+        await api.updateStaff(position, {
+          masseuse_name: nextStaff.masseuse_name,
+          status: nextStaff.status
+        });
+        await api.updateStaff(nextPosition, {
+          masseuse_name: staffMember.masseuse_name,
+          status: staffMember.status
+        });
+        
+        // Re-fetch and render
+        const updatedRoster = await api.getStaffRoster();
+        renderRoster(updatedRoster);
+      }
+    } catch (error) {
+      console.error('Error moving staff down:', error);
+    }
+  }
+
+  async function removeFromRoster(position) {
+    try {
+      const roster = await api.getStaffRoster();
+      const staffMember = roster.find(r => r.position === position);
+      
+      if (staffMember) {
+        await api.removeStaffFromRoster(position);
+        
+        // Re-fetch and render
+        const updatedRoster = await api.getStaffRoster();
+        renderRoster(updatedRoster);
+        
+        // Update dropdown
+        const allStaff = await api.getAllStaff();
+        renderDropdown(allStaff, updatedRoster);
+      }
+    } catch (error) {
+      console.error('Error removing staff:', error);
+    }
+  }
+
+  window.staffControllerInit = async function(apiClient){
     if (window.__staffCtrlInitialized) return;
     window.__staffCtrlInitialized = true;
+    
+    // Store API client globally
+    if (apiClient) {
+      window.api = apiClient;
+    }
+    
     try {
       console.log('🚀 Staff controller initializing...');
       
+      // Ensure API client is available
+      if (!window.api) {
+        throw new Error('API client not available');
+      }
+      
       // 1) fetch all staff (unfiltered)
-      const res = await fetch('/api/staff/allstaff', { credentials:'include' });
-      const all = await res.json();
+      const all = await window.api.getAllStaff();
       console.log(`📋 Fetched ${all.length} staff members`);
 
       // 2) fetch roster
       let roster = [];
       try {
-        const rr = await fetch('/api/staff/roster', { credentials:'include' });
-        roster = rr.ok ? await rr.json() : [];
+        roster = await window.api.getStaffRoster();
       } catch (e) {
         console.log('ℹ️ No roster endpoint, using empty roster');
       }

@@ -218,7 +218,9 @@
         function call(){ 
           console.log('🔧 Init stub: Calling staffControllerInit');
           try { 
-            window.staffControllerInit?.(); 
+            // Create API client and pass to controller
+            const api = new APIClient('/api');
+            window.staffControllerInit?.(api); 
             console.log('🔧 Init stub: staffControllerInit called successfully');
           } catch(e){ 
             console.error('🔧 Init stub: Error calling staffControllerInit:', e); 
