@@ -19,6 +19,8 @@
   ],
   "dependencies": {
     "@sentry/node": "^10.5.0",
+    "axios": "^1.12.2",
+    "axios-cookiejar-support": "^6.0.4",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -30,7 +32,9 @@
     "express-session": "^1.18.2",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^2.7.0",
-    "sqlite3": "^5.1.7"
+    "playwright": "^1.55.0",
+    "sqlite3": "^5.1.7",
+    "tough-cookie": "^5.1.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

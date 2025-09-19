@@ -46,6 +46,14 @@ const apiRateLimiter = rateLimit({
   legacyHeaders: false,
   handler: (req, res) => {
     console.log(`🚫 API RATE LIMIT EXCEEDED: IP ${req.ip} - Too many requests`);
+    console.log(`[RL-429] ${JSON.stringify({
+      ip: req.ip,
+      path: req.originalUrl,
+      method: req.method,
+      ua: req.get('user-agent') || '',
+      ts: new Date().toISOString(),
+      headers: req.headers
+    })}`);
     res.status(429).json({
       error: 'Too many requests. Please try again later.',
       retryAfter: '15 minutes'
