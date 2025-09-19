@@ -54,12 +54,8 @@
         }
     </style>
 </head>
-  <body>
+<body>
     <div class="container">
-      <!-- STAGE BANNER - Only show on staging -->
-      <div id="stage-banner" style="display: none; background: #ff6b6b; color: white; text-align: center; padding: 8px; font-weight: bold; position: sticky; top: 0; z-index: 1000;">
-        🚧 STAGE ENVIRONMENT - DO NOT USE FOR REAL OPERATIONS 🚧
-      </div>
         <div class="nav-header">
             STAFF ROSTER MANAGEMENT
         </div>
@@ -156,8 +152,20 @@
           return a(u);
         };
         
-        // PWTEST: Use query strings for cache busting, not location.href redefinition
-        console.log('✅ PWTEST: Using safe cache busting via query strings');
+        // Override location.href setter (most important for shared.js)
+        let currentHref = location.href;
+        Object.defineProperty(location, 'href', {
+          get: () => currentHref,
+          set: (u) => {
+            if (__PWTEST__ && hop(u)) {
+              console.log('🚫 PWTEST: Blocked location.href redirect to', u);
+              return;
+            }
+            console.log('🔄 PWTEST: Allowing redirect to', u);
+            currentHref = u;
+            r(u);
+          }
+        });
         
         console.log('✅ PWTEST: Inline shim completed');
       }
@@ -182,12 +190,13 @@
       window.getCurrentUser = () => ({ username: 'pwtest' });
       window.requireAuth = () => true;  // swallow redirects
 
-      // defang client redirects to /login (safe approach)
+      // defang client redirects to /login
       const toLogin = (u) => typeof u === 'string' && /\/login(\.html)?$/i.test(u);
       const _assign = location.assign.bind(location);
       const _replace = location.replace.bind(location);
-      
-      // Override methods, not properties
+      Object.defineProperty(location, 'href', {
+        set(v) { if (!toLogin(v)) _replace(v); }
+      });
       location.assign  = (v) => { if (!toLogin(v)) _assign(v); };
       location.replace = (v) => { if (!toLogin(v)) _replace(v); };
     })();
@@ -196,13 +205,7 @@
     <script src="/api.js"></script>
     <script src="/shared.js"></script>
     <script src="/roster-ui.js"></script>
-    <script src="controllers/staff-page-controller.js?v=stage-hotfix-6" defer></script>
-    <script>
-      // Show stage banner if on staging
-      if (location.pathname.startsWith('/stage/')) {
-        document.getElementById('stage-banner').style.display = 'block';
-      }
-    </script>
+    <script src="/controllers/staff-page-controller.js?v=page-bundle-fix" defer></script>
 
     <script>
       // init stub: call controller exactly once when it's ready
