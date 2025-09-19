@@ -711,3 +711,143 @@ class LoginPage {
 - **Debug Tests**: `tests/debug/` directory with comprehensive debugging scripts
 - **MRE Tests**: Minimal Reproducible Examples for bug isolation
 - **Diagnostic Tests**: `tests/diagnostics/` for specific issue investigation
+
+### How to Actually Run Tests (STEP-BY-STEP GUIDE)
+
+#### ⚠️ CRITICAL: This project uses CUSTOM TEST RUNNERS, not standard npm commands
+
+#### 1. Integration Tests (Jest + Live Server)
+```bash
+# ✅ CORRECT: Use the custom integration test runner
+npm run test:integration
+
+# ✅ CORRECT: Run specific test file
+node tests/run_integration_tests.js tests/integration/your-test.spec.js
+
+# ❌ WRONG: Don't run Jest directly on integration tests
+# npx jest tests/integration/your-test.spec.js  # This bypasses server lifecycle
+```
+
+#### 2. End-to-End Tests (Playwright + Docker)
+```bash
+# ✅ CORRECT: Use npm script (starts Docker automatically)
+npm test
+
+# ✅ CORRECT: Run specific E2E test
+npx playwright test tests/e2e/your-test.spec.js
+
+# ✅ CORRECT: Run with headed browser for debugging
+npx playwright test --headed tests/e2e/your-test.spec.js
+```
+
+#### 3. Unit Tests (Jest + JSDOM)
+```bash
+# ✅ CORRECT: Run Jest directly on unit tests
+npx jest tests/unit/your-test.js
+
+# ✅ CORRECT: Use the custom Jest runner
+node tests/run_jest_tests.js
+```
+
+#### 4. Regression Tests (Gauntlet Suite)
+```bash
+# ✅ CORRECT: Run comprehensive regression tests
+node tests/run_gauntlet_tests.js
+```
+
+### Creating New Tests (TEMPLATES)
+
+#### Integration Test Template
+```javascript
+// File: tests/integration/your-feature.spec.js
+const { requestWithCsrf } = require('../helpers/requestWithCsrf');
+
+describe('Your Feature Integration Test', () => {
+  it('should test specific functionality', (done) => {
+    // ALWAYS use requestWithCsrf for protected endpoints
+    requestWithCsrf({
+      url: '/api/your-endpoint',
+      method: 'POST',
+      body: { 
+        // your test data here
+      }
+    }).then(response => {
+      expect(response.status).toBe(200);
+      done();
+    }).catch(done);
+  });
+});
+```
+
+#### E2E Test Template
+```javascript
+// File: tests/e2e/your-workflow.spec.js
+import { test, expect } from '@playwright/test';
+
+test('your workflow test', async ({ page }) => {
+  // Navigate to page
+  await page.goto('http://localhost:3000/your-page.html');
+  
+  // Perform actions
+  await page.getByRole('button', { name: 'Your Button' }).click();
+  
+  // Verify results
+  await expect(page.getByText('Expected Result')).toBeVisible();
+});
+```
+
+#### Unit Test Template
+```javascript
+// File: tests/unit/your-function.test.js
+const { JSDOM } = require('jsdom');
+
+describe('Your Function Test', () => {
+  let dom, document, window;
+  
+  beforeEach(() => {
+    // Create fresh DOM environment
+    dom = new JSDOM(`<!DOCTYPE html><body></body>`);
+    document = dom.window.document;
+    window = dom.window;
+    
+    // Mock global objects
+    global.document = document;
+    global.window = window;
+  });
+  
+  test('should handle specific scenario', () => {
+    // Test implementation with mocked dependencies
+  });
+});
+```
+
+### Common Mistakes (DON'T DO THESE)
+
+1. **❌ DON'T** run `npx jest tests/integration/` - use `npm run test:integration`
+2. **❌ DON'T** forget to use `requestWithCsrf` for protected endpoints
+3. **❌ DON'T** create tests in wrong directories (unit/, integration/, e2e/)
+4. **❌ DON'T** forget PWTEST bypass for authentication
+5. **❌ DON'T** run integration tests without server lifecycle management
+6. **❌ DON'T** use `supertest(app)` - use live server requests
+7. **❌ DON'T** forget CSRF tokens for state-changing requests
+
+### Test Execution Workflow
+
+#### For New Features:
+1. **Create unit test** in `tests/unit/` for business logic
+2. **Create integration test** in `tests/integration/` for API endpoints
+3. **Create E2E test** in `tests/e2e/` for user workflows
+4. **Run tests**: `npm run test:integration` then `npm test`
+5. **Verify**: All tests pass before committing
+
+#### For Bug Fixes:
+1. **Create MRE test** in `tests/diagnostics/` to reproduce bug
+2. **Fix the bug** in source code
+3. **Run regression tests**: `node tests/run_gauntlet_tests.js`
+4. **Verify**: Bug is fixed and no regressions
+
+#### For Debugging:
+1. **Run specific test**: `npx playwright test --headed tests/e2e/your-test.spec.js`
+2. **Use PWTEST bypass**: `PWTEST=1 npm run test:integration`
+3. **Check debug logs**: Look in `tests/debug/` directory
+4. **Use MRE approach**: Create minimal reproducible example
