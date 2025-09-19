@@ -10,6 +10,11 @@
   try { document.documentElement.setAttribute('data-staff-ctrl','loaded'); } catch {}
   window.__staffCtrlInitialized ??= false;
 
+  // Module-scoped state - single source of truth
+  let ALL_STAFF = [];
+  let CURRENT_ROSTER = [];
+  let addLocked = false;
+
   // BACKUP-CONTRACT CONSTANTS — exact IDs/classes from staff.html.backup
   const SELECTORS = {
     rosterList: '#roster-list',
@@ -177,10 +182,9 @@
     try {
       if (position === 1) return; // Can't move up from position 1
       
-      const roster = await api.getStaffRoster();
       const previousPosition = position - 1;
-      const staffMember = roster.find(r => r.position === position);
-      const previousStaff = roster.find(r => r.position === previousPosition);
+      const staffMember = CURRENT_ROSTER.find(r => r.position === position);
+      const previousStaff = CURRENT_ROSTER.find(r => r.position === previousPosition);
       
       if (staffMember && previousStaff) {
         // Swap the two staff members
@@ -193,9 +197,9 @@
           status: staffMember.status
         });
         
-        // Re-fetch and render
-        const updatedRoster = await api.getStaffRoster();
-        renderRoster(updatedRoster);
+        // Re-fetch and render - single source of truth
+        CURRENT_ROSTER = await api.getStaffRoster();
+        renderRoster(CURRENT_ROSTER);
       }
     } catch (error) {
       console.error('Error moving staff up:', error);
@@ -206,10 +210,9 @@
     try {
       if (position === 20) return; // Can't move down from position 20
       
-      const roster = await api.getStaffRoster();
       const nextPosition = position + 1;
-      const staffMember = roster.find(r => r.position === position);
-      const nextStaff = roster.find(r => r.position === nextPosition);
+      const staffMember = CURRENT_ROSTER.find(r => r.position === position);
+      const nextStaff = CURRENT_ROSTER.find(r => r.position === nextPosition);
       
       if (staffMember && nextStaff) {
         // Swap the two staff members
@@ -222,9 +225,9 @@
           status: staffMember.status
         });
         
-        // Re-fetch and render
-        const updatedRoster = await api.getStaffRoster();
-        renderRoster(updatedRoster);
+        // Re-fetch and render - single source of truth
+        CURRENT_ROSTER = await api.getStaffRoster();
+        renderRoster(CURRENT_ROSTER);
       }
     } catch (error) {
       console.error('Error moving staff down:', error);
@@ -233,18 +236,17 @@
 
   async function removeFromRoster(position) {
     try {
-      const roster = await api.getStaffRoster();
-      const staffMember = roster.find(r => r.position === position);
+      const staffMember = CURRENT_ROSTER.find(r => r.position === position);
       
       if (staffMember) {
         await api.removeStaffFromRoster(position);
         
-        // Re-fetch and render
-        const updatedRoster = await api.getStaffRoster();
-        renderRoster(updatedRoster);
+        // Re-fetch and render - single source of truth
+        CURRENT_ROSTER = await api.getStaffRoster();
+        renderRoster(CURRENT_ROSTER);
         
         // Update dropdown using cached AllStaff (no re-fetch needed)
-        renderDropdown(allStaffCache, updatedRoster);
+        renderDropdown(ALL_STAFF, CURRENT_ROSTER);
       }
     } catch (error) {
       console.error('Error removing staff:', error);
@@ -260,10 +262,6 @@
       window.api = apiClient;
     }
     
-    // Cache AllStaff to avoid re-fetching on every add
-    let allStaffCache = null;
-    let addLocked = false;
-    
     try {
       console.log('🚀 Staff controller initializing...');
       
@@ -272,21 +270,21 @@
         throw new Error('API client not available');
       }
       
-      // 1) fetch all staff (unfiltered) - cache for session
-      allStaffCache = await window.api.getAllStaff();
-      console.log(`📋 Fetched ${allStaffCache.length} staff members`);
+      // 1) fetch all staff (unfiltered) - single source of truth
+      ALL_STAFF = await window.api.getAllStaff();
+      console.log(`📋 Fetched ${ALL_STAFF.length} staff members`);
 
       // 2) fetch roster
-      let roster = [];
+      CURRENT_ROSTER = [];
       try {
-        roster = await window.api.getStaffRoster();
+        CURRENT_ROSTER = await window.api.getStaffRoster();
       } catch (e) {
         console.log('ℹ️ No roster endpoint, using empty roster');
       }
 
       // 3) render with projector
-      renderRoster(roster);
-      renderDropdown(allStaffCache, roster);
+      renderRoster(CURRENT_ROSTER);
+      renderDropdown(ALL_STAFF, CURRENT_ROSTER);
 
       // Bind the Add to Roster button
       const addBtn = document.getElementById('add-to-roster-btn');
@@ -305,7 +303,7 @@
               const masseuseName = selectedOption.text;
               
               // Calculate first empty slot from current in-memory roster (no pre-GET needed)
-              const positions = roster.map(r => r.position).sort((a,b) => a - b);
+              const positions = CURRENT_ROSTER.map(r => r.position).sort((a,b) => a - b);
               let nextPosition = 1;
               for (const pos of positions) {
                 if (pos === nextPosition) nextPosition++;
@@ -317,15 +315,15 @@
               await api.addToRoster(nextPosition, { masseuse_name: masseuseName });
               console.log('🔧 API call completed');
               
-              // Get fresh roster state from server
-              roster = await api.getStaffRoster();
-              console.log('🔧 Updated roster:', roster);
+              // Get fresh roster state from server - single source of truth
+              CURRENT_ROSTER = await api.getStaffRoster();
+              console.log('🔧 Updated roster:', CURRENT_ROSTER);
               
-              renderRoster(roster);
+              renderRoster(CURRENT_ROSTER);
               console.log('🔧 Roster rendered');
               
               // Update dropdown using cached AllStaff (no re-fetch needed)
-              renderDropdown(allStaffCache, roster);
+              renderDropdown(ALL_STAFF, CURRENT_ROSTER);
               console.log('🔧 Dropdown updated');
               
               select.value = '';
@@ -351,15 +349,15 @@
               await api.clearRoster();
               console.log('🔧 clearRoster completed');
               
-              // Update local roster state (no GET needed)
-              roster = [];
+              // Update local roster state (no GET needed) - single source of truth
+              CURRENT_ROSTER = [];
               console.log('🔧 Local roster cleared');
               
-              renderRoster(roster);
+              renderRoster(CURRENT_ROSTER);
               console.log('🔧 renderRoster completed');
               
               // Update dropdown using cached AllStaff (no re-fetch needed)
-              renderDropdown(allStaffCache, roster);
+              renderDropdown(ALL_STAFF, CURRENT_ROSTER);
               console.log('🔧 renderDropdown completed');
             } else {
               console.log('🔧 Confirm dialog cancelled');
@@ -378,4 +376,4 @@
       document.documentElement.setAttribute('data-staff-ctrl','error');
     }
   };
-})();
+})();// Test hot-reload Fri Sep 19 13:49:58 +07 2025
