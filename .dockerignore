@@ -3,3 +3,10 @@ backend/node_modules
 .git
 .idea
 docker
+diagnostics/
+logs/
+test-results/
+playwright-report/
+*.tar
+*.tar.gz
+*.log

@@ -243,9 +243,8 @@
         const updatedRoster = await api.getStaffRoster();
         renderRoster(updatedRoster);
         
-        // Update dropdown
-        const allStaff = await api.getAllStaff();
-        renderDropdown(allStaff, updatedRoster);
+        // Update dropdown using cached AllStaff (no re-fetch needed)
+        renderDropdown(allStaffCache, updatedRoster);
       }
     } catch (error) {
       console.error('Error removing staff:', error);
@@ -261,6 +260,10 @@
       window.api = apiClient;
     }
     
+    // Cache AllStaff to avoid re-fetching on every add
+    let allStaffCache = null;
+    let addLocked = false;
+    
     try {
       console.log('🚀 Staff controller initializing...');
       
@@ -269,9 +272,9 @@
         throw new Error('API client not available');
       }
       
-      // 1) fetch all staff (unfiltered)
-      const all = await window.api.getAllStaff();
-      console.log(`📋 Fetched ${all.length} staff members`);
+      // 1) fetch all staff (unfiltered) - cache for session
+      allStaffCache = await window.api.getAllStaff();
+      console.log(`📋 Fetched ${allStaffCache.length} staff members`);
 
       // 2) fetch roster
       let roster = [];
@@ -283,12 +286,15 @@
 
       // 3) render with projector
       renderRoster(roster);
-      renderDropdown(all, roster);
+      renderDropdown(allStaffCache, roster);
 
       // Bind the Add to Roster button
       const addBtn = document.getElementById('add-to-roster-btn');
       if (addBtn) {
         addBtn.addEventListener('click', async () => {
+          if (addLocked) return;
+          addLocked = true;
+          
           try {
             console.log('🔧 Add button clicked');
             const select = document.getElementById('available-staff');
@@ -298,11 +304,8 @@
             if (selectedOption.value) {
               const masseuseName = selectedOption.text;
               
-              // Get current roster state to calculate correct position
-              const currentRoster = await api.getStaffRoster();
-              
-              // Calculate first empty slot, otherwise append to end
-              const positions = currentRoster.map(r => r.position).sort((a,b) => a - b);
+              // Calculate first empty slot from current in-memory roster (no pre-GET needed)
+              const positions = roster.map(r => r.position).sort((a,b) => a - b);
               let nextPosition = 1;
               for (const pos of positions) {
                 if (pos === nextPosition) nextPosition++;
@@ -310,18 +313,19 @@
               }
               console.log('🔧 Adding staff:', masseuseName, 'at position:', nextPosition);
               
+              // PUT request - ignore response, do fresh GET to be safe
               await api.addToRoster(nextPosition, { masseuse_name: masseuseName });
               console.log('🔧 API call completed');
               
-              const updatedRoster = await api.getStaffRoster();
-              console.log('🔧 Updated roster:', updatedRoster);
+              // Get fresh roster state from server
+              roster = await api.getStaffRoster();
+              console.log('🔧 Updated roster:', roster);
               
-              renderRoster(updatedRoster);
+              renderRoster(roster);
               console.log('🔧 Roster rendered');
               
-              // Update dropdown to remove added staff member
-              const allStaff = await api.getAllStaff();
-              renderDropdown(allStaff, updatedRoster);
+              // Update dropdown using cached AllStaff (no re-fetch needed)
+              renderDropdown(allStaffCache, roster);
               console.log('🔧 Dropdown updated');
               
               select.value = '';
@@ -330,6 +334,8 @@
             }
           } catch (error) {
             console.error('Error adding staff to roster:', error);
+          } finally {
+            addLocked = false;
           }
         });
       }
@@ -345,15 +351,15 @@
               await api.clearRoster();
               console.log('🔧 clearRoster completed');
               
-              const updatedRoster = await api.getStaffRoster();
-              console.log('🔧 getStaffRoster completed, roster:', updatedRoster);
+              // Update local roster state (no GET needed)
+              roster = [];
+              console.log('🔧 Local roster cleared');
               
-              renderRoster(updatedRoster);
+              renderRoster(roster);
               console.log('🔧 renderRoster completed');
               
-              // Update dropdown to show all staff again
-              const allStaff = await api.getAllStaff();
-              renderDropdown(allStaff, updatedRoster);
+              // Update dropdown using cached AllStaff (no re-fetch needed)
+              renderDropdown(allStaffCache, roster);
               console.log('🔧 renderDropdown completed');
             } else {
               console.log('🔧 Confirm dialog cancelled');

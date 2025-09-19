@@ -2,10 +2,32 @@
 class APIClient {
   constructor(baseURL = '') {
     this.baseURL = baseURL;
+    this._csrf = null;
+    this._inflight = new Map(); // key -> Promise for de-dupe
   }
 
-  // Get CSRF token from /csrf endpoint
+  // Get CSRF token from /csrf endpoint (with session caching)
   async getCsrfToken() {
+    if (this._csrf) return this._csrf;
+    
+    // Prevent duplicate requests
+    const key = 'csrf';
+    if (this._inflight.has(key)) {
+      return this._inflight.get(key);
+    }
+    
+    const promise = this._fetchCsrfToken();
+    this._inflight.set(key, promise);
+    
+    try {
+      this._csrf = await promise;
+      return this._csrf;
+    } finally {
+      this._inflight.delete(key);
+    }
+  }
+  
+  async _fetchCsrfToken() {
     try {
       // Fetch CSRF token from the dedicated endpoint
       const response = await fetch('/csrf', {
@@ -69,6 +91,24 @@ class APIClient {
       const response = await fetch(url, config);
       console.log(`[API_CLIENT] ${new Date().toISOString()} - Response received for ${config.method} ${url}. Status: ${response.status}`);
 
+      // One retry on 403 → refresh CSRF
+      if (response.status === 403 && config.method !== 'GET') {
+        console.log(`[API_CLIENT] CSRF token expired, refreshing and retrying...`);
+        this._csrf = null; // Clear cached token
+        const newCsrfToken = await this.getCsrfToken();
+        if (newCsrfToken) {
+          config.headers['X-CSRF-Token'] = newCsrfToken;
+          const retryResponse = await fetch(url, config);
+          console.log(`[API_CLIENT] ${new Date().toISOString()} - Retry response received for ${config.method} ${url}. Status: ${retryResponse.status}`);
+          if (!retryResponse.ok) {
+            const error = await retryResponse.json().catch(() => ({ error: `HTTP ${retryResponse.status} - ${retryResponse.statusText}` }));
+            throw new Error(error.details || error.error || `HTTP ${retryResponse.status} - ${retryResponse.statusText}`);
+          }
+          const text = await retryResponse.text();
+          return text ? JSON.parse(text) : {};
+        }
+      }
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ error: `HTTP ${response.status} - ${response.statusText}` }));
         // Use the detailed error from the server if available
@@ -84,6 +124,19 @@ class APIClient {
       }
       throw error;
     }
+  }
+
+  // Helper methods for cleaner API calls
+  async get(url) { 
+    return this.request(url, { method: 'GET' }); 
+  }
+  
+  async putJson(url, body) { 
+    return this.request(url, { method: 'PUT', body }); 
+  }
+  
+  async delete(url) { 
+    return this.request(url, { method: 'DELETE' }); 
   }
 
   // All other methods (login, getTransactions, etc.) will be instance methods
