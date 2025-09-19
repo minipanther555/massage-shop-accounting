@@ -5,7 +5,6 @@ export default defineConfig({
   retries: 1,
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
-    storageState: 'tests/.auth/storageState.json',
     headless: false, // Set to true for CI
   },
   globalSetup: './tests/global-setup.ts',
