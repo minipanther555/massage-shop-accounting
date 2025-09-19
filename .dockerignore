@@ -1,12 +1,31 @@
-node_modules
-backend/node_modules
-.git
-.idea
-docker
-diagnostics/
-logs/
-test-results/
-playwright-report/
+# tarballs / archives / artifacts
 *.tar
 *.tar.gz
+*.tgz
+*.zip
+
+# diagnostics & test outputs
+diagnostics/
+playwright-report/
+coverage/
+tmp/
+*.har
+
+# VCS & deps
+.git/
+node_modules/
+backend/node_modules/
+
+# logs & temp files
+logs/
+test-results/
 *.log
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/

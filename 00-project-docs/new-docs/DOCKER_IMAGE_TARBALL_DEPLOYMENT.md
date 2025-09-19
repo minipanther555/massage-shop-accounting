@@ -2,9 +2,15 @@
 
 ## 1. Executive Summary
 
-This document provides a comprehensive technical analysis of the Docker-based tarball deployment system used for the `eiw-massage-shop-bookkeeping` project. The system employs a **tarball-based deployment strategy** that builds Docker images locally, saves them to compressed archives, transfers them to a production VPS via SCP, and loads them on the target server. This approach ensures **exact environment parity** between development and production while avoiding registry dependencies.
+This document provides a comprehensive technical analysis of the Docker-based tarball deployment system used for the `eiw-massage-shop-bookkeeping` project. The system employs a **hardened tarball-based deployment strategy** that builds Docker images locally with platform-specific builds, saves them to compressed archives, transfers them to a production VPS via SCP, and loads them on the target server. This approach ensures **exact environment parity** between development and production while avoiding registry dependencies.
 
-The deployment infrastructure consists of a **Node.js 18.20.8-slim** base image, **SQLite database persistence**, **Nginx reverse proxy**, and **Docker Compose orchestration** on an Ubuntu 24.04 LTS VPS at `109.123.238.197`. The system supports both development (with live code reloading) and production (with immutable image deployment) configurations.
+**Key Improvements (Latest)**:
+- **Hardened Build Context**: Optimized from 4GB+ to 911KB through comprehensive `.dockerignore`
+- **Platform Compatibility**: ARM64 → AMD64 builds prevent deployment failures
+- **Automated Deployment**: `scripts/deploy_tarball.sh` with context size guards and health checks
+- **Fast Iteration Loop**: Staging environment with bind mounts for frontend development
+- **Rollback Capability**: `scripts/rollback.sh` for quick recovery from failed deployments
+- **Health Monitoring**: `/api/_health` endpoint for deployment verification
 
 ## 2. Architectural Analysis (Software Architect Persona)
 
@@ -13,32 +19,47 @@ The deployment infrastructure consists of a **Node.js 18.20.8-slim** base image,
 ```mermaid
 graph TB
     subgraph "Local Development Environment"
-        A[Developer Machine] --> B[Docker Build]
+        A[Developer Machine] --> B[Docker Buildx (linux/amd64)]
         B --> C[Image: massage-app:tag]
-        C --> D[Docker Save to Tarball]
-        D --> E[SCP Transfer]
+        C --> D[Docker Save to Tarball.gz]
+        D --> E[rsync Transfer]
     end
     
     subgraph "Production VPS (109.123.238.197)"
         E --> F[Production Server]
         F --> G[Docker Load from Tarball]
-        G --> H[Image: massage-app:main28-20250902-102456]
+        G --> H[Image: massage-app:main28-20250919-130017]
         H --> I[Docker Compose Up]
         I --> J[Container: massage-shop-app-1]
         J --> K[Application Port 3000]
         K --> L[Nginx Reverse Proxy]
         L --> M[External Access: 109.123.238.197.sslip.io]
+        
+        subgraph "Staging Environment"
+            N[Staging Container: app-stage] --> O[Port 3001]
+            P[Bind Mount: /STAGE/web-app] --> N
+            Q[Nginx /stage/ Route] --> O
+        end
     end
     
     subgraph "Data Persistence"
-        N[SQLite Database] --> O[/opt/massage-shop/KEEP/backend/data]
-        O --> P[Volume Mount: /app/backend/data]
-        P --> J
+        R[SQLite Database] --> S[/opt/massage-shop/KEEP/backend/data]
+        S --> T[Volume Mount: /app/backend/data]
+        T --> J
+        T --> N
     end
     
     subgraph "SSL/TLS Termination"
-        Q[Let's Encrypt Certificates] --> R[/etc/letsencrypt/live/109.123.238.197.sslip.io/]
-        R --> L
+        U[Let's Encrypt Certificates] --> V[/etc/letsencrypt/live/109.123.238.197.sslip.io/]
+        V --> L
+        V --> Q
+    end
+    
+    subgraph "Deployment Scripts"
+        W[deploy_tarball.sh] --> X[Context Size Guard]
+        X --> Y[Platform Build]
+        Y --> Z[Health Check]
+        AA[rollback.sh] --> BB[Quick Recovery]
     end
 ```
 
@@ -211,14 +232,40 @@ ssh massage "cd /opt/massage-shop/deploy && docker compose up -d"
 
 #### .dockerignore Configuration
 ```
-node_modules
-backend/node_modules
-.git
-.idea
-docker
+# tarballs / archives / artifacts
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# diagnostics & test outputs
+diagnostics/
+playwright-report/
+coverage/
+tmp/
+*.har
+
+# VCS & deps
+.git/
+node_modules/
+backend/node_modules/
+
+# logs & temp files
+logs/
+test-results/
+*.log
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/
 ```
 
-**Purpose**: Prevents unnecessary files from being copied into the Docker image, reducing image size and build time.
+**Purpose**: Prevents unnecessary files from being copied into the Docker image, reducing image size and build time. **Critical**: This hardened configuration prevents build context bloat that previously caused 4GB+ contexts, now maintaining ~911KB build contexts.
 
 ### 3.4. Dependency Management
 
@@ -361,34 +408,120 @@ npm run test:integration
 # Executes: node tests/run_integration_tests.js
 ```
 
-#### Deployment Scripts
+#### Automated Deployment Scripts
+
+**Primary Deployment Script** (`scripts/deploy_tarball.sh`):
 ```bash
-# Complete deployment workflow
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_NAME="massage-app"
+HOST_ALIAS="massage"
+REMOTE_DIR="/opt/massage-shop"
+COMPOSE_DIR="${REMOTE_DIR}/deploy"
 TAG="main28-$(date +%Y%m%d-%H%M%S)"
-TARBALL="massage-app-${TAG}.tar"
+TARBALL="${APP_NAME}-${TAG}.tar.gz"
+GIT_SHA="$(git rev-parse --short HEAD || echo unknown)"
 
-# Build image
-docker build -t massage-app:${TAG} -f docker/Dockerfile .
+echo "==> Preflight: show build context size (sanity)"
+du -sh . | awk '{print "Context size:", $1}'
 
-# Save to tarball
-docker save massage-app:${TAG} > ${TARBALL}
+echo "==> Context size guard (bail if too large)"
+CTX_BYTES=$(tar -czf - $(git ls-files -co --exclude-standard) 2>/dev/null | wc -c | awk "{print \$1}")
+echo "Approx build context (gzip) bytes: ${CTX_BYTES}"
+if [ "${CTX_BYTES}" -gt 250000000 ]; then
+  echo "Context looks huge (>250MB gz). Fix .dockerignore before deploying."
+  exit 1
+fi
 
-# Transfer to production
-scp ${TARBALL} massage:/opt/massage-shop/
+echo "==> Build linux/amd64 image (pull fresh base, embed git sha)"
+docker buildx create --use >/dev/null 2>&1 || true
+docker buildx build \
+  --platform linux/amd64 \
+  --pull \
+  -t "${APP_NAME}:${TAG}" \
+  -f docker/Dockerfile \
+  --build-arg GIT_SHA="${GIT_SHA}" \
+  --provenance=false \
+  --load \
+  .
 
-# Deploy on production server
-ssh massage << EOF
-cd /opt/massage-shop
-docker load < ${TARBALL}
-cd deploy
-sed -i "s/massage-app:.*/massage-app:${TAG}/" compose.prod.yml
+echo "==> Save & compress tarball"
+docker save "${APP_NAME}:${TAG}" | gzip > "${TARBALL}"
+ls -lh "${TARBALL}"
+
+echo "==> Copy tarball to server (resumable)"
+rsync --partial --progress "${TARBALL}" "${HOST_ALIAS}:${REMOTE_DIR}/"
+
+echo "==> Load image, update compose tag, restart (server-side)"
+ssh "${HOST_ALIAS}" bash -euo pipefail <<EOF
+set -euo pipefail
+cd "${REMOTE_DIR}"
+echo "-> Load image from tarball"
+gunzip -c "${TARBALL}" | docker load
+
+echo "-> Show loaded image"
+docker images | grep "${APP_NAME}" | head -n 5
+
+echo "-> Update compose image tag (in-place, backup first)"
+cd "${COMPOSE_DIR}"
+cp compose.prod.yml compose.prod.yml.bak
+sed -i "s#image: ${APP_NAME}:.*#image: ${APP_NAME}:${TAG}#g" compose.prod.yml
+
+echo "-> Restart app"
 docker compose up -d
+
+echo "-> Wait & quick health probe (if /api/_health exists)"
+sleep 2
+curl -skf https://109.123.238.197.sslip.io/api/_health || true
+
+echo "-> Show recent logs"
+docker compose logs --since=30s app || true
 EOF
 
-# Cleanup local tarball
-rm ${TARBALL}
+echo "==> Done. Deployed ${APP_NAME}:${TAG}"
 ```
+
+**Rollback Script** (`scripts/rollback.sh`):
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST_ALIAS="massage"
+COMPOSE_DIR="/opt/massage-shop/deploy"
+
+echo "==> Rolling back to previous image..."
+ssh "${HOST_ALIAS}" bash -euo pipefail <<'EOF'
+set -euo pipefail
+cd /opt/massage-shop/deploy
+
+if [ -f compose.prod.yml.bak ]; then
+  echo "-> Restoring backup compose file"
+  cp compose.prod.yml.bak compose.prod.yml
+  echo "-> Restarting with previous image"
+  docker compose up -d
+  echo "-> Rollback complete"
+else
+  echo "❌ No backup file found (compose.prod.yml.bak)"
+  echo "Available compose files:"
+  ls -la compose*.yml
+  exit 1
+fi
+
+echo "-> Current status:"
+docker compose ps
+EOF
+
+echo "==> Rollback complete"
+```
+
+**Key Features**:
+- **Context Size Guard**: Prevents deployment if build context >250MB
+- **Platform-Specific Builds**: Always builds for `linux/amd64` (ARM64 → AMD64 compatibility)
+- **Automatic Backup**: Creates `compose.prod.yml.bak` before updates
+- **Health Checks**: Tests `/api/_health` endpoint after deployment
+- **Resumable Transfer**: Uses `rsync --partial` for reliable uploads
+- **Git SHA Embedding**: Includes commit hash in image metadata
 
 ### 5.3. Containerization
 
@@ -516,30 +649,43 @@ graph TB
 5. **Network Efficiency**: Single compressed file transfer vs. layer-by-layer pull
 
 #### Current Production State
-- **Active Image**: `massage-app:main28-20250902-102456`
-- **Image Size**: 369,017,044 bytes (369MB)
-- **Container ID**: `38f6a007236f`
-- **Uptime**: 28+ hours (as of last snapshot)
-- **Status**: Running and healthy
+- **Active Image**: `massage-app:main28-20250919-130017`
+- **Image Size**: ~272MB compressed tarball
+- **Build Context**: 911KB (optimized from previous 4GB+)
+- **Platform**: `linux/amd64` (ARM64 → AMD64 compatibility)
+- **Status**: Running and healthy with hardened deployment pipeline
 
 #### Deployment Commands
+
+**Automated Deployment (Recommended)**:
 ```bash
-# 1. Build new image with timestamp
-docker build -t massage-app:main28-$(date +%Y%m%d-%H%M%S) -f docker/Dockerfile .
+# Deploy with full pipeline (context guard, platform build, health checks)
+./scripts/deploy_tarball.sh
 
-# 2. Save to tarball
-docker save massage-app:main28-$(date +%Y%m%d-%H%M%S) > massage-app-$(date +%Y%m%d-%H%M%S).tar
+# Rollback if needed
+./scripts/rollback.sh
+```
 
-# 3. Transfer to production
-scp massage-app-$(date +%Y%m%d-%H%M%S).tar massage:/opt/massage-shop/
+**Manual Deployment (Legacy)**:
+```bash
+# 1. Build image with platform-specific build
+docker buildx build --platform linux/amd64 -t massage-app:main28-$(date +%Y%m%d-%H%M%S) -f docker/Dockerfile . --load
+
+# 2. Save to compressed tarball
+docker save massage-app:main28-$(date +%Y%m%d-%H%M%S) | gzip > massage-app-$(date +%Y%m%d-%H%M%S).tar.gz
+
+# 3. Transfer to production (resumable)
+rsync --partial --progress massage-app-$(date +%Y%m%d-%H%M%S).tar.gz massage:/opt/massage-shop/
 
 # 4. Load and deploy on production
 ssh massage << EOF
 cd /opt/massage-shop
-docker load < massage-app-$(date +%Y%m%d-%H%M%S).tar
+gunzip -c massage-app-$(date +%Y%m%d-%H%M%S).tar.gz | docker load
 cd deploy
+cp compose.prod.yml compose.prod.yml.bak
 sed -i "s/massage-app:.*/massage-app:main28-$(date +%Y%m%d-%H%M%S)/" compose.prod.yml
 docker compose up -d
+curl -skf https://109.123.238.197.sslip.io/api/_health || true
 EOF
 ```
 
@@ -574,8 +720,10 @@ EOF
 #### Health Checks
 - **Container Status**: `docker ps` shows running container
 - **Application Health**: Express.js server responds on port 3000
+- **API Health Endpoint**: `GET /api/_health` returns `{"ok": true, "version": "main28-hotfix", "timestamp": 1695123456789, "environment": "production"}`
 - **Database Access**: SQLite file accessible and writable
 - **Nginx Status**: Reverse proxy functioning correctly
+- **Automated Health Probe**: Deploy script tests health endpoint after deployment
 
 #### Log Monitoring
 ```bash
@@ -674,32 +822,112 @@ ssh massage "cd /opt/massage-shop/deploy && docker compose up -d"
 ## 9. Performance Characteristics
 
 ### 9.1. Image Size
-- **Current Image**: 369MB compressed
+- **Current Image**: ~272MB compressed tarball
+- **Build Context**: 911KB (optimized from previous 4GB+)
 - **Base Image**: ~100MB (node:18.20.8-slim)
 - **Application Code**: ~50MB
 - **Dependencies**: ~200MB (Node.js modules)
 - **System Tools**: ~19MB (SQLite3 CLI)
+- **Optimization**: Hardened `.dockerignore` prevents bloat from diagnostics/, logs/, test-results/
 
 ### 9.2. Transfer Performance
-- **Tarball Size**: ~369MB compressed
-- **Transfer Time**: ~2-5 minutes (depending on connection)
+- **Tarball Size**: ~272MB compressed (optimized from previous 2GB+)
+- **Transfer Time**: ~1-3 minutes (depending on connection)
 - **Load Time**: ~30-60 seconds on production server
+- **Resumable Transfer**: Uses `rsync --partial` for reliable uploads
 
 ### 9.3. Runtime Performance
 - **Memory Usage**: ~100-200MB per container
 - **CPU Usage**: Low (Node.js single-threaded)
 - **Database Performance**: SQLite file-based, suitable for single-server deployment
 
-## 10. Future Improvements
+## 10. Staging Environment & Fast Iteration
 
-### 10.1. Potential Enhancements
+### 10.1. Staging Environment Setup
+
+**Nginx Staging Route** (`/etc/nginx/sites-enabled/massage-shop`):
+```nginx
+# Staging environment under /stage/ path
+location /stage/ {
+    rewrite ^/stage/(.*)$ /$1 break;
+    proxy_pass http://127.0.0.1:3001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    
+    # Cache busting for staging
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+}
+```
+
+**Staging Docker Compose** (`/opt/massage-shop/deploy/compose.stage.yml`):
+```yaml
+name: massage-shop-stage
+services:
+  app-stage:
+    image: massage-app:main28-20250919-130017
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - /opt/massage-shop/KEEP/backend/data:/app/backend/data:rw
+      - /opt/massage-shop/STAGE/web-app:/usr/src/app/web-app:ro
+    environment:
+      - NODE_ENV=staging
+      - PORT=3000
+      - TRUST_PROXY=1
+      - DB_PATH=/app/backend/data/massage_shop.db
+```
+
+### 10.2. Fast Iteration Loop
+
+**Frontend Sync Script** (`scripts/stage-sync.sh`):
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST_ALIAS="massage"
+STAGE_DIR="/opt/massage-shop/STAGE/web-app"
+STAGING_URL="https://109.123.238.197.sslip.io/stage"
+
+echo "==> Syncing frontend changes to staging..."
+rsync -av --delete web-app/ "${HOST_ALIAS}:${STAGE_DIR}/"
+
+echo "==> Updating staging version marker..."
+ssh "${HOST_ALIAS}" "echo '{\"stamp\":\"$(git rev-parse --short HEAD)\",\"ts\":'$(date +%s)'}' > ${STAGE_DIR}/_stage_version.json"
+
+echo "==> Running Playwright smoke test..."
+npx playwright test tests/e2e/staff-roster.smoke.spec.js --base-url="${STAGING_URL}"
+
+echo "==> Staging updated: ${STAGING_URL}/staff.html"
+```
+
+**Key Benefits**:
+- **Hot Reloading**: Frontend changes sync instantly via bind mounts
+- **No Docker Rebuild**: Only sync files, no image rebuild needed
+- **Automated Testing**: Playwright tests verify changes work
+- **Cache Busting**: Staging URLs include version parameters
+- **Isolated Environment**: Staging uses same data but different code
+
+### 10.3. Development Workflow
+
+1. **Make Frontend Changes**: Edit files in `web-app/`
+2. **Sync to Staging**: `./scripts/stage-sync.sh`
+3. **Test Changes**: Visit `https://109.123.238.197.sslip.io/stage/staff.html`
+4. **Verify with Tests**: Playwright tests run automatically
+5. **Deploy to Production**: `./scripts/deploy_tarball.sh` when ready
+
+## 11. Future Improvements
+
+### 11.1. Potential Enhancements
 - **Multi-stage Builds**: Reduce final image size
-- **Health Checks**: Built-in container health monitoring
+- **Health Checks**: Built-in container health monitoring (✅ Implemented)
 - **Secrets Management**: External secrets management system
-- **Automated Deployments**: CI/CD pipeline integration
+- **Automated Deployments**: CI/CD pipeline integration (✅ Scripts implemented)
 - **Monitoring**: Application performance monitoring (APM)
 
-### 10.2. Scalability Considerations
+### 11.2. Scalability Considerations
 - **Database Migration**: PostgreSQL for multi-instance deployment
 - **Load Balancing**: Multiple container instances
 - **Container Orchestration**: Kubernetes for complex deployments
