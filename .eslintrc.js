@@ -28,6 +28,7 @@ module.exports = {
     'comma-dangle': ['error', 'never'], // Prevents trailing commas
     'no-unused-vars': ['warn', { args: 'none' }], // Warns about unused variables, but not unused function arguments
     'max-len': ['warn', { code: 120 }], // Warns if a line is longer than 120 characters
+    'id-denylist': ['error', 'deleteStaffRoster'], // Prevents use of forbidden API method names
     'no-restricted-syntax': [
       'error',
       {

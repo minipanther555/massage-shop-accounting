@@ -156,20 +156,8 @@
           return a(u);
         };
         
-        // Override location.href setter (most important for shared.js)
-        let currentHref = location.href;
-        Object.defineProperty(location, 'href', {
-          get: () => currentHref,
-          set: (u) => {
-            if (__PWTEST__ && hop(u)) {
-              console.log('🚫 PWTEST: Blocked location.href redirect to', u);
-              return;
-            }
-            console.log('🔄 PWTEST: Allowing redirect to', u);
-            currentHref = u;
-            r(u);
-          }
-        });
+        // PWTEST: Use query strings for cache busting, not location.href redefinition
+        console.log('✅ PWTEST: Using safe cache busting via query strings');
         
         console.log('✅ PWTEST: Inline shim completed');
       }
@@ -194,13 +182,12 @@
       window.getCurrentUser = () => ({ username: 'pwtest' });
       window.requireAuth = () => true;  // swallow redirects
 
-      // defang client redirects to /login
+      // defang client redirects to /login (safe approach)
       const toLogin = (u) => typeof u === 'string' && /\/login(\.html)?$/i.test(u);
       const _assign = location.assign.bind(location);
       const _replace = location.replace.bind(location);
-      Object.defineProperty(location, 'href', {
-        set(v) { if (!toLogin(v)) _replace(v); }
-      });
+      
+      // Override methods, not properties
       location.assign  = (v) => { if (!toLogin(v)) _assign(v); };
       location.replace = (v) => { if (!toLogin(v)) _replace(v); };
     })();
@@ -209,7 +196,7 @@
     <script src="/api.js"></script>
     <script src="/shared.js"></script>
     <script src="/roster-ui.js"></script>
-    <script src="/controllers/staff-page-controller.js?v=page-bundle-fix" defer></script>
+    <script src="controllers/staff-page-controller.js?v=stage-hotfix-6" defer></script>
     <script>
       // Show stage banner if on staging
       if (location.pathname.startsWith('/stage/')) {

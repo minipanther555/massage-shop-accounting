@@ -10,9 +10,32 @@
   try { document.documentElement.setAttribute('data-staff-ctrl','loaded'); } catch {}
   window.__staffCtrlInitialized ??= false;
 
-  // Module-scoped state - single source of truth
-  let ALL_STAFF = [];
-  let CURRENT_ROSTER = [];
+  // ---- BEGIN TEMP BACK-COMPAT SHIM (remove after cleanup) ----
+  let ALL_STAFF = Array.isArray(globalThis.ALL_STAFF) ? globalThis.ALL_STAFF : [];
+  let CURRENT_ROSTER = Array.isArray(globalThis.CURRENT_ROSTER) ? globalThis.CURRENT_ROSTER : [];
+
+  // Map old names to the new sources of truth to prevent ReferenceError
+  Object.defineProperty(globalThis, 'allStaffCache', {
+    configurable: true,
+    get() { return ALL_STAFF; },
+    set(v) { ALL_STAFF = Array.isArray(v) ? v : []; }
+  });
+  Object.defineProperty(globalThis, 'rosterCache', {
+    configurable: true,
+    get() { return CURRENT_ROSTER; },
+    set(v) { CURRENT_ROSTER = Array.isArray(v) ? v : []; }
+  });
+  // ---- END TEMP BACK-COMPAT SHIM ----
+
+  // Robust safe helpers - prevent crashes on undefined
+  const safeArr = (a) => Array.isArray(a) ? a : [];
+  const safeNames = (x) => {
+    if (Array.isArray(x)) return x;
+    if (x && Array.isArray(x.names)) return x.names;
+    if (x && Array.isArray(x.data)) return x.data;
+    return [];
+  };
+
   let addLocked = false;
 
   // BACKUP-CONTRACT CONSTANTS — exact IDs/classes from staff.html.backup
@@ -124,17 +147,16 @@
   }
 
   // DROPDOWN POPULATION — uses projector for consistency
-  function renderDropdown(allStaff, roster) {
+  function renderDropdown(available) {
     const dd = document.querySelector(SELECTORS.availableStaff);
     if (!dd) return;
 
     dd.innerHTML = '<option value="">Select masseuse to add...</option>';
     
-    // Use projector to get names consistently
-    const chosen = new Set(roster.map(r => projectName(r)));
+    // Null-safe: guard against undefined inputs
+    const list = safeArr(available);
     
-    allStaff.forEach(name => {
-      if (chosen.has(name)) return;
+    list.forEach(name => {
       const o = document.createElement('option');
       o.value = o.textContent = name;
       dd.appendChild(o);
@@ -236,20 +258,20 @@
 
   async function removeFromRoster(position) {
     try {
-      const staffMember = CURRENT_ROSTER.find(r => r.position === position);
-      
-      if (staffMember) {
-        await api.removeStaffFromRoster(position);
-        
-        // Re-fetch and render - single source of truth
-        CURRENT_ROSTER = await api.getStaffRoster();
-        renderRoster(CURRENT_ROSTER);
-        
-        // Update dropdown using cached AllStaff (no re-fetch needed)
-        renderDropdown(ALL_STAFF, CURRENT_ROSTER);
-      }
-    } catch (error) {
-      console.error('Error removing staff:', error);
+      await api.removeStaffFromRoster(position);
+
+      // Fresh read (don't trust write responses)
+      const fresh = safeArr(await api.getStaffRoster());
+      CURRENT_ROSTER = fresh;
+
+      const all = safeNames(ALL_STAFF);
+      const inRoster = new Set(fresh.map(x => x?.masseuse_name).filter(Boolean));
+      const available = all.filter(n => !inRoster.has(n));
+
+      renderRoster(fresh);
+      renderDropdown(available);
+    } catch (e) {
+      console.error('Error removing staff:', e);
     }
   }
 
@@ -271,20 +293,23 @@
       }
       
       // 1) fetch all staff (unfiltered) - single source of truth
-      ALL_STAFF = await window.api.getAllStaff();
+      ALL_STAFF = safeNames(await window.api.getAllStaff());
       console.log(`📋 Fetched ${ALL_STAFF.length} staff members`);
 
       // 2) fetch roster
       CURRENT_ROSTER = [];
       try {
-        CURRENT_ROSTER = await window.api.getStaffRoster();
+        CURRENT_ROSTER = safeArr(await window.api.getStaffRoster());
       } catch (e) {
         console.log('ℹ️ No roster endpoint, using empty roster');
       }
 
-      // 3) render with projector
+      // 3) render with projector - safe pattern
       renderRoster(CURRENT_ROSTER);
-      renderDropdown(ALL_STAFF, CURRENT_ROSTER);
+      
+      const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
+      const available = safeArr(ALL_STAFF).filter(n => !inRoster.has(n));
+      renderDropdown(available);
 
       // Bind the Add to Roster button
       const addBtn = document.getElementById('add-to-roster-btn');
@@ -370,6 +395,22 @@
 
       document.documentElement.setAttribute('data-staff-ctrl','init');
       console.log('✅ Staff controller initialized successfully');
+      
+      // PWTEST-only test hook (no globals in prod)
+      if (document.cookie.includes('PWTEST=1')) {
+        window.__staffTest = {
+          getState: () => ({ ALL_STAFF: safeArr(ALL_STAFF), CURRENT_ROSTER: safeArr(CURRENT_ROSTER) })
+        };
+        
+        // Contract check - fail fast if API method missing
+        if (typeof window.api?.removeStaffFromRoster !== 'function') {
+          console.error('[CONTRACT] api.removeStaffFromRoster missing');
+          const b = document.createElement('div');
+          b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#b91c1c;color:#fff;padding:6px 10px;z-index:99999;font:12px sans-serif';
+          b.textContent = 'CONTRACT ERROR: api.removeStaffFromRoster missing';
+          document.body.prepend(b);
+        }
+      }
       
     } catch (e) {
       console.error('[STAFF_CTRL/INIT_ERROR]', e);
