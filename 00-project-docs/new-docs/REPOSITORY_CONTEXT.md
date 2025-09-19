@@ -454,3 +454,260 @@ sequenceDiagram
 - **Button Color Specificity**: Fixed CSS cascade issues to ensure proper button colors
 - **Unauthorized Control Removal**: Removed "Save Roster" button not present in canonical backup
 - **Visual Consistency**: Labels always contiguous 1...n for better user experience
+
+## 7. Testing Infrastructure & Framework (CRITICAL SECTION)
+
+### Testing Architecture Overview
+
+The project implements a comprehensive three-tier testing strategy with distinct patterns for each tier, enforced through strict contracts and specialized tooling.
+
+### Testing Tiers & Patterns
+
+#### 1. Unit Tests (`/tests/unit/`)
+**Framework**: Jest with JSDOM environment
+**Purpose**: Test pure functions and classes in complete isolation
+**Pattern**: All external dependencies (modules, APIs, database) MUST be mocked
+**Configuration**: `tests/jest.config.js` - Node environment, verbose output
+
+**Key Examples**:
+- `checkForEdit.regression.test.js` - Tests global state management in transaction editing
+- `checkForEdit.edge_cases.test.js` - Tests edge cases and error conditions
+- `transaction-status-logic.test.js` - Tests business logic for transaction status handling
+
+**Test Structure**:
+```javascript
+const { JSDOM } = require('jsdom');
+
+describe('Function Name Test', () => {
+  let dom, document, window, appData;
+  
+  beforeEach(() => {
+    // Create fresh DOM environment
+    dom = new JSDOM(`<!DOCTYPE html>...`);
+    document = dom.window.document;
+    window = dom.window;
+    // Mock global objects and functions
+  });
+  
+  test('should handle specific scenario', () => {
+    // Test implementation with mocked dependencies
+  });
+});
+```
+
+#### 2. Integration Tests (`/tests/integration/`)
+**Framework**: Jest with live server requests
+**Purpose**: Test module interactions against containerized server
+**Pattern**: Real HTTP requests to `http://localhost:3000`, NO `supertest(app)` pattern
+**Configuration**: Custom test runner with server lifecycle management
+
+**Key Examples**:
+- `transaction-creation.spec.js` - Tests API endpoints with real database
+- `csrf-contract.spec.js` - Tests CSRF protection mechanisms
+- `homepage.revenue.absent.test.js` - Tests UI contract compliance
+
+**Test Structure**:
+```javascript
+const { requestWithCsrf } = require('../helpers/requestWithCsrf');
+
+describe('API Endpoint Test', () => {
+  it('should create transaction successfully', (done) => {
+    // Setup test data from database
+    const transactionData = { /* ... */ };
+    
+    // Use CSRF helper for protected requests
+    requestWithCsrf({
+      url: '/api/transactions',
+      method: 'POST',
+      body: transactionData
+    }).then(response => {
+      expect(response.status).toBe(201);
+      done();
+    });
+  });
+});
+```
+
+#### 3. End-to-End Tests (`/tests/e2e/`)
+**Framework**: Playwright with browser automation
+**Purpose**: Test complete user flows via browser interaction
+**Pattern**: Page Object Model with reusable components
+**Configuration**: `playwright.config.ts` with Docker integration
+
+**Key Examples**:
+- `staff-add-flow.spec.js` - Tests complete staff management workflow
+- `transaction-edit-flow.spec.js` - Tests transaction editing with visual verification
+- `payment-type-add-flow.spec.js` - Tests payment type management
+
+**Test Structure**:
+```javascript
+import { test, expect } from '@playwright/test';
+
+test('user workflow test', async ({ page }) => {
+  // Navigate and interact with page
+  await page.goto('http://localhost:3000/login.html');
+  await page.getByLabel('Username').selectOption('manager');
+  // ... perform user actions
+  
+  // Verify results
+  await expect(page.getByText('Expected Result')).toBeVisible();
+});
+```
+
+### Testing Infrastructure Components
+
+#### Test Runners & Scripts
+
+**Primary Test Commands**:
+```bash
+npm test                    # Aliases to test:e2e
+npm run test:e2e           # Playwright E2E tests with Docker
+npm run test:integration   # Jest integration tests with live server
+npm run test:integration:transaction  # Specific transaction tests
+```
+
+**Custom Test Runners**:
+- `tests/run_jest_tests.js` - Jest test execution with proper environment
+- `tests/run_gauntlet_tests.js` - S5_Gauntlet regression test suite
+- `tests/scripts/run_integration_tests.js` - Integration test runner with server lifecycle
+
+#### PWTEST Bypass System
+
+**Purpose**: Comprehensive testing bypass for authentication, CSRF, and rate limiting
+**Activation**: Cookie `PWTEST=1`, query param `?PWTEST=1`, or header `x-pwtest: 1`
+
+**Bypassed Systems**:
+- **Authentication**: Synthetic user with full permissions
+- **CSRF Protection**: Dummy token `pwtest-token` for all requests
+- **Rate Limiting**: Complete bypass for test requests
+- **Session Management**: Fake session with manager role
+
+**Implementation**:
+```javascript
+// backend/server.js - PWTEST flag detection
+function pwtestFlag(req, res, next) {
+  const on = (req.cookies && req.cookies.PWTEST === '1') ||
+             req.query?.PWTEST === '1' ||
+             req.get('x-pwtest') === '1';
+  if (on) {
+    req.isPwtest = true;
+    res.locals.isPwtest = true;
+    res.cookie('PWTEST', '1', { httpOnly: false, sameSite: 'Lax', path: '/' });
+  }
+  next();
+}
+```
+
+#### CSRF Testing Contract
+
+**Cookie-Mode CSRF Implementation**:
+1. Client requests CSRF token: `GET /csrf`
+2. Server responds with `{ "token": "..." }` and sets `_csrf` cookie
+3. Client makes protected request with `X-CSRF-Token` header and cookie
+
+**Testing Helpers**:
+- **Jest Integration**: `tests/helpers/requestWithCsrf.js` - Automatic CSRF token handling
+- **Playwright E2E**: `tests/e2e/helpers/authFlow.ts` - Browser-based CSRF handling
+
+**Helper Usage**:
+```javascript
+// Jest Integration Tests
+const { requestWithCsrf } = require('./helpers/requestWithCsrf');
+const response = await requestWithCsrf({
+  url: '/api/auth/login',
+  method: 'POST',
+  body: { username: 'manager', password: 'manager456' }
+});
+
+// Playwright E2E Tests
+import { postWithCsrf } from './helpers/authFlow';
+const response = await postWithCsrf(page, '/api/auth/login', {
+  username: 'manager',
+  password: 'manager456'
+});
+```
+
+#### Page Object Model (E2E)
+
+**Structure**: `tests/e2e/page-objects/` with reusable page classes
+**Key Components**:
+- `LoginPage.js` - Authentication page interactions
+- `TransactionPage.js` - Transaction management workflows
+- `SummaryPage.js` - Dashboard and reporting interactions
+
+**Page Object Example**:
+```javascript
+class LoginPage {
+  constructor(page) {
+    this.page = page;
+    this.selectors = {
+      username: '#username',
+      password: '#password',
+      loginButton: '#login-btn'
+    };
+  }
+
+  async login(username, password) {
+    await this.page.selectOption(this.selectors.username, username);
+    await this.page.fill(this.selectors.password, password);
+    await this.page.click(this.selectors.loginButton);
+    await this.page.waitForURL('/index.html', { timeout: 10000 });
+  }
+}
+```
+
+### Test Data Management
+
+#### Database Setup
+**Production Data**: E2E tests use `scp massage:/opt/massage-shop/backend/data/massage_shop.db docker/data/massage_shop.db`
+**Integration Tests**: Use live database with test-specific data isolation
+**Unit Tests**: Complete database mocking with JSDOM
+
+#### Test Isolation
+**Port Management**: Integration tests use port 3001 to avoid conflicts
+**Process Management**: Custom server lifecycle with proper cleanup
+**Data Cleanup**: Automatic teardown in E2E tests with confirmation dialogs
+
+### Test Execution Environment
+
+#### Docker Integration
+**E2E Tests**: `docker-compose up --build` with full containerized environment
+**Integration Tests**: Live server with database volume mounting
+**Unit Tests**: Isolated Node.js environment with mocked dependencies
+
+#### CI/CD Integration
+**Playwright**: HTML reporter with trace retention on failure
+**Jest**: JSON output for programmatic result processing
+**Gauntlet Tests**: Comprehensive regression testing with success rate reporting
+
+### Test Contracts & Standards
+
+#### Mandatory Contracts (from `tests/CONTRACT.md`)
+1. **Unit Tests**: All external dependencies MUST be mocked
+2. **Integration Tests**: MUST make real HTTP requests, NO `supertest(app)`
+3. **E2E Tests**: MUST use Playwright, MUST be configured to ignore in Jest
+4. **CSRF Protection**: State-changing requests MUST use CSRF helpers
+5. **Environment**: All tests run against Dockerized environment
+
+#### Test Quality Standards
+- **Deterministic**: Tests must be reproducible and not flaky
+- **Isolated**: Tests must not depend on each other or external state
+- **Comprehensive**: Cover normal cases, edge cases, and error conditions
+- **Maintainable**: Use page objects, helpers, and clear naming conventions
+
+### Testing Workflow
+
+#### Development Testing
+1. **Unit Tests**: `npm run test:integration` for rapid feedback
+2. **Integration Tests**: `npm run test:integration:transaction` for specific features
+3. **E2E Tests**: `npm test` for full user workflow validation
+
+#### Regression Testing
+1. **Gauntlet Tests**: `node tests/run_gauntlet_tests.js` for comprehensive regression
+2. **Contract Tests**: Verify API contracts and UI compliance
+3. **Visual Tests**: Playwright screenshots for UI regression detection
+
+#### Debugging & Diagnostics
+- **Debug Tests**: `tests/debug/` directory with comprehensive debugging scripts
+- **MRE Tests**: Minimal Reproducible Examples for bug isolation
+- **Diagnostic Tests**: `tests/diagnostics/` for specific issue investigation
