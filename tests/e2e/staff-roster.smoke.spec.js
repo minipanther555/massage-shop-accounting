@@ -3,6 +3,12 @@ const { test, expect } = require('@playwright/test');
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
 const URL = `${BASE}/staff.html?PWTEST=1&v=${Date.now()}`;
 
+// Helper to add cache-busting to any URL
+function addCacheBust(url) {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${Date.now()}`;
+}
+
 test('add/remove keeps dropdown = AllStaff - Roster and labels 1..n', async ({ page }) => {
   await page.goto(URL);
   // wait for controller beacon if you have one; otherwise wait for dropdown present
@@ -72,6 +78,9 @@ test('request budget: 1 PUT + 1 GET per add, no GET /allstaff on add', async ({ 
   const puts = calls.filter(c => c.method === 'PUT' && c.url.startsWith('/api/staff/roster/')).length;
   const getsAll = calls.filter(c => c.method === 'GET' && c.url === '/api/staff/allstaff').length;
 
+  // STRICT: Fail if request budget exceeds 2 requests per add
+  const totalRequests = calls.length;
+  expect(totalRequests).toBeLessThanOrEqual(2);
   expect(puts).toBe(1);
   expect(getsRoster).toBeGreaterThanOrEqual(0).toBeLessThanOrEqual(1); // allow 0–1 per your policy
   expect(getsAll).toBe(0);
@@ -79,10 +88,16 @@ test('request budget: 1 PUT + 1 GET per add, no GET /allstaff on add', async ({ 
 
 test('no console errors during add/remove operations', async ({ page }) => {
   const consoleErrors = [];
+  const pageErrors = [];
+  
   page.on('console', msg => {
-    if (msg.type() === 'error') {
+    if (msg.type() === 'error' || msg.type() === 'warning') {
       consoleErrors.push(msg.text());
     }
+  });
+  
+  page.on('pageerror', error => {
+    pageErrors.push(error.message);
   });
 
   await page.goto(URL);
@@ -101,11 +116,41 @@ test('no console errors during add/remove operations', async ({ page }) => {
   await page.click('#roster-list .roster-item button[data-action="remove"]');
   await page.waitForTimeout(500);
 
-  // Check for ReferenceError or allStaffCache errors
-  const referenceErrors = consoleErrors.filter(err => 
-    err.includes('ReferenceError') || err.includes('allStaffCache')
+  // Check for critical errors that would break functionality
+  const criticalErrors = [...consoleErrors, ...pageErrors].filter(err => 
+    err.includes('ReferenceError') || 
+    err.includes('allStaffCache') ||
+    err.includes('TypeError') ||
+    err.includes('429') ||
+    err.includes('csrf')
   );
   
-  expect(referenceErrors).toHaveLength(0);
-  console.log('Console errors found:', consoleErrors);
+  if (criticalErrors.length > 0) {
+    console.log('Critical errors found:', criticalErrors);
+    console.log('All console errors:', consoleErrors);
+    console.log('All page errors:', pageErrors);
+  }
+  
+  expect(criticalErrors).toHaveLength(0);
+});
+
+test('staging version endpoint works', async ({ page }) => {
+  const healthUrl = addCacheBust(`${BASE}/api/_health`);
+  const response = await page.goto(healthUrl);
+  expect(response.status()).toBe(200);
+  
+  const health = await response.json();
+  expect(health.ok).toBe(true);
+  expect(health.version).toBeDefined();
+  expect(health.timestamp).toBeDefined();
+});
+
+test('staging version file accessible', async ({ page }) => {
+  const versionUrl = addCacheBust(`${BASE}/_stage_version.json`);
+  const response = await page.goto(versionUrl);
+  expect(response.status()).toBe(200);
+  
+  const version = await response.json();
+  expect(version.stamp).toBeDefined();
+  expect(version.ts).toBeDefined();
 });

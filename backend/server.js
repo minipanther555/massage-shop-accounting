@@ -123,6 +123,16 @@ app.get('/csrf', (req, res) => {
 // These no longer need individual CSRF middleware
 app.use('/api/auth', require('./routes/auth').router);
 
+// Health check endpoint
+app.get('/api/_health', (req, res) => {
+  res.json({ 
+    ok: true, 
+    version: process.env.GIT_SHA || 'main28-hotfix',
+    timestamp: Date.now(),
+    environment: process.env.NODE_ENV || 'production'
+  });
+});
+
 // PWTEST auth shim - provides fake auth response for client checks
 app.get('/api/auth/me', (req, res) => {
   if (process.env.PWTEST === '1') {

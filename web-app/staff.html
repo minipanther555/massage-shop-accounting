@@ -54,8 +54,12 @@
         }
     </style>
 </head>
-<body>
+  <body>
     <div class="container">
+      <!-- STAGE BANNER - Only show on staging -->
+      <div id="stage-banner" style="display: none; background: #ff6b6b; color: white; text-align: center; padding: 8px; font-weight: bold; position: sticky; top: 0; z-index: 1000;">
+        🚧 STAGE ENVIRONMENT - DO NOT USE FOR REAL OPERATIONS 🚧
+      </div>
         <div class="nav-header">
             STAFF ROSTER MANAGEMENT
         </div>
@@ -206,6 +210,12 @@
     <script src="/shared.js"></script>
     <script src="/roster-ui.js"></script>
     <script src="/controllers/staff-page-controller.js?v=page-bundle-fix" defer></script>
+    <script>
+      // Show stage banner if on staging
+      if (location.pathname.startsWith('/stage/')) {
+        document.getElementById('stage-banner').style.display = 'block';
+      }
+    </script>
 
     <script>
       // init stub: call controller exactly once when it's ready

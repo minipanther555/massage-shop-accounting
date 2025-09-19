@@ -15,5 +15,9 @@ export default defineConfig({
       name: 'integration',
       testMatch: '**/integration/**/*.spec.js',
     },
+    {
+      name: 'e2e',
+      testMatch: '**/e2e/**/*.spec.js',
+    },
   ],
 });
