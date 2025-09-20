@@ -457,6 +457,8 @@ sequenceDiagram
 
 ## 7. Testing Infrastructure & Framework (CRITICAL SECTION)
 
+> **📚 For Complete Testing Setup Guide**: See `DOCKER_TEST_IMAGE.md` in this directory for a comprehensive guide to the testing infrastructure, including Docker containerization, custom test runners, PWTEST bypass system, CSRF testing contracts, and step-by-step execution commands. This document is designed for fresh AI contexts with no prior project knowledge.
+
 ### Testing Architecture Overview
 
 The project implements a comprehensive three-tier testing strategy with distinct patterns for each tier, enforced through strict contracts and specialized tooling.
