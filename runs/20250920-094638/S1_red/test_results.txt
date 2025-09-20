@@ -1,0 +1,133 @@
+🔐 Global setup: Real authentication not implemented for non-PWTEST mode
+
+Running 2 tests using 2 workers
+
+[1A[2K[1/2] [e2e] › tests/e2e/dropdown-contract.spec.js:11:5 › available dropdown = AllStaff − CurrentRoster; no duplicates allowed
+[1A[2K[2/2] [e2e] › tests/e2e/request-budget-and-429.spec.js:5:5 › each add ≤2 requests; no 429s
+[1A[2K[3/2] (retries) [e2e] › tests/e2e/dropdown-contract.spec.js:11:5 › available dropdown = AllStaff − CurrentRoster; no duplicates allowed (retry #1)
+[1A[2K[4/2] (retries) [e2e] › tests/e2e/request-budget-and-429.spec.js:5:5 › each add ≤2 requests; no 429s (retry #1)
+[1A[2K  1) [e2e] › tests/e2e/dropdown-contract.spec.js:11:5 › available dropdown = AllStaff − CurrentRoster; no duplicates allowed 
+
+    Error: Console error: Refused to load the script 'https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+
+       5 | test.beforeEach(async ({ page }) => {
+       6 |   page.on('console', msg => {
+    >  7 |     if (msg.type() === 'error') throw new Error(`Console ${msg.type()}: ${msg.text()}`);
+         |                                       ^
+       8 |   });
+       9 | });
+      10 |
+        at Page.<anonymous> (/Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/dropdown-contract.spec.js:7:39)
+
+    Error: page.goto: Test ended.
+    Call log:
+    [2m  - navigating to "http://localhost:9009/staff.html?PWTEST=1&v=1758336464096", waiting until "networkidle"[22m
+
+
+      10 |
+      11 | test('available dropdown = AllStaff − CurrentRoster; no duplicates allowed', async ({ page }) => {
+    > 12 |   await page.goto(`${process.env.BASE_URL}/staff.html?PWTEST=1&${cb()}`, { waitUntil: 'networkidle' });
+         |              ^
+      13 |
+      14 |   // Wait for controller readiness (set this flag in code at end of successful init)
+      15 |   await expect.poll(async () => page.evaluate(() => window.__staffTest?.ready === true)).toBe(true);
+        at /Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/dropdown-contract.spec.js:12:14
+
+    Error Context: test-results/e2e-dropdown-contract-avai-4046b-oster-no-duplicates-allowed-e2e/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: Console error: Refused to load the script 'https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+
+       5 | test.beforeEach(async ({ page }) => {
+       6 |   page.on('console', msg => {
+    >  7 |     if (msg.type() === 'error') throw new Error(`Console ${msg.type()}: ${msg.text()}`);
+         |                                       ^
+       8 |   });
+       9 | });
+      10 |
+        at Page.<anonymous> (/Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/dropdown-contract.spec.js:7:39)
+
+    Error: page.goto: Test ended.
+    Call log:
+    [2m  - navigating to "http://localhost:9009/staff.html?PWTEST=1&v=1758336465436", waiting until "networkidle"[22m
+
+
+      10 |
+      11 | test('available dropdown = AllStaff − CurrentRoster; no duplicates allowed', async ({ page }) => {
+    > 12 |   await page.goto(`${process.env.BASE_URL}/staff.html?PWTEST=1&${cb()}`, { waitUntil: 'networkidle' });
+         |              ^
+      13 |
+      14 |   // Wait for controller readiness (set this flag in code at end of successful init)
+      15 |   await expect.poll(async () => page.evaluate(() => window.__staffTest?.ready === true)).toBe(true);
+        at /Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/dropdown-contract.spec.js:12:14
+
+    Error Context: test-results/e2e-dropdown-contract-avai-4046b-oster-no-duplicates-allowed-e2e-retry1/error-context.md
+
+
+[1A[2K  2) [e2e] › tests/e2e/request-budget-and-429.spec.js:5:5 › each add ≤2 requests; no 429s ──────────
+
+    Error: Refused to load the script 'https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+
+       9 |     if (res.status() === 429) throw new Error(`429 from ${res.url()}`);
+      10 |   });
+    > 11 |   page.on('console', msg => { if (msg.type() === 'error') throw new Error(msg.text()); });
+         |                                                                 ^
+      12 |
+      13 |   await page.goto(`${process.env.BASE_URL}/staff.html?PWTEST=1&${cb()}`, { waitUntil: 'networkidle' });
+      14 |   await expect.poll(async () => page.evaluate(() => window.__staffTest?.ready === true)).toBe(true);
+        at Page.<anonymous> (/Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/request-budget-and-429.spec.js:11:65)
+
+    Error: page.goto: Test ended.
+    Call log:
+    [2m  - navigating to "http://localhost:9009/staff.html?PWTEST=1&v=1758336464075", waiting until "networkidle"[22m
+
+
+      11 |   page.on('console', msg => { if (msg.type() === 'error') throw new Error(msg.text()); });
+      12 |
+    > 13 |   await page.goto(`${process.env.BASE_URL}/staff.html?PWTEST=1&${cb()}`, { waitUntil: 'networkidle' });
+         |              ^
+      14 |   await expect.poll(async () => page.evaluate(() => window.__staffTest?.ready === true)).toBe(true);
+      15 |
+      16 |   // Add one person
+        at /Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/request-budget-and-429.spec.js:13:14
+
+    Error Context: test-results/e2e-request-budget-and-429-each-add-≤2-requests-no-429s-e2e/error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: Refused to load the script 'https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+
+
+       9 |     if (res.status() === 429) throw new Error(`429 from ${res.url()}`);
+      10 |   });
+    > 11 |   page.on('console', msg => { if (msg.type() === 'error') throw new Error(msg.text()); });
+         |                                                                 ^
+      12 |
+      13 |   await page.goto(`${process.env.BASE_URL}/staff.html?PWTEST=1&${cb()}`, { waitUntil: 'networkidle' });
+      14 |   await expect.poll(async () => page.evaluate(() => window.__staffTest?.ready === true)).toBe(true);
+        at Page.<anonymous> (/Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/request-budget-and-429.spec.js:11:65)
+
+    Error: page.goto: Test ended.
+    Call log:
+    [2m  - navigating to "http://localhost:9009/staff.html?PWTEST=1&v=1758336465755", waiting until "networkidle"[22m
+
+
+      11 |   page.on('console', msg => { if (msg.type() === 'error') throw new Error(msg.text()); });
+      12 |
+    > 13 |   await page.goto(`${process.env.BASE_URL}/staff.html?PWTEST=1&${cb()}`, { waitUntil: 'networkidle' });
+         |              ^
+      14 |   await expect.poll(async () => page.evaluate(() => window.__staffTest?.ready === true)).toBe(true);
+      15 |
+      16 |   // Add one person
+        at /Users/aidantam/projects/eiw-massage-shop-bookkeeping/tests/e2e/request-budget-and-429.spec.js:13:14
+
+    Error Context: test-results/e2e-request-budget-and-429-each-add-≤2-requests-no-429s-e2e-retry1/error-context.md
+
+
+[1A[2K  2 failed
+    [e2e] › tests/e2e/dropdown-contract.spec.js:11:5 › available dropdown = AllStaff − CurrentRoster; no duplicates allowed 
+    [e2e] › tests/e2e/request-budget-and-429.spec.js:5:5 › each add ≤2 requests; no 429s ───────────

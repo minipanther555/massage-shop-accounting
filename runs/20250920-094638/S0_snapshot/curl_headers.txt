@@ -1,0 +1,29 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0  9446    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://browser.sentry-cdn.com https://js.sentry-cdn.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' *.sentry.io; worker-src 'self' blob:; frame-ancestors 'none'
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+RateLimit-Policy: 100;w=900
+RateLimit-Limit: 100
+RateLimit-Remaining: 99
+RateLimit-Reset: 362
+set-cookie: _csrf=-BHHoezbyxconCwOIHwPxmxG; Path=/; HttpOnly; Secure; SameSite=Lax
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Fri, 19 Sep 2025 12:02:27 GMT
+ETag: W/"24e6-19961dab438"
+Content-Type: text/html; charset=UTF-8
+Content-Length: 9446
+Date: Sat, 20 Sep 2025 02:46:48 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

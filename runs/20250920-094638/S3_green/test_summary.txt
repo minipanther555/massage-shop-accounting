@@ -1,0 +1,7 @@
+🔐 Global setup: Real authentication not implemented for non-PWTEST mode
+
+Running 2 tests using 2 workers
+
+[1A[2K[1/2] [e2e] › tests/e2e/request-budget-and-429.spec.js:5:5 › each add ≤2 requests; no 429s
+[1A[2K[2/2] [e2e] › tests/e2e/dropdown-contract.spec.js:21:5 › available dropdown = AllStaff − CurrentRoster; no duplicates allowed
+[1A[2K  2 passed (4.3s)

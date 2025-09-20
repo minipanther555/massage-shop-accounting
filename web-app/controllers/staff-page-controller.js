@@ -270,6 +270,13 @@
 
       renderRoster(fresh);
       renderDropdown(available);
+      
+      // Test hook marker
+      if (window.__staffTest) {
+        window.__staffTest.lastOp = 'remove_done';
+        window.__staffTest.state.ALL_STAFF = safeArr(ALL_STAFF);
+        window.__staffTest.state.CURRENT_ROSTER = safeArr(CURRENT_ROSTER);
+      }
     } catch (e) {
       console.error('Error removing staff:', e);
     }
@@ -348,8 +355,17 @@
               console.log('🔧 Roster rendered');
               
               // Update dropdown using cached AllStaff (no re-fetch needed)
-              renderDropdown(ALL_STAFF, CURRENT_ROSTER);
+              const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
+              const available = safeArr(ALL_STAFF).filter(n => !inRoster.has(n));
+              renderDropdown(available);
               console.log('🔧 Dropdown updated');
+              
+              // Test hook marker
+              if (window.__staffTest) {
+                window.__staffTest.lastOp = 'add_done';
+                window.__staffTest.state.ALL_STAFF = safeArr(ALL_STAFF);
+                window.__staffTest.state.CURRENT_ROSTER = safeArr(CURRENT_ROSTER);
+              }
               
               select.value = '';
             } else {
@@ -382,7 +398,9 @@
               console.log('🔧 renderRoster completed');
               
               // Update dropdown using cached AllStaff (no re-fetch needed)
-              renderDropdown(ALL_STAFF, CURRENT_ROSTER);
+              const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
+              const available = safeArr(ALL_STAFF).filter(n => !inRoster.has(n));
+              renderDropdown(available);
               console.log('🔧 renderDropdown completed');
             } else {
               console.log('🔧 Confirm dialog cancelled');
@@ -399,6 +417,12 @@
       // PWTEST-only test hook (no globals in prod)
       if (document.cookie.includes('PWTEST=1')) {
         window.__staffTest = {
+          ready: true,
+          lastOp: null,
+          state: {
+            ALL_STAFF: safeArr(ALL_STAFF),
+            CURRENT_ROSTER: safeArr(CURRENT_ROSTER)
+          },
           getState: () => ({ ALL_STAFF: safeArr(ALL_STAFF), CURRENT_ROSTER: safeArr(CURRENT_ROSTER) })
         };
         
