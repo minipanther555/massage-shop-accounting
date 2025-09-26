@@ -188,18 +188,6 @@ class APIClient {
     });
   }
 
-  // --- DELETE single roster position ---
-  // Canonical name:
-  async deleteStaffRoster(position) {
-    // we don't rely on response body; controller does a fresh GET after writes
-    return this.request(`/staff/roster/${encodeURIComponent(position)}`, {
-      method: 'DELETE'
-    });
-  }
-
-  // Back-compat aliases (if old names might exist in some callers/tests):
-  async deleteRosterPosition(position)      { return this.deleteStaffRoster(position); }
-
   async clearRoster() {
     return this.request('/staff/roster', {
       method: 'DELETE'
