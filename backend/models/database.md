@@ -2,7 +2,7 @@
 
 ## 1. Header Section
 
-*   **Overall Purpose:** This module is responsible for all interactions with the SQLite database. It encapsulates the database connection logic, schema initialization, and data access methods (`run`, `get`, `all`). It acts as a singleton data access layer for the entire backend application, ensuring that all other modules interact with the database through a consistent and centralized interface.
+*   **Overall Purpose:** This module is responsible for all interactions with the SQLite database. It encapsulates the database connection logic, schema initialization, and data access methods (`run`, `get`, `all`). It acts as a singleton data access layer for the entire backend application, ensuring that all other modules interact with the database through a consistent and centralized interface. It also defines the additive Today Staff business-day contracts: `business_days`, `today_staff`, `today_staff_planning`, `today_staff_audit_log`, and `transactions.business_day`.
 *   **End-to-End Data Flow:** When the application starts, the `server.js` module calls the `connect()` method of this module. This establishes a connection to the SQLite database file specified by the `DATABASE_PATH` environment variable. Upon connection, it automatically runs `initializeTables()`, which creates all necessary tables (`transactions`, `staff`, `services`, etc.) if they don't already exist and runs migrations to add any missing columns. Subsequently, route handlers (e.g., in `routes/transactions.js`) use the exported database instance to execute queries. For example, to create a new transaction, a route handler would call `database.run(INSERT_SQL, [params])`. To fetch data, it would use `database.get()` for a single row or `database.all()` for multiple rows.
 
 ## 2. Module API & Logic Breakdown
@@ -22,7 +22,11 @@ This module exports a single instance of the `Database` class.
 
 *   **`initializeTables()` method:**
     *   **Purpose:** To ensure the database schema is up-to-date.
-    *   **Logic Notes:** It contains a list of `CREATE TABLE IF NOT EXISTS` SQL statements for every table required by the application. It then calls `addMissingColumns()` to perform simple, non-destructive schema migrations. Finally, it calls `insertDefaultData()` which is currently a no-op.
+    *   **Logic Notes:** It contains a list of `CREATE TABLE IF NOT EXISTS` SQL statements for every table required by the application. Current legacy local DB data does not constrain the Today Staff redesign; the new product concepts are additive so old tables can coexist while the new route contracts use business-day-scoped tables. It then calls `addMissingColumns()` to perform simple, non-destructive schema migrations. Finally, it calls `insertDefaultData()` which is currently a no-op.
+
+*   **`ensureIndexes()` method:**
+    *   **Purpose:** To create idempotent indexes and uniqueness constraints required by Today Staff helper/planning queries.
+    *   **Logic Notes:** Creates the transaction business-day/staff lookup index, Today Staff business-day/position and staff indexes, the partial uniqueness constraint preventing duplicate active Today Staff rows for the same business day and staff member, planning status indexes, and audit-log lookup indexes.
 
 *   **`addMissingColumns()` method:**
     *   **Purpose:** To add new columns to existing tables without dropping them, allowing for schema evolution.
@@ -61,6 +65,12 @@ This module exports a single instance of the `Database` class.
     *   **Output Data Contracts / Schemas:**
         *   `get()`: Returns a single JSON object representing a database row, or `undefined`.
         *   `all()`: Returns an array of JSON objects representing database rows.
+        *   Today Staff schema contracts:
+            *   `business_days`: one row per `business_day`, with open/reset status.
+            *   `today_staff`: visible Today Staff participation rows with `removed_at` preserving history.
+            *   `today_staff_planning`: one planning status per business day and staff member.
+            *   `today_staff_audit_log`: audit-safe planning action log.
+            *   `transactions.business_day`: Bangkok business-day label used by helper earnings and reporting.
 
 ## 4. Bug & Resolution History
 
@@ -76,4 +86,3 @@ This module exports a single instance of the `Database` class.
 *   **Bug Summary (August 2025):** The application server, when connected to a production database copy, would crash on startup with an unhandled `SQLITE_ERROR: duplicate column name: hire_date`.
 *   **Validated Hypothesis:** The error handling within the `addMissingColumns` function was inconsistent and brittle. While it attempted to catch "duplicate column" errors, the logic was flawed and did not prevent the error from being re-thrown by an outer `try...catch` block, which would then crash the server process. This prevented the local Docker-based development environment from starting.
 *   **Resolution:** The `addMissingColumns` function was refactored into a single, unified loop that iterates over a list of all required columns across all tables. The error handling was simplified and made robust: it now correctly logs and ignores "duplicate column name" errors while re-throwing any other unexpected, fatal errors. This makes the database initialization process fully idempotent and resilient.
-

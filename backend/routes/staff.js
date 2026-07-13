@@ -2,6 +2,155 @@ const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { getBusinessDayParts, getNextBusinessDay } = require('../utils/business-day');
+
+function getActor(req) {
+  return req.user?.id || req.user?.username || 'system';
+}
+
+async function ensureBusinessDay(businessDay) {
+  await database.run(
+    `INSERT OR IGNORE INTO business_days (business_day, status)
+     VALUES (?, 'open')`,
+    [businessDay]
+  );
+}
+
+async function getCurrentBusinessDay(req) {
+  const now = req.query?.at ? new Date(req.query.at) : new Date();
+  const parts = getBusinessDayParts(now);
+  await ensureBusinessDay(parts.currentBusinessDay);
+  return parts;
+}
+
+async function getActiveTodayStaff(businessDay) {
+  return database.all(
+    `SELECT
+       ts.id,
+       ts.position,
+       ts.display_name AS masseuse_name,
+       ts.queue_status AS status,
+       NULL AS busy_until,
+       COALESCE((
+         SELECT COUNT(*)
+         FROM transactions t
+         WHERE t.business_day = ts.business_day
+           AND t.masseuse_name = ts.display_name
+           AND t.status = 'ACTIVE'
+       ), 0) AS today_massages,
+       ts.added_at AS last_updated,
+       ts.staff_id,
+       ts.business_day
+     FROM today_staff ts
+     WHERE ts.business_day = ?
+       AND ts.removed_at IS NULL
+     ORDER BY ts.position ASC`,
+    [businessDay]
+  );
+}
+
+async function getStaffByIdOrName({ staffId, displayName }) {
+  if (staffId) {
+    return database.get('SELECT id, name FROM staff WHERE id = ? AND active = 1', [staffId]);
+  }
+  return database.get('SELECT id, name FROM staff WHERE name = ? AND active = 1', [displayName]);
+}
+
+async function setPlanningStatus(businessDay, staffId, status, actor) {
+  await database.run(
+    `INSERT INTO today_staff_planning (business_day, staff_id, planning_status, updated_by_user_id, updated_at)
+     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(business_day, staff_id)
+     DO UPDATE SET planning_status = excluded.planning_status,
+                   updated_by_user_id = excluded.updated_by_user_id,
+                   updated_at = CURRENT_TIMESTAMP`,
+    [businessDay, staffId, status, actor]
+  );
+}
+
+async function auditPlanningAction(businessDay, staffId, action, actor, details = {}) {
+  await database.run(
+    `INSERT INTO today_staff_audit_log (business_day, staff_id, action, actor_user_id, details)
+     VALUES (?, ?, ?, ?, ?)`,
+    [businessDay, staffId || null, action, actor, JSON.stringify(details)]
+  );
+}
+
+async function addStaffToToday({ businessDay, staffId, displayName, actor }) {
+  const staff = await getStaffByIdOrName({ staffId, displayName });
+  if (!staff) {
+    const error = new Error('Staff member not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const existing = await database.get(
+    `SELECT id FROM today_staff
+     WHERE business_day = ? AND staff_id = ? AND removed_at IS NULL`,
+    [businessDay, staff.id]
+  );
+
+  if (!existing) {
+    const { next_position: nextPosition } = await database.get(
+      `SELECT COALESCE(MAX(position), 0) + 1 AS next_position
+       FROM today_staff
+       WHERE business_day = ? AND removed_at IS NULL`,
+      [businessDay]
+    );
+    await database.run(
+      `INSERT INTO today_staff (business_day, staff_id, display_name, position, queue_status)
+       VALUES (?, ?, ?, ?, NULL)`,
+      [businessDay, staff.id, staff.name, nextPosition]
+    );
+  }
+
+  await setPlanningStatus(businessDay, staff.id, 'added_to_today_staff', actor);
+  await auditPlanningAction(businessDay, staff.id, 'add_to_today_staff', actor);
+  return getActiveTodayStaff(businessDay);
+}
+
+async function compactPositions(businessDay) {
+  const rows = await database.all(
+    `SELECT id FROM today_staff
+     WHERE business_day = ? AND removed_at IS NULL
+     ORDER BY position ASC, id ASC`,
+    [businessDay]
+  );
+
+  for (let index = 0; index < rows.length; index += 1) {
+    await database.run('UPDATE today_staff SET position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [index + 1, rows[index].id]);
+  }
+}
+
+async function resetIfStale(now = new Date(), actor = 'system') {
+  const parts = getBusinessDayParts(now);
+  const previousDay = parts.previousBusinessDay;
+  const previousOpen = await database.get(
+    `SELECT business_day FROM business_days
+     WHERE business_day = ? AND status = 'open'`,
+    [previousDay]
+  );
+
+  if (!previousOpen) return { reset: false, business_day: parts.currentBusinessDay };
+
+  await database.run(
+    `UPDATE today_staff
+     SET removed_at = COALESCE(removed_at, CURRENT_TIMESTAMP),
+         removed_reason = COALESCE(removed_reason, 'scheduled_reset'),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE business_day = ? AND removed_at IS NULL`,
+    [previousDay]
+  );
+  await database.run(
+    `UPDATE business_days
+     SET status = 'reset', reset_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+     WHERE business_day = ?`,
+    [previousDay]
+  );
+  await ensureBusinessDay(parts.currentBusinessDay);
+  await auditPlanningAction(previousDay, null, 'scheduled_visible_reset', actor, { next_business_day: parts.currentBusinessDay });
+  return { reset: true, business_day: parts.currentBusinessDay, reset_business_day: previousDay };
+}
 
 // Helper function to parse time string to minutes since midnight
 function parseTimeToMinutes(timeStr) {
@@ -103,6 +252,8 @@ async function resetExpiredBusyStatuses() {
 router.get('/roster', async (req, res) => {
   try {
     console.log('📋 Fetching staff roster...');
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    await resetIfStale(req.query?.at ? new Date(req.query.at) : new Date(), getActor(req));
 
     // First, reset any expired busy statuses
     const resetCount = await resetExpiredBusyStatuses();
@@ -110,24 +261,9 @@ router.get('/roster', async (req, res) => {
       console.log(`🔄 Reset ${resetCount} expired statuses before returning roster`);
     }
 
-    // Now fetch the updated roster
-    const roster = await database.all(
-      'SELECT * FROM staff_roster ORDER BY position ASC'
-    );
+    const roster = await getActiveTodayStaff(currentBusinessDay);
 
     console.log(`📋 Retrieved ${roster.length} staff members from roster`);
-
-    // Update today's massage counts
-    const today = new Date().toISOString().split('T')[0];
-    for (const staff of roster) {
-      if (staff.masseuse_name) {
-        const { count } = await database.get(
-          'SELECT COUNT(*) as count FROM transactions WHERE masseuse_name = ? AND date = ? AND status = "ACTIVE"',
-          [staff.masseuse_name, today]
-        ) || { count: 0 };
-        staff.today_massages = count;
-      }
-    }
 
     console.log('✅ Staff roster fetched and processed successfully');
     res.json(roster);
@@ -140,73 +276,36 @@ router.get('/roster', async (req, res) => {
 // Update staff member
 router.put('/roster/:position', async (req, res) => {
   try {
-    const { position } = req.params;
-    const {
-      masseuse_name, status, busy_until, today_massages
-    } = req.body;
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const { masseuse_name: masseuseName, staff_id: staffId } = req.body;
 
-    // Validate status - only Next and Busy until [time] allowed
-    if (status && !status.startsWith('Busy until ') && status !== 'Next') {
-      return res.status(400).json({ error: 'Invalid status. Only "Next" or "Busy until [time]" allowed' });
+    if (!masseuseName && !staffId) {
+      return res.status(400).json({ error: 'masseuse_name or staff_id is required' });
     }
 
-    // Check if a row exists at this position
-    const existingRow = await database.get(
-      'SELECT * FROM staff_roster WHERE position = ?',
-      [position]
-    );
+    await addStaffToToday({
+      businessDay: currentBusinessDay,
+      staffId,
+      displayName: masseuseName,
+      actor: getActor(req)
+    });
 
-    if (existingRow) {
-      // UPDATE existing row
-      const updates = [];
-      const params = [];
-
-      if (masseuse_name !== undefined) {
-        updates.push('masseuse_name = ?');
-        params.push(masseuse_name);
-      }
-
-      if (status !== undefined) {
-        updates.push('status = ?');
-        params.push(status);
-      }
-
-      if (busy_until !== undefined) {
-        updates.push('busy_until = ?');
-        params.push(busy_until);
-      }
-
-      if (today_massages !== undefined) {
-        updates.push('today_massages = ?');
-        params.push(today_massages);
-      }
-
-      if (updates.length === 0) {
-        return res.status(400).json({ error: 'No updates provided' });
-      }
-
-      updates.push('last_updated = CURRENT_TIMESTAMP');
-      params.push(position);
-
-      await database.run(
-        `UPDATE staff_roster SET ${updates.join(', ')} WHERE position = ?`,
-        params
-      );
-    } else {
-      // INSERT new row - only use columns that actually exist in the database schema
-      await database.run(
-        `INSERT INTO staff_roster (
-          position, masseuse_name, status, busy_until, today_massages, 
-          last_updated, location_id
-        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 1)`,
-        [position, masseuse_name || '', status || null, busy_until || null, today_massages || 0]
-      );
-    }
-
-    // Get the record (either updated or newly created)
     const result = await database.get(
-      'SELECT * FROM staff_roster WHERE position = ?',
-      [position]
+      `SELECT * FROM (
+         SELECT
+           ts.id,
+           ts.position,
+           ts.display_name AS masseuse_name,
+           ts.queue_status AS status,
+           NULL AS busy_until,
+           0 AS today_massages,
+           ts.added_at AS last_updated,
+           ts.staff_id,
+           ts.business_day
+         FROM today_staff ts
+         WHERE ts.business_day = ? AND ts.removed_at IS NULL
+       ) WHERE masseuse_name = ?`,
+      [currentBusinessDay, masseuseName]
     );
 
     res.json(result);
@@ -219,27 +318,26 @@ router.put('/roster/:position', async (req, res) => {
 // Remove staff member from roster
 router.delete('/roster/:position', async (req, res) => {
   try {
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
     const { position } = req.params;
 
-    // Delete the staff member at the specified position
+    const row = await database.get(
+      `SELECT staff_id FROM today_staff
+       WHERE business_day = ? AND position = ? AND removed_at IS NULL`,
+      [currentBusinessDay, position]
+    );
+
     await database.run(
-      'DELETE FROM staff_roster WHERE position = ?',
-      [position]
+      `UPDATE today_staff
+       SET removed_at = CURRENT_TIMESTAMP, removed_reason = 'manual_remove', updated_at = CURRENT_TIMESTAMP
+       WHERE business_day = ? AND position = ? AND removed_at IS NULL`,
+      [currentBusinessDay, position]
     );
-
-    // Re-index the remaining staff members
-    const remainingStaff = await database.all(
-      'SELECT * FROM staff_roster WHERE position > ? ORDER BY position ASC',
-      [position]
-    );
-
-    for (const staff of remainingStaff) {
-      const newPosition = staff.position - 1;
-      await database.run(
-        'UPDATE staff_roster SET position = ? WHERE id = ?',
-        [newPosition, staff.id]
-      );
+    if (row) {
+      await setPlanningStatus(currentBusinessDay, row.staff_id, 'available_to_add', getActor(req));
+      await auditPlanningAction(currentBusinessDay, row.staff_id, 'remove_from_today_staff', getActor(req), { position });
     }
+    await compactPositions(currentBusinessDay);
 
     res.json({ message: 'Staff member removed and roster re-indexed' });
   } catch (error) {
@@ -251,8 +349,15 @@ router.delete('/roster/:position', async (req, res) => {
 // Clear all staff from roster
 router.delete('/roster', async (req, res) => {
   try {
-    await database.run('DELETE FROM staff_roster');
-    res.json({ message: 'Roster cleared successfully' });
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    await database.run(
+      `UPDATE today_staff
+       SET removed_at = CURRENT_TIMESTAMP, removed_reason = 'manual_clear', updated_at = CURRENT_TIMESTAMP
+       WHERE business_day = ? AND removed_at IS NULL`,
+      [currentBusinessDay]
+    );
+    await auditPlanningAction(currentBusinessDay, null, 'clear_visible_today_staff', getActor(req));
+    res.json({ message: 'Today Staff visible list cleared successfully', business_day: currentBusinessDay });
   } catch (error) {
     console.error('Error clearing roster:', error);
     res.status(500).json({ error: 'Failed to clear roster' });
@@ -474,6 +579,179 @@ router.get('/allstaff', async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching all staff names:', error);
     res.status(500).json({ error: 'Failed to fetch all staff names' });
+  }
+});
+
+router.get('/today/helper', async (req, res) => {
+  try {
+    const { currentBusinessDay, previousBusinessDay } = await getCurrentBusinessDay(req);
+    const rows = await database.all(
+      `SELECT
+         s.id AS staff_id,
+         s.name AS display_name,
+         ? AS previous_business_day,
+         COALESCE(SUM(CASE
+           WHEN t.status = 'ACTIVE' THEN t.masseuse_fee
+           ELSE 0
+         END), 0) AS previous_day_commission,
+         COALESCE(p.planning_status, 'available_to_add') AS today_planning_status,
+         CASE WHEN active_ts.id IS NULL AND COALESCE(p.planning_status, 'available_to_add') != 'day_off_today' THEN 1 ELSE 0 END AS can_add_to_today_staff
+       FROM staff s
+       LEFT JOIN transactions t
+         ON t.masseuse_name = s.name
+        AND t.business_day = ?
+       LEFT JOIN today_staff_planning p
+         ON p.staff_id = s.id
+        AND p.business_day = ?
+       LEFT JOIN today_staff active_ts
+         ON active_ts.staff_id = s.id
+        AND active_ts.business_day = ?
+        AND active_ts.removed_at IS NULL
+       WHERE s.active = 1
+       GROUP BY s.id, s.name, p.planning_status, active_ts.id
+       ORDER BY previous_day_commission ASC, s.name COLLATE NOCASE ASC`,
+      [previousBusinessDay, previousBusinessDay, currentBusinessDay, currentBusinessDay]
+    );
+
+    res.json({
+      business_day: currentBusinessDay,
+      previous_business_day: previousBusinessDay,
+      rows: rows.map((row) => ({
+        ...row,
+        previous_day_commission: Number(row.previous_day_commission || 0),
+        was_day_off_yesterday: Number(row.previous_day_commission || 0) === 0,
+        can_add_to_today_staff: Boolean(row.can_add_to_today_staff)
+      }))
+    });
+  } catch (error) {
+    console.error('❌ Error fetching Today Staff helper:', error);
+    res.status(500).json({ error: 'Failed to fetch Today Staff helper data' });
+  }
+});
+
+router.get('/today/state', async (req, res) => {
+  try {
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const todayStaff = await getActiveTodayStaff(currentBusinessDay);
+    const planning = await database.all(
+      `SELECT
+         p.staff_id,
+         s.name AS display_name,
+         p.planning_status,
+         p.updated_at
+       FROM today_staff_planning p
+       JOIN staff s ON s.id = p.staff_id
+       WHERE p.business_day = ?
+       ORDER BY s.name COLLATE NOCASE ASC`,
+      [currentBusinessDay]
+    );
+    const addedIds = new Set(todayStaff.map((row) => row.staff_id));
+    const dropdownStaff = await database.all(
+      `SELECT s.id AS staff_id, s.name AS display_name
+       FROM staff s
+       WHERE s.active = 1
+       ORDER BY s.name COLLATE NOCASE ASC`
+    );
+
+    res.json({
+      business_day: currentBusinessDay,
+      today_staff: todayStaff,
+      planning,
+      day_off_today: planning.filter((row) => row.planning_status === 'day_off_today'),
+      dropdown_staff: dropdownStaff.filter((row) => !addedIds.has(row.staff_id))
+    });
+  } catch (error) {
+    console.error('❌ Error fetching Today Staff state:', error);
+    res.status(500).json({ error: 'Failed to fetch Today Staff state' });
+  }
+});
+
+router.post('/today/add', async (req, res) => {
+  try {
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const todayStaff = await addStaffToToday({
+      businessDay: currentBusinessDay,
+      staffId: req.body.staff_id,
+      displayName: req.body.display_name || req.body.masseuse_name,
+      actor: getActor(req)
+    });
+    res.status(201).json({ business_day: currentBusinessDay, today_staff: todayStaff });
+  } catch (error) {
+    console.error('❌ Error adding Today Staff:', error);
+    res.status(error.statusCode || 500).json({ error: error.message || 'Failed to add Today Staff' });
+  }
+});
+
+router.post('/today/day-off', async (req, res) => {
+  try {
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const staff = await getStaffByIdOrName({ staffId: req.body.staff_id, displayName: req.body.display_name || req.body.masseuse_name });
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
+    await database.run(
+      `UPDATE today_staff
+       SET removed_at = CURRENT_TIMESTAMP, removed_reason = 'day_off_today', updated_at = CURRENT_TIMESTAMP
+       WHERE business_day = ? AND staff_id = ? AND removed_at IS NULL`,
+      [currentBusinessDay, staff.id]
+    );
+    await compactPositions(currentBusinessDay);
+    await setPlanningStatus(currentBusinessDay, staff.id, 'day_off_today', getActor(req));
+    await auditPlanningAction(currentBusinessDay, staff.id, 'mark_day_off_today', getActor(req));
+    res.json({ business_day: currentBusinessDay, staff_id: staff.id, planning_status: 'day_off_today' });
+  } catch (error) {
+    console.error('❌ Error marking day off today:', error);
+    res.status(500).json({ error: 'Failed to mark day off today' });
+  }
+});
+
+router.post('/today/restore', async (req, res) => {
+  try {
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const staff = await getStaffByIdOrName({ staffId: req.body.staff_id, displayName: req.body.display_name || req.body.masseuse_name });
+    if (!staff) return res.status(404).json({ error: 'Staff member not found' });
+
+    await setPlanningStatus(currentBusinessDay, staff.id, 'available_to_add', getActor(req));
+    await auditPlanningAction(currentBusinessDay, staff.id, 'restore_day_off_today', getActor(req));
+    res.json({ business_day: currentBusinessDay, staff_id: staff.id, planning_status: 'available_to_add' });
+  } catch (error) {
+    console.error('❌ Error restoring day off today:', error);
+    res.status(500).json({ error: 'Failed to restore day off today' });
+  }
+});
+
+router.put('/today/reorder', async (req, res) => {
+  try {
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const orderedStaffIds = Array.isArray(req.body.ordered_staff_ids) ? req.body.ordered_staff_ids : [];
+    if (orderedStaffIds.length === 0) {
+      return res.status(400).json({ error: 'ordered_staff_ids is required' });
+    }
+
+    for (let index = 0; index < orderedStaffIds.length; index += 1) {
+      await database.run(
+        `UPDATE today_staff
+         SET position = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE business_day = ? AND staff_id = ? AND removed_at IS NULL`,
+        [index + 1, currentBusinessDay, orderedStaffIds[index]]
+      );
+    }
+    await auditPlanningAction(currentBusinessDay, null, 'reorder_today_staff', getActor(req), { ordered_staff_ids: orderedStaffIds });
+    res.json({ business_day: currentBusinessDay, today_staff: await getActiveTodayStaff(currentBusinessDay) });
+  } catch (error) {
+    console.error('❌ Error reordering Today Staff:', error);
+    res.status(500).json({ error: 'Failed to reorder Today Staff' });
+  }
+});
+
+router.post('/today/reset-check', async (req, res) => {
+  try {
+    const now = req.body?.at ? new Date(req.body.at) : new Date();
+    const result = await resetIfStale(now, getActor(req));
+    await ensureBusinessDay(result.business_day || getNextBusinessDay(result.reset_business_day));
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error running Today Staff reset check:', error);
+    res.status(500).json({ error: 'Failed to run Today Staff reset check' });
   }
 });
 

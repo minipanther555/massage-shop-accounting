@@ -2,9 +2,9 @@
 
 ## 1. Header Section
 
-**Overall Purpose:** This module provides the complete staff management API for the Massage Shop POS system. It handles staff roster operations, status management, busy time tracking, and automatic status clearing. The module is responsible for maintaining real-time staff availability and ensuring that expired busy statuses are automatically cleared to prevent scheduling conflicts.
+**Overall Purpose:** This module provides the staff and Today Staff planning API for the Massage Shop POS system. It handles visible Today Staff operations, previous-business-day helper data, day-off-today planning, status management, busy time tracking, scheduled/reset recovery, and audit-safe planning logs. Today Staff planning actions are deliberately separate from transaction ledger rows, commission totals, and payday totals.
 
-**End-to-End Data Flow:** When a staff member is assigned to a service, the frontend calls the `set-busy` endpoint to mark them as busy until the service end time. The backend stores this information in the `staff_roster` table with a `busy_until` timestamp. When the roster is accessed via `GET /api/staff/roster`, the `resetExpiredBusyStatuses()` function automatically clears any expired busy statuses, ensuring staff appear available when they should be free.
+**End-to-End Data Flow:** When the receptionist opens the Today Staff page, the frontend calls `/api/staff/today/state` and `/api/staff/today/helper`. The route determines the Bangkok business day, reads active All Staff, sums previous-business-day transaction commission by staff, reads current planning state, and returns helper rows plus visible Today Staff rows. Add/day-off/restore/clear actions write `today_staff`, `today_staff_planning`, and `today_staff_audit_log` only. Transaction ledger and payroll tables are read for helper/counts but are not mutated by Today Staff planning routes.
 
 ## 2. Module API & Logic Breakdown
 
@@ -103,6 +103,52 @@
   2. Filters for active staff only
   3. Returns sorted name list
 
+### Today Staff Business-Day Planning
+
+#### `router.get('/today/helper')`
+- **Purpose:** Returns every active All Staff member with previous-business-day commission, day-off-yesterday flag, current planning status, and add eligibility.
+- **Returns:** `{ business_day, previous_business_day, rows }`
+- **Logic:**
+  1. Computes current and previous Bangkok business day.
+  2. Reads active `staff` rows.
+  3. Left-joins previous-business-day `transactions.business_day` commission.
+  4. Left-joins current `today_staff_planning` and active `today_staff`.
+  5. Sorts by commission ascending and display name.
+
+#### `router.get('/today/state')`
+- **Purpose:** Returns active Today Staff rows, planning rows, visible day-off-today rows, and dropdown-eligible staff for the current business day.
+- **Returns:** `{ business_day, today_staff, planning, day_off_today, dropdown_staff }`
+- **Logic:** Reads `today_staff` where `removed_at IS NULL`, `today_staff_planning`, and active All Staff not already added.
+
+#### `router.post('/today/add')`
+- **Purpose:** Adds an All Staff member to the visible Today Staff list for the current business day.
+- **Parameters:** `staff_id` or `display_name` / `masseuse_name`.
+- **Returns:** `{ business_day, today_staff }`.
+- **Logic:** Prevents duplicate active rows with the partial unique index and explicit existence check, sets planning status to `added_to_today_staff`, clears any day-off-today state by replacement, and logs `add_to_today_staff`.
+
+#### `router.post('/today/day-off')`
+- **Purpose:** Marks an All Staff member as `day_off_today`.
+- **Parameters:** `staff_id` or display name.
+- **Returns:** Planning status confirmation.
+- **Logic:** Removes any active visible Today Staff row for that staff member, compacts positions, upserts planning status, and logs `mark_day_off_today`.
+
+#### `router.post('/today/restore')`
+- **Purpose:** Restores a day-off-today staff member to available-to-add.
+- **Parameters:** `staff_id` or display name.
+- **Returns:** Planning status confirmation.
+- **Logic:** Upserts planning status `available_to_add` and logs `restore_day_off_today`.
+
+#### `router.put('/today/reorder')`
+- **Purpose:** Reorders active Today Staff rows by staff ID.
+- **Parameters:** `{ ordered_staff_ids: number[] }`.
+- **Returns:** Updated Today Staff list.
+- **Logic:** Updates only active `today_staff.position` values and logs `reorder_today_staff`.
+
+#### `router.post('/today/reset-check')`
+- **Purpose:** Runs the 2:00 a.m. Bangkok visible-list reset/recovery check.
+- **Returns:** `{ reset, business_day, reset_business_day? }`.
+- **Logic:** If the previous business day is still open, marks its active visible rows removed with `scheduled_reset`, resets that `business_days` row, ensures the current business day exists, and preserves Today Staff history.
+
 ## 3. Dependency Mapping
 
 ### Upstream Dependencies (Inputs)
@@ -115,7 +161,8 @@
 ### Downstream Dependencies (Outputs)
 - **Called Modules/Services:** Database operations via `../models/database.js`
 - **Output Data Contracts / Schemas:** 
-  - Staff roster: `[{id, position, masseuse_name, status, busy_until, today_massages, last_updated}]`
+  - Staff roster / Today Staff: `[{id, position, masseuse_name, status, busy_until, today_massages, last_updated, staff_id, business_day}]`
+  - Helper rows: `[{staff_id, display_name, previous_business_day, previous_day_commission, was_day_off_yesterday, today_planning_status, can_add_to_today_staff}]`
   - Performance data: `[{masseuse_name, massage_count, total_fees, total_revenue}]`
   - Status confirmations: `{message: string, masseuse: string, busyUntil: string, newStatus: string}`
 

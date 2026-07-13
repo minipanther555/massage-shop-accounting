@@ -48,6 +48,7 @@ class Database {
         status TEXT NOT NULL DEFAULT 'ACTIVE',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        business_day DATE,
         corrected_from_id TEXT
       )`,
 
@@ -155,6 +156,53 @@ class Database {
         last_payment_amount DECIMAL(10,2),
         last_payment_type TEXT,
         notes TEXT
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS business_days (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_day DATE UNIQUE NOT NULL,
+        status TEXT NOT NULL DEFAULT 'open',
+        opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        reset_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS today_staff (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_day DATE NOT NULL,
+        staff_id INTEGER NOT NULL,
+        display_name TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        queue_status TEXT,
+        added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        removed_at DATETIME,
+        removed_reason TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (staff_id) REFERENCES staff(id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS today_staff_planning (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_day DATE NOT NULL,
+        staff_id INTEGER NOT NULL,
+        planning_status TEXT NOT NULL DEFAULT 'available_to_add',
+        updated_by_user_id TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(business_day, staff_id),
+        FOREIGN KEY (staff_id) REFERENCES staff(id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS today_staff_audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_day DATE NOT NULL,
+        staff_id INTEGER,
+        action TEXT NOT NULL,
+        actor_user_id TEXT,
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`
     ];
 
@@ -190,6 +238,7 @@ class Database {
       ...[
         { name: 'location', definition: 'TEXT' },
         { name: 'duration', definition: 'INTEGER' },
+        { name: 'business_day', definition: 'DATE' },
         { name: 'corrected_from_id', definition: 'TEXT' }
       ].map(c => ({ table: 'transactions', ...c })),
 
@@ -219,7 +268,25 @@ class Database {
     await this.run('UPDATE staff SET total_fees_earned = 0 WHERE total_fees_earned IS NULL');
     await this.run('UPDATE staff SET total_fees_paid = 0 WHERE total_fees_paid IS NULL');
 
+    await this.ensureIndexes();
+
     console.log(' MDB_LOG: [Step 4] Missing columns check and update completed.');
+  }
+
+  async ensureIndexes() {
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS idx_transactions_business_day_staff ON transactions (business_day, masseuse_name, status)',
+      'CREATE INDEX IF NOT EXISTS idx_today_staff_business_day_position ON today_staff (business_day, position)',
+      'CREATE INDEX IF NOT EXISTS idx_today_staff_business_day_staff ON today_staff (business_day, staff_id)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_today_staff_one_active_staff_day ON today_staff (business_day, staff_id) WHERE removed_at IS NULL',
+      'CREATE INDEX IF NOT EXISTS idx_today_staff_planning_business_day_status ON today_staff_planning (business_day, planning_status)',
+      'CREATE INDEX IF NOT EXISTS idx_today_staff_planning_staff ON today_staff_planning (staff_id)',
+      'CREATE INDEX IF NOT EXISTS idx_today_staff_audit_business_day ON today_staff_audit_log (business_day, staff_id, action)'
+    ];
+
+    for (const indexSql of indexes) {
+      await this.run(indexSql);
+    }
   }
 
   async insertDefaultData() {
