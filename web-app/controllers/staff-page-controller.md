@@ -1,10 +1,10 @@
 # Staff Page Controller Module Specification
 
 ## Overall Purpose
-The staff page controller manages the daily staff roster functionality, including adding/removing staff members, managing roster positions, and maintaining UI state consistency. It implements the "Dropdown → API → re-fetch → render" discipline for all roster operations.
+The staff page controller manages the Today Staff workflow, including previous-business-day helper rows, dropdown add, add from helper, day-off-today planning, persistent restore, visible-list clearing, and UI state consistency. It implements the "Action → API → re-fetch → render" discipline for all Today Staff operations.
 
 ## End-to-End Data Flow
-User selects staff from dropdown → Add button click → Controller fetches current roster state → Calculates first empty position → PUT /api/staff/roster/:position → GET /api/staff/roster → renderRoster() with visual labels → renderDropdown() with updated availability → UI shows contiguous 1...n labels
+User opens the Today Staff page → controller fetches `/api/staff/today/state` and `/api/staff/today/helper` → renders the Thai previous-day earnings helper, day-off-today section, dropdown, and visible Today Staff list → user adds from helper or dropdown → controller writes to `/api/staff/today/add` → re-fetches state/helper → UI disables or mutes already-added helper rows and removes duplicates from dropdown. If the user marks `หยุดวันนี้`, the controller writes to `/api/staff/today/day-off`, moves the person to the persistent day-off-today section, and can restore them with `/api/staff/today/restore`.
 
 ## Module API & Logic Breakdown
 
@@ -20,6 +20,8 @@ User selects staff from dropdown → Add button click → Controller fetches cur
 - Uses visual index (i+1) for labels, not database position
 - Sets render beacon for test harness synchronization
 - Handles empty roster state by showing #empty-roster element
+- Renders large position, staff name, next-in-line control, massage count, drag hint, order buttons, and remove button in Thai.
+- Formats today's massage count as `{count} ครั้ง`.
 
 #### `renderDropdown(allStaff, roster)`
 **Purpose**: Populates dropdown with available staff (All Staff - Today's Roster)
@@ -31,6 +33,58 @@ User selects staff from dropdown → Add button click → Controller fetches cur
 - Implements set difference logic: AllStaff - TodayRoster
 - Sets dropdown beacon for test harness synchronization
 - Uses projector for consistent name extraction
+- Uses a Thai placeholder (`แตะเพื่อเลือกพนักงาน...`) after every render so controller initialization does not regress the static page copy.
+
+#### `renderHelperRows(rows)`
+**Purpose**: Renders the Thai-only previous-business-day earnings helper list
+**Parameters**:
+- `rows` (Array): Helper rows with `staff_id`, `display_name`, `previous_day_commission`, `was_day_off_yesterday`, `today_planning_status`, and `can_add_to_today_staff`
+**Returns**: void
+**Usage & Logic Notes**:
+- Renders backend-provided sorted order
+- Shows `฿0` and `หยุดเมื่อวาน` for zero commission rows
+- Adds per-row `เพิ่ม` and `หยุดวันนี้` controls
+- Does not render date/time ranges
+
+#### `renderDayOffRows(rows)`
+**Purpose**: Renders the persistent `หยุดวันนี้` section
+**Parameters**:
+- `rows` (Array): Planning rows marked `day_off_today`
+**Returns**: void
+**Usage & Logic Notes**:
+- Shows a large restore action instead of a modal or toast-only undo
+- Respects the helper-collapse state so refreshes do not reopen the day-off section when the user has collapsed helpers.
+
+#### `applyHelperCollapseState()`
+**Purpose**: Applies the local helper-collapse state to the page shell.
+**Parameters**: None
+**Returns**: void
+**Usage & Logic Notes**:
+- Toggles `body.helpers-collapsed` from the `todayStaffHelperSectionsCollapsed` localStorage flag.
+- Does not mutate roster, planning, or helper API data.
+
+#### `setHelperSectionsCollapsed(isCollapsed)`
+**Purpose**: Persists and applies the helper-section collapsed state.
+**Parameters**:
+- `isCollapsed` (boolean): Whether both helper sections should be hidden.
+**Returns**: void
+**Usage & Logic Notes**:
+- Stores only a UI preference in localStorage.
+- Collapses both the previous-day earnings helper and `หยุดวันนี้` helper through CSS.
+
+#### `bindHelperCollapseControls()`
+**Purpose**: Wires the collapse and restore controls.
+**Parameters**: None
+**Returns**: void
+**Usage & Logic Notes**:
+- `#collapse-helper-sections-btn` hides both helper sections.
+- `#show-helper-sections-btn` restores both helper sections and scrolls back to the helper header.
+
+#### `refreshTodayStaffPage()`
+**Purpose**: Refreshes Today Staff state and helper data from backend source of truth
+**Returns**: Promise<void>
+**Usage & Logic Notes**:
+- If helper loading fails, shows a clear Thai error while preserving dropdown fallback through the basic state/all-staff path
 
 #### `staffControllerInit(apiClient)`
 **Purpose**: Initializes the staff controller with API client
@@ -40,8 +94,32 @@ User selects staff from dropdown → Add button click → Controller fetches cur
 **Raises**: Error if initialization fails
 **Usage & Logic Notes**:
 - Sets up event handlers for Add and Clear All buttons
+- Sets up event handlers for the Add New Staff modal
 - Fetches initial roster and staff data
 - Implements first empty slot algorithm for position calculation
+
+#### `openAddStaffModal()`
+**Purpose**: Opens the roster page's Add New Staff modal and focuses the name field
+**Parameters**: None
+**Returns**: void
+**Usage & Logic Notes**:
+- Keeps the missing-staff flow on the daily roster page.
+- Resets stale form state every time the modal opens.
+
+#### `closeAddStaffModal()`
+**Purpose**: Closes the roster page's Add New Staff modal
+**Parameters**: None
+**Returns**: void
+
+#### `refreshMasterStaffDropdown(preselectName)`
+**Purpose**: Refreshes the master staff list after creating a staff member and updates the available roster dropdown
+**Parameters**:
+- `preselectName` (string): Optional staff name to select after refresh
+**Returns**: Promise<void>
+**Usage & Logic Notes**:
+- Calls `GET /api/staff/allstaff`.
+- Filters out staff already on today's roster.
+- Preselects the new staff name when it is available, so the user can click Add to Roster immediately.
 
 ### Event Handlers
 
@@ -54,13 +132,33 @@ User selects staff from dropdown → Add button click → Controller fetches cur
 4. Re-fetches roster and re-renders
 5. Updates dropdown to remove added staff
 
+#### Add New Staff Modal Submit Handler
+**Purpose**: Creates a missing master staff member from the roster page
+**Logic**:
+1. Validates that a staff name was entered
+2. Calls POST /api/admin/staff through `api.addStaff({ name })`
+3. Closes the modal
+4. Re-fetches all master staff
+5. Re-renders the available dropdown and preselects the created staff member
+
 #### Clear All Button Handler  
 **Purpose**: Handles clearing entire roster
 **Logic**:
-1. Shows confirm dialog
-2. Calls DELETE /api/staff/roster
-3. Re-fetches roster and re-renders
-4. Updates dropdown to show all staff
+1. Opens the in-page `#clear-roster-modal`
+2. Waits for explicit confirmation from `#confirm-clear-roster-btn`
+3. Calls DELETE /api/staff/roster through `api.clearRoster()`
+4. Sets local roster state to empty and re-renders
+5. Updates dropdown to show all master staff names
+6. Closes the confirmation modal
+
+#### Helper Collapse Handlers
+**Purpose**: Moves the daily roster workflow higher on the page after the receptionist is done using helper lists.
+**Logic**:
+1. Collapse button sets `todayStaffHelperSectionsCollapsed=1`.
+2. Controller applies `body.helpers-collapsed`.
+3. CSS hides `.today-helper-section` and `#day-off-section`.
+4. Restore button removes the flag and shows helpers again.
+5. Today Staff roster rows remain rendered throughout.
 
 ## Dependency Mapping
 
@@ -68,19 +166,23 @@ User selects staff from dropdown → Add button click → Controller fetches cur
 **Calling Modules/Services**: 
 - web-app/staff.html (initialization)
 - Browser events (button clicks, dropdown changes)
+- Browser modal events (open, close, submit)
 
 **Input Data Contracts**:
 - API responses: `{position: number, masseuse_name: string, status: string, today_massages: number, busy_until: string}`
 - Staff data: `Array<string>` (staff names)
+- New staff form data: `{ name: string }`
 
 ### Downstream Dependencies (Outputs)
 **Called Modules/Services**:
-- api.js (getStaffRoster, addToRoster, clearRoster, getAllStaff)
+- api.js (getTodayStaffState, getTodayStaffHelper, addTodayStaff, markTodayStaffDayOff, restoreTodayStaffDayOff, clearRoster, getAllStaff)
+- api.js (addStaff for POST /api/admin/staff)
 - DOM manipulation (renderRoster, renderDropdown)
 
 **Output Data Contracts**:
 - DOM updates: Roster list with visual labels 1...n
 - Network requests: PUT /api/staff/roster/:position, DELETE /api/staff/roster, GET /api/staff/roster
+- Network requests: POST /api/admin/staff, GET /api/staff/allstaff
 
 ## Bug & Resolution History
 
@@ -100,8 +202,44 @@ User selects staff from dropdown → Add button click → Controller fetches cur
 
 ### Bug Summary: Missing Clear All Functionality
 **Validated Hypothesis**: No event handler bound to clear-roster-btn
-**Resolution**: Added complete Clear All button handler with confirm dialog, API call, and re-render
+**Resolution**: Added complete Clear All button handler with confirmation, API call, and re-render
 
 ### Bug Summary: Dropdown Not Filtering
 **Validated Hypothesis**: renderDropdown() not called after roster mutations
 **Resolution**: Added renderDropdown() calls after all roster changes (Add, Clear, Remove)
+
+### Bug Summary: Controller Reintroduced English Dropdown Placeholder (2026-07-09)
+**Bug Summary:** The static staff roster markup used a Thai dropdown placeholder, but `renderDropdown()` replaced it with the old English "Select masseuse to add..." text after controller initialization.
+
+**Validated Hypothesis:** The source of truth for the live dropdown placeholder is the controller render function, not the initial HTML option.
+
+**Invalidated Hypotheses:**
+- The browser was showing stale cached HTML.
+- The issue was only in the EJS fallback.
+
+**Resolution:** Updated `renderDropdown()` to emit `แตะเพื่อเลือกพนักงาน...` so the initialized UI remains Thai-first.
+
+### Bug Summary: Roster Rows Hid the Important Information (2026-07-09)
+**Bug Summary:** Staff names, queue position, daily massage counts, and reorder/remove controls were too small and unclear for daily use.
+
+**Validated Hypothesis:** `renderRoster()` generated compact generic grid cells and bare arrow/delete symbols, leaving the row affordances ambiguous.
+
+**Resolution:** Added semantic row classes, large position/name/count cells, Thai next/order/remove buttons, and a `ลากเพื่อจัดลำดับ` drag hint. The data contract and API calls did not change.
+
+### Bug Summary: Clear Roster Used Native Confirm and Was Easy to Miss (2026-07-09)
+**Bug Summary:** The manager missed the clear-everyone affordance during hands-on review, and the controller used the browser `confirm()` dialog rather than a page-level modal.
+
+**Validated Hypothesis:** The existing `DELETE /api/staff/roster` contract was enough for current visible-list clearing. The issue was the frontend event flow and discoverability.
+
+**Resolution:** Added `openClearRosterModal()`, `closeClearRosterModal()`, and `clearVisibleRoster()`. The clear button now opens `#clear-roster-modal`, and the destructive API call only runs when `#confirm-clear-roster-btn` is clicked.
+
+### Bug Summary: Helper Sections Blocked the Working Roster After Setup (2026-07-13)
+**Bug Summary:** The previous-day helper and `หยุดวันนี้` helper stayed above the roster after Today Staff was already built, making the working roster less immediately visible.
+
+**Validated Hypothesis:** The page needed a reversible UI-only collapse state. The backend helper data and planning endpoints were correct and should remain available for the beginning-of-day flow.
+
+**Invalidated Hypotheses:**
+- Backend helper rows should be hidden based on roster count.
+- The helper list should always be below the roster, including early morning.
+
+**Resolution:** Added helper-collapse controls and controller state. The collapse hides both helper sections together and shows a restore control near the roster workflow without changing roster/planning data.

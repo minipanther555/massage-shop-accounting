@@ -37,12 +37,29 @@
   };
 
   let addLocked = false;
+  let HELPER_ROWS = [];
+  let DAY_OFF_ROWS = [];
+  const HELPER_COLLAPSE_STORAGE_KEY = 'todayStaffHelperSectionsCollapsed';
 
   // BACKUP-CONTRACT CONSTANTS — exact IDs/classes from staff.html.backup
   const SELECTORS = {
     rosterList: '#roster-list',
     emptyRoster: '#empty-roster',
-    availableStaff: '#available-staff'
+    availableStaff: '#available-staff',
+    showAddStaffModal: '#show-add-staff-modal-btn',
+    addStaffModal: '#roster-staff-modal',
+    addStaffForm: '#roster-staff-form',
+    addStaffName: '#roster-staff-name',
+    closeAddStaffModal: '#close-roster-staff-modal',
+    cancelAddStaffModal: '#cancel-roster-staff-modal',
+    clearRosterModal: '#clear-roster-modal',
+    closeClearRosterModal: '#close-clear-roster-modal',
+    cancelClearRosterModal: '#cancel-clear-roster-modal',
+    confirmClearRoster: '#confirm-clear-roster-btn',
+    todayHelperSection: '.today-helper-section',
+    dayOffSection: '#day-off-section',
+    collapseHelperSections: '#collapse-helper-sections-btn',
+    showHelperSections: '#show-helper-sections-btn'
   };
   const CLASS = {
     section: 'section',
@@ -121,18 +138,18 @@
       const countText = staff.today_massages || 0;
       
       el.innerHTML = `
-        <div>${index + 1}</div>
-        <div><strong>${name}</strong></div>
-        <div>
-          <button class="btn ${isNext ? 'btn-next' : 'btn-secondary'} btn-small" data-action="setNext" data-position="${staff.position || index + 1}" ${isNext ? 'disabled' : ''}>${isNext ? '👤 NEXT' : 'Set Next'}</button>
+        <div class="staff-position">${index + 1}</div>
+        <div class="staff-name-cell"><strong>${name}</strong><span class="drag-hint">ลากเพื่อจัดลำดับ</span></div>
+        <div class="staff-next-cell">
+          <button class="btn ${isNext ? 'btn-next' : 'btn-secondary'} btn-small staff-next-btn" data-action="setNext" data-position="${staff.position || index + 1}" ${isNext ? 'disabled' : ''}>${isNext ? 'คิวถัดไป' : 'ตั้งคิว'}</button>
           ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
           ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
         </div>
-        <div><strong>${countText} today</strong></div>
-        <div>
-          <button class="btn btn-small" data-action="moveUp" data-position="${staff.position || index + 1}" ${staff.position === 1 ? 'disabled' : ''}>↑</button>
-          <button class="btn btn-small" data-action="moveDown" data-position="${staff.position || index + 1}" ${staff.position === 20 ? 'disabled' : ''}>↓</button>
-          <button class="btn btn-danger btn-small" data-action="remove" data-position="${staff.position || index + 1}">✕</button>
+        <div class="staff-count"><strong>${countText}</strong> <span>ครั้ง</span></div>
+        <div class="staff-row-actions">
+          <button class="btn btn-small staff-order-btn" data-action="moveUp" data-position="${staff.position || index + 1}" ${staff.position === 1 ? 'disabled' : ''} aria-label="เลื่อนขึ้น">ขึ้น</button>
+          <button class="btn btn-small staff-order-btn" data-action="moveDown" data-position="${staff.position || index + 1}" ${staff.position === 20 ? 'disabled' : ''} aria-label="เลื่อนลง">ลง</button>
+          <button class="btn btn-danger btn-small staff-remove-btn" data-action="remove" data-position="${staff.position || index + 1}">ลบ</button>
         </div>
       `;
       
@@ -151,19 +168,221 @@
     const dd = document.querySelector(SELECTORS.availableStaff);
     if (!dd) return;
 
-    dd.innerHTML = '<option value="">Select masseuse to add...</option>';
+    dd.innerHTML = '<option value="">แตะเพื่อเลือกพนักงาน...</option>';
     
     // Null-safe: guard against undefined inputs
     const list = safeArr(available);
     
     list.forEach(name => {
       const o = document.createElement('option');
-      o.value = o.textContent = name;
+      if (name && typeof name === 'object') {
+        o.value = String(name.staff_id || name.id || name.display_name || name.name);
+        o.textContent = name.display_name || name.name || name.masseuse_name;
+        o.dataset.staffId = String(name.staff_id || name.id || '');
+      } else {
+        o.value = o.textContent = name;
+      }
       dd.appendChild(o);
     });
     
     // Dropdown beacon for test harness
     document.documentElement.dataset.staffDropdown = String(Date.now());
+  }
+
+  function formatBaht(value) {
+    return `฿${Number(value || 0).toLocaleString('th-TH', { maximumFractionDigits: 0 })}`;
+  }
+
+  function areHelperSectionsCollapsed() {
+    try {
+      return localStorage.getItem(HELPER_COLLAPSE_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function applyHelperCollapseState() {
+    document.body.classList.toggle('helpers-collapsed', areHelperSectionsCollapsed());
+  }
+
+  function setHelperSectionsCollapsed(isCollapsed) {
+    try {
+      if (isCollapsed) localStorage.setItem(HELPER_COLLAPSE_STORAGE_KEY, '1');
+      else localStorage.removeItem(HELPER_COLLAPSE_STORAGE_KEY);
+    } catch {}
+    applyHelperCollapseState();
+  }
+
+  function bindHelperCollapseControls() {
+    document.querySelector(SELECTORS.collapseHelperSections)?.addEventListener('click', () => {
+      setHelperSectionsCollapsed(true);
+    });
+    document.querySelector(SELECTORS.showHelperSections)?.addEventListener('click', () => {
+      setHelperSectionsCollapsed(false);
+      document.querySelector(SELECTORS.todayHelperSection)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    applyHelperCollapseState();
+  }
+
+  function renderHelperRows(rows) {
+    const list = document.querySelector('#today-helper-list');
+    const error = document.querySelector('#today-helper-error');
+    if (!list) return;
+    if (error) error.style.display = 'none';
+    list.innerHTML = '';
+
+    safeArr(rows)
+      .filter(row => row.today_planning_status !== 'day_off_today')
+      .forEach((row) => {
+        const el = document.createElement('div');
+        const isAdded = row.today_planning_status === 'added_to_today_staff' || !row.can_add_to_today_staff;
+        el.className = `today-helper-row${isAdded ? ' is-added' : ''}`;
+        el.innerHTML = `
+          <strong>${row.display_name}</strong>
+          <span class="today-helper-commission">${formatBaht(row.previous_day_commission)}</span>
+          <span class="today-helper-flag">${row.was_day_off_yesterday ? 'หยุดเมื่อวาน' : ''}</span>
+          <span>
+            <button type="button" class="btn btn-small helper-add-btn" data-staff-id="${row.staff_id}" ${isAdded ? 'disabled' : ''}>เพิ่ม</button>
+            <button type="button" class="btn btn-secondary btn-small helper-day-off-btn" data-staff-id="${row.staff_id}" ${isAdded ? 'disabled' : ''}>หยุดวันนี้</button>
+          </span>
+        `;
+        list.appendChild(el);
+      });
+
+    list.querySelectorAll('.helper-add-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await addTodayStaffById(button.dataset.staffId);
+      });
+    });
+    list.querySelectorAll('.helper-day-off-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await api.markTodayStaffDayOff({ staff_id: Number(button.dataset.staffId) });
+        await refreshTodayStaffPage();
+      });
+    });
+  }
+
+  function renderDayOffRows(rows) {
+    const section = document.querySelector('#day-off-section');
+    const list = document.querySelector('#day-off-list');
+    if (!section || !list) return;
+    list.innerHTML = '';
+    const dayOffRows = safeArr(rows);
+    section.style.display = dayOffRows.length ? 'block' : 'none';
+    applyHelperCollapseState();
+
+    dayOffRows.forEach((row) => {
+      const el = document.createElement('div');
+      el.className = 'day-off-row';
+      el.innerHTML = `
+        <strong>${row.display_name}</strong>
+        <span>หยุดวันนี้</span>
+        <button type="button" class="btn btn-small restore-day-off-btn" data-staff-id="${row.staff_id}">กลับมาเพิ่มได้</button>
+      `;
+      list.appendChild(el);
+    });
+
+    list.querySelectorAll('.restore-day-off-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await api.restoreTodayStaffDayOff({ staff_id: Number(button.dataset.staffId) });
+        await refreshTodayStaffPage();
+      });
+    });
+  }
+
+  function showHelperError(message) {
+    const error = document.querySelector('#today-helper-error');
+    const list = document.querySelector('#today-helper-list');
+    if (list) list.innerHTML = '';
+    if (error) {
+      error.textContent = message;
+      error.style.display = 'block';
+    }
+  }
+
+  async function refreshTodayStaffPage() {
+    let state = null;
+    try {
+      state = await api.getTodayStaffState();
+      CURRENT_ROSTER = safeArr(state.today_staff);
+      DAY_OFF_ROWS = safeArr(state.day_off_today);
+      renderRoster(CURRENT_ROSTER);
+      renderDayOffRows(DAY_OFF_ROWS);
+      renderDropdown(safeArr(state.dropdown_staff));
+    } catch (error) {
+      console.error('Error refreshing Today Staff state:', error);
+      CURRENT_ROSTER = safeArr(await api.getStaffRoster());
+      renderRoster(CURRENT_ROSTER);
+      const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
+      renderDropdown(safeArr(ALL_STAFF).filter(n => !inRoster.has(n)));
+    }
+
+    try {
+      const helper = await api.getTodayStaffHelper();
+      HELPER_ROWS = safeArr(helper.rows);
+      renderHelperRows(HELPER_ROWS);
+    } catch (error) {
+      console.error('Error refreshing helper data:', error);
+      showHelperError('โหลดรายได้เมื่อวานไม่ได้ ยังเลือกชื่อจากช่องด้านล่างได้');
+    }
+  }
+
+  async function addTodayStaffById(staffId) {
+    await api.addTodayStaff({ staff_id: Number(staffId) });
+    await refreshTodayStaffPage();
+  }
+
+  function openAddStaffModal() {
+    const modal = document.querySelector(SELECTORS.addStaffModal);
+    const input = document.querySelector(SELECTORS.addStaffName);
+    const form = document.querySelector(SELECTORS.addStaffForm);
+
+    if (!modal || !input || !form) return;
+    form.reset();
+    modal.style.display = 'block';
+    input.focus();
+  }
+
+  function closeAddStaffModal() {
+    const modal = document.querySelector(SELECTORS.addStaffModal);
+    if (modal) modal.style.display = 'none';
+  }
+
+  function openClearRosterModal() {
+    const modal = document.querySelector(SELECTORS.clearRosterModal);
+    if (modal) modal.style.display = 'block';
+  }
+
+  function closeClearRosterModal() {
+    const modal = document.querySelector(SELECTORS.clearRosterModal);
+    if (modal) modal.style.display = 'none';
+  }
+
+  async function clearVisibleRoster() {
+    try {
+      console.log('🔧 Confirmed clear roster, calling clearRoster');
+      await api.clearRoster();
+      console.log('🔧 clearRoster completed');
+
+      await refreshTodayStaffPage();
+
+      closeClearRosterModal();
+      globalThis.showToast?.('ล้างรายชื่อวันนี้แล้ว');
+    } catch (error) {
+      console.error('Error clearing roster:', error);
+      globalThis.showToast?.('Error clearing roster', 'error');
+    }
+  }
+
+  async function refreshMasterStaffDropdown(preselectName) {
+    ALL_STAFF = safeNames(await window.api.getAllStaff());
+    await refreshTodayStaffPage();
+
+    const dd = document.querySelector(SELECTORS.availableStaff);
+    if (dd && preselectName) {
+      const option = Array.from(dd.options).find(o => o.textContent === preselectName);
+      if (option) dd.value = option.value;
+    }
   }
 
   // API ACTION HANDLERS — follow Dropdown→API→Re-fetch→Render discipline
@@ -303,20 +522,10 @@
       ALL_STAFF = safeNames(await window.api.getAllStaff());
       console.log(`📋 Fetched ${ALL_STAFF.length} staff members`);
 
-      // 2) fetch roster
-      CURRENT_ROSTER = [];
-      try {
-        CURRENT_ROSTER = safeArr(await window.api.getStaffRoster());
-      } catch (e) {
-        console.log('ℹ️ No roster endpoint, using empty roster');
-      }
+      await refreshTodayStaffPage();
 
-      // 3) render with projector - safe pattern
-      renderRoster(CURRENT_ROSTER);
-      
-      const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
-      const available = safeArr(ALL_STAFF).filter(n => !inRoster.has(n));
-      renderDropdown(available);
+      // Bind the Add to Roster button
+      bindHelperCollapseControls();
 
       // Bind the Add to Roster button
       const addBtn = document.getElementById('add-to-roster-btn');
@@ -333,32 +542,10 @@
             
             if (selectedOption.value) {
               const masseuseName = selectedOption.text;
-              
-              // Calculate first empty slot from current in-memory roster (no pre-GET needed)
-              const positions = CURRENT_ROSTER.map(r => r.position).sort((a,b) => a - b);
-              let nextPosition = 1;
-              for (const pos of positions) {
-                if (pos === nextPosition) nextPosition++;
-                else if (pos > nextPosition) break;
-              }
-              console.log('🔧 Adding staff:', masseuseName, 'at position:', nextPosition);
-              
-              // PUT request - ignore response, do fresh GET to be safe
-              await api.addToRoster(nextPosition, { masseuse_name: masseuseName });
-              console.log('🔧 API call completed');
-              
-              // Get fresh roster state from server - single source of truth
-              CURRENT_ROSTER = await api.getStaffRoster();
-              console.log('🔧 Updated roster:', CURRENT_ROSTER);
-              
-              renderRoster(CURRENT_ROSTER);
-              console.log('🔧 Roster rendered');
-              
-              // Update dropdown using cached AllStaff (no re-fetch needed)
-              const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
-              const available = safeArr(ALL_STAFF).filter(n => !inRoster.has(n));
-              renderDropdown(available);
-              console.log('🔧 Dropdown updated');
+              const selectedStaffId = selectedOption.dataset.staffId || null;
+              console.log('🔧 Adding Today Staff:', masseuseName, selectedStaffId);
+              await api.addTodayStaff(selectedStaffId ? { staff_id: Number(selectedStaffId) } : { display_name: masseuseName });
+              await refreshTodayStaffPage();
               
               // Test hook marker
               if (window.__staffTest) {
@@ -378,38 +565,59 @@
           }
         });
       }
+
+      // Bind Add New Staff modal controls
+      const showAddStaffBtn = document.querySelector(SELECTORS.showAddStaffModal);
+      const addStaffForm = document.querySelector(SELECTORS.addStaffForm);
+      const closeAddStaffBtn = document.querySelector(SELECTORS.closeAddStaffModal);
+      const cancelAddStaffBtn = document.querySelector(SELECTORS.cancelAddStaffModal);
+      const addStaffModal = document.querySelector(SELECTORS.addStaffModal);
+
+      showAddStaffBtn?.addEventListener('click', openAddStaffModal);
+      closeAddStaffBtn?.addEventListener('click', closeAddStaffModal);
+      cancelAddStaffBtn?.addEventListener('click', closeAddStaffModal);
+      addStaffModal?.addEventListener('click', (event) => {
+        if (event.target === addStaffModal) closeAddStaffModal();
+      });
+
+      addStaffForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const input = document.querySelector(SELECTORS.addStaffName);
+        const name = input?.value.trim();
+        if (!name) {
+          globalThis.showToast?.('Please enter a staff name', 'error');
+          return;
+        }
+
+        try {
+          await window.api.addStaff({ name });
+          closeAddStaffModal();
+          await refreshMasterStaffDropdown(name);
+          globalThis.showToast?.(`${name} added. Select Add to Roster to put them on today's list.`);
+        } catch (error) {
+          console.error('Error creating staff member:', error);
+          globalThis.showToast?.(error.message || 'Error adding staff member', 'error');
+        }
+      });
       
       // Bind the Clear All button
       const clearBtn = document.getElementById('clear-roster-btn');
       if (clearBtn) {
-        clearBtn.addEventListener('click', async () => {
-          try {
-            console.log('🔧 Clear All button clicked');
-            if (confirm('Clear all staff from today\'s roster?')) {
-              console.log('🔧 Confirm dialog accepted, calling clearRoster');
-              await api.clearRoster();
-              console.log('🔧 clearRoster completed');
-              
-              // Update local roster state (no GET needed) - single source of truth
-              CURRENT_ROSTER = [];
-              console.log('🔧 Local roster cleared');
-              
-              renderRoster(CURRENT_ROSTER);
-              console.log('🔧 renderRoster completed');
-              
-              // Update dropdown using cached AllStaff (no re-fetch needed)
-              const inRoster = new Set(CURRENT_ROSTER.map(x => x?.masseuse_name).filter(Boolean));
-              const available = safeArr(ALL_STAFF).filter(n => !inRoster.has(n));
-              renderDropdown(available);
-              console.log('🔧 renderDropdown completed');
-            } else {
-              console.log('🔧 Confirm dialog cancelled');
-            }
-          } catch (error) {
-            console.error('Error clearing roster:', error);
-          }
-        });
+        clearBtn.addEventListener('click', openClearRosterModal);
       }
+
+      const clearRosterModal = document.querySelector(SELECTORS.clearRosterModal);
+      const closeClearBtn = document.querySelector(SELECTORS.closeClearRosterModal);
+      const cancelClearBtn = document.querySelector(SELECTORS.cancelClearRosterModal);
+      const confirmClearBtn = document.querySelector(SELECTORS.confirmClearRoster);
+
+      closeClearBtn?.addEventListener('click', closeClearRosterModal);
+      cancelClearBtn?.addEventListener('click', closeClearRosterModal);
+      clearRosterModal?.addEventListener('click', (event) => {
+        if (event.target === clearRosterModal) closeClearRosterModal();
+      });
+      confirmClearBtn?.addEventListener('click', clearVisibleRoster);
 
       document.documentElement.setAttribute('data-staff-ctrl','init');
       console.log('✅ Staff controller initialized successfully');

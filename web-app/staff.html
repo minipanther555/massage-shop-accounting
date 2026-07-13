@@ -8,7 +8,7 @@
       src="https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js"
       crossorigin="anonymous"
     ></script>
-    <title>Massage Shop POS - Staff Roster</title>
+    <title>Massage Shop POS - Today Staff</title>
     <link rel="stylesheet" href="/styles.css">
     <style>
         .admin-header {
@@ -52,30 +52,111 @@
                 font-size: 16px;
             }
         }
+
+        .today-helper-grid,
+        .day-off-grid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .today-helper-row,
+        .day-off-row {
+            display: grid;
+            grid-template-columns: minmax(120px, 1fr) auto auto auto;
+            gap: 8px;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .today-helper-row.is-added {
+            opacity: 0.55;
+            background: #f2f2f2;
+        }
+
+        .today-helper-commission {
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .today-helper-flag {
+            color: #9a3412;
+            font-weight: 700;
+        }
+
+        .helper-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .helper-collapse-btn,
+        .helper-restore-btn {
+            border: 0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .helper-collapse-btn {
+            background: #1f2937;
+            color: #fff;
+        }
+
+        .helper-restore-btn {
+            display: none;
+            width: 100%;
+            margin-bottom: 12px;
+            background: #dbeafe;
+            color: #1e3a8a;
+            border: 1px solid #93c5fd;
+        }
+
+        body.helpers-collapsed .today-helper-section,
+        body.helpers-collapsed .day-off-section {
+            display: none !important;
+        }
+
+        body.helpers-collapsed .helper-restore-btn {
+            display: block;
+        }
+
+        @media (max-width: 767px) {
+            .today-helper-row,
+            .day-off-row {
+                grid-template-columns: 1fr;
+            }
+
+            .helper-section-header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="nav-header">
-            STAFF ROSTER MANAGEMENT
+        <div class="nav-header staff-page-title">
+            <span class="label-th">จัดคิวพนักงานวันนี้</span>
+            <span class="label-en helper-text">Today Staff</span>
         </div>
 
-        <div class="nav-buttons">
-            <a href="/index.html" class="nav-btn home">
-                <span class="label-en">🏠 Home</span>
+        <div class="nav-buttons staff-page-nav">
+            <a href="/index.html" class="nav-btn home staff-nav-link">
                 <span class="label-th">🏠 หน้าแรก</span>
+                <span class="label-en">Home</span>
             </a>
-            <a href="/api/main/staff-roster" class="nav-btn staff active">
-                <span class="label-en">👥 Daily Staff</span>
-                <span class="label-th">👥 พนักงานประจำวัน</span>
+            <a href="/api/main/transaction" class="nav-btn transaction staff-nav-link">
+                <span class="label-th">👤 ลูกค้าใหม่</span>
+                <span class="label-en">New Customer</span>
             </a>
-            <a href="/api/main/transaction" class="nav-btn transaction">
-                <span class="label-en">💳 New Transaction</span>
-                <span class="label-th">💳 ธุรกรรมใหม่</span>
-            </a>
-            <a href="/api/main/summary" class="nav-btn summary">
-                <span class="label-en">📊 Daily Summary</span>
+            <a href="/api/main/summary" class="nav-btn summary staff-nav-link">
                 <span class="label-th">📊 สรุปรายวัน</span>
+                <span class="label-en">Daily Summary</span>
             </a>
             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                 <span id="current-user" style="color: #666; font-size: 14px;"></span>
@@ -84,38 +165,121 @@
 
 
 
-        <!-- Add Staff Section -->
-        <div class="section">
-            <div class="section-header">ADD STAFF FOR TODAY</div>
+        <div class="section today-helper-section">
+            <div class="section-header helper-section-header">
+                <span class="label-th">รายได้เมื่อวาน น้อยไปมาก</span>
+                <button type="button" id="collapse-helper-sections-btn" class="helper-collapse-btn">
+                    เสร็จแล้ว ซ่อนตัวช่วย
+                </button>
+            </div>
             <div class="section-content">
-                <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
-                    <select id="available-staff" style="flex: 1;">
-                        <option value="">Select masseuse to add...</option>
+                <div id="today-helper-error" class="staff-empty-state" style="display: none;"></div>
+                <div id="today-helper-list" class="today-helper-grid"></div>
+            </div>
+        </div>
+
+        <div class="section day-off-section" id="day-off-section" style="display: none;">
+            <div class="section-header">
+                <span class="label-th">หยุดวันนี้</span>
+            </div>
+            <div class="section-content">
+                <div id="day-off-list" class="day-off-grid"></div>
+            </div>
+        </div>
+
+        <div class="section staff-roster-workflow">
+            <div class="section-content">
+                <button type="button" id="show-helper-sections-btn" class="helper-restore-btn">
+                    แสดงตัวช่วยรายได้เมื่อวาน / หยุดวันนี้
+                </button>
+                <div class="staff-roster-step">
+                    <div class="step-badge">1</div>
+                    <div>
+                        <h2>เลือกพนักงานที่มาทำงานวันนี้</h2>
+                        <p class="helper-text">Select each staff member working today, then add them to the list.</p>
+                    </div>
+                </div>
+                <div class="staff-add-panel">
+                    <label class="staff-select-label" for="available-staff">เลือกชื่อพนักงาน</label>
+                    <select id="available-staff" class="staff-select-primary">
+                        <option value="">แตะเพื่อเลือกพนักงาน...</option>
                     </select>
-                    <button id="add-to-roster-btn" class="btn">Add to Roster</button>
-                    <button id="clear-roster-btn" class="btn btn-secondary">Clear All</button>
+                    <button id="add-to-roster-btn" class="btn staff-primary-action">
+                        เพิ่มเข้ารายชื่อวันนี้
+                    </button>
+                </div>
+                <div class="staff-secondary-actions">
+                    <button id="show-add-staff-modal-btn" class="staff-link-action" type="button">
+                        + เพิ่มพนักงานใหม่
+                    </button>
+                    <span class="helper-text">ใช้เฉพาะตอนที่ไม่มีชื่อในรายการ / Only if the name is missing</span>
+                    <button id="clear-roster-btn" class="staff-clear-action" type="button">
+                        <span class="label-th">ล้างรายชื่อทั้งหมด</span>
+                        <span class="label-en">Clear everyone from list</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-                <!-- Today's Staff Roster -->
-        <div class="section">
-            <div class="section-header">TODAY'S STAFF ROSTER</div>
+        <div class="section staff-list-section">
+            <div class="section-header staff-list-header">
+                <span class="label-th">รายชื่อวันนี้</span>
+                <span class="helper-text">Drag rows or use arrows to change order.</span>
+            </div>
             <div class="section-content">
-                <div class="roster-grid">
-                    <div><strong>Position</strong></div>
-                    <div><strong>Masseuse Name</strong></div>
-                    <div><strong>Next in Line</strong></div>
-                    <div><strong>Today's Count</strong></div>
-                    <div><strong>Actions</strong></div>
+                <div class="roster-grid roster-grid-header">
+                    <div>คิว</div>
+                    <div>ชื่อพนักงาน</div>
+                    <div>คิวถัดไป</div>
+                    <div>นวดแล้ว</div>
+                    <div>จัดลำดับ / ลบ</div>
                 </div>
                 <div id="roster-list">
-                    <!-- Today's roster items will be populated by JavaScript -->
+                    <!-- Today Staff items will be populated by JavaScript -->
                 </div>
-                <div id="empty-roster" style="text-align: center; padding: 20px; color: #666; display: none;">
-                    No staff added for today. Use the dropdown above to add masseuses to today's roster.
+                <div id="empty-roster" class="staff-empty-state" style="display: none;">
+                    ยังไม่มีพนักงานในรายชื่อวันนี้
+                    <span class="helper-text">เลือกชื่อด้านบน แล้วกดเพิ่มเข้ารายชื่อวันนี้</span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Clear Roster Confirmation Modal -->
+    <div id="clear-roster-modal" class="modal">
+        <div class="modal-content staff-confirm-modal">
+            <div class="modal-header">
+                <h2>ล้างรายชื่อทั้งหมด?</h2>
+                <span class="close" id="close-clear-roster-modal">&times;</span>
+            </div>
+            <div class="staff-confirm-body">
+                <p class="staff-confirm-primary">ต้องการล้างรายชื่อพนักงานวันนี้ทั้งหมดใช่ไหม?</p>
+                <p class="helper-text">This clears only the visible Today Staff list so you can start again. It does not delete All Staff names or accounting history.</p>
+            </div>
+            <div class="staff-confirm-actions">
+                <button type="button" id="cancel-clear-roster-modal" class="btn btn-secondary">ยกเลิก</button>
+                <button type="button" id="confirm-clear-roster-btn" class="btn btn-danger">ล้างทั้งหมด</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add New Staff Modal -->
+    <div id="roster-staff-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>เพิ่มพนักงานใหม่</h2>
+                <span class="close" id="close-roster-staff-modal">&times;</span>
+            </div>
+            <form id="roster-staff-form">
+                <div class="form-group">
+                    <label for="roster-staff-name">ชื่อพนักงาน</label>
+                    <input type="text" id="roster-staff-name" name="name" required maxlength="100" autocomplete="off">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" id="cancel-roster-staff-modal" class="btn btn-secondary">ยกเลิก</button>
+                    <button type="submit" class="btn">บันทึก</button>
+                </div>
+            </form>
         </div>
     </div>
 
