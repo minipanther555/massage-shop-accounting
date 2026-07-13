@@ -145,7 +145,7 @@
           ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
           ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
         </div>
-        <div class="staff-count"><strong>${countText}</strong> <span>ครั้ง</span></div>
+        <div class="staff-count" aria-label="นวดวันนี้ ${countText} ครั้ง"><span class="staff-count-label">นวดวันนี้</span> <strong>${countText}</strong> <span>ครั้ง</span></div>
         <div class="staff-row-actions">
           <button class="btn btn-small staff-order-btn" data-action="moveUp" data-position="${staff.position || index + 1}" ${staff.position === 1 ? 'disabled' : ''} aria-label="เลื่อนขึ้น">ขึ้น</button>
           <button class="btn btn-small staff-order-btn" data-action="moveDown" data-position="${staff.position || index + 1}" ${staff.position === 20 ? 'disabled' : ''} aria-label="เลื่อนลง">ลง</button>

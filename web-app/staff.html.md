@@ -59,8 +59,8 @@ User loads page → Controller initializes → previous-business-day helper list
 - `#roster-list` (div): Container for roster items
 - `#empty-roster` (div): Shown when roster is empty
 - `.roster-grid` (div): Individual roster items with labels 1...n
-- Header labels are Thai primary: queue, staff name, next in line, massages completed, order/remove.
-- Rows include a drag hint and large staff names/counts for quick scanning.
+- Header labels are Thai primary: queue, staff name, next in line, massages completed today, order/remove.
+- Rows include a drag hint and large staff names/counts for quick scanning; the count is explicitly labeled `นวดวันนี้` and rendered as `N ครั้ง`.
 
 **Styling**: Grid layout with larger names, larger counts, visible drag affordance, and clearer order/remove buttons.
 
@@ -183,3 +183,15 @@ User loads page → Controller initializes → previous-business-day helper list
 - The roster should always be moved above helpers, including at the start of the day.
 
 **Resolution:** Added `#collapse-helper-sections-btn` to the previous-day helper header and `#show-helper-sections-btn` near the daily roster workflow. The controller stores a reversible local collapsed state and hides both helper sections together.
+
+### Bug Summary: Today Massage Count Was Too Easy to Miss (2026-07-13)
+**Bug Summary:** The Today Staff row had a numeric massage count, but the row-level copy did not explicitly say it was today's completed massage count, making the fairness/reordering signal less obvious after requested bookings changed the queue.
+
+**Validated Hypothesis:** The backend already returned `today_massages`; the UI needed clearer Thai row/header copy and regression coverage rather than a new write path.
+
+**Invalidated Hypotheses:**
+- A new transaction mutation path was required.
+- The helper list should carry today's count.
+- Booking reservations should be counted as completed massages in this Today Staff follow-up.
+
+**Resolution:** Changed the main Today Staff header to `นวดวันนี้` and rendered row counts with explicit `นวดวันนี้ N ครั้ง` accessible copy while keeping the count read-only.

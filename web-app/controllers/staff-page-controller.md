@@ -20,8 +20,8 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 - Uses visual index (i+1) for labels, not database position
 - Sets render beacon for test harness synchronization
 - Handles empty roster state by showing #empty-roster element
-- Renders large position, staff name, next-in-line control, massage count, drag hint, order buttons, and remove button in Thai.
-- Formats today's massage count as `{count} ครั้ง`.
+- Renders large position, staff name, next-in-line control, today's massage count, drag hint, order buttons, and remove button in Thai.
+- Formats today's completed massage count as `นวดวันนี้ {count} ครั้ง` using the backend-provided `today_massages` value.
 
 #### `renderDropdown(allStaff, roster)`
 **Purpose**: Populates dropdown with available staff (All Staff - Today's Roster)
@@ -243,3 +243,14 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 - The helper list should always be below the roster, including early morning.
 
 **Resolution:** Added helper-collapse controls and controller state. The collapse hides both helper sections together and shows a restore control near the roster workflow without changing roster/planning data.
+
+### Bug Summary: Today Massage Count Needed Explicit Row-Level Meaning (2026-07-13)
+**Bug Summary:** The row count displayed only a number plus `ครั้ง`, so staff users could miss that it represented completed massages today and should inform queue reordering.
+
+**Validated Hypothesis:** `renderRoster()` already received `today_massages` from the backend, so the fix belonged in row markup and tests.
+
+**Invalidated Hypotheses:**
+- The controller needed to calculate the count itself.
+- Rendering the count should reorder staff automatically.
+
+**Resolution:** `renderRoster()` now emits explicit `นวดวันนี้` row copy and an accessible label while preserving manual drag/arrow reordering.

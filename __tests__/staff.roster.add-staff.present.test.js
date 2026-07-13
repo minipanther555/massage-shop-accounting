@@ -28,7 +28,7 @@ describe('Staff roster add-new-staff workflow', () => {
     expect(html).toMatch(/คิว/);
     expect(html).toMatch(/ชื่อพนักงาน/);
     expect(html).toMatch(/คิวถัดไป/);
-    expect(html).toMatch(/นวดแล้ว/);
+    expect(html).toMatch(/นวดวันนี้/);
     expect(html).toMatch(/จัดลำดับ \/ ลบ/);
   });
 
@@ -42,6 +42,8 @@ describe('Staff roster add-new-staff workflow', () => {
     expect(controller).toMatch(/api\.getAllStaff\(\)/);
     expect(controller).toMatch(/คิวถัดไป/);
     expect(controller).toMatch(/ลากเพื่อจัดลำดับ/);
+    expect(controller).toMatch(/นวดวันนี้/);
+    expect(controller).toMatch(/aria-label="นวดวันนี้ \$\{countText\} ครั้ง"/);
     expect(controller).toMatch(/\$\{countText\}<\/strong> <span>ครั้ง/);
   });
 

@@ -4,7 +4,7 @@
 Implement the reworked Today Staff page so a receptionist can build today's working queue from a Thai-only previous-business-day earnings helper list, mark and undo `หยุดวันนี้`, add staff from either the helper list or dropdown, and rely on a 2:00 a.m. Bangkok-time visible-list reset. Spec: `00-project-docs/feature-specifications/today-staff-roster-business-day-helper.md`.
 The current app/database are implementation context only; the spec's user-confirmed workflow is the product source of truth.
 
-> **Status:** COMPLETE — all Today Staff business-day helper phases are marked complete, local demo data preparation is complete, and the helper-list collapse follow-up is complete. Remaining items are open questions only, not active implementation steps.
+> **Status:** COMPLETE — all original Today Staff business-day helper phases are complete, local demo data preparation is complete, helper-list collapse is complete, and the Today Staff current-business-day massage count follow-up is complete. Remaining items are open questions only, not active implementation steps.
 
 ## Dependencies
 - **Today Staff UI (existing but incomplete):** `web-app/staff.html`, `web-app/staff.ejs`, and `web-app/controllers/staff-page-controller.js` already support basic visible roster add/remove/reorder and the clear-everyone modal, but do not yet implement previous-business-day helper rows or day-off-today planning.
@@ -269,3 +269,11 @@ The current app/database are implementation context only; the spec's user-confir
 - [x] Keep static `staff.html`, rendered `staff.ejs`, controller behavior, and co-located docs in sync.
 - **Validation:** Browser/UI test proves clicking the collapse control hides both helper sections and reveals a show-helper control; clicking the show-helper control restores the helper sections without losing Today Staff roster state.
 - **Completion Notes:** `jest __tests__/staff.roster.add-staff.present.test.js --runInBand` passed with helper collapse contract coverage. Playwright smoke against `/api/main/staff-roster?PWTEST=1` verified collapse hides previous-day and `หยุดวันนี้` helpers, shows the restore control, preserves `14` roster rows, and restore shows helpers again.
+
+### STEP_ID: TS-UI-TODAY-MASSAGE-COUNT — Show today's completed massage count in Today Staff rows — ✅ DONE (2026-07-13)
+- [x] Ensure the Today Staff read contract returns each active row's completed massage count for the current Bangkok business day using `transactions.business_day`, not UTC calendar date.
+- [x] Ensure the main Today Staff row visibly renders the count as Thai `N ครั้ง` copy in the working list used for reordering.
+- [x] Keep count display read-only: calculating or rendering counts must not mutate transactions, commissions, payday totals, planning status, or Today Staff order.
+- [x] Keep static `staff.html`, rendered `staff.ejs`, controller behavior, tests, and co-located docs in sync.
+- **Validation:** Focused tests prove `GET /api/staff/roster` returns current-business-day `today_massages` from completed `ACTIVE` transaction rows and the Today Staff page/controller renders a visible Thai `นวดวันนี้` / `N ครั้ง` count in the main reorderable list without changing protected accounting or planning data (FR-009, FR-008, AC-019, AC-020, AC-021, AC-022).
+- **Completion Notes:** `jest __tests__/staff.roster.add-staff.present.test.js --runInBand` passed with Today Staff count header/row-copy coverage. `mocha tests/otdd/today-staff-massage-count.test.js` passed against an ephemeral SQLite DB and real `GET /api/staff/roster`, proving two current-day `ACTIVE` transactions count as `today_massages: 2` while same-day `EDITED` and previous-business-day `ACTIVE` rows are excluded. Browser smoke against `/api/main/staff-roster?PWTEST=1` verified the rendered staff page shows `นวดวันนี้` and `0 ครั้ง` in the roster row. `EXPLAIN QUERY PLAN` verified the count lookup uses `idx_transactions_business_day_staff`.

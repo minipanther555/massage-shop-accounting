@@ -26,7 +26,7 @@
 - **Logic:** 
   1. Calls `resetExpiredBusyStatuses()` to clear expired statuses
   2. Fetches updated roster from database
-  3. Calculates today's massage counts for each staff member
+  3. Calculates today's completed massage counts from `ACTIVE` `transactions.business_day` rows for each staff member
   4. Returns complete roster data
 
 #### `router.post('/set-busy')`
@@ -118,7 +118,7 @@
 #### `router.get('/today/state')`
 - **Purpose:** Returns active Today Staff rows, planning rows, visible day-off-today rows, and dropdown-eligible staff for the current business day.
 - **Returns:** `{ business_day, today_staff, planning, day_off_today, dropdown_staff }`
-- **Logic:** Reads `today_staff` where `removed_at IS NULL`, `today_staff_planning`, and active All Staff not already added.
+- **Logic:** Reads `today_staff` where `removed_at IS NULL`, including `today_massages` from completed `ACTIVE` transactions on the current Bangkok business day, `today_staff_planning`, and active All Staff not already added.
 
 #### `router.post('/today/add')`
 - **Purpose:** Adds an All Staff member to the visible Today Staff list for the current business day.
