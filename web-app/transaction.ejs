@@ -8,31 +8,28 @@
       src="https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js"
       crossorigin="anonymous"
     ></script>
-    <title>Massage Shop POS - New Transaction</title>
+    <title>Massage Shop POS - New Customer</title>
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
     <div class="container">
-        <div class="nav-header">
-            NEW TRANSACTION
+        <div class="nav-header transaction-page-title">
+            <span class="label-th">รับลูกค้าใหม่</span>
+            <span class="label-en helper-text">New Customer</span>
         </div>
 
-        <div class="nav-buttons">
-            <a href="/index.html" class="nav-btn home">
-                <span class="label-en">🏠 Home</span>
+        <div class="nav-buttons staff-page-nav transaction-page-nav">
+            <a href="/index.html" class="nav-btn home staff-nav-link">
                 <span class="label-th">🏠 หน้าแรก</span>
+                <span class="label-en">Home</span>
             </a>
-            <a href="/api/main/staff-roster" class="nav-btn staff">
-                <span class="label-en">👥 Staff Roster</span>
-                <span class="label-th">👥 รายชื่อพนักงาน</span>
+            <a href="/api/main/staff-roster" class="nav-btn staff staff-nav-link">
+                <span class="label-th">👥 พนักงานวันนี้</span>
+                <span class="label-en">Daily Staff</span>
             </a>
-            <a href="/api/main/transaction" class="nav-btn transaction active">
-                <span class="label-en">💳 New Transaction</span>
-                <span class="label-th">💳 ธุรกรรมใหม่</span>
-            </a>
-            <a href="/api/main/summary" class="nav-btn summary">
-                <span class="label-en">📊 Daily Summary</span>
+            <a href="/api/main/summary" class="nav-btn summary staff-nav-link">
                 <span class="label-th">📊 สรุปรายวัน</span>
+                <span class="label-en">Daily Summary</span>
             </a>
                             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                     <span id="current-user" style="color: #666; font-size: 14px;"></span>
@@ -44,95 +41,135 @@
             🔄 CORRECTION MODE: Editing previous transaction
         </div>
 
-        <div class="main-grid">
+        <div class="main-grid transaction-layout">
             <!-- Left Column: Transaction Form -->
             <div>
-                <div class="section">
-                    <div class="section-header">TRANSACTION DETAILS</div>
+                <div class="section transaction-intake-workflow">
                     <div class="section-content">
                         <form id="transaction-form" method="POST" action="javascript:void(0)" onsubmit="return false;">
                             <input type="hidden" name="csrf_token" value="<%= csrfToken %>">
                             <input type="hidden" id="original-transaction-id" name="original_transaction_id">
-                            <div class="form-group">
-                                <label for="masseuse">Masseuse Name:</label>
-                                                                                <select id="masseuse" name="masseuse" required>
-                                    <option value="">Select Masseuse</option>
-                                </select>
+                            <input type="hidden" id="booking-id" name="booking_id">
+                            <div class="transaction-roster-step">
+                                <div class="step-badge">1</div>
+                                <div>
+                                    <h2>เลือกพนักงานและบริการ</h2>
+                                    <p class="helper-text">Start with the staff member, then choose the service details for this customer.</p>
+                                </div>
+                            </div>
+                            <div class="transaction-mode-switch" role="group" aria-label="เลือกประเภทลูกค้า">
+                                <button type="button" id="walk-in-mode-button" class="transaction-mode-button is-active" onclick="setTransactionMode('walk-in')">
+                                    ลูกค้ามาแล้ว
+                                    <small>Walk-in</small>
+                                </button>
+                                <button type="button" id="booking-mode-button" class="transaction-mode-button" onclick="setTransactionMode('booking')">
+                                    จองเวลา
+                                    <small>Booking</small>
+                                </button>
+                            </div>
+                            <div id="booking-mode-note" class="transaction-booking-note" hidden>
+                                เลือกพนักงานเมื่อลูกค้าระบุชื่อ หรือปล่อยว่างเพื่อจัดตามคิวตอนลูกค้ามาถึง
+                            </div>
+                            <div class="transaction-field-grid">
+                                <div class="form-group transaction-field transaction-field-large">
+                                    <label for="masseuse">พนักงาน</label>
+                                    <select id="masseuse" name="masseuse" required>
+                                        <option value="">เลือกพนักงาน...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group transaction-field" id="payment-field">
+                                    <label for="location">สถานที่</label>
+                                    <select id="location" name="location" required>
+                                        <option value="">เลือกสถานที่...</option>
+                                        <option value="In-Shop" selected>ที่ร้าน</option>
+                                        <option value="Home Service">นอกสถานที่</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group transaction-field transaction-field-large">
+                                    <label for="service">บริการ</label>
+                                    <div id="service-category-buttons" class="transaction-choice-grid transaction-category-grid" aria-label="เลือกประเภทบริการ"></div>
+                                    <div id="combo-service-panel" class="transaction-subchoice-panel" hidden>
+                                        <div class="transaction-subchoice-title">เลือกคอมโบ</div>
+                                        <div id="combo-service-buttons" class="transaction-choice-grid transaction-combo-grid"></div>
+                                    </div>
+                                    <select id="service" name="service" class="transaction-native-select-hidden" aria-hidden="true" tabindex="-1">
+                                        <option value="">เลือกบริการ...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group transaction-field">
+                                    <label for="duration">เวลา</label>
+                                    <div id="duration-button-panel" class="transaction-choice-grid transaction-duration-grid" aria-label="เลือกระยะเวลา"></div>
+                                    <select id="duration" name="duration" class="transaction-native-select-hidden" aria-hidden="true" tabindex="-1">
+                                        <option value="">เลือกระยะเวลา...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group transaction-field">
+                                    <label for="payment">จ่ายเงิน</label>
+                                    <select id="payment" name="payment" required>
+                                        <option value="">เลือกวิธีจ่ายเงิน...</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group transaction-field">
+                                    <label for="customerContact">ชื่อลูกค้า / เบอร์โทร</label>
+                                    <input type="text" id="customerContact" maxlength="100" placeholder="ไม่บังคับ">
+                                </div>
                             </div>
 
-                            <div class="form-group">
-                                <label for="location">Service Location:</label>
-                                <select id="location" name="location" required>
-                                    <option value="">Select Location</option>
-                                    <option value="In-Shop">In-Shop</option>
-                                    <option value="Home Service">Home Service</option>
-                                </select>
+                            <div class="transaction-time-price-panel">
+                                <div class="form-group transaction-time-field" id="walk-in-start-field">
+                                    <label for="startTime">เริ่ม</label>
+                                    <input type="text" id="startTime" name="startTime" required readonly class="readonly">
+                                </div>
+
+                                <div class="form-group transaction-time-field" id="booking-start-field" hidden>
+                                    <label for="bookingStart">เวลาที่จอง</label>
+                                    <input type="datetime-local" id="bookingStart" name="bookingStart" step="900">
+                                </div>
+
+                                <div class="form-group transaction-time-field">
+                                    <label for="endTime">เสร็จ</label>
+                                    <select id="endTime" name="endTime" required>
+                                        <option value="">เลือกเวลาเสร็จ...</option>
+                                    </select>
+                                </div>
+
+                                <div class="transaction-total-card">
+                                    <span>ราคา</span>
+                                    <strong id="servicePrice" class="summary-value">฿0.00</strong>
+                                </div>
+
+                                <div class="transaction-fee-card">
+                                    <span>ค่าพนักงาน</span>
+                                    <strong id="masseuseeFee" class="summary-value">฿0.00</strong>
+                                </div>
+
+                                <div id="booking-credit-card" class="transaction-booking-credit" hidden>
+                                    <span>ค่าจองพนักงาน</span>
+                                    <strong>+฿50</strong>
+                                </div>
                             </div>
 
-                            <div class="form-group">
-                                <label for="service">Service Type:</label>
-                                <select id="service" name="service" required>
-                                    <option value="">Select Service</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="duration">Duration:</label>
-                                <select id="duration" name="duration" required>
-                                    <option value="">Select Duration</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="payment">Payment Method:</label>
-                                <select id="payment" name="payment" required>
-                                    <option value="">Select Payment Method</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="startTime">Start Time:</label>
-                                <input type="text" id="startTime" name="startTime" required readonly class="readonly">
-                            </div>
-
-                            <div class="form-group">
-                                <label for="endTime">End Time:</label>
-                                <select id="endTime" name="endTime" required>
-                                    <option value="">Select End Time</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="customerContact">Customer Contact (Optional):</label>
-                                <input type="text" id="customerContact" maxlength="100" placeholder="Phone or name (optional)">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Service Price:</label>
-                                <div id="servicePrice" class="summary-value">฿0.00</div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Masseuse Fee:</label>
-                                <div id="masseuseeFee" class="summary-value">฿0.00</div>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary btn-large" style="width: 100%; margin-top: 20px;">
-                                💳 Submit Transaction
+                            <button type="submit" id="transaction-submit-button" class="btn transaction-primary-action">
+                                บันทึกลูกค้าใหม่
                             </button>
                         </form>
                     </div>
                 </div>
 
                 <!-- Correction Section -->
-                <div class="section">
-                    <div class="section-header">CORRECT MISTAKE</div>
+                <div class="section transaction-correction-section">
+                    <div class="section-header transaction-secondary-header">แก้รายการผิด</div>
                     <div class="section-content">
-                        <div id="correction-info" style="margin: 10px 0; font-style: italic; color: #666;">
-                            No recent transaction to correct
+                        <div id="correction-info" class="helper-text">
+                            ยังไม่มีรายการที่โหลดมาแก้
                         </div>
-                        <button class="btn btn-secondary" onclick="loadCorrection()" style="width: 100%;">
-                            🔄 Load Last Transaction for Correction
+                        <button class="transaction-link-action" onclick="loadCorrection()" type="button">
+                            โหลดรายการล่าสุดมาแก้
                         </button>
                     </div>
                 </div>
@@ -140,54 +177,62 @@
 
             <!-- Right Column: Mini Summary and Recent Transactions -->
             <div>
+                <div class="section transaction-side-section transaction-bookings-section">
+                    <div class="section-header transaction-side-header">รายการจองถัดไป</div>
+                    <div class="section-content">
+                        <div id="upcoming-bookings" class="transaction-booking-list">
+                            <div class="helper-text">ยังไม่มีรายการจอง</div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Quick Daily Summary -->
-                <div class="section">
-                    <div class="section-header">TODAY'S QUICK SUMMARY</div>
+                <div class="section transaction-side-section">
+                    <div class="section-header transaction-side-header">สรุปวันนี้</div>
                     <div class="section-content">
                         <div class="summary-grid">
-                            <div class="summary-label">Today's Revenue:</div>
+                            <div class="summary-label">ยอดขายวันนี้</div>
                             <div class="summary-value" id="today-revenue">฿0.00</div>
                         </div>
                         <div class="summary-grid">
-                            <div class="summary-label">Today's Transactions:</div>
+                            <div class="summary-label">จำนวนลูกค้า</div>
                             <div class="summary-value" id="today-count">0</div>
                         </div>
                         <div class="summary-grid">
-                            <div class="summary-label">Today's Expenses:</div>
+                            <div class="summary-label">ค่าใช้จ่าย</div>
                             <div class="summary-value" id="today-expenses">฿0.00</div>
                         </div>
                         
                         <!-- Payment Breakdown -->
-                        <h4 style="margin: 15px 0 10px 0; color: #4a86e8;">Today's Payment Breakdown:</h4>
+                        <h4 class="transaction-mini-heading">แยกตามวิธีจ่ายเงิน</h4>
                         <div id="payment-breakdown-mini"></div>
                     </div>
                 </div>
 
                 <!-- Recent Transactions -->
-                <div class="section">
-                    <div class="section-header">RECENT TRANSACTIONS</div>
+                <div class="section transaction-side-section">
+                    <div class="section-header transaction-side-header">รายการล่าสุด</div>
                     <div class="section-content">
                         <div class="transaction-log" id="recent-transactions">
                             <div class="transaction-item">
-                                <div>Payment</div>
-                                <div>Masseuse</div>
-                                <div>Service</div>
-                                <div>Amount</div>
+                                <div>จ่าย</div>
+                                <div>พนักงาน</div>
+                                <div>บริการ</div>
+                                <div>ยอด</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Daily Expenses -->
-                <div class="section">
-                    <div class="section-header">DAILY EXPENSES</div>
+                <div class="section transaction-side-section">
+                    <div class="section-header transaction-side-header">ค่าใช้จ่ายวันนี้</div>
                     <div class="section-content">
                         <div id="expense-list"></div>
                         <div style="margin-top: 15px;">
-                            <div class="expense-grid">
-                                <input type="text" id="newExpenseDesc" placeholder="Expense description">
-                                <input type="number" id="newExpenseAmount" placeholder="Amount" step="0.01" min="0">
-                                <button class="btn btn-primary" onclick="handleAddExpense()">Add</button>
+                            <div class="expense-grid transaction-expense-grid">
+                                <input type="text" id="newExpenseDesc" placeholder="รายการค่าใช้จ่าย">
+                                <input type="number" id="newExpenseAmount" placeholder="จำนวนเงิน" step="0.01" min="0">
+                                <button class="btn transaction-expense-action" onclick="handleAddExpense()">เพิ่ม</button>
                             </div>
                         </div>
                     </div>
@@ -202,6 +247,12 @@
         console.log('🚀 TRANSACTION.HTML SCRIPT LOADING...');
         
         let correctionMode = false;
+        let transactionMode = 'walk-in';
+        let autoSelectedMasseuse = '';
+        let arrivingBooking = null;
+        let upcomingBookings = [];
+        let currentStartDateTime = null;
+        let currentEndDateTime = null;
 
         // =========================================================================
         // INITIALIZATION LOGIC
@@ -272,8 +323,9 @@
                     // Put form into Edit Mode
                     document.getElementById('correction-banner').textContent = `✏️ EDIT MODE: Modifying Transaction #${transaction.id}`;
                     document.getElementById('correction-banner').style.display = 'block';
-                    document.querySelector('.nav-header').textContent = 'EDIT TRANSACTION';
+                    document.querySelector('.nav-header').innerHTML = '<span class="label-th">แก้รายการลูกค้า</span><span class="label-en helper-text">Edit Customer Transaction</span>';
                     document.getElementById('original-transaction-id').value = transaction.id;
+                    document.getElementById('booking-id').value = transaction.bookingId || '';
 
                     // Populate form fields
                     document.getElementById('masseuse').value = transaction.masseuse;
@@ -319,9 +371,352 @@
         }
 
         function getNextInLineFromStaff() {
-            // Helper function to find next in line from roster data
-            const nextStaff = appData.roster.find(r => r.status === 'Next');
+            const rosterNames = appData.roster
+                .filter(r => r.name)
+                .sort((a, b) => (a.position || 999) - (b.position || 999));
+            const nextStaff = rosterNames.find(r => r.status === 'Next') || rosterNames[0];
             return nextStaff ? nextStaff.name : null;
+        }
+
+        function toBangkokBookingIso(localValue) {
+            return localValue ? `${localValue}:00+07:00` : '';
+        }
+
+        function formatBookingTime(isoValue) {
+            if (!isoValue) return '';
+            return new Date(isoValue).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Bangkok'
+            });
+        }
+
+        function setDefaultBookingStart() {
+            const input = document.getElementById('bookingStart');
+            if (!input || input.value) return;
+            const now = new Date();
+            const bangkokNow = new Date(now.getTime() + ((7 * 60 + now.getTimezoneOffset()) * 60000));
+            bangkokNow.setMinutes(Math.ceil((bangkokNow.getMinutes() + 30) / 15) * 15, 0, 0);
+            input.value = `${bangkokNow.getFullYear()}-${String(bangkokNow.getMonth() + 1).padStart(2, '0')}-${String(bangkokNow.getDate()).padStart(2, '0')}T${String(bangkokNow.getHours()).padStart(2, '0')}:${String(bangkokNow.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function updateBookingEndPreview() {
+            const startValue = document.getElementById('bookingStart').value;
+            const duration = Number(document.getElementById('duration').value);
+            const endTimeSelect = document.getElementById('endTime');
+            endTimeSelect.innerHTML = '<option value="">เลือกเวลาเสร็จ...</option>';
+            if (!startValue || !duration) return;
+            const end = new Date(`${toBangkokBookingIso(startValue)}`);
+            end.setMinutes(end.getMinutes() + duration);
+            const displayEnd = formatBookingTime(end.toISOString());
+            endTimeSelect.innerHTML += `<option value="${displayEnd}" selected>${displayEnd}</option>`;
+        }
+
+        function setTransactionMode(mode, options = {}) {
+            transactionMode = mode;
+            arrivingBooking = mode === 'arrival' ? arrivingBooking : null;
+            const isBooking = mode === 'booking';
+            const isArrival = mode === 'arrival';
+            const payment = document.getElementById('payment');
+            const masseuse = document.getElementById('masseuse');
+
+            document.getElementById('walk-in-mode-button').classList.toggle('is-active', !isBooking);
+            document.getElementById('booking-mode-button').classList.toggle('is-active', isBooking);
+            document.getElementById('booking-mode-note').hidden = !isBooking;
+            document.getElementById('booking-start-field').hidden = !isBooking;
+            document.getElementById('walk-in-start-field').hidden = isBooking;
+            document.getElementById('payment-field').hidden = isBooking;
+            document.getElementById('booking-credit-card').hidden = !(isBooking && masseuse.value);
+            payment.required = !isBooking;
+            masseuse.required = !isBooking;
+
+            if (isBooking) {
+                if (!options.preserveMasseuse) masseuse.value = '';
+                setDefaultBookingStart();
+                updateBookingEndPreview();
+                document.getElementById('transaction-submit-button').textContent = 'บันทึกการจอง';
+            } else {
+                if (!isArrival && !masseuse.value) masseuse.value = autoSelectedMasseuse;
+                document.getElementById('transaction-submit-button').textContent = isArrival
+                    ? 'ยืนยันการจ่ายเงินและรับลูกค้า'
+                    : 'บันทึกลูกค้าใหม่';
+                updateTimeDropdowns();
+            }
+        }
+
+        async function updateUpcomingBookings() {
+            const container = document.getElementById('upcoming-bookings');
+            try {
+                upcomingBookings = await api.getUpcomingBookings();
+                if (!upcomingBookings.length) {
+                    container.innerHTML = '<div class="helper-text">ยังไม่มีรายการจอง</div>';
+                    return;
+                }
+                container.innerHTML = upcomingBookings.map(booking => `
+                    <div class="transaction-booking-row">
+                        <div>
+                            <strong>${formatBookingTime(booking.scheduled_start)} · ${booking.customer_contact || 'ไม่ระบุชื่อ'}</strong>
+                            <span>${booking.service_type} · ${booking.duration} นาที</span>
+                            <span>${booking.requested_masseuse_name || 'จัดพนักงานตามคิว'}</span>
+                        </div>
+                        <button type="button" onclick="loadBookingForArrival('${booking.booking_id}')">ลูกค้ามาถึง</button>
+                    </div>
+                `).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="helper-text transaction-booking-error">โหลดรายการจองไม่ได้</div>';
+            }
+        }
+
+        function loadBookingForArrival(bookingId) {
+            const booking = upcomingBookings.find(item => item.booking_id === bookingId);
+            if (!booking) return;
+            arrivingBooking = booking;
+            document.getElementById('booking-id').value = booking.booking_id;
+            document.getElementById('location').value = booking.location;
+            document.getElementById('location').dispatchEvent(new Event('change'));
+            document.getElementById('customerContact').value = booking.customer_contact || '';
+            document.getElementById('masseuse').value = booking.requested_masseuse_name || autoSelectedMasseuse;
+            setTransactionMode('arrival');
+
+            setTimeout(() => {
+                document.getElementById('service').value = booking.service_type;
+                document.getElementById('service').dispatchEvent(new Event('change'));
+                setTimeout(() => {
+                    document.getElementById('duration').value = String(booking.duration);
+                    document.getElementById('duration').dispatchEvent(new Event('change'));
+                    document.getElementById('startTime').value = formatBookingTime(booking.scheduled_start);
+                    const endTime = formatBookingTime(booking.scheduled_end);
+                    document.getElementById('endTime').innerHTML = `<option value="${endTime}" selected>${endTime}</option>`;
+                    currentStartDateTime = booking.scheduled_start;
+                    currentEndDateTime = booking.scheduled_end;
+                    document.getElementById('booking-credit-card').hidden = !booking.requested_masseuse_name;
+                }, 50);
+            }, 50);
+            document.getElementById('payment').focus();
+        }
+
+        function getServiceDisplayName(serviceName) {
+            const thaiHints = {
+                'Aroma massage': 'อโรม่า',
+                'Back, Neck & shoulder': 'หลัง คอ ไหล่',
+                'Back, neck & shoulder with herbal compress': 'หลัง คอ ไหล่ + ประคบ',
+                'Body Scrub': 'ขัดผิว',
+                'Body Scrub + oil massage': 'ขัดผิว + ออยล์',
+                'Body scrub + Aroma massage': 'ขัดผิว + อโรม่า',
+                'Coconut lovers - coconut oil massage': 'น้ำมันมะพร้าว',
+                'Foot + Aroma Massage': 'เท้า + อโรม่า',
+                'Foot + Thai Massage': 'เท้า + ไทย',
+                'Foot + back, neck & shoulder': 'เท้า + หลังคอไหล่',
+                'Foot + oil Massage': 'เท้า + ออยล์',
+                'Foot massage': 'นวดเท้า',
+                'Foot massage with herbal compress': 'นวดเท้า + ประคบ',
+                'Foot spa': 'สปาเท้า',
+                'Foot spa with foot massage': 'สปาเท้า + นวดเท้า',
+                'Oil massage': 'ออยล์',
+                'Thai Massage': 'นวดไทย',
+                'Thai massage with Herbal compress': 'นวดไทย + ประคบ'
+            };
+            const hint = thaiHints[serviceName];
+            return hint ? `${serviceName} (${hint})` : serviceName;
+        }
+
+        function getServiceThaiHint(serviceName) {
+            const displayName = getServiceDisplayName(serviceName);
+            const match = displayName.match(/\(([^)]+)\)$/);
+            return match ? match[1] : serviceName;
+        }
+
+        const serviceCategoryDefinitions = [
+            { key: 'thai', label: 'นวดไทย', sublabel: 'Thai', match: name => name.includes('thai') },
+            { key: 'foot', label: 'นวดเท้า', sublabel: 'Foot', match: name => name.includes('foot') },
+            { key: 'oil', label: 'ออยล์', sublabel: 'Oil', match: name => name.includes('oil') },
+            { key: 'shoulder', label: 'หลัง คอ ไหล่', sublabel: 'Shoulder', match: name => name.includes('back') || name.includes('shoulder') || name.includes('neck') },
+            { key: 'aroma', label: 'อโรม่า', sublabel: 'Aroma', match: name => name.includes('aroma') },
+            { key: 'coconut', label: 'มะพร้าว', sublabel: 'Coconut', match: name => name.includes('coconut') },
+            { key: 'scrub', label: 'ขัดผิว', sublabel: 'Scrub', match: name => name.includes('scrub') },
+            { key: 'combo', label: 'คอมโบ', sublabel: 'Combo', match: () => true }
+        ];
+
+        function isComboService(serviceName) {
+            const normalized = serviceName.toLowerCase();
+            return normalized.includes('+') || normalized.includes(' with ');
+        }
+
+        function getServiceCategory(serviceName) {
+            const normalized = serviceName.toLowerCase();
+            if (isComboService(serviceName)) {
+                return 'combo';
+            }
+            const category = serviceCategoryDefinitions.find(definition => definition.key !== 'combo' && definition.match(normalized));
+            return category ? category.key : 'combo';
+        }
+
+        function sortComboServices(serviceNames) {
+            const priority = ['Foot + back, neck & shoulder'];
+            return [...serviceNames].sort((a, b) => {
+                const aPriority = priority.indexOf(a);
+                const bPriority = priority.indexOf(b);
+                if (aPriority === -1 && bPriority === -1) return 0;
+                if (aPriority === -1) return 1;
+                if (bPriority === -1) return -1;
+                return aPriority - bPriority;
+            });
+        }
+
+        function getAvailableServiceNames() {
+            const serviceSelect = document.getElementById('service');
+            if (!serviceSelect) return [];
+            return Array.from(serviceSelect.options)
+                .map(option => option.value)
+                .filter(Boolean);
+        }
+
+        function setActiveChoice(container, attributeName, activeValue) {
+            if (!container) return;
+            container.querySelectorAll('.transaction-choice-button').forEach(button => {
+                const isActive = button.getAttribute(attributeName) === String(activeValue);
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            });
+        }
+
+        function selectServiceValue(serviceName) {
+            const serviceSelect = document.getElementById('service');
+            if (!serviceSelect || !serviceName) return;
+            serviceSelect.value = serviceName;
+            serviceSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            updateServiceButtonState();
+        }
+
+        function selectDurationValue(duration) {
+            const durationSelect = document.getElementById('duration');
+            if (!durationSelect || !duration) return;
+            durationSelect.value = duration;
+            durationSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            updateDurationButtonState();
+        }
+
+        function renderButton(container, className, attributes, primaryLabel, secondaryLabel, onClick) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = className;
+            Object.entries(attributes).forEach(([key, value]) => {
+                button.setAttribute(key, value);
+            });
+            button.setAttribute('aria-pressed', 'false');
+            const primary = document.createElement('span');
+            primary.textContent = primaryLabel;
+            const secondary = document.createElement('small');
+            secondary.textContent = secondaryLabel;
+            button.append(primary, secondary);
+            button.addEventListener('click', onClick);
+            container.appendChild(button);
+        }
+
+        function renderServiceButtons() {
+            const categoryContainer = document.getElementById('service-category-buttons');
+            const comboPanel = document.getElementById('combo-service-panel');
+            const comboContainer = document.getElementById('combo-service-buttons');
+            const durationPanel = document.getElementById('duration-button-panel');
+            if (!categoryContainer || !comboPanel || !comboContainer) return;
+
+            const serviceNames = getAvailableServiceNames();
+            categoryContainer.innerHTML = '';
+            comboContainer.innerHTML = '';
+            if (durationPanel && !document.getElementById('duration').value) {
+                durationPanel.innerHTML = '<div class="transaction-button-empty">เลือกบริการก่อน</div>';
+            }
+
+            const servicesByCategory = serviceNames.reduce((groups, serviceName) => {
+                const category = getServiceCategory(serviceName);
+                if (!groups[category]) groups[category] = [];
+                groups[category].push(serviceName);
+                return groups;
+            }, {});
+
+            serviceCategoryDefinitions.forEach(definition => {
+                if (!servicesByCategory[definition.key]?.length) return;
+                renderButton(
+                    categoryContainer,
+                    'transaction-choice-button transaction-category-button',
+                    { 'data-service-category': definition.key },
+                    definition.label,
+                    definition.sublabel,
+                    () => {
+                        if (definition.key === 'combo') {
+                            comboPanel.hidden = false;
+                            setActiveChoice(categoryContainer, 'data-service-category', definition.key);
+                            renderDurationButtons();
+                            return;
+                        }
+                        comboPanel.hidden = true;
+                        selectServiceValue(servicesByCategory[definition.key][0]);
+                    }
+                );
+            });
+
+            sortComboServices(servicesByCategory.combo || []).forEach(serviceName => {
+                renderButton(
+                    comboContainer,
+                    'transaction-choice-button transaction-combo-button',
+                    { 'data-service-value': serviceName },
+                    getServiceThaiHint(serviceName),
+                    serviceName,
+                    () => selectServiceValue(serviceName)
+                );
+            });
+
+            updateServiceButtonState();
+        }
+
+        function updateServiceButtonState() {
+            const serviceSelect = document.getElementById('service');
+            const categoryContainer = document.getElementById('service-category-buttons');
+            const comboPanel = document.getElementById('combo-service-panel');
+            const comboContainer = document.getElementById('combo-service-buttons');
+            if (!serviceSelect || !categoryContainer || !comboPanel || !comboContainer) return;
+
+            const selectedService = serviceSelect.value;
+            const selectedCategory = selectedService ? getServiceCategory(selectedService) : '';
+            setActiveChoice(categoryContainer, 'data-service-category', selectedCategory);
+            setActiveChoice(comboContainer, 'data-service-value', selectedService);
+            comboPanel.hidden = selectedCategory !== 'combo';
+        }
+
+        function renderDurationButtons() {
+            const durationPanel = document.getElementById('duration-button-panel');
+            const durationSelect = document.getElementById('duration');
+            if (!durationPanel || !durationSelect) return;
+
+            const durationOptions = Array.from(durationSelect.options)
+                .map(option => option.value)
+                .filter(Boolean);
+            durationPanel.innerHTML = '';
+
+            if (!durationOptions.length) {
+                durationPanel.innerHTML = '<div class="transaction-button-empty">เลือกบริการก่อน</div>';
+                return;
+            }
+
+            durationOptions.forEach(duration => {
+                renderButton(
+                    durationPanel,
+                    'transaction-choice-button transaction-duration-button',
+                    { 'data-duration-value': duration },
+                    `${duration} นาที`,
+                    'เวลา',
+                    () => selectDurationValue(duration)
+                );
+            });
+            updateDurationButtonState();
+        }
+
+        function updateDurationButtonState() {
+            const durationPanel = document.getElementById('duration-button-panel');
+            const durationSelect = document.getElementById('duration');
+            if (!durationPanel || !durationSelect) return;
+            setActiveChoice(durationPanel, 'data-duration-value', durationSelect.value);
         }
 
         function updateServiceOptions() {
@@ -335,17 +730,19 @@
                 return;
             }
             
-            serviceSelect.innerHTML = '<option value="">Select Service</option>';
-            durationSelect.innerHTML = '<option value="">Select Duration</option>';
+            serviceSelect.innerHTML = '<option value="">เลือกบริการ...</option>';
+            durationSelect.innerHTML = '<option value="">เลือกระยะเวลา...</option>';
             
             if (location) {
                 // Find unique service names for this location
                 const locationServices = CONFIG.settings.services.filter(s => s.location === location);
                 const uniqueServices = [...new Set(locationServices.map(s => s.name))];
                 uniqueServices.forEach(serviceName => {
-                    serviceSelect.innerHTML += `<option value="${serviceName}">${serviceName}</option>`;
+                    serviceSelect.innerHTML += `<option value="${serviceName}">${getServiceDisplayName(serviceName)}</option>`;
                 });
             }
+            renderServiceButtons();
+            renderDurationButtons();
         }
 
         function updateDurationOptions() {
@@ -359,7 +756,7 @@
                 return;
             }
             
-            durationSelect.innerHTML = '<option value="">Select Duration</option>';
+            durationSelect.innerHTML = '<option value="">เลือกระยะเวลา...</option>';
             
             if (location && serviceName) {
                 // Find all durations for this service type and location
@@ -367,9 +764,10 @@
                     s.name === serviceName && s.location === location
                 );
                 serviceOptions.forEach(service => {
-                    durationSelect.innerHTML += `<option value="${service.duration}">${service.duration} minutes</option>`;
+                    durationSelect.innerHTML += `<option value="${service.duration}">${service.duration} นาที</option>`;
                 });
             }
+            renderDurationButtons();
         }
 
         function updatePricing() {
@@ -406,6 +804,10 @@
 
         function updateTimeDropdowns() {
             console.log('🔍 STEP 1: updateTimeDropdowns() CALLED');
+            if (transactionMode === 'booking') {
+                updateBookingEndPreview();
+                return;
+            }
             
             // Get Bangkok time (UTC+7) instead of device time
             console.log('🔍 STEP 2: Getting current time');
@@ -432,6 +834,8 @@
             // Start time = Bangkok time + preparation delay
             console.log('🔍 STEP 4: Calculating start time');
             const startTime = new Date(bangkokTime.getTime() + preparationMinutes * 60000);
+            currentStartDateTime = new Date(now.getTime() + preparationMinutes * 60000).toISOString();
+            currentEndDateTime = null;
             console.log('🔍 STEP 4a: Start time (Date object):', startTime);
             const formattedStartTime = formatTime(startTime);
             console.log('🔍 STEP 4b: Formatted start time:', formattedStartTime);
@@ -455,7 +859,7 @@
             }
             
             console.log('🔍 STEP 7: Clearing end time options');
-            endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+            endTimeSelect.innerHTML = '<option value="">เลือกเวลาเสร็จ...</option>';
             console.log('🔍 STEP 7a: End time options cleared, current innerHTML length:', endTimeSelect.innerHTML.length);
 
             // Get the selected duration value to calculate end time
@@ -482,13 +886,14 @@
                 if (!isNaN(durationMinutes)) {
                     console.log('🔍 STEP 10: Duration is valid, calculating end time');
                     const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+                    currentEndDateTime = new Date(Date.parse(currentStartDateTime) + durationMinutes * 60000).toISOString();
                     console.log('🔍 STEP 10a: End time (Date object):', endTime);
                     const formattedEndTime = formatTime(endTime);
                     console.log('🔍 STEP 10b: Formatted end time:', formattedEndTime);
                     
                     console.log('🔍 STEP 11: Adding end time option to dropdown');
                     // Clear existing options and add the calculated end time
-                    endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+                    endTimeSelect.innerHTML = '<option value="">เลือกเวลาเสร็จ...</option>';
                     console.log('🔍 STEP 11a: Cleared options, innerHTML length:', endTimeSelect.innerHTML.length);
                     endTimeSelect.innerHTML += `<option value="${formattedEndTime}">${formattedEndTime}</option>`;
                     console.log('🔍 STEP 11b: Added end time option, innerHTML length:', endTimeSelect.innerHTML.length);
@@ -517,7 +922,7 @@
             } else {
                 console.log('🔍 STEP 9: No duration selected, showing all options');
                 // If no duration selected, show all possible end times
-                endTimeSelect.innerHTML = '<option value="">Select End Time</option>';
+                endTimeSelect.innerHTML = '<option value="">เลือกเวลาเสร็จ...</option>';
                 const durations = [30, 60, 90, 120];
                 durations.forEach(duration => {
                     const endTime = new Date(startTime.getTime() + duration * 60000);
@@ -532,74 +937,87 @@
 
         async function handleSubmit(event) {
             event.preventDefault();
-            
-            console.log('🔄 STEP 11: handleSubmit() called - starting transaction submission...');
-            
             const selectedMasseuse = document.getElementById('masseuse').value;
-            const isUsingNextInLine = selectedMasseuse.includes('(NEXT IN LINE)');
-            
-            if (!selectedMasseuse || selectedMasseuse === 'Select Masseuse') {
-                showToast('Please select a masseuse', 'error');
-                return;
-            }
-            
             const location = document.getElementById('location').value;
             const serviceName = document.getElementById('service').value;
             const duration = document.getElementById('duration').value;
-            
-            if (!location || location === 'Select Location') {
-                showToast('Please select a location', 'error');
+
+            if (!location || !serviceName || !duration) {
+                showToast('กรุณาเลือกสถานที่ บริการ และเวลา', 'error');
                 return;
             }
-            
-            if (!serviceName || serviceName === 'Select Service') {
-                showToast('Please select a service', 'error');
+
+            if (transactionMode === 'booking') {
+                const scheduledStart = toBangkokBookingIso(document.getElementById('bookingStart').value);
+                if (!scheduledStart) {
+                    showToast('กรุณาเลือกเวลาที่จอง', 'error');
+                    return;
+                }
+                try {
+                    await api.createBooking({
+                        scheduled_start: scheduledStart,
+                        service_type: serviceName,
+                        location,
+                        duration: Number(duration),
+                        requested_masseuse_name: selectedMasseuse || null,
+                        customer_contact: document.getElementById('customerContact').value
+                    });
+                    clearForm();
+                    await updateUpcomingBookings();
+                    showToast(selectedMasseuse ? 'บันทึกการจองพร้อมค่าจองพนักงาน ฿50 แล้ว' : 'บันทึกการจองแบบจัดพนักงานตามคิวแล้ว');
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
                 return;
             }
-            
-            if (!duration || duration === 'Select Duration') {
-                showToast('Please select a duration', 'error');
+
+            if (!selectedMasseuse) {
+                showToast('กรุณาเลือกพนักงาน', 'error');
                 return;
             }
-            
+
+            const payment = document.getElementById('payment').value;
+            if (!payment) {
+                showToast('กรุณาเลือกวิธีจ่ายเงิน', 'error');
+                return;
+            }
+
             const price = parseFloat(document.getElementById('servicePrice').textContent.replace('฿', ''));
             const masseuseFee = parseFloat(document.getElementById('masseuseeFee').textContent.replace('฿', ''));
-            
             if (isNaN(price) || price <= 0) {
-                showToast('Invalid price. Please select a service and duration.', 'error');
+                showToast('ราคาไม่ถูกต้อง กรุณาเลือกบริการและเวลาใหม่', 'error');
                 return;
             }
-            
+
+            const isUsingNextInLine = selectedMasseuse === autoSelectedMasseuse
+                && !(arrivingBooking && arrivingBooking.requested_masseuse_name);
             const formData = {
                 masseuse: selectedMasseuse,
-                location: location,
-                service: serviceName, // Send exact service_name, not constructed string
-                duration: duration,
-                price: price,
-                masseuseFee: masseuseFee,
-                payment: document.getElementById('payment').value,
+                location,
+                service: serviceName,
+                duration,
+                price,
+                masseuseFee,
+                payment,
                 startTime: document.getElementById('startTime').value,
                 endTime: document.getElementById('endTime').value,
                 customerContact: document.getElementById('customerContact').value,
-                original_transaction_id: document.getElementById('original-transaction-id').value || null
+                original_transaction_id: document.getElementById('original-transaction-id').value || null,
+                bookingId: document.getElementById('booking-id').value || null,
+                startDateTime: currentStartDateTime,
+                endDateTime: currentEndDateTime
             };
 
             const success = await submitTransaction(formData);
             if (success) {
-                // CRITICAL FIX: Only refresh the data AFTER the submission is confirmed successful.
                 await loadTodayData();
-
-                // If using next in line, advance the queue
                 if (isUsingNextInLine) {
                     await advanceQueue(selectedMasseuse);
                 }
-                
-                // Mark masseuse as busy until end time
                 await setMasseuseBusy(selectedMasseuse, formData.endTime);
-                
                 clearForm();
-                await updateAllDisplays(); // This will now use the fresh data
-                showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
+                await updateAllDisplays();
+                showToast(`รับลูกค้าแล้ว ${selectedMasseuse} ไม่ว่างถึง ${formData.endTime}`);
             }
         }
 
@@ -625,8 +1043,14 @@
 
         function clearForm() {
             document.getElementById('transaction-form').reset();
+            document.getElementById('booking-id').value = '';
             document.getElementById('servicePrice').textContent = '฿0.00';
             document.getElementById('masseuseeFee').textContent = '฿0.00';
+            document.getElementById('location').value = 'In-Shop';
+            document.getElementById('masseuse').value = autoSelectedMasseuse;
+            arrivingBooking = null;
+            setTransactionMode('walk-in');
+            updateServiceOptions();
             exitCorrectionMode();
         }
 
@@ -650,120 +1074,21 @@
             correctionMode = true;
             document.getElementById('correction-banner').style.display = 'block';
             document.getElementById('transaction-form').classList.add('correction-mode');
-            document.getElementById('correction-info').textContent = `Correcting transaction: ${appData.originalTransactionId}`;
+            document.getElementById('correction-info').textContent = `กำลังแก้รายการ: ${appData.originalTransactionId}`;
         }
 
         function exitCorrectionMode() {
             correctionMode = false;
             document.getElementById('correction-banner').style.display = 'none';
             document.getElementById('transaction-form').classList.remove('correction-mode');
-            document.getElementById('correction-info').textContent = 'No recent transaction to correct';
-        }
-
-        async function updateAllDisplays() {
-            
-            const location = document.getElementById('location').value;
-            const serviceName = document.getElementById('service').value;
-            const duration = document.getElementById('duration').value;
-            
-            console.log('🔍 FORM VALUES:', {
-                masseuse: selectedMasseuse,
-                location: location,
-                service: serviceName,
-                duration: duration,
-                payment: document.getElementById('payment').value,
-                startTime: document.getElementById('startTime').value,
-                endTime: document.getElementById('endTime').value,
-                customerContact: document.getElementById('customerContact').value
-            });
-            
-            const formData = {
-                masseuse: selectedMasseuse,
-                service: serviceName, // Send exact service_name, not constructed string
-                payment: document.getElementById('payment').value,
-                startTime: document.getElementById('startTime').value,
-                endTime: document.getElementById('endTime').value,
-                customerContact: document.getElementById('customerContact').value
-            };
-
-            console.log('🔍 SUBMITTING FORM DATA:', formData);
-            const success = await submitTransaction(formData);
-            if (success) {
-                // If using next in line, advance the queue
-                if (isUsingNextInLine) {
-                    await advanceQueue(selectedMasseuse);
-                }
-                
-                // Mark masseuse as busy until end time
-                await setMasseuseBusy(selectedMasseuse, formData.endTime);
-                
-                clearForm();
-                await updateAllDisplays();
-                showToast(`Transaction submitted! ${selectedMasseuse} is now busy until ${formData.endTime}`);
-            }
-        }
-
-        async function advanceQueue(currentMasseuse) {
-            try {
-                // Advance to next person in line
-                await api.advanceQueue(currentMasseuse);
-                console.log(`🔄 Queue advanced from ${currentMasseuse}`);
-            } catch (error) {
-                console.error('Error advancing queue:', error);
-            }
-        }
-        
-        async function setMasseuseBusy(masseuseName, endTime) {
-            try {
-                // Set masseuse as busy until end time
-                await api.setMasseuseBusy(masseuseName, endTime);
-                console.log(`🔒 ${masseuseName} marked as busy until ${endTime}`);
-            } catch (error) {
-                console.error('Error setting masseuse busy:', error);
-            }
-        }
-
-        function clearForm() {
-            document.getElementById('transaction-form').reset();
-            document.getElementById('servicePrice').textContent = '฿0.00';
-            document.getElementById('masseuseeFee').textContent = '฿0.00';
-            exitCorrectionMode();
-        }
-
-        async function loadCorrection() {
-            const transaction = loadTransactionForCorrection();
-            if (transaction) {
-                document.getElementById('masseuse').value = transaction.masseuse;
-                document.getElementById('service').value = transaction.service;
-                document.getElementById('payment').value = transaction.paymentMethod;
-                document.getElementById('startTime').value = transaction.startTime;
-                document.getElementById('endTime').value = transaction.endTime;
-                document.getElementById('customerContact').value = transaction.customerContact;
-                
-                updatePricing();
-                enterCorrectionMode();
-                await updateAllDisplays();
-            }
-        }
-
-        function enterCorrectionMode() {
-            correctionMode = true;
-            document.getElementById('correction-banner').style.display = 'block';
-            document.getElementById('transaction-form').classList.add('correction-mode');
-            document.getElementById('correction-info').textContent = `Correcting transaction: ${appData.originalTransactionId}`;
-        }
-
-        function exitCorrectionMode() {
-            correctionMode = false;
-            document.getElementById('correction-banner').style.display = 'none';
-            document.getElementById('transaction-form').classList.remove('correction-mode');
-            document.getElementById('correction-info').textContent = 'No recent transaction to correct';
+            document.getElementById('correction-info').textContent = 'ยังไม่มีรายการที่โหลดมาแก้';
         }
 
         async function updateAllDisplays() {
             await updateQuickSummary();
             updateRecentTransactions();
             updateExpenseDisplay();
+            await updateUpcomingBookings();
         }
 
         async function updateQuickSummary() {
@@ -827,10 +1152,10 @@
             // Preserve the header before clearing
             const headerHTML = `
                 <div class="transaction-item">
-                    <div>Payment</div>
-                    <div>Masseuse</div>
-                    <div>Service</div>
-                    <div>Amount</div>
+                    <div>จ่าย</div>
+                    <div>พนักงาน</div>
+                    <div>บริการ</div>
+                    <div>ยอด</div>
                 </div>
             `;
             
@@ -842,7 +1167,7 @@
                 console.log('🔄 STEP 12: No recent transactions, showing empty state...');
                 const div = document.createElement('div');
                 div.className = 'empty-state';
-                div.innerHTML = '<div>No transactions yet today</div>';
+                div.innerHTML = '<div>ยังไม่มีรายการวันนี้</div>';
                 container.appendChild(div);
                 console.log('🔄 STEP 12: Empty state added to container');
                 return;
@@ -880,7 +1205,7 @@
             const expenseList = document.getElementById('expense-list');
             
             if (appData.expenses.length === 0) {
-                expenseList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No expenses recorded today</div>';
+                expenseList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">ยังไม่มีค่าใช้จ่ายวันนี้</div>';
                 return;
             }
 
@@ -888,7 +1213,7 @@
                 <div class="expense-grid">
                     <div>${expense.description}</div>
                     <div>฿${expense.amount.toFixed(2)}</div>
-                    <div><button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="handleRemoveExpense(${index})">Remove</button></div>
+                    <div><button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="handleRemoveExpense(${index})">ลบ</button></div>
                     <div class="expense-time">${formatTime(expense.timestamp)}</div>
                 </div>
             `).join('');
@@ -945,19 +1270,24 @@
                 console.log('🔍 STEP 1a: Masseuse select element found:', !!masseuseSelect);
                 
                 console.log('🔍 STEP 2: Setting masseuse innerHTML...');
-                masseuseSelect.innerHTML = '<option value="">Select Masseuse</option>';
+                masseuseSelect.innerHTML = '<option value="">เลือกพนักงาน...</option>';
                 console.log('🔍 STEP 2a: Masseuse innerHTML set successfully');
                 
                 console.log('🔍 STEP 3: Finding next in line masseuse...');
                 // Find next in line masseuse for auto-selection
-                const nextInLine = appData.roster.find(r => r.status === 'Next' || r.name === getNextInLineFromStaff());
-                let nextInLineName = nextInLine ? nextInLine.name : null;
+                const nextInLineName = getNextInLineFromStaff();
+                autoSelectedMasseuse = nextInLineName || '';
                 console.log('🔍 STEP 3a: Next in line found:', nextInLineName);
                 
                 console.log('🔍 STEP 4: Adding masseuse options...');
-                CONFIG.settings.masseuses.forEach(name => {
+                const orderedMasseuses = appData.roster
+                    .filter(r => r.name)
+                    .sort((a, b) => (a.position || 999) - (b.position || 999))
+                    .map(r => r.name);
+                const masseuseNames = orderedMasseuses.length ? orderedMasseuses : CONFIG.settings.masseuses;
+                masseuseNames.forEach(name => {
                     const isSelected = name === nextInLineName ? 'selected' : '';
-                    masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (NEXT IN LINE)' : ''}</option>`;
+                    masseuseSelect.innerHTML += `<option value="${name}" ${isSelected}>${name}${name === nextInLineName ? ' (คิวถัดไป)' : ''}</option>`;
                 });
                 console.log('🔍 STEP 4a: Masseuse options added successfully');
 
@@ -968,7 +1298,7 @@
                 
                 console.log('🔍 STEP 5a: Service select element found:', !!serviceSelect);
                 if (serviceSelect) {
-                    serviceSelect.innerHTML = '<option value="">Select Service</option>';
+                    serviceSelect.innerHTML = '<option value="">เลือกบริการ...</option>';
                     console.log('✅ Service dropdown initialized');
                 } else {
                     console.log('❌ Service dropdown element not found');
@@ -976,7 +1306,7 @@
                 
                 console.log('🔍 STEP 5b: Duration select element found:', !!durationSelect);
                 if (durationSelect) {
-                    durationSelect.innerHTML = '<option value="">Select Duration</option>';
+                    durationSelect.innerHTML = '<option value="">เลือกระยะเวลา...</option>';
                     console.log('✅ Duration dropdown initialized');
                 } else {
                     console.log('❌ Duration dropdown element not found');
@@ -987,7 +1317,7 @@
                 console.log('🔍 STEP 6a: Payment select element found:', !!paymentSelect);
                 
                 if (paymentSelect) {
-                    paymentSelect.innerHTML = '<option value="">Select Payment Method</option>';
+                    paymentSelect.innerHTML = '<option value="">เลือกวิธีจ่ายเงิน...</option>';
                     console.log('🔍 STEP 6b: Payment options cleared, adding methods...');
                     CONFIG.settings.paymentMethods.forEach(method => {
                         paymentSelect.innerHTML += `<option value="${method}">${method}</option>`;
@@ -1126,8 +1456,26 @@
                 } else {
                     console.log('❌ Payment element not found');
                 }
+
+                masseuseSelect.addEventListener('change', function() {
+                    if (transactionMode === 'walk-in' && this.value && this.value !== autoSelectedMasseuse) {
+                        setTransactionMode('booking', { preserveMasseuse: true });
+                        showToast('เลือกพนักงานนอกคิว จึงเปลี่ยนเป็นรายการจอง');
+                    }
+                    document.getElementById('booking-credit-card').hidden = transactionMode !== 'booking' || !this.value;
+                });
+
+                document.getElementById('bookingStart').addEventListener('change', updateBookingEndPreview);
                 
                 console.log('🔍 ALL EVENT LISTENERS PROCESSED - FUNCTION COMPLETING...');
+                if (locationSelect && !locationSelect.value) {
+                    locationSelect.value = 'In-Shop';
+                }
+                if (locationSelect && locationSelect.value) {
+                    updateServiceOptions();
+                    updatePricing();
+                    updateTimeDropdowns();
+                }
             } catch (error) {
                 console.error('❌ ERROR in populateDropdowns:', error);
             }
@@ -1137,8 +1485,8 @@
     <!-- Logout Button at Bottom -->
     <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
                     <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">
-                <span class="label-en">👋 Logout</span>
                 <span class="label-th">👋 ออกจากระบบ</span>
+                <span class="label-en">👋 Logout</span>
             </button>
     </div>
 </body>

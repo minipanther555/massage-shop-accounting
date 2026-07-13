@@ -59,3 +59,23 @@
     *   **Status**: ⚪ `pending`
     *   **Priority**: Medium
     *   **Required**: Address remaining non-critical linting errors in core application files and prepare the system for production deployment.
+
+8.  **[UX] Staff Roster Daily Workflow Rework.**
+    *   **Status**: ✅ `completed`
+    *   **Priority**: High
+    *   **Required**: Make the first daily workflow dead simple for Thai staff: select an existing staff member, add them to today's list, reorder staff, remove mistakes, and add a new hire only when the name is missing.
+    *   **Dependencies**: Existing staff roster APIs (`GET /api/staff/roster`, `PUT /api/staff/roster/:position`, `DELETE /api/staff/roster`, `POST /api/admin/staff`) and the current `staff-page-controller.js` render/event contract.
+    *   **Expected Output/Deliverable**: Staff roster page with compact navigation, dominant Thai dropdown/add button, secondary Add New Staff action, Thai row controls, larger names/counts, no current-page self-link, and browser verification at the active 599px viewport.
+    *   **Technical Considerations**: Keep `staff.html` and `staff.ejs` mirrored because both static and rendered variants exist. Preserve DOM IDs consumed by `staff-page-controller.js`. Use page-scoped `.staff-*` CSS to avoid changing legacy styling on unrelated pages.
+    *   **Potential Challenges and Mitigations**: The shared bilingual nav tests originally treated all `.btn` elements as nav buttons; mitigated by narrowing skips for staff workflow controls while preserving nav coverage. The controller re-rendered the dropdown placeholder; mitigated by updating `renderDropdown()` to Thai.
+    *   **Verification**: `node --check web-app/controllers/staff-page-controller.js`, `git diff --check`, focused Jest nav/staff tests, and in-app browser reload at `http://localhost:3000/api/main/staff-roster`.
+
+9.  **[UX] New Customer / Transaction Page Rework.**
+    *   **Status**: ✅ `completed`
+    *   **Priority**: High
+    *   **Required**: Apply the same user-centered UI cleanup to the new transaction page, now labeled as New Customer for staff. Simplify the first screen, prioritize Thai labels and obvious task flow, and reduce English prominence.
+    *   **Dependencies**: `web-app/transaction.html`, `web-app/transaction.ejs`, `web-app/transaction.html.md`, `web-app/shared.js`, service/payment/staff dropdown loading, and existing transaction submission/edit correction logic.
+    *   **Expected Output/Deliverable**: A Thai-first customer intake page where selecting staff, service, duration, payment, and submitting the transaction are visually obvious and mobile/iPad-friendly. The page now auto-selects the next Today Staff queue member and replaces the visible long service/duration dropdown path with large category, combo, and duration buttons.
+    *   **Technical Considerations**: Do not break cascading service/location/duration logic or `checkForEdit()` correction mode. Preserve backend payload fields expected by `submitTransaction()` and `api.createTransaction()`. Keep `#service` and `#duration` as hidden native select contract controls while the button layer writes exact legacy values into them.
+    *   **Potential Challenges and Mitigations**: The transaction page contains a large inline script; changes should be staged with browser checks after each UI/logic move. Use the staff roster page as the pattern for Thai-only primary controls plus small English helper text. The service button MVP groups actual location-filtered menu names at runtime so Thai, Foot, Oil, Shoulder/Back, Aroma, Coconut, Scrub, and Combo appear only when backed by real services. Manager feedback later prioritized Thai/Foot/Oil/Shoulder first and made Combo Thai-first with the common `Foot + back, neck & shoulder` choice first.
+    *   **Verification**: Inline transaction scripts parse successfully in both static and EJS templates. `git diff --check` passed. Focused structural FSM guards passed for staff auto-select and service/duration button surfaces. In-app browser verification at `http://127.0.0.1:3000/api/main/transaction` confirmed `May เมย์ (คิวถัดไป)` auto-selection from Today Staff, default `In-Shop` location, generated service category buttons from the actual service list, hidden select contract preservation, Aroma → 60 minute button flow updating price/fee, and Combo → `Foot + Thai Massage` flow rendering only valid combo durations. Follow-up static verification confirmed category reorder, Combo priority sorting, and Thai-first Combo labels; the final browser re-check for the last Combo-label tweak hit an in-app browser attach timeout, so that specific visual confirmation remains static/code-verified rather than browser-verified.

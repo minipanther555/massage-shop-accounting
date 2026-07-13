@@ -15,6 +15,24 @@
     line-height: 1.15; 
 }
 
+.nav-btn .label-en:first-child,
+.nav-btn .label-th:first-child,
+.btn .label-en:first-child,
+.btn .label-th:first-child {
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 0;
+}
+
+.nav-btn .label-en:last-child,
+.nav-btn .label-th:last-child,
+.btn .label-en:last-child,
+.btn .label-th:last-child {
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
 /* Buttons comfortable for two lines */
 .nav-btn { 
     min-height: 80px; /* was 60px; grid auto-fit absorbs this */
@@ -936,4 +954,1430 @@ body {
 .btn.remove:hover {
     background: #c82333;
     border-color: #bd2130;
+}
+
+/* Staff roster daily workflow redesign */
+.staff-page-title {
+    background: #263238;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    text-align: left;
+}
+
+.staff-page-title .label-th {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.helper-text {
+    color: #667085;
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.35;
+    margin-top: 4px;
+}
+
+.staff-page-title .helper-text,
+.staff-list-header .helper-text {
+    color: rgba(255,255,255,0.78);
+}
+
+.staff-page-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.staff-page-nav .staff-nav-link {
+    background: #ffffff !important;
+    border: 1px solid #d0d5dd;
+    box-shadow: none;
+    color: #344054 !important;
+    flex: 0 1 auto;
+    min-height: 50px;
+    min-width: 128px;
+    padding: 8px 12px;
+}
+
+.staff-page-nav .staff-nav-link .label-th:first-child {
+    font-size: 16px;
+}
+
+.staff-page-nav .staff-nav-link .label-en:last-child {
+    color: #667085;
+    font-size: 12px;
+}
+
+.staff-roster-workflow,
+.staff-list-section {
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(16,24,40,0.08);
+}
+
+.staff-roster-workflow {
+    border-top: 5px solid #12b76a;
+}
+
+.staff-roster-step {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.staff-roster-step h2 {
+    color: #101828;
+    font-size: 24px;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.step-badge {
+    align-items: center;
+    background: #12b76a;
+    border-radius: 999px;
+    color: white;
+    display: inline-flex;
+    flex: 0 0 38px;
+    font-size: 20px;
+    font-weight: 800;
+    height: 38px;
+    justify-content: center;
+}
+
+.staff-add-panel {
+    align-items: end;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(240px, 1fr) minmax(190px, 0.35fr);
+}
+
+.staff-select-label {
+    color: #344054;
+    display: block;
+    font-size: 18px;
+    font-weight: 800;
+    grid-column: 1 / -1;
+}
+
+.staff-select-primary {
+    appearance: auto;
+    background: #ffffff;
+    border: 2px solid #12b76a;
+    border-radius: 8px;
+    color: #101828;
+    font-size: 22px;
+    font-weight: 700;
+    min-height: 62px;
+    padding: 12px 16px;
+    width: 100%;
+}
+
+.staff-primary-action {
+    background: #12b76a !important;
+    border-radius: 8px;
+    color: #ffffff !important;
+    font-size: 22px;
+    font-weight: 800;
+    min-height: 62px;
+    width: 100%;
+}
+
+.staff-primary-action:hover {
+    background: #039855 !important;
+    color: #ffffff !important;
+}
+
+.staff-secondary-actions {
+    align-items: center;
+    border-top: 1px solid #eaecf0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 12px;
+}
+
+.staff-link-action {
+    background: transparent;
+    border: 0;
+    color: #475467;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 8px 0;
+}
+
+.staff-clear-action {
+    background: #fff5f5;
+    border: 1px solid #fda29b;
+    border-radius: 6px;
+    color: #b42318;
+    cursor: pointer;
+    font-weight: 800;
+    margin-left: auto;
+    padding: 9px 12px;
+    text-align: left;
+}
+
+.staff-clear-action .label-th {
+    display: block;
+    font-size: 16px;
+    line-height: 1.15;
+}
+
+.staff-clear-action .label-en {
+    color: #912018;
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-top: 2px;
+}
+
+.staff-confirm-modal {
+    max-width: 460px;
+}
+
+.staff-confirm-body {
+    color: #344054;
+    padding: 16px 0 6px;
+}
+
+.staff-confirm-primary {
+    color: #101828;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.35;
+    margin: 0 0 8px;
+}
+
+.staff-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-top: 12px;
+}
+
+.staff-list-header {
+    background: #344054;
+    color: white;
+    display: block;
+    padding: 14px 18px;
+}
+
+.staff-list-header .label-th {
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.staff-list-section .section-content {
+    padding: 12px 18px 18px;
+}
+
+.staff-list-section .roster-grid {
+    gap: 10px;
+    grid-template-columns: 64px minmax(120px, 1.1fr) minmax(92px, 0.65fr) minmax(74px, 0.45fr) minmax(188px, 0.85fr);
+    padding: 12px;
+}
+
+.staff-list-section .roster-grid-header {
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 15px;
+    font-weight: 800;
+    min-height: auto;
+}
+
+#roster-list .roster-grid {
+    background: #ffffff;
+    border: 1px solid #e4e7ec;
+    border-left: 5px solid #d0d5dd;
+    border-radius: 8px;
+    min-height: 72px;
+}
+
+#roster-list .roster-grid:hover {
+    background: #f9fafb;
+    border-left-color: #12b76a;
+}
+
+#roster-list .roster-grid:first-child {
+    background: #ecfdf3;
+    border-left-color: #12b76a;
+}
+
+.staff-position {
+    color: #101828;
+    font-size: 24px;
+    font-weight: 900;
+    text-align: center;
+}
+
+.staff-name-cell strong {
+    color: #101828;
+    display: block;
+    font-size: 24px;
+    line-height: 1.15;
+}
+
+.drag-hint {
+    color: #98a2b3;
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 3px;
+}
+
+.staff-next-btn {
+    border-radius: 8px;
+    font-size: 16px !important;
+    font-weight: 800;
+    min-height: 42px;
+    min-width: 86px;
+}
+
+.staff-count strong {
+    color: #101828;
+    font-size: 24px;
+    margin-right: 4px;
+}
+
+.staff-count span {
+    color: #475467;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.staff-row-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-start;
+}
+
+.staff-row-actions .btn-small {
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 800;
+    min-height: 42px;
+    min-width: 48px;
+    padding: 8px 10px;
+}
+
+.staff-order-btn {
+    background: #475467 !important;
+    color: white !important;
+}
+
+.staff-remove-btn {
+    background: #d92d20 !important;
+}
+
+.staff-empty-state {
+    background: #f9fafb;
+    border: 2px dashed #d0d5dd;
+    border-radius: 8px;
+    color: #344054;
+    font-size: 20px;
+    font-weight: 800;
+    margin-top: 10px;
+    padding: 24px;
+    text-align: center;
+}
+
+@media (max-width: 720px) {
+    .staff-page-nav .staff-nav-link {
+        flex: 1 1 30%;
+        min-width: 0;
+    }
+
+    .staff-add-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .staff-list-section .roster-grid {
+        gap: 6px;
+        grid-template-columns: 42px minmax(80px, 1fr) 80px 62px 142px;
+        padding: 10px 8px;
+    }
+
+    .staff-list-section .roster-grid-header {
+        font-size: 12px;
+    }
+
+    .staff-name-cell strong,
+    .staff-position,
+    .staff-count strong {
+        font-size: 20px;
+    }
+
+    .drag-hint {
+        display: none;
+    }
+
+    .staff-row-actions .btn-small {
+        min-width: 40px;
+        padding: 7px 6px;
+    }
+}
+
+/* New customer transaction workflow redesign */
+.transaction-page-title {
+    background: #263238;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    text-align: left;
+}
+
+.transaction-page-title .label-th {
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.transaction-page-title .helper-text {
+    color: rgba(255,255,255,0.78);
+}
+
+.transaction-page-nav {
+    margin-bottom: 14px;
+}
+
+.transaction-layout {
+    align-items: start;
+    gap: 18px;
+    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.75fr);
+}
+
+.transaction-intake-workflow,
+.transaction-correction-section,
+.transaction-side-section {
+    border: 1px solid #e4e7ec;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(16,24,40,0.08);
+}
+
+.transaction-intake-workflow {
+    border-top: 5px solid #12b76a;
+}
+
+.transaction-intake-workflow .section-content {
+    padding: 18px;
+}
+
+.transaction-roster-step {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.transaction-roster-step h2 {
+    color: #101828;
+    font-size: 24px;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.transaction-mode-switch {
+    background: #f2f4f7;
+    border-radius: 8px;
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 14px;
+    padding: 5px;
+}
+
+.transaction-mode-button {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    color: #475467;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: 900;
+    min-height: 56px;
+    padding: 8px 12px;
+}
+
+.transaction-mode-button small {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.transaction-mode-button.is-active {
+    background: #ffffff;
+    border-color: #12b76a;
+    color: #027a48;
+}
+
+.transaction-booking-note {
+    background: #eff8ff;
+    border: 1px solid #b2ddff;
+    border-radius: 7px;
+    color: #175cd3;
+    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+}
+
+.transaction-field-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.transaction-field-large {
+    grid-column: 1 / -1;
+}
+
+.transaction-field {
+    margin-bottom: 0;
+}
+
+.transaction-field label,
+.transaction-time-field label {
+    color: #344054;
+    display: block;
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.transaction-field select,
+.transaction-field input,
+.transaction-time-field select,
+.transaction-time-field input {
+    background: #ffffff;
+    border: 2px solid #d0d5dd;
+    border-radius: 8px;
+    color: #101828;
+    font-size: 20px;
+    font-weight: 900;
+    min-height: 58px;
+    padding: 12px 14px;
+}
+
+.transaction-field select option,
+.transaction-time-field select option {
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.transaction-field-large select {
+    border-color: #12b76a;
+    font-size: 22px;
+    min-height: 62px;
+}
+
+.transaction-native-select-hidden {
+    height: 1px !important;
+    margin: 0 !important;
+    opacity: 0 !important;
+    padding: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    width: 1px !important;
+}
+
+.transaction-choice-grid {
+    display: grid;
+    gap: 10px;
+}
+
+.transaction-category-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.transaction-duration-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.transaction-combo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.transaction-choice-button {
+    background: #ffffff;
+    border: 2px solid #d0d5dd;
+    border-radius: 8px;
+    color: #101828;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    justify-content: center;
+    min-height: 62px;
+    padding: 10px 12px;
+    text-align: left;
+    width: 100%;
+}
+
+.transaction-choice-button span {
+    display: block;
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.15;
+}
+
+.transaction-choice-button small {
+    color: #667085;
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.transaction-choice-button:hover,
+.transaction-choice-button:focus {
+    border-color: #12b76a;
+    box-shadow: 0 0 0 3px rgba(18,183,106,0.14);
+    outline: none;
+}
+
+.transaction-choice-button.is-active {
+    background: #ecfdf3;
+    border-color: #12b76a;
+    box-shadow: 0 0 0 3px rgba(18,183,106,0.12);
+}
+
+.transaction-choice-button.is-active small {
+    color: #027a48;
+}
+
+.transaction-subchoice-panel {
+    background: #f9fafb;
+    border: 1px solid #eaecf0;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding: 10px;
+}
+
+.transaction-subchoice-title {
+    color: #344054;
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.transaction-combo-button span {
+    font-size: 19px;
+}
+
+.transaction-combo-button small {
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.transaction-button-empty {
+    align-items: center;
+    background: #f9fafb;
+    border: 2px dashed #d0d5dd;
+    border-radius: 8px;
+    color: #667085;
+    display: flex;
+    font-size: 18px;
+    font-weight: 900;
+    min-height: 58px;
+    padding: 12px;
+}
+
+.transaction-field select:focus,
+.transaction-field input:focus,
+.transaction-time-field select:focus,
+.transaction-time-field input:focus {
+    border-color: #12b76a;
+    box-shadow: 0 0 0 3px rgba(18,183,106,0.16);
+    outline: none;
+}
+
+.transaction-time-price-panel {
+    align-items: stretch;
+    background: #f9fafb;
+    border: 1px solid #eaecf0;
+    border-radius: 8px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 16px;
+    padding: 14px;
+}
+
+.transaction-time-field {
+    margin-bottom: 0;
+}
+
+.transaction-total-card,
+.transaction-fee-card,
+.transaction-booking-credit {
+    background: #ffffff;
+    border: 1px solid #e4e7ec;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 78px;
+    padding: 12px;
+}
+
+.transaction-total-card span,
+.transaction-fee-card span,
+.transaction-booking-credit span {
+    color: #667085;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.transaction-total-card strong,
+.transaction-fee-card strong,
+.transaction-booking-credit strong {
+    color: #101828;
+    font-size: 26px;
+    font-weight: 900;
+    margin-top: 4px;
+}
+
+.transaction-booking-credit {
+    border-color: #75e0a7;
+}
+
+.transaction-booking-credit strong {
+    color: #027a48;
+}
+
+.transaction-primary-action {
+    background: #12b76a !important;
+    border-radius: 8px;
+    color: #ffffff !important;
+    font-size: 24px;
+    font-weight: 900;
+    margin-top: 16px;
+    min-height: 66px;
+    width: 100%;
+}
+
+.transaction-primary-action:hover {
+    background: #039855 !important;
+    color: #ffffff !important;
+}
+
+.transaction-correction-section {
+    border-top: 4px solid #f79009;
+}
+
+.transaction-secondary-header,
+.transaction-side-header {
+    background: #344054;
+    color: #ffffff;
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    padding: 13px 16px;
+}
+
+.transaction-link-action {
+    background: transparent;
+    border: 0;
+    color: #b54708;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 800;
+    margin-top: 8px;
+    padding: 8px 0;
+}
+
+.transaction-side-section .section-content {
+    padding: 14px 16px 16px;
+}
+
+.transaction-bookings-section {
+    border-top: 4px solid #2e90fa;
+}
+
+.transaction-booking-list {
+    display: grid;
+    gap: 9px;
+}
+
+.transaction-booking-row {
+    align-items: center;
+    border-bottom: 1px solid #eaecf0;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 4px 0 12px;
+}
+
+.transaction-booking-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.transaction-booking-row div,
+.transaction-booking-row span {
+    display: block;
+    min-width: 0;
+}
+
+.transaction-booking-row strong {
+    color: #101828;
+    font-size: 17px;
+    font-weight: 900;
+}
+
+.transaction-booking-row span {
+    color: #475467;
+    font-size: 14px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.transaction-booking-row button {
+    background: #1570ef;
+    border: 0;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 900;
+    min-height: 44px;
+    padding: 9px 12px;
+}
+
+.transaction-booking-error {
+    color: #b42318;
+}
+
+.transaction-side-section .summary-grid {
+    align-items: center;
+    border-bottom: 1px solid #eaecf0;
+    padding: 8px 0;
+}
+
+.transaction-side-section .summary-label {
+    color: #475467;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.transaction-side-section .summary-value {
+    color: #101828;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.transaction-mini-heading {
+    color: #344054;
+    font-size: 16px;
+    font-weight: 900;
+    margin: 15px 0 10px;
+}
+
+.transaction-side-section .transaction-log {
+    border: 0;
+}
+
+.transaction-side-section .transaction-item {
+    border-radius: 6px;
+    font-size: 14px;
+    gap: 8px;
+    grid-template-columns: 0.8fr 0.9fr 1.1fr 0.7fr;
+    padding: 9px 8px;
+}
+
+.transaction-side-section .transaction-item:first-child {
+    background: #f2f4f7;
+    color: #475467;
+    font-weight: 900;
+}
+
+.transaction-expense-grid {
+    gap: 8px;
+    grid-template-columns: minmax(0, 1.4fr) minmax(86px, 0.7fr) auto;
+}
+
+.transaction-expense-grid input {
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    min-height: 42px;
+    padding: 8px 10px;
+}
+
+.transaction-expense-action {
+    background: #475467 !important;
+    border-radius: 6px;
+    color: #ffffff !important;
+    font-weight: 800;
+    min-height: 42px;
+}
+
+@media (max-width: 900px) {
+    .transaction-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .transaction-time-price-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .transaction-field-grid,
+    .transaction-time-price-panel,
+    .transaction-expense-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .transaction-roster-step h2 {
+        font-size: 22px;
+    }
+
+    .transaction-field label,
+    .transaction-time-field label {
+        font-size: 17px;
+    }
+
+    .transaction-field select,
+    .transaction-field input,
+    .transaction-time-field select,
+    .transaction-time-field input {
+        font-size: 19px;
+    }
+
+    .transaction-category-grid,
+    .transaction-combo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .transaction-duration-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .transaction-choice-button span {
+        font-size: 18px;
+    }
+
+    .transaction-mode-button {
+        font-size: 18px;
+    }
+
+    .transaction-booking-row {
+        align-items: stretch;
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Shared receptionist-first UI polish for legacy pages
+   Keeps behavior and DOM contracts intact while making the remaining pages
+   visually match the Today Staff and New Customer workflow hierarchy. */
+:root {
+    --shop-bg: #f6f7f7;
+    --shop-surface: #ffffff;
+    --shop-border: #e4e7ec;
+    --shop-border-strong: #d0d5dd;
+    --shop-ink: #101828;
+    --shop-muted: #667085;
+    --shop-header: #263238;
+    --shop-subheader: #344054;
+    --shop-green: #12b76a;
+    --shop-green-dark: #039855;
+    --shop-warning: #f79009;
+    --shop-danger: #d92d20;
+}
+
+body {
+    background: var(--shop-bg);
+    color: var(--shop-ink);
+    overflow-x: hidden;
+}
+
+.container {
+    min-width: 0;
+    padding: 14px;
+    width: 100%;
+}
+
+.nav-header,
+.header {
+    background: var(--shop-header);
+    border-radius: 6px;
+    box-shadow: none;
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    text-align: left;
+}
+
+.nav-buttons {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.nav-buttons .user-info {
+    color: var(--shop-muted);
+    flex: 1 1 180px;
+    justify-content: flex-end;
+    min-height: 44px;
+}
+
+.nav-btn,
+.nav-btn.home,
+.nav-btn.staff,
+.nav-btn.transaction,
+.nav-btn.summary,
+.nav-btn.payment-types {
+    background: var(--shop-surface) !important;
+    border: 1px solid var(--shop-border-strong);
+    border-radius: 8px;
+    box-shadow: none;
+    color: #344054 !important;
+    flex: 0 1 auto;
+    min-height: 50px;
+    min-width: 138px;
+    padding: 8px 12px;
+}
+
+.nav-btn:hover,
+.nav-btn.payment-types:hover {
+    background: #f9fafb !important;
+    border-color: #98a2b3;
+    color: var(--shop-ink) !important;
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.nav-btn.active,
+.nav-btn.payment-types.active {
+    background: #ecfdf3 !important;
+    border-color: var(--shop-green);
+    box-shadow: 0 0 0 3px rgba(18,183,106,0.12);
+    color: #027a48 !important;
+    transform: none;
+}
+
+.nav-btn .label-th:first-child,
+.btn .label-th:first-child {
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.nav-btn .label-en:last-child,
+.btn .label-en:last-child {
+    color: var(--shop-muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.section,
+.dashboard-card,
+.summary-card,
+.payment-type-card,
+.roster-card {
+    background: var(--shop-surface);
+    border: 1px solid var(--shop-border);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(16,24,40,0.08);
+}
+
+.section {
+    overflow: hidden;
+}
+
+.section-header {
+    background: var(--shop-subheader);
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 0;
+    padding: 13px 16px;
+}
+
+.section-header h2,
+.section-header h3 {
+    color: inherit;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.section-content {
+    padding: 16px;
+}
+
+.dashboard-grid {
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.dashboard-card {
+    min-height: 132px;
+    padding: 18px;
+    text-align: left;
+}
+
+.dashboard-card h3 {
+    color: #475467;
+    font-size: 16px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.dashboard-card .big-number,
+.summary-card .value {
+    color: var(--shop-ink);
+    font-size: 34px;
+    font-weight: 950;
+    line-height: 1.1;
+}
+
+.dashboard-card .subtitle,
+.summary-card .label {
+    color: var(--shop-muted);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.btn {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    box-shadow: none;
+    font-weight: 900;
+    min-height: 46px;
+}
+
+.btn:hover {
+    color: inherit;
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.btn-primary {
+    background: var(--shop-green) !important;
+    border-color: var(--shop-green) !important;
+    color: #ffffff !important;
+}
+
+.btn-primary:hover {
+    background: var(--shop-green-dark) !important;
+    border-color: var(--shop-green-dark) !important;
+    color: #ffffff !important;
+}
+
+.btn-secondary {
+    background: #ffffff !important;
+    border-color: var(--shop-border-strong) !important;
+    color: #344054 !important;
+}
+
+.btn-secondary:hover {
+    background: #f9fafb !important;
+    border-color: #98a2b3 !important;
+}
+
+.btn-danger,
+.btn.remove {
+    background: var(--shop-danger) !important;
+    border-color: var(--shop-danger) !important;
+    color: #ffffff !important;
+}
+
+.btn-large {
+    border-radius: 8px;
+    font-size: 18px;
+    min-height: 62px;
+    padding: 14px 18px;
+}
+
+.form-group label {
+    color: #344054;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.form-group input,
+.form-group select,
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    border: 2px solid var(--shop-border-strong);
+    border-radius: 8px;
+    color: var(--shop-ink);
+    font-size: 17px;
+    font-weight: 700;
+    min-height: 46px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.modal-content input:focus,
+.modal-content select:focus,
+.modal-content textarea:focus {
+    border-color: var(--shop-green);
+    box-shadow: 0 0 0 3px rgba(18,183,106,0.16);
+    outline: none;
+}
+
+.main-grid {
+    gap: 18px;
+}
+
+.transaction-log,
+.payment-table,
+.payment-history {
+    border: 1px solid var(--shop-border);
+    border-radius: 8px;
+    overflow: auto;
+}
+
+.transaction-item {
+    background: #ffffff;
+    border-bottom: 1px solid var(--shop-border);
+    color: #344054;
+    font-size: 14px;
+}
+
+.transaction-item:first-child,
+.payment-table th,
+.staff-grid.header,
+.services-grid.header {
+    background: #f2f4f7 !important;
+    color: #475467;
+    font-weight: 900;
+}
+
+.payment-table {
+    margin-top: 0;
+}
+
+.payment-table th,
+.payment-table td {
+    border-bottom: 1px solid var(--shop-border);
+}
+
+.payment-table .amount,
+.summary-value {
+    color: var(--shop-ink);
+    font-weight: 900;
+}
+
+.empty-state {
+    background: #f9fafb;
+    border: 2px dashed var(--shop-border-strong);
+    border-radius: 8px;
+    color: #475467;
+    font-weight: 800;
+    margin: 6px 0;
+    padding: 24px;
+}
+
+.admin-header {
+    background: var(--shop-header) !important;
+    border-radius: 6px !important;
+    box-shadow: none !important;
+    color: #ffffff;
+    margin-bottom: 12px !important;
+    padding: 14px 16px !important;
+}
+
+.admin-header h1 {
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.admin-header p {
+    color: rgba(255,255,255,0.78);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-nav {
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+}
+
+.admin-nav .btn,
+.admin-nav .btn.active {
+    border-radius: 8px;
+    box-shadow: none;
+    min-height: 50px;
+    padding: 8px 12px;
+}
+
+.admin-nav .btn {
+    background: #ffffff !important;
+    border: 1px solid var(--shop-border-strong) !important;
+    color: #344054 !important;
+}
+
+.admin-nav .btn.active {
+    background: #ecfdf3 !important;
+    border-color: var(--shop-green) !important;
+    color: #027a48 !important;
+}
+
+.summary-cards {
+    gap: 14px !important;
+}
+
+.summary-card {
+    padding: 18px !important;
+    text-align: left !important;
+}
+
+.staff-grid,
+.services-grid {
+    background: #ffffff;
+    border-bottom: 1px solid var(--shop-border);
+}
+
+.staff-grid:hover:not(.header),
+.services-grid:hover:not(.header) {
+    background: #f9fafb !important;
+}
+
+.status-badge,
+.payment-status,
+.service-status {
+    border-radius: 999px;
+    font-weight: 900;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.modal-content {
+    border: 1px solid var(--shop-border);
+    border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(16,24,40,0.18);
+}
+
+.modal-header h3 {
+    color: var(--shop-ink);
+    font-weight: 900;
+}
+
+@media (min-width: 769px) {
+    body:not(.staff-page):not(.transaction-page) .nav-buttons .nav-btn.transaction {
+        background: #ecfdf3 !important;
+        border-color: var(--shop-green);
+        box-shadow: 0 0 0 3px rgba(18,183,106,0.10);
+        color: #027a48 !important;
+        min-height: 58px;
+    }
+}
+
+@media (max-width: 768px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .container {
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: hidden;
+        padding: 10px;
+        width: 100%;
+    }
+
+    .nav-buttons,
+    .admin-nav {
+        align-items: stretch;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: 100%;
+        overflow-x: hidden;
+        width: 100%;
+    }
+
+    .nav-buttons .user-info {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        margin-left: 0 !important;
+        min-width: 0;
+    }
+
+    .nav-btn,
+    .nav-btn.home,
+    .nav-btn.staff,
+    .nav-btn.transaction,
+    .nav-btn.summary,
+    .nav-btn.payment-types,
+    .admin-nav .btn {
+        box-sizing: border-box;
+        margin: 0;
+        max-width: 100%;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        width: 100%;
+    }
+
+    .nav-btn .label-th,
+    .nav-btn .label-en,
+    .admin-nav .btn .label-th,
+    .admin-nav .btn .label-en {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    .transaction-item {
+        grid-template-columns: 74px minmax(120px, 1fr) 78px 72px;
+    }
+
+    .admin-header > div {
+        align-items: flex-start !important;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .admin-header .user-info {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        min-width: 0;
+        width: 100%;
+    }
+
+    .admin-header .btn {
+        margin: 0;
+        max-width: 100%;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-buttons,
+    .admin-nav {
+        grid-template-columns: 1fr;
+    }
+
+    .nav-header,
+    .header,
+    .admin-header h1 {
+        font-size: 21px;
+    }
+
+    .dashboard-card .big-number,
+    .summary-card .value {
+        font-size: 30px;
+    }
+
+    .transaction-log {
+        border: 0;
+    }
 }
