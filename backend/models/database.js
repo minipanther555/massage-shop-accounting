@@ -49,7 +49,9 @@ class Database {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         business_day DATE,
-        corrected_from_id TEXT
+        corrected_from_id TEXT,
+        start_datetime DATETIME,
+        end_datetime DATETIME
       )`,
 
       // Staff roster (equivalent to Daily Entry roster section)
@@ -268,7 +270,9 @@ class Database {
         { name: 'duration', definition: 'INTEGER' },
         { name: 'business_day', definition: 'DATE' },
         { name: 'corrected_from_id', definition: 'TEXT' },
-        { name: 'booking_id', definition: 'TEXT' }
+        { name: 'booking_id', definition: 'TEXT' },
+        { name: 'start_datetime', definition: 'DATETIME' },
+        { name: 'end_datetime', definition: 'DATETIME' }
       ].map(c => ({ table: 'transactions', ...c })),
 
       // Archived transactions table columns

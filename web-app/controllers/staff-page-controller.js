@@ -35,6 +35,12 @@
     if (x && Array.isArray(x.data)) return x.data;
     return [];
   };
+  const escapeStaffHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
   let addLocked = false;
   let HELPER_ROWS = [];
@@ -130,26 +136,27 @@
       el.draggable = true;
       el.dataset.index = index;
       
-      const name = projectName(staff); // ← FIXED: Use projector
-      const statusText = staff.status || null;
+      const name = escapeStaffHtml(projectName(staff)); // ← FIXED: Use projector
+      const statusText = escapeStaffHtml(staff.status || '');
       const busyUntil = staff.busy_until || null;
-      const isNext = staff.status === 'Next';
+      const isNext = index === 0;
       const isBusy = staff.status && staff.status.startsWith('Busy until');
       const countText = staff.today_massages || 0;
+      const staffId = Number(staff.staff_id || 0);
       
       el.innerHTML = `
         <div class="staff-position">${index + 1}</div>
         <div class="staff-name-cell"><strong>${name}</strong><span class="drag-hint">ลากเพื่อจัดลำดับ</span></div>
         <div class="staff-next-cell">
-          <button class="btn ${isNext ? 'btn-next' : 'btn-secondary'} btn-small staff-next-btn" data-action="setNext" data-position="${staff.position || index + 1}" ${isNext ? 'disabled' : ''}>${isNext ? 'คิวถัดไป' : 'ตั้งคิว'}</button>
-          ${busyUntil ? `<br><small>Busy until ${busyUntil}</small>` : ''}
+          <button class="btn ${isNext ? 'btn-next' : 'btn-secondary'} btn-small staff-next-btn" data-action="setNext" data-position="${staff.position || index + 1}" data-staff-id="${staffId}" ${isNext ? 'disabled' : ''}>${isNext ? 'คิวถัดไป' : 'ตั้งคิว'}</button>
+          ${busyUntil ? `<br><small>Busy until ${escapeStaffHtml(busyUntil)}</small>` : ''}
           ${isBusy ? `<br><small style="color: #ff6b6b;">${statusText}</small>` : ''}
         </div>
         <div class="staff-count" aria-label="นวดวันนี้ ${countText} ครั้ง"><span class="staff-count-label">นวดวันนี้</span> <strong>${countText}</strong> <span>ครั้ง</span></div>
         <div class="staff-row-actions">
-          <button class="btn btn-small staff-order-btn" data-action="moveUp" data-position="${staff.position || index + 1}" ${staff.position === 1 ? 'disabled' : ''} aria-label="เลื่อนขึ้น">ขึ้น</button>
-          <button class="btn btn-small staff-order-btn" data-action="moveDown" data-position="${staff.position || index + 1}" ${staff.position === 20 ? 'disabled' : ''} aria-label="เลื่อนลง">ลง</button>
-          <button class="btn btn-danger btn-small staff-remove-btn" data-action="remove" data-position="${staff.position || index + 1}">ลบ</button>
+          <button class="btn btn-small staff-order-btn" data-action="moveUp" data-position="${staff.position || index + 1}" data-staff-id="${staffId}" ${index === 0 ? 'disabled' : ''} aria-label="เลื่อนขึ้น">ขึ้น</button>
+          <button class="btn btn-small staff-order-btn" data-action="moveDown" data-position="${staff.position || index + 1}" data-staff-id="${staffId}" ${index === roster.length - 1 ? 'disabled' : ''} aria-label="เลื่อนลง">ลง</button>
+          <button class="btn btn-danger btn-small staff-remove-btn" data-action="remove" data-position="${staff.position || index + 1}" data-staff-id="${staffId}">ลบ</button>
         </div>
       `;
       
@@ -238,7 +245,7 @@
         const isAdded = row.today_planning_status === 'added_to_today_staff' || !row.can_add_to_today_staff;
         el.className = `today-helper-row${isAdded ? ' is-added' : ''}`;
         el.innerHTML = `
-          <strong>${row.display_name}</strong>
+          <strong>${escapeStaffHtml(row.display_name)}</strong>
           <span class="today-helper-commission">${formatBaht(row.previous_day_commission)}</span>
           <span class="today-helper-flag">${row.was_day_off_yesterday ? 'หยุดเมื่อวาน' : ''}</span>
           <span>
@@ -275,7 +282,7 @@
       const el = document.createElement('div');
       el.className = 'day-off-row';
       el.innerHTML = `
-        <strong>${row.display_name}</strong>
+        <strong>${escapeStaffHtml(row.display_name)}</strong>
         <span>หยุดวันนี้</span>
         <button type="button" class="btn btn-small restore-day-off-btn" data-staff-id="${row.staff_id}">กลับมาเพิ่มได้</button>
       `;
@@ -386,34 +393,30 @@
   }
 
   // API ACTION HANDLERS — follow Dropdown→API→Re-fetch→Render discipline
+  async function reorderVisibleRoster(fromPosition, toIndex) {
+    const current = safeArr(CURRENT_ROSTER);
+    const fromIndex = current.findIndex(row => Number(row.position) === Number(fromPosition));
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= current.length) return;
+
+    const nextOrder = current.slice();
+    const [moved] = nextOrder.splice(fromIndex, 1);
+    nextOrder.splice(toIndex, 0, moved);
+
+    const orderedStaffIds = nextOrder
+      .map(row => Number(row.staff_id))
+      .filter(Boolean);
+    if (orderedStaffIds.length !== nextOrder.length) {
+      throw new Error('Cannot reorder Today Staff without staff ids');
+    }
+
+    const result = await api.reorderTodayStaff(orderedStaffIds);
+    CURRENT_ROSTER = safeArr(result.today_staff);
+    renderRoster(CURRENT_ROSTER);
+  }
+
   async function setNextInLine(position) {
     try {
-      // Clear all existing "Next" statuses
-      const roster = await api.getStaffRoster();
-      const activeStaff = roster.filter(r => r.masseuse_name && r.masseuse_name.trim() !== '');
-      
-      for (const staff of activeStaff) {
-        if (staff.status === 'Next') {
-          await api.updateStaff(staff.position, {
-            masseuse_name: staff.masseuse_name,
-            status: null
-          });
-        }
-      }
-      
-      // Set selected person as next
-      const staffMember = roster.find(r => r.position === position);
-      if (staffMember) {
-        await api.updateStaff(position, {
-          masseuse_name: staffMember.masseuse_name,
-          status: 'Next'
-        });
-      }
-      
-      // Re-fetch and render
-      const updatedRoster = await api.getStaffRoster();
-      renderRoster(updatedRoster);
-      
+      await reorderVisibleRoster(position, 0);
     } catch (error) {
       console.error('Error setting next in line:', error);
     }
@@ -422,26 +425,8 @@
   async function moveUp(position) {
     try {
       if (position === 1) return; // Can't move up from position 1
-      
-      const previousPosition = position - 1;
-      const staffMember = CURRENT_ROSTER.find(r => r.position === position);
-      const previousStaff = CURRENT_ROSTER.find(r => r.position === previousPosition);
-      
-      if (staffMember && previousStaff) {
-        // Swap the two staff members
-        await api.updateStaff(position, {
-          masseuse_name: previousStaff.masseuse_name,
-          status: previousStaff.status
-        });
-        await api.updateStaff(previousPosition, {
-          masseuse_name: staffMember.masseuse_name,
-          status: staffMember.status
-        });
-        
-        // Re-fetch and render - single source of truth
-        CURRENT_ROSTER = await api.getStaffRoster();
-        renderRoster(CURRENT_ROSTER);
-      }
+      const fromIndex = safeArr(CURRENT_ROSTER).findIndex(row => Number(row.position) === Number(position));
+      await reorderVisibleRoster(position, fromIndex - 1);
     } catch (error) {
       console.error('Error moving staff up:', error);
     }
@@ -449,27 +434,8 @@
 
   async function moveDown(position) {
     try {
-      if (position === 20) return; // Can't move down from position 20
-      
-      const nextPosition = position + 1;
-      const staffMember = CURRENT_ROSTER.find(r => r.position === position);
-      const nextStaff = CURRENT_ROSTER.find(r => r.position === nextPosition);
-      
-      if (staffMember && nextStaff) {
-        // Swap the two staff members
-        await api.updateStaff(position, {
-          masseuse_name: nextStaff.masseuse_name,
-          status: nextStaff.status
-        });
-        await api.updateStaff(nextPosition, {
-          masseuse_name: staffMember.masseuse_name,
-          status: staffMember.status
-        });
-        
-        // Re-fetch and render - single source of truth
-        CURRENT_ROSTER = await api.getStaffRoster();
-        renderRoster(CURRENT_ROSTER);
-      }
+      const fromIndex = safeArr(CURRENT_ROSTER).findIndex(row => Number(row.position) === Number(position));
+      await reorderVisibleRoster(position, fromIndex + 1);
     } catch (error) {
       console.error('Error moving staff down:', error);
     }

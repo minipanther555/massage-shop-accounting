@@ -123,6 +123,124 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Bulk update services (for price increases, etc.)
+router.patch('/bulk/update', async (req, res) => {
+  try {
+    const {
+      serviceIds,
+      updates,
+      filters = {}
+    } = req.body;
+
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No updates specified' });
+    }
+
+    // Validate updates
+    const allowedFields = ['price', 'masseuse_fee', 'active'];
+    for (const field of Object.keys(updates)) {
+      if (!allowedFields.includes(field)) {
+        return res.status(400).json({ error: `Field '${field}' cannot be updated in bulk` });
+      }
+    }
+
+    // Build WHERE clause
+    let whereClause = 'WHERE 1=1';
+    const whereValues = [];
+
+    if (serviceIds && Array.isArray(serviceIds) && serviceIds.length > 0) {
+      whereClause += ` AND id IN (${serviceIds.map(() => '?').join(',')})`;
+      whereValues.push(...serviceIds);
+    }
+
+    if (filters.location) {
+      whereClause += ' AND location = ?';
+      whereValues.push(filters.location);
+    }
+
+    if (filters.serviceType) {
+      whereClause += ' AND service_name = ?';
+      whereValues.push(filters.serviceType);
+    }
+
+    if (filters.active !== undefined) {
+      whereClause += ' AND active = ?';
+      whereValues.push(filters.active);
+    }
+
+    // Check for multipliers first
+    const hasMultipliers = Object.values(updates).some((v) => typeof v === 'string' && v.startsWith('multiply:'));
+
+    if (hasMultipliers) {
+      // For multipliers, fetch current values first, then update each selected service.
+      const selectSql = `SELECT id, price, masseuse_fee FROM services ${whereClause}`;
+      const currentServices = await database.all(selectSql, whereValues);
+
+      let totalChanges = 0;
+      for (const service of currentServices) {
+        const updateParts = [];
+        const updateValues = [];
+
+        for (const [field, value] of Object.entries(updates)) {
+          if (typeof value === 'string' && value.startsWith('multiply:')) {
+            const multiplier = parseFloat(value.split(':')[1]);
+            if (isNaN(multiplier) || multiplier <= 0) {
+              return res.status(400).json({ error: `Invalid multiplier value for ${field}` });
+            }
+            const currentValue = service[field];
+            const newValue = Math.round(currentValue * multiplier * 100) / 100;
+            updateParts.push(`${field} = ?`);
+            updateValues.push(newValue);
+          } else {
+            updateParts.push(`${field} = ?`);
+            updateValues.push(value);
+          }
+        }
+
+        const updateSql = `UPDATE services SET ${updateParts.join(', ')} WHERE id = ?`;
+        await database.run(updateSql, [...updateValues, service.id]);
+        totalChanges++;
+      }
+
+      res.json({
+        message: `Successfully updated ${totalChanges} service(s)`,
+        changes: totalChanges
+      });
+      return;
+    }
+
+    // For non-multiplier updates, build SET clause
+    const setClause = Object.keys(updates).map((field) => `${field} = ?`).join(', ');
+    const setValues = [];
+
+    for (const [field, value] of Object.entries(updates)) {
+      // Handle direct value updates
+      if (field === 'price' || field === 'masseuse_fee') {
+        if (isNaN(parseFloat(value)) || parseFloat(value) < 0) {
+          return res.status(400).json({ error: `${field} must be a non-negative number` });
+        }
+        setValues.push(parseFloat(value));
+      } else {
+        setValues.push(value);
+      }
+    }
+
+    // Simple direct value update
+    const sql = `UPDATE services SET ${setClause} ${whereClause}`;
+    const allValues = [...setValues, ...whereValues];
+
+    const result = await database.run(sql, allValues);
+
+    res.json({
+      message: `Successfully updated ${result.changes} service(s)`,
+      changes: result.changes
+    });
+  } catch (error) {
+    console.error('Error bulk updating services:', error);
+    res.status(500).json({ error: 'Failed to bulk update services' });
+  }
+});
+
 // Update service
 router.patch('/:id', async (req, res) => {
   try {
@@ -201,141 +319,6 @@ router.patch('/:id', async (req, res) => {
       console.error('Error updating service:', error);
       res.status(500).json({ error: 'Failed to update service' });
     }
-  }
-});
-
-// Bulk update services (for price increases, etc.)
-router.patch('/bulk/update', async (req, res) => {
-  try {
-    const {
-      serviceIds,
-      updates,
-      filters = {}
-    } = req.body;
-
-    if (!updates || Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: 'No updates specified' });
-    }
-
-    // Validate updates
-    const allowedFields = ['price', 'masseuse_fee', 'active'];
-    for (const field of Object.keys(updates)) {
-      if (!allowedFields.includes(field)) {
-        return res.status(400).json({ error: `Field '${field}' cannot be updated in bulk` });
-      }
-    }
-
-    // Build WHERE clause
-    let whereClause = 'WHERE 1=1';
-    const whereValues = [];
-
-    if (serviceIds && Array.isArray(serviceIds) && serviceIds.length > 0) {
-      whereClause += ` AND id IN (${serviceIds.map(() => '?').join(',')})`;
-      whereValues.push(...serviceIds);
-    }
-
-    if (filters.location) {
-      whereClause += ' AND location = ?';
-      whereValues.push(filters.location);
-    }
-
-    if (filters.serviceType) {
-      whereClause += ' AND service_name = ?';
-      whereValues.push(filters.serviceType);
-    }
-
-    if (filters.active !== undefined) {
-      whereClause += ' AND active = ?';
-      whereValues.push(filters.active);
-    }
-
-    // Check for multipliers first
-    const hasMultipliers = Object.values(updates).some((v) => typeof v === 'string' && v.startsWith('multiply:'));
-
-    console.log('🔍 DEBUG: hasMultipliers =', hasMultipliers);
-    console.log('🔍 DEBUG: updates =', updates);
-
-    if (hasMultipliers) {
-      console.log('🔍 DEBUG: Entering multiplier branch');
-      // For multipliers, we need to fetch current values first, then update
-      // Fetch current services that match the filters
-      const selectSql = `SELECT id, price, masseuse_fee FROM services ${whereClause}`;
-      console.log('🔍 DEBUG: SELECT SQL =', selectSql);
-      console.log('🔍 DEBUG: WHERE values =', whereValues);
-
-      const currentServices = await database.all(selectSql, whereValues);
-      console.log('🔍 DEBUG: Current services found =', currentServices);
-
-      // Update each service individually with calculated values
-      let totalChanges = 0;
-      for (const service of currentServices) {
-        console.log('🔍 DEBUG: Processing service ID =', service.id);
-        const updateParts = [];
-        const updateValues = [];
-
-        for (const [field, value] of Object.entries(updates)) {
-          if (typeof value === 'string' && value.startsWith('multiply:')) {
-            const multiplier = parseFloat(value.split(':')[1]);
-            if (isNaN(multiplier) || multiplier <= 0) {
-              return res.status(400).json({ error: `Invalid multiplier value for ${field}` });
-            }
-            const currentValue = service[field];
-            console.log('🔍 DEBUG: Field =', field, 'Current value =', currentValue, 'Multiplier =', multiplier);
-            const newValue = Math.round(currentValue * multiplier * 100) / 100; // Round to 2 decimal places
-            console.log('🔍 DEBUG: Calculated new value =', newValue);
-            updateParts.push(`${field} = ?`);
-            updateValues.push(newValue);
-          } else {
-            updateParts.push(`${field} = ?`);
-            updateValues.push(value);
-          }
-        }
-
-        const updateSql = `UPDATE services SET ${updateParts.join(', ')} WHERE id = ?`;
-        console.log('🔍 DEBUG: UPDATE SQL =', updateSql);
-        console.log('🔍 DEBUG: UPDATE values =', updateValues);
-
-        await database.run(updateSql, [...updateValues, service.id]);
-        totalChanges++;
-      }
-
-      console.log('🔍 DEBUG: Multiplier update complete, totalChanges =', totalChanges);
-      res.json({
-        message: `Successfully updated ${totalChanges} service(s)`,
-        changes: totalChanges
-      });
-      return;
-    }
-
-    // For non-multiplier updates, build SET clause
-    const setClause = Object.keys(updates).map((field) => `${field} = ?`).join(', ');
-    const setValues = [];
-
-    for (const [field, value] of Object.entries(updates)) {
-      // Handle direct value updates
-      if (field === 'price' || field === 'masseuse_fee') {
-        if (isNaN(parseFloat(value)) || parseFloat(value) < 0) {
-          return res.status(400).json({ error: `${field} must be a non-negative number` });
-        }
-        setValues.push(parseFloat(value));
-      } else {
-        setValues.push(value);
-      }
-    }
-
-    // Simple direct value update
-    const sql = `UPDATE services SET ${setClause} ${whereClause}`;
-    const allValues = [...setValues, ...whereValues];
-
-    const result = await database.run(sql, allValues);
-
-    res.json({
-      message: `Successfully updated ${result.changes} service(s)`,
-      changes: result.changes
-    });
-  } catch (error) {
-    console.error('Error bulk updating services:', error);
-    res.status(500).json({ error: 'Failed to bulk update services' });
   }
 });
 

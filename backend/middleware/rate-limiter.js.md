@@ -26,7 +26,7 @@ RATE_LIMIT_MAX=2000
 ### loginRateLimiter  
 - **Purpose**: Login attempt rate limiting (5 attempts per 15 minutes)
 - **Configuration**: Hardcoded for security
-- **Bypass**: Development header `x-dev-bypass`
+- **Bypass**: Development-only header `x-dev-bypass`; production ignores the bypass header.
 
 ## Implementation Details
 
@@ -59,3 +59,8 @@ const MAX_REQS = Number(process.env.RATE_LIMIT_MAX || 2000);
 - **Bug Summary:** Checkpoint security review found that preview/test bypass and unconditional proxy trust could be unsafe if deployed unchanged.
 - **Validated Hypothesis:** Server-level rate-limit bypass relied on PWTEST mode and `app.set('trust proxy', 1)` was always active.
 - **Resolution:** PWTEST bypass is now controlled by `server.js` through `isPwtestAllowed()`, which refuses PWTEST in production. Proxy trust is deployment-configured with `TRUST_PROXY_HOPS` instead of being enabled by default.
+
+### Development Header Bypass Production Guard (2026-07-14)
+- **Bug Summary:** The login limiter's `x-dev-bypass: reset-rate-limit` skip predicate did not check `NODE_ENV`.
+- **Validated Hypothesis:** Source inspection showed the skip predicate only checked the header value.
+- **Resolution:** The skip predicate now requires `process.env.NODE_ENV !== 'production'` before honoring the development bypass header.

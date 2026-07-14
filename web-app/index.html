@@ -109,6 +109,15 @@
     <script src="api.js"></script>
     <script src="shared.js"></script>
     <script>
+        function escapeHomeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
             // Check authentication first
             if (!requireAuth()) {
@@ -125,11 +134,14 @@
                     document.getElementById('admin-section').style.display = 'block';
                 }
             }
+
+            await loadData();
             
             await updateDashboard();
             await updateRecentActivity();
             await updatePaymentBreakdown();
             setInterval(async () => {
+                await loadData();
                 await updateDashboard();
                 await updateRecentActivity();
                 await updatePaymentBreakdown();
@@ -193,10 +205,12 @@
                 const icon = activity.type === 'transaction' ? '💳' : '💰';
                 const color = activity.type === 'transaction' ? '#34a853' : '#ea4335';
                 const prefix = activity.type === 'transaction' ? '+' : '-';
+                const description = escapeHomeHtml(activity.description);
+                const masseuse = escapeHomeHtml(activity.masseuse);
                 div.innerHTML = `
                     <div>${formatTime(activity.timestamp)}</div>
-                    <div>${icon} ${activity.description} ${statusBadge}</div>
-                    <div>${activity.masseuse}</div>
+                    <div>${icon} ${description} ${statusBadge}</div>
+                    <div>${masseuse}</div>
                     <div style="color: ${color}">${prefix}฿${activity.amount.toFixed(2)}</div>
                 `;
                 container.appendChild(div);
@@ -216,7 +230,7 @@
             Object.entries(summary.paymentBreakdown)
                 .sort(([,a], [,b]) => b.revenue - a.revenue)
                 .forEach(([method, data]) => {
-                    html += `<tr><td>${method}</td><td>${data.count}</td><td class="amount">฿${data.revenue.toFixed(2)}</td></tr>`;
+                    html += `<tr><td>${escapeHomeHtml(method)}</td><td>${data.count}</td><td class="amount">฿${data.revenue.toFixed(2)}</td></tr>`;
                 });
             html += '</table>';
             container.innerHTML = html;

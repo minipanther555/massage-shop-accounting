@@ -38,7 +38,7 @@
 - **Logic:**
   1. Computes the current Bangkok business day with `getCurrentBusinessDay(req)`.
   2. Reads active visible Today Staff rows with `getActiveTodayStaff()`.
-  3. Reads current-day `ACTIVE` transactions and treats rows whose `timestamp + duration` is still in the future as busy windows.
+  3. Reads current-day `ACTIVE` transactions and treats rows whose canonical `end_datetime` is still in the future as busy windows. If a legacy row has no canonical datetime fields, it falls back to `timestamp + duration`.
   4. Reads future `BOOKED` reservations with a requested masseuse and attaches the next booking per staff member.
   5. Marks active massage rows as `busy`, staff with less than one 60-minute service slot before a requested booking as `booking_buffer`, and all remaining rows as `available`.
   6. Sorts the snapshot by operational state: busy first, booking-constrained rows next, free rows last.
@@ -219,6 +219,20 @@ The backend already had the authoritative data: Today Staff order in `today_staf
 
 ### Resolution
 Added `GET /api/staff/current-status` as a read-only snapshot endpoint and protected it with OTDD coverage for busy, free-after-buffer, booking-buffer, count, booking, status ordering, and indexed query-plan behavior.
+
+### Bug Summary: Current Status Used Creation Timestamp Instead of Canonical Massage Window (2026-07-14)
+Current Shop Status could show a staff member free too early because it derived busy end time from `transactions.timestamp + duration`. The New Customer page can submit canonical `start_datetime` and `end_datetime` based on the actual service start/end selection.
+
+### Validated Hypothesis
+`backend/routes/transactions.js` accepted `start_datetime` and `end_datetime`, but the `transactions` table did not persist them and `backend/routes/staff.js#getActiveTransactionByStaff()` could not read them.
+
+### Invalidated Hypotheses
+- The issue could be solved by the legacy `staff_roster.busy_until` field.
+- Daily Summary should recompute the browser-side timing model.
+- Existing legacy transactions should be rejected if they lack canonical datetimes.
+
+### Resolution
+The transaction schema now includes additive `start_datetime` and `end_datetime` columns, transaction creation persists them, and Current Shop Status prefers those canonical fields with a documented legacy fallback to `timestamp + duration`.
 
 ### Bug Summary: Walk-In Submit Advanced Legacy Queue Instead of Today Staff (2026-07-13)
 The New Customer page auto-selected the first active Today Staff row, but submitting that walk-in did not advance the dropdown to the next staff member. The page stayed on the same staff after submit.

@@ -253,14 +253,14 @@ router.post('/', async (req, res) => {
         transaction_id, timestamp, date, masseuse_name, service_type,
         location, duration, payment_amount, payment_method, masseuse_fee,
         start_time, end_time, customer_contact, status, business_day,
-        corrected_from_id, booking_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        corrected_from_id, booking_id, start_datetime, end_datetime
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         transactionId, timestamp, date, masseuseName, serviceType,
         location, duration, service.price, paymentMethod, service.masseuse_fee,
         startTime, endTime, customerContact,
         originalTransactionId ? 'CORRECTED' : 'ACTIVE', businessDay,
-        originalTransactionId, bookingId
+        originalTransactionId, bookingId, startDateTime, endDateTime
       ]
     );
     console.log('[TX CREATE - STEP 8] New transaction inserted successfully.');

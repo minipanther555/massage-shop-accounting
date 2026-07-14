@@ -1,6 +1,6 @@
 # Daily Summary Current Shop Status Steps
 
-> **Status:** DAILY SUMMARY STATUS UI IMPLEMENTED AND VERIFIED (2026-07-13); DSS-008 OPEN from checkpoint review
+> **Status:** DAILY SUMMARY STATUS UI IMPLEMENTED AND VERIFIED (2026-07-13); DSS-008 IMPLEMENTED AND VERIFIED (2026-07-14)
 > **Feature Specification:** `00-project-docs/feature-specifications/daily-summary-current-shop-status.md`
 
 ## DSS-001 - Governed Spec and Step Creation
@@ -173,7 +173,7 @@
 
 ## DSS-008 - Canonical Busy-End Source for Current Status
 
-**Status:** OPEN - added by checkpoint quality review (2026-07-13)
+**Status:** IMPLEMENTED AND VERIFIED (2026-07-14)
 
 **Goal:** Prevent Current Shop Status from showing a staff member free too early by making the backend derive busy windows from the same canonical start/end timestamps used by the transaction UI and booking buffer logic.
 
@@ -186,3 +186,10 @@
 **Potential Challenges and Mitigations:** If additive datetime columns are needed, handle them through the governed DB/code path and keep existing transactions backward-compatible with a documented fallback.
 
 **Validation:** Backend status tests prove a transaction with canonical start/end fields remains busy until the canonical end plus the required gap, and a fallback legacy row still renders deterministically. Browser/DOM tests verify the busy text matches the backend contract.
+
+**Completion Notes (2026-07-14):**
+- [x] Added additive `transactions.start_datetime` and `transactions.end_datetime` schema fields.
+- [x] Persisted canonical transaction start/end datetimes in `POST /api/transactions`.
+- [x] Updated `GET /api/staff/current-status` to prefer canonical datetimes and fall back to `timestamp + duration` for legacy rows.
+- [x] Updated OTDD coverage so a row with `timestamp=14:00`, `start_datetime=14:10`, and `end_datetime=15:20` remains busy until `15:20` and free at `15:35`.
+- Evidence: `mocha tests/otdd/daily-summary-current-status.test.js --reporter dot` and `jest __tests__/daily-summary.current-status.present.test.js --testEnvironment=node --runInBand` passed during the whole-app UI/database audit.

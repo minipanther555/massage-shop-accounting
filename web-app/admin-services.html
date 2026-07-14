@@ -430,6 +430,15 @@
         let allServices = [];
         let filteredServices = [];
 
+        function escapeServiceHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Check authentication
         function checkAuth() {
             // For now, just ensure the page loads
@@ -446,17 +455,13 @@
         // Load all services
         async function loadServices() {
             try {
-                const response = await fetch('/api/services?includeInactive=true');
-                if (response.ok) {
-                    allServices = await response.json();
-                    filteredServices = [...allServices];
-                    updateSummaryCards();
-                    displayServices();
-                } else {
-                    console.error('Failed to load services');
-                }
+                allServices = await api.getServices({ includeInactive: true });
+                filteredServices = [...allServices];
+                updateSummaryCards();
+                displayServices();
             } catch (error) {
                 console.error('Error loading services:', error);
+                showToast('Error loading services', 'error');
             }
         }
 
@@ -483,19 +488,26 @@
             filteredServices.forEach(service => {
                 const row = document.createElement('div');
                 row.className = 'services-grid';
+                const serviceName = escapeServiceHtml(service.service_name);
+                const serviceId = Number(service.id);
+                const duration = Number(service.duration_minutes) || 0;
+                const location = escapeServiceHtml(service.location);
+                const price = Number.parseFloat(service.price || 0).toFixed(0);
+                const fee = Number.parseFloat(service.masseuse_fee || 0).toFixed(0);
+                const locationClass = service.location === 'In-Shop' ? 'in-shop' : 'home-service';
                 row.innerHTML = `
                     <div>
-                        <strong>${service.service_name}</strong>
-                        <br><small style="color: #6c757d;">ID: ${service.id}</small>
+                        <strong>${serviceName}</strong>
+                        <br><small style="color: #6c757d;">ID: ${serviceId}</small>
                     </div>
-                    <div>${service.duration_minutes} min</div>
+                    <div>${duration} min</div>
                     <div>
-                        <span class="location-badge ${service.location === 'In-Shop' ? 'in-shop' : 'home-service'}">
-                            ${service.location}
+                        <span class="location-badge ${locationClass}">
+                            ${location}
                         </span>
                     </div>
-                    <div><strong>฿${parseFloat(service.price).toFixed(0)}</strong></div>
-                    <div>฿${parseFloat(service.masseuse_fee).toFixed(0)}</div>
+                    <div><strong>฿${price}</strong></div>
+                    <div>฿${fee}</div>
                     <div>
                         <span class="service-status ${service.active ? 'active' : 'inactive'}">
                             ${service.active ? 'Active' : 'Inactive'}
@@ -581,23 +593,17 @@
 
             if (confirm(`Are you sure you want to ${action} "${service.service_name}"?`)) {
                 try {
-                    const response = await fetch(`/api/services/${serviceId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ active: newStatus })
-                    });
-
-                    if (response.ok) {
-                        service.active = newStatus;
-                        updateSummaryCards();
-                        displayServices();
-                        showToast(`Service ${action}d successfully`, 'success');
-                    } else {
-                        showToast(`Failed to ${action} service`, 'error');
+                    const updatedService = await api.updateService(serviceId, { active: newStatus });
+                    const index = allServices.findIndex(s => s.id === serviceId);
+                    if (index !== -1) {
+                        allServices[index] = updatedService;
                     }
+                    filterServices();
+                    updateSummaryCards();
+                    showToast(`Service ${action}d successfully`, 'success');
                 } catch (error) {
                     console.error(`Error ${action}ing service:`, error);
-                    showToast(`Error ${action}ing service`, 'error');
+                    showToast(error.message || `Error ${action}ing service`, 'error');
                 }
             }
         }
@@ -610,13 +616,13 @@
             if (!service) return;
 
             document.getElementById('price-history-content').innerHTML = `
-                <h3>${service.service_name}</h3>
-                <p><strong>Current Price:</strong> ฿${parseFloat(service.price).toFixed(0)}</p>
-                <p><strong>Current Fee:</strong> ฿${parseFloat(service.masseuse_fee).toFixed(0)}</p>
-                <p><strong>Location:</strong> ${service.location}</p>
-                <p><strong>Duration:</strong> ${service.duration_minutes} minutes</p>
+                <h3>${escapeServiceHtml(service.service_name)}</h3>
+                <p><strong>Current Price:</strong> ฿${Number.parseFloat(service.price || 0).toFixed(0)}</p>
+                <p><strong>Current Fee:</strong> ฿${Number.parseFloat(service.masseuse_fee || 0).toFixed(0)}</p>
+                <p><strong>Location:</strong> ${escapeServiceHtml(service.location)}</p>
+                <p><strong>Duration:</strong> ${escapeServiceHtml(service.duration_minutes)} minutes</p>
                 <p><strong>Status:</strong> ${service.active ? 'Active' : 'Inactive'}</p>
-                <p><strong>Created:</strong> ${new Date(service.created_at).toLocaleDateString()}</p>
+                <p><strong>Created:</strong> ${escapeServiceHtml(new Date(service.created_at).toLocaleDateString())}</p>
                 <p><em>Note: Price history tracking will be implemented in future versions.</em></p>
             `;
 
@@ -635,23 +641,15 @@
 
             if (confirm(`Are you sure you want to delete "${service.service_name}"? This action cannot be undone.`)) {
                 try {
-                    const response = await fetch(`/api/services/${serviceId}`, {
-                        method: 'DELETE'
-                    });
-
-                    if (response.ok) {
-                        allServices = allServices.filter(s => s.id !== serviceId);
-                        filteredServices = filteredServices.filter(s => s.id !== serviceId);
-                        updateSummaryCards();
-                        displayServices();
-                        showToast('Service deleted successfully', 'success');
-                    } else {
-                        const error = await response.json();
-                        showToast(error.error || 'Failed to delete service', 'error');
-                    }
+                    await api.deleteService(serviceId);
+                    allServices = allServices.filter(s => s.id !== serviceId);
+                    filteredServices = filteredServices.filter(s => s.id !== serviceId);
+                    updateSummaryCards();
+                    displayServices();
+                    showToast('Service deleted successfully', 'success');
                 } catch (error) {
                     console.error('Error deleting service:', error);
-                    showToast('Error deleting service', 'error');
+                    showToast(error.message || 'Error deleting service', 'error');
                 }
             }
         }
@@ -672,48 +670,33 @@
             };
 
             try {
-                let response;
+                let updatedService;
                 if (serviceId) {
                     // Update existing service
-                    response = await fetch(`/api/services/${serviceId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(serviceData)
-                    });
+                    updatedService = await api.updateService(serviceId, serviceData);
                 } else {
                     // Add new service
-                    response = await fetch('/api/services', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(serviceData)
-                    });
+                    updatedService = await api.createService(serviceData);
                 }
 
-                if (response.ok) {
-                    const updatedService = await response.json();
-                    
-                    if (serviceId) {
-                        // Update existing service in array
-                        const index = allServices.findIndex(s => s.id === parseInt(serviceId));
-                        if (index !== -1) {
-                            allServices[index] = updatedService;
-                        }
-                    } else {
-                        // Add new service to array
-                        allServices.push(updatedService);
+                if (serviceId) {
+                    // Update existing service in array
+                    const index = allServices.findIndex(s => s.id === parseInt(serviceId));
+                    if (index !== -1) {
+                        allServices[index] = updatedService;
                     }
-
-                    updateSummaryCards();
-                    displayServices();
-                    closeServiceModal();
-                    showToast(serviceId ? 'Service updated successfully' : 'Service added successfully', 'success');
                 } else {
-                    const error = await response.json();
-                    showToast(error.error || 'Failed to save service', 'error');
+                    // Add new service to array
+                    allServices.push(updatedService);
                 }
+
+                updateSummaryCards();
+                filterServices();
+                closeServiceModal();
+                showToast(serviceId ? 'Service updated successfully' : 'Service added successfully', 'success');
             } catch (error) {
                 console.error('Error saving service:', error);
-                showToast('Error saving service', 'error');
+                showToast(error.message || 'Error saving service', 'error');
             }
         });
 

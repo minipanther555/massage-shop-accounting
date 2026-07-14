@@ -5,6 +5,7 @@ The Today Staff page provides the first daily workflow for the shop: using yeste
 
 ## End-to-End Data Flow
 User loads page → Controller initializes → previous-business-day helper list and Today Staff state load → helper rows show staff name, commission, and `หยุดเมื่อวาน` for zero earnings → user adds from helper or dropdown → Staff row appears with large position, name, next-line control, massage count, and reorder/remove controls → user can mark `หยุดวันนี้` and later restore the person from the visible day-off section. Clear everyone clears only the visible Today Staff list and does not alter All Staff or accounting history.
+Queue order controls delegate to `staff-page-controller.js`, which writes the canonical `/api/staff/today/reorder` endpoint and then re-renders from the returned Today Staff order.
 
 ## Module API & Logic Breakdown
 
@@ -63,6 +64,11 @@ User loads page → Controller initializes → previous-business-day helper list
 - Rows include a drag hint and large staff names/counts for quick scanning; the count is explicitly labeled `นวดวันนี้` and rendered as `N ครั้ง`.
 
 **Styling**: Grid layout with larger names, larger counts, visible drag affordance, and clearer order/remove buttons.
+
+**Data Contract**:
+- The first visible row is the current `คิวถัดไป`.
+- `ตั้งคิว`, `ขึ้น`, and `ลง` persist order through `api.reorderTodayStaff()` / `/api/staff/today/reorder`.
+- Staff names/status/helper labels are escaped by the controller before dynamic `innerHTML` rendering.
 
 #### Add New Staff Modal
 **Purpose**: Lets the user create a missing master staff member from the daily roster page without leaving the first daily workflow.
@@ -207,3 +213,10 @@ User loads page → Controller initializes → previous-business-day helper list
 - Clearing browser storage was an acceptable durable fix.
 
 **Resolution:** Updated the Staff page PWTEST shim to return and store `{ username: "pwtest", role: "manager", displayName: "PW Test Manager", permissions: ["*"] }`. `shared.js` also normalizes stale legacy preview users so older localStorage state is repaired on read.
+
+### Bug Summary: Visible Queue Controls Wrote the Wrong Backend Contract (2026-07-14)
+**Bug Summary:** The Today Staff page rendered controls that appeared to set the next masseuse or reorder the visible queue, but the controller wrote legacy roster swaps instead of the current Today Staff order table.
+
+**Validated Hypothesis:** The page shell was correct to delegate behavior to `staff-page-controller.js`; the broken contract lived in the controller write path.
+
+**Resolution:** Documented that visible queue order is persisted through `/api/staff/today/reorder`, with the first returned row rendered as `คิวถัดไป`.

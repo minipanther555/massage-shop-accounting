@@ -12,7 +12,7 @@ The index page serves as the primary entry point for the massage shop POS system
 **User Journey:**
 1. **Entry Point:** User accesses root URL (`/` or `index.html`)
 2. **Authentication Check:** System verifies user login status
-3. **Dashboard Population:** JavaScript fetches real-time data for dashboard cards
+3. **Dashboard Population:** JavaScript calls `loadData()` to load services, payment methods, roster, recent transactions, current shop status, and expenses before rendering dashboard cards
 4. **Navigation Display:** Bilingual navigation buttons render with Thai first and English second
 5. **User Interaction:** User clicks navigation buttons to access different modules
 6. **Data Updates:** Dashboard refreshes automatically with latest information
@@ -33,7 +33,10 @@ The index page serves as the primary entry point for the massage shop POS system
 - Today's Expenses
 
 **JavaScript Functions:**
+- `loadData()` - Loads API-backed shared state before homepage widgets render
 - `updateDashboard()` - Fetches and displays current metrics
+- `updateRecentActivity()` - Renders recent transactions/expenses from loaded shared state with escaped labels
+- `updatePaymentBreakdown()` - Renders payment breakdown from the server summary with escaped payment names
 - `refreshData()` - Updates dashboard with latest information
 
 ### Primary Navigation
@@ -125,6 +128,17 @@ Each page omits its own route from top navigation. For example, the homepage omi
 - "New Transaction" was clear enough.
 
 **Resolution:** Homepage omits the Home self-link, other pages omit their own route, and the transaction route is labeled Thai-first as `ลูกค้าใหม่ / New Customer`.
+
+### Homepage Data Load and Safe Rendering (2026-07-14)
+**Bug Summary:** Homepage widgets used `appData` for staff counts, recent activity, expenses, and payment breakdown without first loading the API-backed shared state on page entry.
+
+**Validated Hypothesis:** The page called `updateDashboard()`, `updateRecentActivity()`, and `updatePaymentBreakdown()` immediately after auth, but shared auto-initialization is intentionally disabled and each page must call `loadData()` itself.
+
+**Invalidated Hypotheses:**
+- The dashboard summary endpoint was missing.
+- The static and EJS pages intentionally differed.
+
+**Resolution:** Both `index.html` and `index.ejs` call `loadData()` before initial render and before each 30-second refresh, escape dynamic recent-activity and payment labels, and are guarded by `__tests__/homepage.contract.present.test.js`.
 
 ## 🔒 Security Considerations
 

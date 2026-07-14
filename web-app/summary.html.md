@@ -166,3 +166,17 @@ The database values, not the New Customer API path, were stale. The Daily Summar
 
 ### Resolution
 The two preview expense rows were updated at their data source to `Big C` and `Oil`. The Summary-only alias helper was removed, and both mirrored templates now escape and render `expense.description` directly so all pages reflect the same API/database value.
+
+### Bug Summary: Current Status Could Show Staff Free Too Early (2026-07-14)
+Current Shop Status derived active massage windows from transaction creation time plus duration, even though New Customer and booking arrival can submit canonical service start/end datetimes.
+
+### Validated Hypothesis
+Daily Summary correctly delegated to `/api/staff/current-status`; the backend status endpoint lacked canonical transaction timing fields and therefore used the wrong source for busy-end calculation.
+
+### Invalidated Hypotheses
+- The Daily Summary renderer needed to recompute end times in the browser.
+- The legacy `staff_roster.busy_until` field should become the status source.
+- Booking buffer rules alone caused the early-free display.
+
+### Resolution
+The backend now persists `transactions.start_datetime` and `transactions.end_datetime` and Current Shop Status prefers those canonical fields, falling back to `timestamp + duration` only for legacy rows.

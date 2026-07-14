@@ -1258,7 +1258,7 @@
         }
 
         async function handleRemoveExpense(index) {
-            if (removeExpense(index)) {
+            if (await removeExpense(index)) {
                 await updateAllDisplays();
             }
         }

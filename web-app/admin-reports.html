@@ -338,11 +338,11 @@
 
         <!-- Time Period Tabs -->
         <div class="time-period-tabs">
-            <button class="time-period-tab active" onclick="setTimePeriod('today')">Today</button>
-            <button class="time-period-tab" onclick="setTimePeriod('week')">This Week</button>
-            <button class="time-period-tab" onclick="setTimePeriod('month')">This Month</button>
-            <button class="time-period-tab" onclick="setTimePeriod('year')">This Year</button>
-            <button class="time-period-tab" onclick="setTimePeriod('custom')">Custom Range</button>
+            <button class="time-period-tab active" onclick="setTimePeriod('today', this)">Today</button>
+            <button class="time-period-tab" onclick="setTimePeriod('week', this)">This Week</button>
+            <button class="time-period-tab" onclick="setTimePeriod('month', this)">This Month</button>
+            <button class="time-period-tab" onclick="setTimePeriod('year', this)">This Year</button>
+            <button class="time-period-tab" onclick="setTimePeriod('custom', this)">Custom Range</button>
         </div>
 
         <!-- Reports Container -->
@@ -368,7 +368,6 @@
         <!-- Export Controls -->
         <div class="export-controls">
             <button class="btn" onclick="exportReport('csv')">📊 Export to CSV</button>
-            <button class="btn" onclick="exportReport('pdf')">📄 Export to PDF</button>
             <button class="btn" onclick="printReport()">🖨️ Print Report</button>
         </div>
     </div>
@@ -378,6 +377,15 @@
     <script>
         let currentTimePeriod = 'today';
         let currentReports = null;
+
+        function escapeReportHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         // Check authentication
         function checkAuth() {
@@ -396,46 +404,52 @@
         // Initialize filter dropdowns
         async function initializeFilters() {
             try {
-                // Load staff members
-                const staffResponse = await fetch('/api/reports/staff');
-                if (staffResponse.ok) {
-                    const staff = await staffResponse.json();
-                    const staffSelect = document.getElementById('filter-staff');
-                    staff.forEach(member => {
-                        const option = document.createElement('option');
-                        option.value = member; // Backend returns strings, not objects
-                        option.textContent = member;
-                        staffSelect.appendChild(option);
-                    });
-                }
+                const [staff, serviceTypes, locations] = await Promise.all([
+                    api.getReportStaff(),
+                    api.getReportServiceTypes(),
+                    api.getReportLocations()
+                ]);
 
-                // Load service types
-                const servicesResponse = await fetch('/api/services');
-                if (servicesResponse.ok) {
-                    const services = await servicesResponse.json();
-                    const serviceSelect = document.getElementById('filter-service');
-                    const serviceTypes = [...new Set(services.map(s => s.service_name))];
-                    serviceTypes.forEach(type => {
-                        const option = document.createElement('option');
-                        option.value = type;
-                        option.textContent = type;
-                        serviceSelect.appendChild(option);
-                    });
-                }
+                const staffSelect = document.getElementById('filter-staff');
+                staff.forEach(member => {
+                    const option = document.createElement('option');
+                    option.value = member;
+                    option.textContent = member;
+                    staffSelect.appendChild(option);
+                });
+
+                const serviceSelect = document.getElementById('filter-service');
+                serviceTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    serviceSelect.appendChild(option);
+                });
+
+                const locationSelect = document.getElementById('filter-location');
+                locationSelect.innerHTML = '<option value="">All Locations</option>';
+                locations.forEach(location => {
+                    const option = document.createElement('option');
+                    option.value = location;
+                    option.textContent = location;
+                    locationSelect.appendChild(option);
+                });
             } catch (error) {
                 console.error('Error initializing filters:', error);
             }
         }
 
         // Set time period and load reports
-        function setTimePeriod(period) {
-            let currentTimePeriod = period;
+        function setTimePeriod(period, clickedTab = null) {
+            currentTimePeriod = period;
             
             // Update active tab
             document.querySelectorAll('.time-period-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
             
             // Set date range based on period
             const today = new Date();
@@ -509,18 +523,16 @@
                 if (serviceType && serviceType !== 'all') params.append('service_type', serviceType);
                 if (location && location !== 'all') params.append('location', location);
 
-                console.log('📡 API URL:', `/api/reports/financial?${params}`);
-                const response = await fetch(`/api/reports/financial?${params}`);
-                console.log('📥 Response status:', response.status, response.statusText);
-                
-                if (response.ok) {
-                    currentReports = await response.json();
-                    console.log('✅ API response received:', currentReports);
-                    displayReports();
-                } else {
-                    console.log('❌ API response not OK');
-                    throw new Error('Failed to load reports');
-                }
+                console.log('📡 Loading financial report with params:', params.toString());
+                currentReports = await api.getFinancialReport({
+                    from_date: fromDate,
+                    to_date: toDate,
+                    staff_member: staffId,
+                    service_type: serviceType,
+                    location
+                });
+                console.log('✅ API response received:', currentReports);
+                displayReports();
             } catch (error) {
                 console.error('Error loading reports:', error);
                 document.getElementById('reports-container').innerHTML = `
@@ -577,7 +589,7 @@
             // Build reports HTML
             let reportsHTML = `
                 <div class="reports-container">
-                    <h3>📊 Financial Summary (${formatDateRange(currentReports.dateRange)})</h3>
+                    <h3>📊 Financial Summary (${escapeReportHtml(formatDateRange(currentReports.dateRange))})</h3>
                     
                     <div class="report-grid">
                         <div class="report-section">
@@ -643,7 +655,7 @@
                 currentReports.breakdowns.by_payment_method.forEach(paymentType => {
                     reportsHTML += `
                         <div class="report-section">
-                            <h4>${paymentType.payment_method}</h4>
+                            <h4>${escapeReportHtml(paymentType.payment_method)}</h4>
                             <div class="report-item">
                                 <span class="label">Revenue:</span>
                                 <span class="value positive">฿${(paymentType.revenue || 0).toFixed(0)}</span>
@@ -677,7 +689,7 @@
                 currentReports.serviceBreakdown.forEach(service => {
                     reportsHTML += `
                         <div class="report-section">
-                            <h4>${service.serviceName}</h4>
+                            <h4>${escapeReportHtml(service.serviceName)}</h4>
                             <div class="report-item">
                                 <span class="label">Revenue:</span>
                                 <span class="value positive">฿${(service.revenue || 0).toFixed(0)}</span>
@@ -711,7 +723,7 @@
                 currentReports.staffBreakdown.forEach(staff => {
                     reportsHTML += `
                         <div class="report-section">
-                            <h4>${staff.staffName}</h4>
+                            <h4>${escapeReportHtml(staff.staffName)}</h4>
                             <div class="report-item">
                                 <span class="label">Services:</span>
                                 <span class="value">${staff.services || 0}</span>
@@ -741,7 +753,7 @@
                     <div class="chart-placeholder">
                         <h4>📊 Chart Visualization</h4>
                         <p>Interactive charts and graphs will be implemented in future versions.</p>
-                        <p>Currently showing data for: ${formatDateRange(currentReports.dateRange)}</p>
+                        <p>Currently showing data for: ${escapeReportHtml(formatDateRange(currentReports.dateRange))}</p>
                     </div>
                 </div>
             `;
@@ -760,19 +772,39 @@
             
             if (format === 'csv') {
                 exportToCSV();
-            } else if (format === 'pdf') {
-                exportToPDF();
             }
         }
 
         function exportToCSV() {
-            // Implementation for CSV export
-            showToast('CSV export functionality will be implemented in future versions.', 'info');
-        }
+            const rows = [
+                ['Section', 'Name', 'Revenue', 'Count', 'Fees', 'Percentage'],
+                ['Summary', 'Total Revenue', currentReports.summary.total_revenue || 0, currentReports.summary.total_transactions || 0, currentReports.summary.total_masseuse_fees || 0, ''],
+                ['Summary', 'Net Profit', currentReports.summary.net_profit || 0, '', '', `${currentReports.summary.profit_margin || 0}%`]
+            ];
 
-        function exportToPDF() {
-            // Implementation for PDF export
-            showToast('PDF export functionality will be implemented in future versions.', 'info');
+            (currentReports.breakdowns?.by_payment_method || []).forEach(row => {
+                rows.push(['Payment Method', row.payment_method || '', row.revenue || 0, row.count || 0, '', '']);
+            });
+
+            (currentReports.serviceBreakdown || []).forEach(row => {
+                rows.push(['Service', row.serviceName || '', row.revenue || 0, row.transactions || 0, '', '']);
+            });
+
+            (currentReports.staffBreakdown || []).forEach(row => {
+                rows.push(['Staff', row.staffName || '', row.revenue || 0, row.services || 0, row.feesEarned || 0, '']);
+            });
+
+            const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `financial-report-${currentReports.dateRange?.from || 'from'}-${currentReports.dateRange?.to || 'to'}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            showToast('CSV export generated', 'success');
         }
 
         function printReport() {

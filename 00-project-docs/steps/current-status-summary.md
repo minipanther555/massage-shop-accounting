@@ -18,13 +18,13 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ### Checkpoint Quality Review (2026-07-13)
 - Security hardening completed during checkpoint: production ignores PWTEST bypasses, booking routes require auth, CSRF bypass is non-production only, proxy trust is explicit via `TRUST_PROXY_HOPS`, login UI no longer displays seed passwords, and the local cookie jar placeholder contains no live cookies.
-- Two correctness follow-ups are tracked instead of guessed: BKG-004 for booking correction/credit/buffer hardening and DSS-008 for canonical busy-end timing in Current Shop Status.
+- One correctness follow-up remains tracked instead of guessed: BKG-004 for booking correction/credit/buffer hardening. DSS-008 canonical busy-end timing was implemented during the whole-app UI/database audit.
 - Dependency audit still reports existing vulnerable packages; no dependency files were changed in this checkpoint.
 
 ### Daily Summary Current Shop Status (2026-07-13)
 - Daily Summary now includes current shop status with busy/free state, next booking constraint, usable time before the 15-minute buffer, and today massage counts.
 - The Daily Summary financial area was compacted into Thai-first drill-down controls so the status section is easier to reach.
-- Checkpoint review found the status endpoint can still derive busy end from `timestamp + duration`; DSS-008 tracks moving that to canonical transaction times.
+- Checkpoint review found the status endpoint could derive busy end from `timestamp + duration`; DSS-008 now persists canonical transaction start/end datetimes and Current Shop Status prefers them with a legacy fallback.
 
 ### Phase Status: STAFF ROSTER UX PASS COMPLETE; NEW CUSTOMER PAGE NEXT
 The current interactive work is a staff-facing UI simplification pass. The first completed page is the daily staff roster, which was reworked to make the daily sequence obvious for Thai staff: choose a staff member, add them to today's list, reorder the list, remove mistakes, and add a new hire only when a name is missing.

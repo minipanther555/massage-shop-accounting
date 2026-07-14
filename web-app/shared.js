@@ -504,13 +504,22 @@ async function addExpense(description, amount) {
 }
 
 // Remove expense
-function removeExpense(index) {
+async function removeExpense(index) {
   const expense = appData.expenses[index];
+  if (!expense) {
+    showToast('Expense not found', 'error');
+    return false;
+  }
   if (window.confirm(`Remove expense: ${expense.description} - ฿${expense.amount.toFixed(2)}?`)) {
-    appData.expenses.splice(index, 1);
-    saveData();
-    showToast('Expense removed');
-    return true;
+    try {
+      await api.deleteExpense(expense.id);
+      await loadTodayData();
+      showToast('Expense removed');
+      return true;
+    } catch (error) {
+      showToast(`Failed to remove expense: ${error.message}`, 'error');
+      return false;
+    }
   }
   return false;
 }

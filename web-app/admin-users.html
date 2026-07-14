@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ an_actual_token }}">
     <script
       src="https://js-de.sentry-cdn.com/6604be417c099671b7ee6e98970c90d6.min.js"
       crossorigin="anonymous"
@@ -10,293 +11,293 @@
     <title>User Management - EIW Massage Shop</title>
     <link rel="stylesheet" href="/styles.css">
     <style>
+        .user-admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .user-admin-header h1 {
+            margin-bottom: 6px;
+        }
+
         .user-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1rem;
             margin-top: 1rem;
         }
-        
+
         .user-card {
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 1rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
         }
-        
+
         .user-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 0.5rem;
             margin-bottom: 0.5rem;
         }
-        
-        .user-role {
-            background: #007bff;
-            color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
+
+        .user-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            line-height: 1.3;
         }
-        
-        .user-location {
-            background: #28a745;
-            color: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-        
-        .user-status {
+
+        .user-badges {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 0.4rem;
         }
-        
+
+        .user-role,
+        .user-location,
         .status-badge {
+            color: white;
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
             font-size: 0.8rem;
             font-weight: bold;
         }
-        
+
+        .user-role {
+            background: #007bff;
+        }
+
+        .user-location {
+            background: #28a745;
+        }
+
         .status-active {
             background: #28a745;
-            color: white;
         }
-        
+
         .status-inactive {
             background: #dc3545;
-            color: white;
         }
-        
+
         .location-filter {
             margin-bottom: 1rem;
             display: flex;
+            flex-wrap: wrap;
             gap: 1rem;
             align-items: center;
         }
-        
-        .add-user-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
+
+        .location-filter select {
+            min-width: 220px;
         }
-        
-        .add-user-btn:hover {
-            background: #218838;
+
+        .user-management-note {
+            background: #fff8e1;
+            border: 1px solid #ffe08a;
+            border-radius: 8px;
+            color: #5f4b00;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+        }
+
+        .user-management-note strong {
+            display: block;
+            margin-bottom: 4px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>User Management</h1>
-            <nav>
-                        <a href="/api/admin/staff-page">Staff</a>
-        <a href="/api/admin/services-page">Services</a>
-        <a href="/api/admin/reports-page">Reports</a>
-        <a href="/api/admin/payment-types-page">Payment Types</a>
-        <a href="/api/admin/users-page" class="active">Users</a>
-        <a href="/">Dashboard</a>
-                <button onclick="logout()" class="logout-btn">
-            <span class="label-th">👋 ออกจากระบบ</span>
-            <span class="label-en">👋 Logout</span>
-        </button>
-            </nav>
+        <header class="user-admin-header">
+            <div>
+                <h1>User Management</h1>
+                <p class="helper-text">Read-only manager view of configured login accounts.</p>
+            </div>
+            <button onclick="logout()" class="logout-btn">
+                <span class="label-th">👋 ออกจากระบบ</span>
+                <span class="label-en">👋 Logout</span>
+            </button>
         </header>
 
+        <nav class="nav-buttons">
+            <a href="/api/admin/staff-page" class="nav-btn staff">
+                <span class="label-th">💰 ติดตามการจ่ายเงิน</span>
+                <span class="label-en">💰 Payday Tracking</span>
+            </a>
+            <a href="/api/admin/services-page" class="nav-btn services">
+                <span class="label-th">💰 บริการและราคา</span>
+                <span class="label-en">💰 Services & Pricing</span>
+            </a>
+            <a href="/api/admin/reports-page" class="nav-btn reports">
+                <span class="label-th">📊 รายงานการเงิน</span>
+                <span class="label-en">📊 Financial Reports</span>
+            </a>
+            <a href="/api/admin/payment-types-page" class="nav-btn payment">
+                <span class="label-th">💳 ประเภทการชำระเงิน</span>
+                <span class="label-en">💳 Payment Types</span>
+            </a>
+            <a href="/" class="nav-btn home">
+                <span class="label-th">🏠 หน้าแรก</span>
+                <span class="label-en">🏠 Home</span>
+            </a>
+        </nav>
+
         <main>
+            <div class="user-management-note">
+                <strong>Account changes are not saved from this page.</strong>
+                Current login accounts come from the backend auth configuration. Add/change/remove users there until a persistent user store is implemented.
+            </div>
+
             <div class="location-filter">
                 <label for="locationFilter">Filter by Location:</label>
-                <select id="locationFilter" onchange="filterUsersByLocation()">
+                <select id="locationFilter">
                     <option value="">All Locations</option>
-                    <option value="1">Main Branch</option>
-                    <option value="2">Downtown</option>
-                    <option value="3">Suburban</option>
                 </select>
-                <button class="add-user-btn" onclick="showAddUserModal()">Add New User</button>
             </div>
 
             <div id="usersContainer" class="user-grid">
-                <!-- Users will be loaded here -->
+                <div class="empty-state">Loading users...</div>
             </div>
         </main>
-    </div>
-
-    <!-- Add User Modal -->
-    <div id="addUserModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close" onclick="closeAddUserModal()">&times;</span>
-            <h2>Add New User</h2>
-            <form id="addUserForm">
-                <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                <div class="form-group">
-                    <label for="role">Role:</label>
-                    <select id="role" name="role" required>
-                        <option value="reception">Reception</option>
-                        <option value="manager">Manager</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="location">Location:</label>
-                    <select id="location" name="location" required>
-                        <option value="1">Main Branch</option>
-                        <option value="2">Downtown</option>
-                        <option value="3">Suburban</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="displayName">Display Name:</label>
-                    <input type="text" id="displayName" name="displayName" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Add User</button>
-            </form>
-        </div>
     </div>
 
     <script src="/api.js"></script>
     <script src="/shared.js"></script>
     <script>
-        // Check authentication on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAuth();
-            loadUsers();
+        let allUsers = [];
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!requireAuth('manager')) {
+                return;
+            }
+
+            document.getElementById('locationFilter').addEventListener('change', filterUsersByLocation);
+            await loadUsers();
         });
 
-        // Load all users
         async function loadUsers() {
             try {
-                const response = await apiCall('/api/auth/users', 'GET');
-                if (response.success) {
-                    displayUsers(response.users);
-                } else {
-                    showToast('Failed to load users', 'error');
-                }
+                const response = await api.getUsers();
+                allUsers = Array.isArray(response.users) ? response.users : [];
+                populateLocationFilter(allUsers);
+                displayUsers(allUsers);
             } catch (error) {
                 console.error('Error loading users:', error);
                 showToast('Error loading users', 'error');
+                displayError('Unable to load users from the server.');
             }
         }
 
-        // Display users in the grid
+        function populateLocationFilter(users) {
+            const select = document.getElementById('locationFilter');
+            const currentValue = select.value;
+            const locations = Array.from(new Map(users
+                .filter((user) => user.location_id !== undefined && user.location_id !== null)
+                .map((user) => [String(user.location_id), user.location_name || `Location ${user.location_id}`])).entries())
+                .sort((a, b) => a[1].localeCompare(b[1]));
+
+            select.replaceChildren(new Option('All Locations', ''));
+            locations.forEach(([id, name]) => {
+                select.appendChild(new Option(name, id));
+            });
+
+            if (locations.some(([id]) => id === currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
         function displayUsers(users) {
             const container = document.getElementById('usersContainer');
             container.innerHTML = '';
 
-            users.forEach(user => {
-                const userCard = createUserCard(user);
-                container.appendChild(userCard);
+            if (!Array.isArray(users) || users.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.textContent = 'No users found for this filter.';
+                container.appendChild(empty);
+                return;
+            }
+
+            users.forEach((user) => {
+                container.appendChild(createUserCard(user));
             });
         }
 
-        // Create a user card element
         function createUserCard(user) {
             const card = document.createElement('div');
             card.className = 'user-card';
-            
-            const statusClass = user.active ? 'status-active' : 'status-inactive';
-            const statusText = user.active ? 'Active' : 'Inactive';
-            
-            card.innerHTML = `
-                <div class="user-header">
-                    <h3>${user.displayName}</h3>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <span class="user-role">${user.role}</span>
-                        <span class="user-location">${user.location_name}</span>
-                    </div>
-                </div>
-                <p><strong>Username:</strong> ${user.username}</p>
-                <p><strong>Location ID:</strong> ${user.location_id}</p>
-                <div class="user-status">
-                    <span class="status-badge ${statusClass}">${statusText}</span>
-                </div>
-            `;
-            
+
+            const header = document.createElement('div');
+            header.className = 'user-header';
+
+            const title = document.createElement('h3');
+            title.textContent = user.displayName || user.username || 'Unnamed user';
+            header.appendChild(title);
+
+            const badges = document.createElement('div');
+            badges.className = 'user-badges';
+
+            const role = document.createElement('span');
+            role.className = 'user-role';
+            role.textContent = user.role || 'unknown';
+            badges.appendChild(role);
+
+            const location = document.createElement('span');
+            location.className = 'user-location';
+            location.textContent = user.location_name || `Location ${user.location_id || '-'}`;
+            badges.appendChild(location);
+            header.appendChild(badges);
+
+            const username = document.createElement('p');
+            username.textContent = `Username: ${user.username || '-'}`;
+
+            const locationId = document.createElement('p');
+            locationId.textContent = `Location ID: ${user.location_id || '-'}`;
+
+            const status = document.createElement('div');
+            const statusBadge = document.createElement('span');
+            statusBadge.className = `status-badge ${user.active ? 'status-active' : 'status-inactive'}`;
+            statusBadge.textContent = user.active ? 'Active' : 'Inactive';
+            status.appendChild(statusBadge);
+
+            card.appendChild(header);
+            card.appendChild(username);
+            card.appendChild(locationId);
+            card.appendChild(status);
             return card;
         }
 
-        // Filter users by location
-        function filterUsersByLocation() {
+        async function filterUsersByLocation() {
             const locationId = document.getElementById('locationFilter').value;
-            
+
             if (!locationId) {
-                loadUsers(); // Show all users
+                displayUsers(allUsers);
                 return;
             }
-            
-            loadUsersByLocation(locationId);
-        }
 
-        // Load users by specific location
-        async function loadUsersByLocation(locationId) {
             try {
-                const response = await apiCall(`/api/auth/users/location/${locationId}`, 'GET');
-                if (response.success) {
-                    displayUsers(response.users);
-                } else {
-                    showToast('Failed to load location users', 'error');
-                }
+                const response = await api.getUsersByLocation(locationId);
+                displayUsers(Array.isArray(response.users) ? response.users : []);
             } catch (error) {
                 console.error('Error loading location users:', error);
                 showToast('Error loading location users', 'error');
+                displayError('Unable to load users for this location.');
             }
         }
 
-        // Show add user modal
-        function showAddUserModal() {
-            document.getElementById('addUserModal').style.display = 'block';
-        }
-
-        // Close add user modal
-        function closeAddUserModal() {
-            document.getElementById('addUserModal').style.display = 'none';
-            document.getElementById('addUserForm').reset();
-        }
-
-        // Handle add user form submission
-        document.getElementById('addUserForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(e.target);
-            const userData = {
-                username: formData.get('username'),
-                password: formData.get('password'),
-                role: formData.get('role'),
-                location_id: parseInt(formData.get('location')),
-                displayName: formData.get('displayName')
-            };
-            
-            try {
-                // Note: This would need a backend endpoint to actually create users
-                // For now, we'll just show a success message
-                showToast('User creation endpoint not yet implemented', 'info');
-                closeAddUserModal();
-            } catch (error) {
-                console.error('Error adding user:', error);
-                showToast('Error adding user', 'error');
-            }
-        });
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('addUserModal');
-            if (event.target === modal) {
-                closeAddUserModal();
-            }
+        function displayError(message) {
+            const container = document.getElementById('usersContainer');
+            container.innerHTML = '';
+            const error = document.createElement('div');
+            error.className = 'empty-state';
+            error.textContent = message;
+            container.appendChild(error);
         }
     </script>
 </body>

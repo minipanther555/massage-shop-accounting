@@ -104,6 +104,23 @@ router.get('/payment-types-page', (req, res) => {
   });
 });
 
+// Serve admin-users.html
+router.get('/users-page', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  const filePath = path.join(__dirname, '..', '..', 'web-app', 'admin-users.html');
+  fs.readFile(filePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading admin-users.html:', err);
+      return res.status(500).send('Error loading the page.');
+    }
+    const modifiedHtml = data.replace('{{ an_actual_token }}', res.locals.csrfToken);
+    res.send(modifiedHtml);
+  });
+});
+
 // =============================================================================
 // STAFF ADMINISTRATION ENDPOINTS
 // =============================================================================

@@ -106,15 +106,76 @@
 
 ### Service API Methods
 
-#### `getServices()`
-- **Purpose:** Retrieves available services and pricing
-- **Returns:** Promise with services array
-- **Logic:** Sends GET to `/api/services`
+#### `getServices(options = {})`
+- **Purpose:** Retrieves available services and pricing.
+- **Parameters:**
+  - `options.includeInactive`: boolean optional; when true, includes inactive service rows for manager review.
+- **Returns:** Promise with services array.
+- **Logic:** Sends GET to `/api/services` or `/api/services?includeInactive=true`.
 
 #### `getPaymentMethods()`
 - **Purpose:** Retrieves accepted payment methods
 - **Returns:** Promise with payment methods array
 - **Logic:** Sends GET to `/api/services/payment-methods`
+
+#### `createService(serviceData)`, `updateService(serviceId, serviceData)`, `deleteService(serviceId)`, `bulkUpdateServices(updateData)`
+- **Purpose:** Wrap manager service catalog mutations through the CSRF-aware request path.
+- **Parameters:** `serviceData` contains service row fields; `serviceId` is the target service row id; `updateData` contains bulk update filters and update fields.
+- **Returns:** Created/updated service row or mutation confirmation.
+- **Logic:** Calls `POST /api/services`, `PATCH /api/services/:id`, `DELETE /api/services/:id`, and `PATCH /api/services/bulk/update`.
+
+#### `getPaymentTypes()`, `createPaymentType(paymentTypeData)`, `updatePaymentType(paymentTypeId, paymentTypeData)`, `deletePaymentType(paymentTypeId)`
+- **Purpose:** Wrap manager payment type administration endpoints through the CSRF-aware request path.
+- **Parameters:** `paymentTypeData` contains `{ method_name, description?, active? }`; `paymentTypeId` is the target payment method row id.
+- **Returns:** Active payment type rows, created/updated row, or delete confirmation.
+- **Logic:** Calls `GET /api/payment-types`, `POST /api/payment-types`, `PUT /api/payment-types/:id`, and `DELETE /api/payment-types/:id`.
+
+#### `getFinancialReport(filters)`, `getReportStaff()`, `getReportServiceTypes()`, `getReportLocations()`
+- **Purpose:** Wrap manager report data and filter-list endpoints.
+- **Parameters:** `filters` may include `from_date`, `to_date`, `staff_member`, `service_type`, and `location`.
+- **Returns:** Financial report object or filter arrays.
+- **Logic:** Calls `GET /api/reports/financial`, `GET /api/reports/staff`, `GET /api/reports/service-types`, and `GET /api/reports/locations`.
+
+### Authentication API Methods
+
+#### `login(username, password = '')`
+- **Purpose:** Authenticates a user and establishes a cookie-backed session.
+- **Parameters:** `username` string required; `password` string optional/default empty.
+- **Returns:** Promise with `{ success, user }`.
+- **Logic:** Sends POST to `/api/auth/login`.
+
+#### `logout()`
+- **Purpose:** Ends the current cookie-backed session.
+- **Returns:** Promise with logout confirmation.
+- **Logic:** Sends POST to `/api/auth/logout`.
+
+#### `checkSession()`
+- **Purpose:** Checks the current session cookie.
+- **Returns:** Promise with session validity and user metadata.
+- **Logic:** Sends GET to `/api/auth/session`.
+
+#### `getUsers()`
+- **Purpose:** Retrieves the manager-only configured user list.
+- **Returns:** Promise with `{ users: [{ id, username, role, displayName, location_id, location_name, active }] }`.
+- **Logic:** Sends GET to `/api/auth/users`. The backend auth store is currently in-memory/configured, so this is a read-only inventory method.
+
+#### `getUsersByLocation(locationId)`
+- **Purpose:** Retrieves configured users for a selected location.
+- **Parameters:** `locationId` - Location identifier (string or number, required).
+- **Returns:** Promise with `{ users, location_id }`.
+- **Logic:** Sends GET to `/api/auth/users/location/:locationId`.
+
+### Admin API Methods
+
+#### `getAdminStaff()`, `addStaff(staffData)`, `updateAdminStaff(staffId, staffData)`, `removeStaff(staffId)`
+- **Purpose:** Wrap manager-only staff/payday administration endpoints.
+- **Returns:** Staff rows or confirmation payloads.
+- **Logic:** Calls `/api/admin/staff` and `/api/admin/staff/:id`.
+
+#### `getStaffPayments(staffId)`, `recordPayment(staffId, paymentData)`, `getOutstandingFees()`
+- **Purpose:** Wrap manager-only staff payment history, payment recording, and outstanding-fee endpoints.
+- **Returns:** Staff payment rows, payment confirmation, or outstanding-fee summaries.
+- **Logic:** Calls `/api/admin/staff/:id/payments` and `/api/admin/staff/outstanding-fees`.
 
 ## 3. Dependency Mapping
 
@@ -126,7 +187,10 @@
   - Current shop status rows with staff identity, queue position, state, busy time, daily count, and next booking metadata
   - Today Staff helper rows with `staff_id`, `display_name`, `previous_day_commission`, `was_day_off_yesterday`, `today_planning_status`, and `can_add_to_today_staff`
   - Booking rows with schedule, service, duration, location, optional requested staff, customer contact, and lifecycle status
-  - Service objects with properties: service_name, duration_minutes, price, masseuse_fee
+  - Service objects with properties: `id`, `service_name`, `duration_minutes`, `location`, `price`, `masseuse_fee`, `active`
+  - Payment type objects with properties: `id`, `method_name`, `description`, `active`, `created_at`, `updated_at`
+  - Financial report filters with `from_date`, `to_date`, `staff_member`, `service_type`, and `location`
+  - User rows with `id`, `username`, `role`, `displayName`, `location_id`, `location_name`, and `active`
 
 ### Downstream Dependencies (Outputs)
 - **Called Modules/Services:** Backend API endpoints via HTTP requests
@@ -138,14 +202,15 @@
 ## 4. Bug & Resolution History
 
 ### Bug Summary
-No major bugs have been reported in this module. The module provides a stable, well-tested API client interface.
+`admin-services.html` used raw POST/PATCH/DELETE `fetch` calls instead of the shared CSRF-aware API client. `admin-payment-types.html` also loaded payment methods with raw fetch and constructed local API clients for mutations. `admin-reports.html` loaded report filters/reports with raw fetches.
 
 ### Validated Hypothesis
-The API client successfully handles all backend communication requirements including CSRF token management and error handling.
+Adding service, payment type, and report wrappers lets the manager pages use the same request/error handling path as the rest of the app.
 
 ### Invalidated Hypotheses
-- Initial concerns about CSRF token complexity were unfounded
-- Worries about error handling complexity were resolved through proper promise-based design
+- The service edit/toggle backend endpoint was not missing; the page needed to call the existing `PATCH /api/services/:id` route through `api.js`.
+- The payment type backend routes were not missing; the page needed to call existing `POST /api/payment-types`, `PUT /api/payment-types/:id`, and `DELETE /api/payment-types/:id` routes through shared `api.js`.
+- The financial report endpoint was not missing; the page needed report-specific wrappers and the backend needed filter/response shape fixes.
 
 ### Resolution
-The module provides a robust, maintainable API client that successfully abstracts backend communication complexity from the frontend application.
+Added `getServices({ includeInactive })`, `updateService()`, `deleteService()`, and `bulkUpdateServices()` support for manager service administration; `getPaymentTypes()`, `createPaymentType()`, `updatePaymentType()`, and `deletePaymentType()` support for manager payment type administration; and `getFinancialReport()`, `getReportStaff()`, `getReportServiceTypes()`, and `getReportLocations()` support for manager reports.

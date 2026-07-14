@@ -4,7 +4,7 @@
 The staff page controller manages the Today Staff workflow, including previous-business-day helper rows, dropdown add, add from helper, day-off-today planning, persistent restore, visible-list clearing, and UI state consistency. It implements the "Action → API → re-fetch → render" discipline for all Today Staff operations.
 
 ## End-to-End Data Flow
-User opens the Today Staff page → controller fetches `/api/staff/today/state` and `/api/staff/today/helper` → renders the Thai previous-day earnings helper, day-off-today section, dropdown, and visible Today Staff list → user adds from helper or dropdown → controller writes to `/api/staff/today/add` → re-fetches state/helper → UI disables or mutes already-added helper rows and removes duplicates from dropdown. If the user marks `หยุดวันนี้`, the controller writes to `/api/staff/today/day-off`, moves the person to the persistent day-off-today section, and can restore them with `/api/staff/today/restore`.
+User opens the Today Staff page → controller fetches `/api/staff/today/state` and `/api/staff/today/helper` → renders the Thai previous-day earnings helper, day-off-today section, dropdown, and visible Today Staff list → user adds from helper or dropdown → controller writes to `/api/staff/today/add` → re-fetches state/helper → UI disables or mutes already-added helper rows and removes duplicates from dropdown. If the user marks `หยุดวันนี้`, the controller writes to `/api/staff/today/day-off`, moves the person to the persistent day-off-today section, and can restore them with `/api/staff/today/restore`. Reorder and `คิวถัดไป` actions operate on the canonical `today_staff` order by sending ordered staff ids to `/api/staff/today/reorder`; they do not swap legacy `staff_roster` rows.
 
 ## Module API & Logic Breakdown
 
@@ -22,6 +22,8 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 - Handles empty roster state by showing #empty-roster element
 - Renders large position, staff name, next-in-line control, today's massage count, drag hint, order buttons, and remove button in Thai.
 - Formats today's completed massage count as `นวดวันนี้ {count} ครั้ง` using the backend-provided `today_massages` value.
+- Treats the first returned row as `คิวถัดไป` and persists queue changes through the Today Staff reorder endpoint.
+- Escapes staff names, status text, and busy-until text before inserting row markup with `innerHTML`.
 
 #### `renderDropdown(allStaff, roster)`
 **Purpose**: Populates dropdown with available staff (All Staff - Today's Roster)
@@ -85,6 +87,35 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 **Returns**: Promise<void>
 **Usage & Logic Notes**:
 - If helper loading fails, shows a clear Thai error while preserving dropdown fallback through the basic state/all-staff path
+
+#### `reorderVisibleRoster(fromPosition, toIndex)`
+**Purpose**: Persists visible Today Staff order changes through the canonical Today Staff endpoint.
+**Parameters**:
+- `fromPosition` (number): Current backend position of the row being moved.
+- `toIndex` (number): Zero-based destination index in the visible roster.
+**Returns**: Promise<void>
+**Raises**: Error if current roster rows do not include staff ids needed by `/api/staff/today/reorder`.
+**Usage & Logic Notes**:
+- Builds ordered staff ids from `CURRENT_ROSTER`, calls `api.reorderTodayStaff(orderedStaffIds)`, stores the returned `today_staff`, and re-renders.
+- This is the only write path for `setNextInLine`, `moveUp`, and `moveDown`; those controls must not call legacy `api.updateStaff()`.
+
+#### `setNextInLine(position)`
+**Purpose**: Moves the selected visible staff row to the first Today Staff position.
+**Parameters**:
+- `position` (number): Backend position of the selected row.
+**Returns**: Promise<void>
+**Usage & Logic Notes**:
+- Calls `reorderVisibleRoster(position, 0)`.
+- The row at index 0 is rendered with the disabled `คิวถัดไป` label.
+
+#### `moveUp(position)` / `moveDown(position)`
+**Purpose**: Moves a visible Today Staff row one slot up or down.
+**Parameters**:
+- `position` (number): Backend position of the selected row.
+**Returns**: Promise<void>
+**Usage & Logic Notes**:
+- Locates the row inside `CURRENT_ROSTER` and delegates persistence to `reorderVisibleRoster()`.
+- Uses `/api/staff/today/reorder` via `api.reorderTodayStaff()` rather than swapping legacy `staff_roster` positions.
 
 #### `staffControllerInit(apiClient)`
 **Purpose**: Initializes the staff controller with API client
@@ -175,13 +206,13 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 
 ### Downstream Dependencies (Outputs)
 **Called Modules/Services**:
-- api.js (getTodayStaffState, getTodayStaffHelper, addTodayStaff, markTodayStaffDayOff, restoreTodayStaffDayOff, clearRoster, getAllStaff)
+- api.js (getTodayStaffState, getTodayStaffHelper, addTodayStaff, markTodayStaffDayOff, restoreTodayStaffDayOff, reorderTodayStaff, clearRoster, getAllStaff)
 - api.js (addStaff for POST /api/admin/staff)
 - DOM manipulation (renderRoster, renderDropdown)
 
 **Output Data Contracts**:
 - DOM updates: Roster list with visual labels 1...n
-- Network requests: PUT /api/staff/roster/:position, DELETE /api/staff/roster, GET /api/staff/roster
+- Network requests: POST /api/staff/today/add, PATCH /api/staff/today/reorder, PUT /api/staff/today/day-off, PUT /api/staff/today/restore, DELETE /api/staff/roster, GET /api/staff/roster
 - Network requests: POST /api/admin/staff, GET /api/staff/allstaff
 
 ## Bug & Resolution History
@@ -254,3 +285,22 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 - Rendering the count should reorder staff automatically.
 
 **Resolution:** `renderRoster()` now emits explicit `นวดวันนี้` row copy and an accessible label while preserving manual drag/arrow reordering.
+
+### Bug Summary: Reorder Controls Used Legacy Staff Roster Swaps (2026-07-14)
+**Bug Summary:** `ตั้งคิว`, `ขึ้น`, and `ลง` looked like they were changing the Today Staff queue, but the controller used legacy `api.updateStaff()` position swaps instead of the canonical `today_staff` reorder endpoint.
+
+**Validated Hypothesis:** The page loaded Today Staff from `/api/staff/today/state`, while its reorder controls wrote through the older `/api/staff/roster/:position` contract. That could leave visible order and backend Today Staff order out of sync.
+
+**Invalidated Hypotheses:**
+- The problem was only a display label issue.
+- The backend lacked a Today Staff reorder endpoint.
+- The next-person calculation should be derived from `status` text.
+
+**Resolution:** Added `reorderVisibleRoster()`, changed set-next/up/down controls to call `api.reorderTodayStaff(orderedStaffIds)`, and render `คิวถัดไป` from the returned roster order.
+
+### Bug Summary: Today Staff Dynamic Strings Were Rendered Unsafely (2026-07-14)
+**Bug Summary:** Staff names, helper names, day-off names, status text, and busy-until text were interpolated into `innerHTML` without escaping.
+
+**Validated Hypothesis:** These values originate from database/API rows and therefore must be escaped before string-template rendering.
+
+**Resolution:** Added `escapeStaffHtml()` and applied it to dynamic staff/helper/day-off/status strings rendered by the controller.

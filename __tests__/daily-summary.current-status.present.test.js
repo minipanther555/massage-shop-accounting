@@ -69,4 +69,19 @@ describe('Daily Summary current shop status contracts', () => {
     expect(source).toContain('async getCurrentShopStatus()');
     expect(source).toContain('/staff/current-status');
   });
+
+  test('backend current status prefers canonical transaction start/end datetimes', () => {
+    const staffRoute = read('backend/routes/staff.js');
+    const transactionsRoute = read('backend/routes/transactions.js');
+    const database = read('backend/models/database.js');
+
+    expect(database).toContain('start_datetime DATETIME');
+    expect(database).toContain('end_datetime DATETIME');
+    expect(transactionsRoute).toContain('start_datetime, end_datetime');
+    expect(transactionsRoute).toContain('originalTransactionId, bookingId, startDateTime, endDateTime');
+    expect(staffRoute).toContain('start_datetime');
+    expect(staffRoute).toContain('end_datetime');
+    expect(staffRoute).toContain('const start = row.start_datetime || row.timestamp');
+    expect(staffRoute).toContain('row.end_datetime ? new Date(row.end_datetime) : addMinutes(row.timestamp, row.duration)');
+  });
 });

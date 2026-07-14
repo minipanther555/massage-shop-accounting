@@ -23,7 +23,7 @@ const loginRateLimiter = rateLimit({
   // Development bypass - remove this in production
   skip: (req) => {
     // Allow bypass with special header for development
-    if (req.headers['x-dev-bypass'] === 'reset-rate-limit') {
+    if (process.env.NODE_ENV !== 'production' && req.headers['x-dev-bypass'] === 'reset-rate-limit') {
       console.log('🔓 DEV BYPASS: Rate limit reset requested');
       return true;
     }

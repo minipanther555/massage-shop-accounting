@@ -29,7 +29,7 @@
 *   **`POST /`**
     *   **Purpose:** Creates a new transaction. This is the main endpoint for submitting the "New Transaction" form. It also contains the logic for handling "transaction corrections" (edits).
     *   **Parameters (Body):** A JSON object containing all transaction details (`masseuse_name`, `service_type`, `location`, `duration`, etc.). If `original_transaction_id` is provided, the endpoint enters "edit mode".
-    *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`.
+    *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`. When the browser or booking flow provides `start_datetime` and `end_datetime`, the route persists those canonical service-window timestamps so Current Shop Status and booking buffer logic do not infer timing from creation time.
     *   **Logic (Booking Arrival):** With `booking_id`, the handler loads the `BOOKED` reservation and treats its service, duration, location, and optional requested staff as authoritative. One `BEGIN IMMEDIATE TRANSACTION` inserts the transaction, marks the booking `COMPLETED`, and creates one separate active `฿50` credit only for requested staff. A generic booking receives queue-selected staff at arrival and no booking credit.
     *   **Failure Modes:** Missing or closed bookings, duplicate conversion, invalid staff/service, and violation of another booking's 15-minute buffer are rejected. Any write failure rolls back the conversion.
     *   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
@@ -89,6 +89,10 @@
     *   The New Customer page was reading a different database than Daily Summary for recent transactions.
     *   The issue was only a CSS/responsive rendering problem.
 *   **Resolution:** `/recent` now returns the authoritative newest-first order with `ORDER BY timestamp DESC, id DESC LIMIT ?`. `shared.js#getRecentTransactions()` preserves that order and only applies the visible limit.
+
+*   **Bug Summary (2026-07-14):** Current Shop Status could show a staff member free too early because transaction rows did not persist the actual service start/end datetimes submitted by New Customer or booking arrival conversion.
+*   **Validated Hypothesis:** `POST /api/transactions` destructured `start_datetime` and `end_datetime` but the insert omitted both fields, forcing `backend/routes/staff.js` to derive the busy window from transaction creation timestamp plus duration.
+*   **Resolution:** Transaction creation now inserts `start_datetime` and `end_datetime`; legacy rows without those fields remain supported by the Current Shop Status fallback.
 
 *   **Bug Summary (August 2025):** Transaction editing styling is not working on the new transaction page, while it works correctly on the daily summary page. EDITED transactions should appear with red highlight and strikethrough styling, but they appear unstyled on the new transaction page.
 *   **Validated Hypothesis:** The backend transaction editing logic is working correctly - it properly sets `EDITED` status on original transactions and `CORRECTED` status on new transactions. The issue is in the frontend styling logic, not the backend.

@@ -71,6 +71,7 @@ This module exports a single instance of the `Database` class.
             *   `today_staff_planning`: one planning status per business day and staff member.
             *   `today_staff_audit_log`: audit-safe planning action log.
             *   `transactions.business_day`: Bangkok business-day label used by helper earnings and reporting.
+            *   `transactions.start_datetime` / `transactions.end_datetime`: optional canonical service-window timestamps supplied by New Customer or booking arrival conversion. Current Shop Status prefers these fields and falls back to `timestamp + duration` for legacy rows.
             *   `bookings`: non-financial reservation schedule with optional requested staff and lifecycle status.
             *   `booking_credits`: separate `฿50` payable-credit ledger linked to a completed booking transaction and excluded from Today Staff base-commission ranking.
             *   `transactions.booking_id`: nullable reservation link with partial uniqueness across `ACTIVE` and `CORRECTED` rows, enforcing one current financial conversion per booking.

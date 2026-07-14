@@ -10,32 +10,32 @@ router.get('/daily/:date?', async (req, res) => {
 
     // Transaction summary
     const transactionSummary = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions 
+       FROM transactions
        WHERE date = ? AND status = 'ACTIVE'`,
       [date]
     );
 
     // Expense summary
     const expenseSummary = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as expense_count,
         COALESCE(SUM(amount), 0) as total_expenses
-       FROM expenses 
+       FROM expenses
        WHERE date = ?`,
       [date]
     );
 
     // Payment method breakdown
     const paymentBreakdown = await database.all(
-      `SELECT 
+      `SELECT
         payment_method,
         COUNT(*) as count,
         SUM(payment_amount) as revenue
-       FROM transactions 
+       FROM transactions
        WHERE date = ? AND status = 'ACTIVE'
        GROUP BY payment_method
        ORDER BY revenue DESC`,
@@ -44,12 +44,12 @@ router.get('/daily/:date?', async (req, res) => {
 
     // Masseuse performance
     const masseusePerformance = await database.all(
-      `SELECT 
+      `SELECT
         masseuse_name,
         COUNT(*) as massage_count,
         SUM(masseuse_fee) as total_fees,
         SUM(payment_amount) as total_revenue
-       FROM transactions 
+       FROM transactions
        WHERE date = ? AND status = 'ACTIVE'
        GROUP BY masseuse_name
        ORDER BY total_fees DESC`,
@@ -86,11 +86,11 @@ router.get('/weekly', async (req, res) => {
     const weekEnd = sunday.toISOString().split('T')[0];
 
     const weeklyFees = await database.all(
-      `SELECT 
+      `SELECT
         masseuse_name,
         COUNT(*) as weekly_massages,
         SUM(masseuse_fee) as weekly_fees
-       FROM transactions 
+       FROM transactions
        WHERE date >= ? AND date <= ? AND status IN ('ACTIVE', 'CORRECTED')
        GROUP BY masseuse_name
        ORDER BY weekly_fees DESC`,
@@ -120,32 +120,32 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
 
     // Monthly totals
     const monthlyTotals = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions 
+       FROM transactions
        WHERE date >= ? AND date <= ? AND status IN ('ACTIVE', 'CORRECTED')`,
       [monthStart, monthEnd]
     );
 
     // Monthly expenses
     const monthlyExpenses = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as expense_count,
         COALESCE(SUM(amount), 0) as total_expenses
-       FROM expenses 
+       FROM expenses
        WHERE date >= ? AND date <= ?`,
       [monthStart, monthEnd]
     );
 
     // Service type breakdown
     const serviceBreakdown = await database.all(
-      `SELECT 
+      `SELECT
         service_type,
         COUNT(*) as count,
         SUM(payment_amount) as revenue
-       FROM transactions 
+       FROM transactions
        WHERE date >= ? AND date <= ? AND status IN ('ACTIVE', 'CORRECTED')
        GROUP BY service_type
        ORDER BY revenue DESC`,
@@ -172,22 +172,22 @@ router.get('/summary/today', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
 
     const transactionSummary = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions 
+       FROM transactions
        WHERE date = ? AND status = 'ACTIVE'`,
       [today]
     );
 
     // Payment method breakdown
     const paymentBreakdown = await database.all(
-      `SELECT 
+      `SELECT
         payment_method,
         COUNT(*) as count,
         SUM(payment_amount) as revenue
-       FROM transactions 
+       FROM transactions
        WHERE date = ? AND status = 'ACTIVE'
        GROUP BY payment_method
        ORDER BY revenue DESC`,
@@ -230,9 +230,14 @@ router.get('/financial', async (req, res) => {
       params.push(service_type);
     }
 
+    if (location && location !== 'all') {
+      whereClause += ' AND t.location = ?';
+      params.push(location);
+    }
+
     // Get transaction summary
     const transactionSummary = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(t.payment_amount), 0) as total_revenue,
         COALESCE(SUM(t.masseuse_fee), 0) as total_fees
@@ -251,17 +256,17 @@ router.get('/financial', async (req, res) => {
     }
 
     const expenseSummary = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as expense_count,
         COALESCE(SUM(amount), 0) as total_expenses
-       FROM expenses 
+       FROM expenses
        ${expenseWhereClause}`,
       expenseParams
     );
 
     // Get payment method breakdown (like daily summary page)
     const paymentBreakdown = await database.all(
-      `SELECT 
+      `SELECT
         t.payment_method,
         COUNT(*) as count,
         SUM(t.payment_amount) as revenue
@@ -272,32 +277,17 @@ router.get('/financial', async (req, res) => {
       params
     );
 
-    // Get location breakdown (In-Shop vs Outcall) - nice to have
-    let locationBreakdown = [];
-    if (location && location !== 'all') {
-      // If specific location requested, filter by it
-      whereClause += ' AND s.location = ?';
-      params.push(location);
-    }
-
-    try {
-      locationBreakdown = await database.all(
-        `SELECT 
-          s.location,
-          COUNT(*) as count,
-          SUM(t.payment_amount) as revenue
-         FROM transactions t
-         JOIN services s ON t.service_type = s.service_name
-         ${whereClause}
-         GROUP BY s.location
-         ORDER BY revenue DESC`,
-        params
-      );
-    } catch (locationError) {
-      // If location join fails, just skip it - it's a nice to have
-      console.log('Location breakdown not available:', locationError.message);
-      locationBreakdown = [];
-    }
+    const locationBreakdown = await database.all(
+      `SELECT
+        t.location,
+        COUNT(*) as count,
+        SUM(t.payment_amount) as revenue
+       FROM transactions t
+       ${whereClause}
+       GROUP BY t.location
+       ORDER BY revenue DESC`,
+      params
+    );
 
     // Calculate net profit
     const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
@@ -308,7 +298,7 @@ router.get('/financial', async (req, res) => {
 
     // Get service breakdown
     const serviceBreakdown = await database.all(
-      `SELECT 
+      `SELECT
         t.service_type as serviceName,
         COUNT(*) as transactions,
         SUM(t.payment_amount) as revenue
@@ -316,6 +306,19 @@ router.get('/financial', async (req, res) => {
        ${whereClause}
        GROUP BY t.service_type
        ORDER BY revenue DESC`,
+      params
+    );
+
+    const staffBreakdown = await database.all(
+      `SELECT
+        t.masseuse_name as staffName,
+        COUNT(*) as services,
+        SUM(t.masseuse_fee) as feesEarned,
+        SUM(t.payment_amount) as revenue
+       FROM transactions t
+       ${whereClause}
+       GROUP BY t.masseuse_name
+       ORDER BY feesEarned DESC`,
       params
     );
 
@@ -338,6 +341,7 @@ router.get('/financial', async (req, res) => {
         netProfit // Add camelCase version
       },
       serviceBreakdown,
+      staffBreakdown,
       dateRange: {
         from: from_date,
         to: to_date
@@ -368,11 +372,11 @@ router.post('/end-day', async (req, res) => {
 
     // Calculate daily totals
     const dailyData = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as total_transactions,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions 
+       FROM transactions
        WHERE date = ? AND status = 'ACTIVE'`,
       [today]
     );
@@ -384,8 +388,8 @@ router.post('/end-day', async (req, res) => {
 
     // Insert into daily summaries
     await database.run(
-      `INSERT OR REPLACE INTO daily_summaries 
-       (date, total_revenue, total_fees, total_transactions, total_expenses) 
+      `INSERT OR REPLACE INTO daily_summaries
+       (date, total_revenue, total_fees, total_transactions, total_expenses)
        VALUES (?, ?, ?, ?, ?)`,
       [today, dailyData.total_revenue, dailyData.total_fees, dailyData.total_transactions, expenseData.total_expenses]
     );
@@ -427,8 +431,8 @@ router.post('/end-day', async (req, res) => {
 router.get('/staff', async (req, res) => {
   try {
     const staff = await database.all(
-      `SELECT DISTINCT masseuse_name 
-       FROM transactions 
+      `SELECT DISTINCT masseuse_name
+       FROM transactions
        WHERE masseuse_name IS NOT NULL AND masseuse_name != ''
        ORDER BY masseuse_name`
     );
@@ -444,8 +448,8 @@ router.get('/staff', async (req, res) => {
 router.get('/service-types', async (req, res) => {
   try {
     const serviceTypes = await database.all(
-      `SELECT DISTINCT service_type 
-       FROM transactions 
+      `SELECT DISTINCT service_type
+       FROM transactions
        WHERE service_type IS NOT NULL AND service_type != ''
        ORDER BY service_type`
     );
@@ -461,8 +465,8 @@ router.get('/service-types', async (req, res) => {
 router.get('/locations', async (req, res) => {
   try {
     const locations = await database.all(
-      `SELECT DISTINCT location 
-       FROM services 
+      `SELECT DISTINCT location
+       FROM services
        WHERE location IS NOT NULL AND location != ''
        ORDER BY location`
     );

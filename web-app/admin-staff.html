@@ -419,13 +419,13 @@
                 
                 div.innerHTML = `
                     <div>
-                        <strong>${member.name}</strong>
-                        ${member.hire_date ? `<br><small>Hired: ${new Date(member.hire_date).toLocaleDateString()}</small>` : ''}
+                        <strong>${escapeAdminStaffHtml(member.name || '')}</strong>
+                        ${member.hire_date ? `<br><small>Hired: ${escapeAdminStaffHtml(new Date(member.hire_date).toLocaleDateString())}</small>` : ''}
                     </div>
                     <div class="outstanding-amount">฿${outstandingAmount.toFixed(2)}</div>
-                    <div class="payment-status ${statusClass}">${member.payment_status}</div>
-                    <div><small>${thisWeekInfo}</small></div>
-                    <div><small>${lastPayment}</small></div>
+                    <div class="payment-status ${statusClass}">${escapeAdminStaffHtml(member.payment_status || '')}</div>
+                    <div><small>${escapeAdminStaffHtml(thisWeekInfo)}</small></div>
+                    <div><small>${escapeAdminStaffHtml(lastPayment)}</small></div>
                     <div class="btn-group">
                         <button onclick="showPaymentModal(${member.id})" class="btn btn-small">💰 Pay</button>
                         <button onclick="editStaff(${member.id})" class="btn btn-small btn-secondary">✏️ Edit</button>
@@ -521,14 +521,14 @@
             if (!staff) return;
 
             currentStaffId = staffId;
-            document.getElementById('payment-modal-title').textContent = `Record Payment - ${staff.name}`;
+            document.getElementById('payment-modal-title').textContent = `Record Payment - ${staff.name || ''}`;
             
             // Show staff info
             const outstandingBalance = staff.outstanding_balance || 0;
             document.getElementById('payment-staff-info').innerHTML = `
-                <strong>${staff.name}</strong><br>
+                <strong>${escapeAdminStaffHtml(staff.name || '')}</strong><br>
                 Outstanding Balance: <span style="color: #dc3545; font-weight: bold;">฿${outstandingBalance.toFixed(2)}</span><br>
-                Last Payment: ${staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never'}
+                Last Payment: ${escapeAdminStaffHtml(staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never')}
             `;
             
             // Pre-fill payment amount with outstanding balance
@@ -548,7 +548,8 @@
 
         async function loadPaymentHistory(staffId) {
             try {
-                const payments = await api.getStaffPayments(staffId);
+                const response = await api.getStaffPayments(staffId);
+                const payments = Array.isArray(response.payments) ? response.payments : [];
                 const container = document.getElementById('payment-history');
                 
                 if (payments.length === 0) {
@@ -559,9 +560,9 @@
                 container.innerHTML = payments.map(payment => `
                     <div class="payment-item">
                         <div>
-                            <strong>${new Date(payment.payment_date).toLocaleDateString()}</strong><br>
-                            <small>${payment.payment_type} payment</small>
-                            ${payment.notes ? `<br><small style="color: #666;">${payment.notes}</small>` : ''}
+                            <strong>${escapeAdminStaffHtml(new Date(payment.payment_date).toLocaleDateString())}</strong><br>
+                            <small>${escapeAdminStaffHtml(payment.payment_type || '')} payment</small>
+                            ${payment.notes ? `<br><small style="color: #666;">${escapeAdminStaffHtml(payment.notes)}</small>` : ''}
                         </div>
                         <div style="text-align: right;">
                             <strong>฿${payment.amount.toFixed(2)}</strong>
@@ -623,12 +624,13 @@
                     
                     data.outstanding_fees.forEach(staff => {
                         const statusClass = getPaymentStatusClass(staff.payment_status);
+                        const staffName = staff.masseuse_name || staff.name || '';
                         html += `
                             <div class="staff-grid">
-                                <div><strong>${staff.name}</strong></div>
+                                <div><strong>${escapeAdminStaffHtml(staffName)}</strong></div>
                                 <div class="outstanding-amount">฿${staff.outstanding_balance.toFixed(2)}</div>
-                                <div class="payment-status ${statusClass}">${staff.payment_status}</div>
-                                <div>${staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never'}</div>
+                                <div class="payment-status ${statusClass}">${escapeAdminStaffHtml(staff.payment_status || '')}</div>
+                                <div>${escapeAdminStaffHtml(staff.last_payment_date ? new Date(staff.last_payment_date).toLocaleDateString() : 'Never')}</div>
                             </div>
                         `;
                     });
@@ -651,6 +653,15 @@
             showToast('Refreshing staff data...');
             await loadStaffData();
             showToast('Staff data refreshed');
+        }
+
+        function escapeAdminStaffHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         // Close modals when clicking outside

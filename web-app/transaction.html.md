@@ -158,6 +158,18 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
 **Resolution:** Rendered side-panel dynamic text through `escapeBookingText()` and switched staff/service/duration/payment option creation to DOM `option.value` plus `option.textContent`, preserving exact form values while preventing HTML interpretation.
 
+### Bug #0.11: Expense Delete Was Only Local Browser State (2026-07-14)
+**Bug Summary:** The New Customer expense delete button removed a row from `appData.expenses` and refreshed the side panel, but it did not call the backend delete endpoint.
+
+**Validated Hypothesis:** `loadTodayData()` maps database `expenses.id` into each local expense row and `api.deleteExpense(expenseId)` already maps to `DELETE /api/expenses/:id`; the missing piece was the shared `removeExpense(index)` implementation.
+
+**Invalidated Hypotheses:**
+- The backend lacked expense deletion support.
+- The New Customer page could safely treat expenses as local-only day notes.
+- The issue was only a Daily Summary display alias problem.
+
+**Resolution:** `removeExpense(index)` now awaits `api.deleteExpense(expense.id)`, reloads `loadTodayData()`, and both `transaction.html` and `transaction.ejs` await the shared helper before refreshing side panels.
+
 ### Bug #0: Navigation Label Did Not Match Business Workflow (2026-07-09)
 **Bug Summary:** The transaction page was exposed in navigation as "New Transaction / ธุรกรรมใหม่", which describes an internal record instead of the staff-facing action of taking a new customer.
 

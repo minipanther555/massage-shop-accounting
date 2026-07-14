@@ -37,11 +37,11 @@ describe('Daily Summary current shop status API', () => {
       `INSERT INTO transactions (
         transaction_id, timestamp, date, masseuse_name, service_type, location,
         duration, payment_amount, payment_method, masseuse_fee, start_time,
-        end_time, status, business_day
+        end_time, status, business_day, start_datetime, end_datetime
       ) VALUES
-        ('status-busy', '2026-07-13T14:00:00+07:00', '2026-07-13', 'May เมย์', 'Thai Massage', 'In-Shop', 60, 1000, 'Cash', 300, '14:00', '15:00', 'ACTIVE', '2026-07-13'),
-        ('status-count', '2026-07-13T09:00:00+07:00', '2026-07-13', 'Nok นก', 'Foot Massage', 'In-Shop', 60, 800, 'Cash', 250, '09:00', '10:00', 'ACTIVE', '2026-07-13'),
-        ('status-edited', '2026-07-13T10:00:00+07:00', '2026-07-13', 'Nok นก', 'Foot Massage', 'In-Shop', 60, 800, 'Cash', 250, '10:00', '11:00', 'EDITED', '2026-07-13')`
+        ('status-busy', '2026-07-13T14:00:00+07:00', '2026-07-13', 'May เมย์', 'Thai Massage', 'In-Shop', 60, 1000, 'Cash', 300, '14:10', '15:20', 'ACTIVE', '2026-07-13', '2026-07-13T14:10:00+07:00', '2026-07-13T15:20:00+07:00'),
+        ('status-count', '2026-07-13T09:00:00+07:00', '2026-07-13', 'Nok นก', 'Foot Massage', 'In-Shop', 60, 800, 'Cash', 250, '09:00', '10:00', 'ACTIVE', '2026-07-13', NULL, NULL),
+        ('status-edited', '2026-07-13T10:00:00+07:00', '2026-07-13', 'Nok นก', 'Foot Massage', 'In-Shop', 60, 800, 'Cash', 250, '10:00', '11:00', 'EDITED', '2026-07-13', NULL, NULL)`
     );
     await database.run(
       `INSERT INTO bookings (
@@ -77,10 +77,10 @@ describe('Daily Summary current shop status API', () => {
     const pim = response.body.staff.find((row) => row.masseuse_name === 'Pim พิม');
 
     assert.strictEqual(may.current_state, 'busy');
-    assert.strictEqual(may.busy_started, '14:00');
-    assert.strictEqual(may.busy_until, '15:00');
-    assert.strictEqual(may.free_at, '15:15');
-    assert.strictEqual(may.remaining_minutes, 30);
+    assert.strictEqual(may.busy_started, '14:10');
+    assert.strictEqual(may.busy_until, '15:20');
+    assert.strictEqual(may.free_at, '15:35');
+    assert.strictEqual(may.remaining_minutes, 50);
     assert.strictEqual(may.today_massages, 1);
 
     assert.strictEqual(nok.current_state, 'available');
@@ -103,7 +103,7 @@ describe('Daily Summary current shop status API', () => {
   it('uses indexed query plans for current status lookups', async () => {
     const transactionPlan = await database.all(
       `EXPLAIN QUERY PLAN
-       SELECT transaction_id, masseuse_name, timestamp, duration, end_time, service_type
+       SELECT transaction_id, masseuse_name, timestamp, start_datetime, end_datetime, duration, end_time, service_type
        FROM transactions
        WHERE business_day = ? AND status = 'ACTIVE'
        ORDER BY timestamp DESC`,

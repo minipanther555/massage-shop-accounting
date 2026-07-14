@@ -50,7 +50,7 @@ This module exports an Express `router` object and the `sessions` Map.
         *   **Returns:** A success message or an error (400, 401, 404).
     *   **`GET /api/auth/user-info`:**
         *   **Purpose:** Fetches basic information for the currently logged-in user.
-        *   **Returns:** A JSON object with the current user's details.
+        *   **Returns:** A JSON object with the current user's details, including the stored `displayName` from the session.
     *   **`GET /api/auth/users` (Manager Only):**
         *   **Purpose:** For managers to get a list of all users in the system for management purposes.
         *   **Returns:** An array of user objects (excluding sensitive info like passwords).
@@ -104,3 +104,9 @@ curl -X GET "http://localhost:3000/api/transactions/recent?limit=100&date=2024-0
 - **Validated Hypothesis:** The passwords are still present in the local in-memory auth store, but showing them directly in UI copy and broad docs increases accidental exposure risk.
 - **Invalidated Hypotheses:** Removing visible login-page password hints would require changing the auth contract or breaking tests.
 - **Resolution:** `web-app/login.html` now describes role access without password values. Documentation examples use placeholders and point local testers to private/dev context for seed values.
+
+### **Auth Metadata and Development Bypass Hardening (2026-07-14)**
+- **Issue:** `/api/auth/user-info` returned `displayName: session.username`, and the reset-rate-limit route relied on downstream protection instead of blocking production at the route boundary.
+- **Validated Hypothesis:** Source inspection showed the wrong display-name field and no production guard in `backend/routes/auth.js` before calling `resetRateLimits()`.
+- **Invalidated Hypotheses:** The branch login model did not need to change; `login.html` already composes `${role}_${branch}`.
+- **Resolution:** `user-info` now returns `session.displayName`, `/api/auth/reset-rate-limit` returns 403 in production before reset handling, and `__tests__/auth-login.contract.present.test.js` guards the contract.

@@ -225,6 +225,10 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
 // Development endpoint to reset rate limits (REMOVE IN PRODUCTION!)
 router.post('/reset-rate-limit', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Rate limit reset not allowed in production' });
+  }
+
   resetRateLimits(req, res);
 });
 
@@ -370,7 +374,7 @@ router.get('/user-info', async (req, res) => {
         id: session.userId,
         username: session.username,
         role: session.role,
-        displayName: session.username,
+        displayName: session.displayName,
         location_id: session.location_id,
         location_name: session.location_name,
         permissions: session.permissions

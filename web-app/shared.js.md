@@ -148,12 +148,12 @@ For navigation labels, pages request or hardcode the bilingual label structure u
 - **Usage & Logic Notes:** Validates description and positive amount, calls `api.createExpense()`, refreshes expense data, shows success/error toast
 
 #### `removeExpense(index)`
-- **Purpose:** Remove an expense entry from the local state
+- **Purpose:** Remove an expense entry from the backend expenses table and refresh local state
 - **Parameters:**
   - `index`: Array index of expense to remove (number, required)
-- **Returns:** boolean - true if removed, false if cancelled
+- **Returns:** Promise<boolean> - true if deleted and refreshed, false if cancelled or failed
 - **Raises:** None
-- **Usage & Logic Notes:** Shows confirmation dialog, removes from `appData.expenses` array, calls `saveData()`, shows success toast
+- **Usage & Logic Notes:** Looks up the loaded expense row by index, confirms with the user, calls `api.deleteExpense(expense.id)`, then reloads `loadTodayData()` so the UI reflects the `expenses` table instead of a local-only splice.
 
 #### `endDay()`
 - **Purpose:** End the current business day and archive data via backend API
@@ -320,3 +320,17 @@ The New Customer page did not reliably display the just-submitted transaction at
 
 ### Resolution
 `getRecentTransactions()` now uses `filtered.slice(0, limit)` and keeps backend ordering unchanged. `__tests__/transaction.walkin-refresh.present.test.js` guards this contract.
+
+### Bug Summary: New Customer Expense Delete Was Local-Only (2026-07-14)
+The New Customer expense delete button removed the row from `appData.expenses` and showed a success toast without deleting the row from the backend `expenses` table.
+
+### Validated Hypothesis
+`loadTodayData()` preserved each expense database id and `api.deleteExpense(expenseId)` already existed, but `removeExpense(index)` never called it.
+
+### Invalidated Hypotheses
+- The expense delete endpoint was missing.
+- The UI could safely rely on local state because expenses are temporary.
+- Daily Summary aliases caused the delete drift.
+
+### Resolution
+`removeExpense(index)` is now async, calls `api.deleteExpense(expense.id)`, reloads `loadTodayData()`, and transaction page handlers await it before refreshing side panels.

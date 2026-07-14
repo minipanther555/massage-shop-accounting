@@ -183,6 +183,8 @@ async function getActiveTransactionByStaff(businessDay) {
        transaction_id,
        masseuse_name,
        timestamp,
+       start_datetime,
+       end_datetime,
        duration,
        end_time,
        service_type
@@ -195,10 +197,11 @@ async function getActiveTransactionByStaff(businessDay) {
 
   const byStaff = new Map();
   rows.forEach((row) => {
-    const end = addMinutes(row.timestamp, row.duration);
+    const start = row.start_datetime || row.timestamp;
+    const end = row.end_datetime ? new Date(row.end_datetime) : addMinutes(row.timestamp, row.duration);
     const existing = byStaff.get(row.masseuse_name);
     if (!existing || Date.parse(end) > Date.parse(existing.busyEnd)) {
-      byStaff.set(row.masseuse_name, { ...row, busyStart: row.timestamp, busyEnd: end.toISOString() });
+      byStaff.set(row.masseuse_name, { ...row, busyStart: start, busyEnd: end.toISOString() });
     }
   });
   return byStaff;

@@ -311,8 +311,9 @@ class APIClient {
   }
 
   // Services
-  async getServices() {
-    return this.request('/services');
+  async getServices(options = {}) {
+    const query = options.includeInactive ? '?includeInactive=true' : '';
+    return this.request(`/services${query}`);
   }
 
   async getPaymentMethods() {
@@ -326,10 +327,55 @@ class APIClient {
     });
   }
 
+  async updateService(serviceId, serviceData) {
+    return this.request(`/services/${encodeURIComponent(serviceId)}`, {
+      method: 'PATCH',
+      body: serviceData
+    });
+  }
+
+  async deleteService(serviceId) {
+    return this.request(`/services/${encodeURIComponent(serviceId)}`, {
+      method: 'DELETE'
+    });
+  }
+
+  async bulkUpdateServices(updateData) {
+    return this.request('/services/bulk/update', {
+      method: 'PATCH',
+      body: updateData
+    });
+  }
+
   async createPaymentMethod(methodData) {
     return this.request('/services/payment-methods', {
       method: 'POST',
       body: methodData
+    });
+  }
+
+  // Payment Types Admin
+  async getPaymentTypes() {
+    return this.request('/payment-types');
+  }
+
+  async createPaymentType(paymentTypeData) {
+    return this.request('/payment-types', {
+      method: 'POST',
+      body: paymentTypeData
+    });
+  }
+
+  async updatePaymentType(paymentTypeId, paymentTypeData) {
+    return this.request(`/payment-types/${encodeURIComponent(paymentTypeId)}`, {
+      method: 'PUT',
+      body: paymentTypeData
+    });
+  }
+
+  async deletePaymentType(paymentTypeId) {
+    return this.request(`/payment-types/${encodeURIComponent(paymentTypeId)}`, {
+      method: 'DELETE'
     });
   }
 
@@ -374,6 +420,29 @@ class APIClient {
     return this.request(endpoint);
   }
 
+  async getFinancialReport(filters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, value);
+      }
+    });
+    const query = params.toString();
+    return this.request(`/reports/financial${query ? `?${query}` : ''}`);
+  }
+
+  async getReportStaff() {
+    return this.request('/reports/staff');
+  }
+
+  async getReportServiceTypes() {
+    return this.request('/reports/service-types');
+  }
+
+  async getReportLocations() {
+    return this.request('/reports/locations');
+  }
+
   async endDay() {
     return this.request('/reports/end-day', {
       method: 'POST'
@@ -400,6 +469,14 @@ class APIClient {
 
   async getActiveSessions() {
     return this.request('/auth/sessions');
+  }
+
+  async getUsers() {
+    return this.request('/auth/users');
+  }
+
+  async getUsersByLocation(locationId) {
+    return this.request(`/auth/users/location/${encodeURIComponent(locationId)}`);
   }
 
   // ADMIN METHODS...

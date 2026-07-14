@@ -8,7 +8,7 @@ The Daily Summary page now includes the current shop status surface that was ori
 
 ### Checkpoint Review Follow-Ups
 - BKG-004 is open to harden requested-staff booking credit through correction flows and make booking-buffer enforcement independent of optional browser datetime fields.
-- DSS-008 is open to make Current Shop Status use canonical transaction start/end times so staff are not shown free too early.
+- DSS-008 is implemented: Current Shop Status now uses canonical transaction start/end times where present so staff are not shown free too early.
 
 ### Deferred Work
 - BKG-002 is superseded by the completed DSS Daily Summary status implementation for this pass.

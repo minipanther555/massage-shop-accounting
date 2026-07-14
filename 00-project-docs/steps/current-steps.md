@@ -91,14 +91,14 @@
     *   **Verification**: Automated and first-viewport receipts pass; see `booking-reservations-and-requested-staff-credit-steps.md`. The exact booking-create/arrival browser click-through remains open because the in-app webview would not attach. Checkpoint review added BKG-004 for correction-safe booking credit and server-authoritative booking-buffer hardening.
 
 11. **[Feature] Daily Summary Current Shop Status.**
-    *   **Status**: ✅ implemented and verified; DSS-008 open from checkpoint review
+    *   **Status**: ✅ implemented and verified; DSS-008 implemented and verified during whole-app UI/database audit
     *   **Priority**: High
     *   **Required**: Add the missing operational status answers to the existing Daily Summary page: who is busy, how long they are busy for, each visible Today Staff member's massage count today, next booking time, and usable time before the 15-minute booking buffer.
     *   **Dependencies**: `web-app/summary.html`, `web-app/summary.ejs`, `web-app/api.js`, `web-app/shared.js`, `backend/routes/staff.js`, booking buffer helpers, current Today Staff queue/counts, and existing Daily Summary financial sections.
     *   **Expected Output/Deliverable**: Daily Summary retains all current financial/transaction/expense sections and adds a Thai-first Current Shop Status section backed by one server-authoritative status endpoint.
     *   **Technical Considerations**: Do not create a separate shop-status page for this pass. Keep `summary.html` and `summary.ejs` mirrored. Prefer deriving busy status from current active transaction windows and booking constraints instead of duplicating ledger state.
     *   **Potential Challenges and Mitigations**: Current Today Staff roster returns massage counts but `busy_until` is projected as `NULL`; mitigate with a dedicated status endpoint that combines transactions, Today Staff, and bookings. The Daily Summary UI is already dirty with operator edits; read current file state before implementation and preserve unrelated visual changes.
-    *   **Verification**: Backend status contract tests, Daily Summary DOM/structure tests, inline script parsing for both summary templates, `git diff --check`, and browser verification at the active staff-facing viewport. Checkpoint review added DSS-008 so Current Shop Status uses canonical transaction timing instead of assuming every row's `timestamp + duration` matches the actual busy window.
+    *   **Verification**: Backend status contract tests, Daily Summary DOM/structure tests, inline script parsing for both summary templates, `git diff --check`, and browser verification at the active staff-facing viewport. DSS-008 now persists `transactions.start_datetime` / `transactions.end_datetime` and Current Shop Status prefers those canonical fields with a legacy fallback.
 
 12. **[Security] Dependency Audit Remediation.**
     *   **Status**: ⚪ `pending`
@@ -109,3 +109,13 @@
     *   **Technical Considerations**: Some fixes require breaking upgrades such as sqlite3 6.x and older csurf dependency changes. Do not apply `npm audit fix --force` inside an unrelated UI/booking checkpoint.
     *   **Potential Challenges and Mitigations**: Upgrade one dependency cluster at a time, run focused backend/browser smoke after each cluster, and keep rollback simple by committing this as a separate change.
     *   **Verification**: `npm audit --omit=dev --audit-level=high` exits cleanly or all remaining advisories are explicitly accepted with documented rationale.
+
+13. **[Audit] Whole-App UI to Database Contract Verification.**
+    *   **Status**: ✅ audit pass complete with governed blockers
+    *   **Priority**: CRITICAL
+    *   **Required**: Enumerate every app page and verify each visible button, dropdown, list, card, modal, report, and form talks to the correct API/database contract. The trigger is the New Customer follow-up where obvious UI behavior was stale or not wired to the active Today Staff/recent transaction source, raising risk that other pages contain fake, stale, local-only, or partially implemented widgets.
+    *   **Dependencies**: `web-app/*.html`, `web-app/*.ejs`, `web-app/api.js`, `web-app/shared.js`, `web-app/controllers/staff-page-controller.js`, all backend route modules, `backend/models/database.js`, existing focused tests, and the local preview browser workflow.
+    *   **Expected Output/Deliverable**: A completed checklist in `00-project-docs/steps/whole-app-ui-db-contract-audit.md` covering reception pages, manager/admin pages, shared widgets, backend routes, database tables, evidence-backed findings, regression tests for confirmed failures, and fixes for any UI/database contract breaks found in the pass.
+    *   **Technical Considerations**: Audit before broad rewrites. For each widget identify frontend handler, API method or direct fetch, backend route, SQL/table authority, refresh path after mutation, escaping behavior, and test/browser evidence. Add RED tests before fixing confirmed behavioral breaks when practical. Preserve mirrored `.html`/`.ejs` templates and co-located docs.
+    *   **Potential Challenges and Mitigations**: The page count is broad and includes manager-only payday, services, payment types, reports, and users. Mitigate by using the audit checklist as the execution ledger and marking each widget as not audited, issue found, verified, or blocked. If product behavior is missing rather than broken, record it as blocked/needs decision instead of inventing semantics.
+    *   **Verification**: Page/widget inventory complete; existing tests baseline recorded; focused tests added for confirmed contract failures; detailed audit ledger complete in `00-project-docs/steps/whole-app-ui-db-contract-audit.md`; 13 source-contract suites / 59 tests passed; booking/walk-in integration and Daily Summary OTDD passed with local listener escalation; inline scripts parsed; `npm run lint` and `git diff --check` passed. Governed blockers remain: BKG-004 correction-safe requested-staff booking credit and product/UI scope for manager bulk price update controls.

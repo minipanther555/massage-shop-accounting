@@ -120,6 +120,15 @@
         let editingPaymentType = null;
         let deletingPaymentType = null;
 
+        function escapePaymentTypeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
             // Check authentication first
             if (!requireAuth()) {
@@ -138,12 +147,7 @@
 
         async function loadPaymentTypes() {
             try {
-                const response = await fetch('/api/payment-types');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch payment types');
-                }
-                
-                currentPaymentTypes = await response.json();
+                currentPaymentTypes = await api.getPaymentTypes();
                 displayPaymentTypes();
             } catch (error) {
                 console.error('Error loading payment types:', error);
@@ -163,28 +167,35 @@
                 return;
             }
 
-            grid.innerHTML = currentPaymentTypes.map(paymentType => `
+            grid.innerHTML = currentPaymentTypes.map(paymentType => {
+                const paymentTypeId = Number(paymentType.id);
+                const methodName = escapePaymentTypeHtml(paymentType.method_name);
+                const description = escapePaymentTypeHtml(paymentType.description);
+                const createdAt = escapePaymentTypeHtml(new Date(paymentType.created_at).toLocaleDateString());
+
+                return `
                 <div class="payment-type-card">
                     <div class="payment-type-header">
-                        <h4>${paymentType.method_name}</h4>
+                        <h4>${methodName}</h4>
                         <span class="status-badge active">
                             Active
                         </span>
                     </div>
-                    ${paymentType.description ? `<p class="description">${paymentType.description}</p>` : ''}
+                    ${paymentType.description ? `<p class="description">${description}</p>` : ''}
                     <div class="payment-type-actions">
-                        <button class="btn btn-small btn-secondary" onclick="editPaymentType(${paymentType.id})">
+                        <button class="btn btn-small btn-secondary" onclick="editPaymentType(${paymentTypeId})">
                             ✏️ Edit
                         </button>
-                        <button class="btn btn-small btn-danger" onclick="deletePaymentType(${paymentType.id})">
+                        <button class="btn btn-small btn-danger" onclick="deletePaymentType(${paymentTypeId})">
                             🗑️ Delete
                         </button>
                     </div>
                     <div class="payment-type-meta">
-                        <small>Created: ${new Date(paymentType.created_at).toLocaleDateString()}</small>
+                        <small>Created: ${createdAt}</small>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function showAddModal() {
@@ -233,11 +244,7 @@
             if (!deletingPaymentType) return;
 
             try {
-                // FIX: Use centralized API client instead of direct fetch
-                const api = new APIClient();
-                await api.request(`/api/payment-types/${deletingPaymentType.id}`, {
-                    method: 'DELETE'
-                });
+                await api.deletePaymentType(deletingPaymentType.id);
 
                 showToast('Payment type deleted successfully', 'success');
                 closeDeleteModal();
@@ -261,18 +268,11 @@
             }
 
             try {
-                const url = editingPaymentType 
-                    ? `/api/payment-types/${editingPaymentType.id}`
-                    : '/api/payment-types';
-                
-                const method = editingPaymentType ? 'PUT' : 'POST';
-
-                // FIX: Use centralized API client instead of direct fetch
-                const api = new APIClient();
-                const response = await api.request(url, {
-                    method: method,
-                    body: formData
-                });
+                if (editingPaymentType) {
+                    await api.updatePaymentType(editingPaymentType.id, formData);
+                } else {
+                    await api.createPaymentType(formData);
+                }
 
                 showToast(
                     editingPaymentType 
