@@ -85,6 +85,36 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 - `.staff-grid`, `.services-grid`, `.payment-type-card`, `.modal-content`: Applies the same professional surface/border system to manager/admin pages.
 **Usage**: Applied broadly after the older global CSS and before responsive overrides. These rules are intentionally presentation-only and do not change any page behavior.
 
+#### Daily Summary Current Shop Status Classes
+**Purpose**: Renders the current shop status snapshot as a compact operational list inside Daily Summary.
+**Classes**:
+- `.summary-status-section`: Adds the Daily Summary status panel accent without changing other summary sections.
+- `.summary-status-header`: Uses a distinct blue header so the live status block scans separately from financial totals.
+- `.summary-status-summary` and `.summary-status-summary-item`: Compact free-now / next-free / next-three-free summary strip under the status header.
+- `.summary-status-list`: Provides vertical spacing for status rows and empty/error messages.
+- `.summary-status-row`: Defines the stable row grid for staff name/detail, status pill, and `นวดวันนี้` count.
+- `.summary-status-busy`, `.summary-status-booking_buffer`: Apply state-specific border and pill colors for busy and booking-buffer states.
+- `.summary-status-main`: Shows staff name and the operational detail line.
+- `.summary-status-pill`: Shows the Thai status label.
+- `.summary-status-count`: Shows each staff member's active massage count for the business day.
+- `.summary-status-empty`: Shows loading, empty, and error states.
+**Usage**: Applied only by `summary.html` and `summary.ejs`. These classes are presentation-only; status calculation is owned by `GET /api/staff/current-status`. Daily Summary no longer renders queue numbers or `คิวถัดไป`.
+
+#### Daily Summary Compact Drill-Down Classes
+**Purpose**: Makes Daily Summary usable as a quick operational snapshot by keeping top financial numbers compact and moving detail tables under tap-to-open cards.
+**Classes**:
+- `.summary-page-title`: Thai-first Daily Summary page title with smaller English helper text.
+- `.summary-finance-section`, `.summary-finance-header`, `.summary-finance-title`, `.summary-finance-toggle`, `.summary-finance-content`: Compact dark Thai-first finance section header with inline right-side collapse toggle and collapsible content wrapper.
+- `.dashboard-grid.summary-compact-grid`: Four-card compact financial summary grid with tighter spacing.
+- `.summary-compact-grid.has-open-detail`: Focus state used after a card is opened; the selected card spans the finance area and the other cards are hidden.
+- `.summary-card-button`: Clickable summary card surface with keyboard focus styling.
+- `.summary-card-button.is-open` / `.summary-card-button.is-dimmed`: Mark the selected full-width detail card and the temporarily hidden sibling cards.
+- `.summary-card-detail`: Inline collapsible detail area inside a summary card, with horizontal overflow protection for detail tables.
+- `.summary-card-hint`: Small Thai helper text telling the receptionist the card can be tapped.
+- `.summary-detail-title`: Thai-first title for detail panels.
+- `.summary-profit-lines` and `.summary-profit-total`: Net-profit formula layout.
+**Usage**: Applied only by Daily Summary templates. Payment breakdown, transactions, masseuse fees, expenses, and profit formula remain in the DOM with their existing IDs, but are hidden until the matching card is opened. When one card is open, the finance grid becomes a single focused panel so the detail table is not cut off by neighboring cards.
+
 #### New Customer Button Selection Classes
 **Purpose**: Styles the transaction-page service category, Combo service, and duration button layer that sits on top of the legacy hidden `#service` and `#duration` select contract.
 **Classes**:
@@ -99,6 +129,11 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 - `.transaction-combo-button span` / `.transaction-combo-button small`: Keeps Combo Thai hints visually primary and English service names visually secondary.
 - `.transaction-button-empty`: Placeholder panel shown before a service has been selected and duration buttons are available.
 **Usage**: Applied only by `transaction.html`/`transaction.ejs`. These classes are presentation-only; button clicks still write values into the hidden native selects and dispatch the existing change events.
+
+#### New Customer Booking Classes
+**Classes**: `.transaction-mode-switch`, `.transaction-mode-button`, `.transaction-booking-note`, `.transaction-booking-list`, `.transaction-booking-row`, `.transaction-booking-error`.
+**Purpose**: Makes walk-in versus future-booking state explicit and renders upcoming bookings as touch-friendly rows on desktop, iPad, and mobile. Booking-credit accounting has no visual class because it is intentionally backend-only.
+**Usage**: Transaction-page scoped. Booking rows use bold inline labels to distinguish customer, service, and requested-staff data. At the 599px breakpoint, rows stack so the schedule, details, and arrival action remain readable without horizontal clipping.
 
 #### Flexbox Controls
 **Purpose**: Provides responsive button layout
@@ -131,6 +166,8 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 - Layout positioning and spacing
 - Responsive design behavior
 - Shared visual hierarchy for legacy pages and admin pages
+- Daily Summary current-status rows that remain readable on desktop and collapse safely on mobile
+- Compact Daily Summary cards that keep Current Shop Status visible without excessive scrolling
 
 ## Bug & Resolution History
 
@@ -187,3 +224,26 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 - Combo services needed a separate backend model before the UI could improve.
 
 **Resolution:** Added `.transaction-choice-*`, `.transaction-combo-*`, `.transaction-duration-*`, `.transaction-subchoice-panel`, and `.transaction-native-select-hidden` styles. Combo buttons now emphasize Thai text and demote English to a smaller secondary line while retaining the English value in the hidden select.
+
+### Bug Summary: Daily Summary Lacked a Readable Current Status Panel (2026-07-13)
+**Bug Summary:** After the Daily Summary visual refresh, the page still had no dedicated layout for current busy/free/booking-buffer staff state.
+
+**Validated Hypothesis:** A compact row grid with state-specific accents fit the existing Daily Summary style better than a new card-heavy area or a separate status page.
+
+**Invalidated Hypotheses:**
+- The existing transaction list styles were enough for current staff state.
+- The status block needed to dominate the entire page above financial summary cards.
+
+**Resolution:** Added `.summary-status-*` styles with stable compact columns, Thai-first labels, state accents, and responsive collapse rules.
+
+### Bug Summary: Daily Summary Cards and Status Rows Consumed Too Much Vertical Space (2026-07-13)
+**Bug Summary:** Browser review at a 630px-wide viewport showed the four financial cards filling most of the first screen and pushing Current Shop Status down. The status rows themselves also consumed too much vertical space.
+
+**Validated Hypothesis:** The page needed compact card-specific overrides and tighter status-row grid rules after the broader legacy-page CSS so those older card sizes would not win in the cascade.
+
+**Invalidated Hypotheses:**
+- The lower payment/masseuse sections should remain always open.
+- The large metric-card style was appropriate for repeated receptionist use.
+- Making the rows smaller had to make the text hard to read.
+
+**Resolution:** Added `.summary-compact-grid`, `.summary-card-button`, `.summary-card-detail`, `.summary-profit-*`, and final `.summary-status-*` overrides. The result keeps labels readable but removes unnecessary height and duplication.

@@ -75,7 +75,7 @@ async function runComprehensiveFunctionalityTest() {
     // Test navigation to different pages
     const mainPageTests = [
       { name: 'Staff Roster', selector: 'a[href="/api/main/staff-roster"]', expectedUrl: '/api/main/staff-roster' },
-      { name: 'New Transaction', selector: 'a[href="/api/main/transaction"]', expectedUrl: '/api/main/transaction' },
+      { name: 'New Customer', selector: 'a[href="/api/main/transaction"]', expectedUrl: '/api/main/transaction' },
       { name: 'Daily Summary', selector: 'a[href="/api/main/summary"]', expectedUrl: '/api/main/summary' }
     ];
 

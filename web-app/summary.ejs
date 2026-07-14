@@ -13,102 +13,107 @@
 </head>
 <body>
     <div class="container">
-        <div class="nav-header">
-            DAILY SUMMARY & REPORTS
+        <div class="nav-header summary-page-title">
+            <span class="label-th">สรุปวันนี้</span>
+            <span class="label-en">Daily Summary</span>
         </div>
 
         <div class="nav-buttons">
             <a href="/index.html" class="nav-btn home">
-                <span class="label-en">🏠 Home</span>
                 <span class="label-th">🏠 หน้าแรก</span>
+                <span class="label-en">🏠 Home</span>
             </a>
             <a href="/api/main/staff-roster" class="nav-btn staff">
-                <span class="label-en">👥 Staff Roster</span>
-                <span class="label-th">👥 รายชื่อพนักงาน</span>
+                <span class="label-th">👥 คิวพนักงานวันนี้</span>
+                <span class="label-en">👥 Today's Staff Queue</span>
             </a>
             <a href="/api/main/transaction" class="nav-btn transaction">
-                <span class="label-en">💳 New Transaction</span>
-                <span class="label-th">💳 ธุรกรรมใหม่</span>
+                <span class="label-th">👤 ลูกค้าใหม่</span>
+                <span class="label-en">👤 New Customer</span>
             </a>
-            <a href="/api/main/summary" class="nav-btn summary active">
-                <span class="label-en">📊 Daily Summary</span>
-                <span class="label-th">📊 สรุปรายวัน</span>
-            </a>
-            <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
-                <span id="current-user" style="color: #666; font-size: 14px;"></span>
-            </div>
         </div>
 
-        <!-- Daily Overview -->
-        <div class="dashboard-grid">
-            <div class="dashboard-card">
-                <h3>Today's Revenue</h3>
-                <div class="big-number" id="today-revenue">฿0.00</div>
-                <div class="subtitle" id="today-transactions">0 transactions</div>
-            </div>
-            
-            <div class="dashboard-card">
-                <h3>Today's Fees</h3>
-                <div class="big-number" id="today-fees">฿0.00</div>
-                <div class="subtitle">Masseuse earnings</div>
-            </div>
-            
-            <div class="dashboard-card">
-                <h3>Today's Expenses</h3>
-                <div class="big-number" id="today-expenses">฿0.00</div>
-                <div class="subtitle" id="expense-count">0 expenses</div>
-            </div>
-            
-            <div class="dashboard-card">
-                <h3>Net Profit</h3>
-                <div class="big-number" id="net-profit">฿0.00</div>
-                <div class="subtitle">Revenue - Fees - Expenses</div>
-            </div>
-        </div>
-
-        <div class="main-grid">
-            <!-- Left Column -->
-            <div>
-                <!-- Payment Method Breakdown -->
-                <div class="section">
-                    <div class="section-header">TODAY'S PAYMENT BREAKDOWN</div>
-                    <div class="section-content">
-                        <div id="payment-breakdown"></div>
+        <div class="section summary-finance-section">
+            <button class="section-header summary-finance-header" type="button" onclick="toggleFinanceSection()">
+                <span class="summary-finance-title">
+                    <span class="label-th">การเงินวันนี้</span>
+                    <span class="label-en">Today's Finances</span>
+                </span>
+                <span class="summary-finance-toggle" id="finance-toggle-label">ซ่อน</span>
+            </button>
+            <div class="section-content summary-finance-content" id="summary-finance-content">
+                <div class="dashboard-grid summary-compact-grid">
+                    <div class="dashboard-card summary-card-button" role="button" tabindex="0" onclick="toggleSummaryDetail('revenue')" onkeypress="handleSummaryCardKey(event, 'revenue')">
+                        <h3><span class="label-th">รายรับวันนี้</span><span class="label-en">Today's Revenue</span></h3>
+                        <div class="big-number" id="today-revenue">฿0.00</div>
+                        <div class="subtitle" id="today-transactions">0 transactions</div>
+                        <div class="summary-card-hint">แตะเพื่อดูรายละเอียด</div>
+                        <div class="summary-card-detail" id="summary-detail-revenue" hidden onclick="event.stopPropagation()">
+                            <div class="summary-detail-title"><span class="label-th">เงินเข้าตามวิธีจ่าย</span><span class="label-en">Payment breakdown</span></div>
+                            <div id="payment-breakdown"></div>
+                            <div class="summary-detail-title"><span class="label-th">รายการวันนี้</span><span class="label-en">Transactions today</span></div>
+                            <div class="transaction-log" id="all-transactions">
+                                <div class="transaction-item">
+                                    <div>Time</div>
+                                    <div>Service</div>
+                                    <div>Masseuse</div>
+                                    <div>Amount</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Masseuse Performance -->
-                <div class="section">
-                    <div class="section-header">TODAY'S MASSEUSE PERFORMANCE</div>
-                    <div class="section-content">
-                        <div id="masseuse-performance"></div>
+                    <div class="dashboard-card summary-card-button" role="button" tabindex="0" onclick="toggleSummaryDetail('fees')" onkeypress="handleSummaryCardKey(event, 'fees')">
+                        <h3><span class="label-th">ค่าแรงหมอนวด</span><span class="label-en">Today's Fees</span></h3>
+                        <div class="big-number" id="today-fees">฿0.00</div>
+                        <div class="subtitle">รายได้หมอนวดวันนี้</div>
+                        <div class="summary-card-hint">แตะเพื่อดูรายคน</div>
+                        <div class="summary-card-detail" id="summary-detail-fees" hidden onclick="event.stopPropagation()">
+                            <div class="summary-detail-title"><span class="label-th">ค่าแรงแยกตามหมอนวด</span><span class="label-en">Masseuse earnings</span></div>
+                            <div id="masseuse-performance"></div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Right Column -->
-            <div>
-                <!-- All Transactions Today -->
-                <div class="section">
-                    <div class="section-header">ALL TRANSACTIONS TODAY</div>
-                    <div class="section-content">
-                        <div class="transaction-log" id="all-transactions">
-                            <div class="transaction-item">
-                                <div>Time</div>
-                                <div>Service</div>
-                                <div>Masseuse</div>
-                                <div>Amount</div>
+                    <div class="dashboard-card summary-card-button" role="button" tabindex="0" onclick="toggleSummaryDetail('expenses')" onkeypress="handleSummaryCardKey(event, 'expenses')">
+                        <h3><span class="label-th">ค่าใช้จ่ายวันนี้</span><span class="label-en">Today's Expenses</span></h3>
+                        <div class="big-number" id="today-expenses">฿0.00</div>
+                        <div class="subtitle" id="expense-count">0 expenses</div>
+                        <div class="summary-card-hint">แตะเพื่อดูว่าใช้จ่ายอะไร</div>
+                        <div class="summary-card-detail" id="summary-detail-expenses" hidden onclick="event.stopPropagation()">
+                            <div class="summary-detail-title"><span class="label-th">รายการค่าใช้จ่าย</span><span class="label-en">Expenses</span></div>
+                            <div id="all-expenses"></div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card summary-card-button" role="button" tabindex="0" onclick="toggleSummaryDetail('profit')" onkeypress="handleSummaryCardKey(event, 'profit')">
+                        <h3><span class="label-th">กำไรสุทธิ</span><span class="label-en">Net Profit</span></h3>
+                        <div class="big-number" id="net-profit">฿0.00</div>
+                        <div class="subtitle">รายรับ - ค่าแรง - ค่าใช้จ่าย</div>
+                        <div class="summary-card-hint">แตะเพื่อดูสูตร</div>
+                        <div class="summary-card-detail" id="summary-detail-profit" hidden onclick="event.stopPropagation()">
+                            <div class="summary-profit-lines">
+                                <div><span>รายรับ</span><strong id="profit-revenue">฿0.00</strong></div>
+                                <div><span>หักค่าแรง</span><strong id="profit-fees">- ฿0.00</strong></div>
+                                <div><span>หักค่าใช้จ่าย</span><strong id="profit-expenses">- ฿0.00</strong></div>
+                                <div class="summary-profit-total"><span>กำไรสุทธิ</span><strong id="profit-total">฿0.00</strong></div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- All Expenses Today -->
-                <div class="section">
-                    <div class="section-header">ALL EXPENSES TODAY</div>
-                    <div class="section-content">
-                        <div id="all-expenses"></div>
-                    </div>
+        <div class="section summary-status-section">
+            <div class="section-header summary-status-header">
+                <span class="label-th">สถานะร้านตอนนี้</span>
+                <span class="label-en">Current Shop Status</span>
+            </div>
+            <div class="section-content">
+                <div id="current-shop-status-summary" class="summary-status-summary">
+                    <div class="summary-status-summary-item">กำลังโหลดสรุปสถานะ...</div>
+                </div>
+                <div id="current-shop-status" class="summary-status-list">
+                    <div class="summary-status-empty">กำลังโหลดสถานะร้าน...</div>
                 </div>
             </div>
         </div>
@@ -132,13 +137,7 @@
             if (!requireAuth()) {
                 return;
             }
-            
-            // Display current user
-            const user = getCurrentUser();
-            if (user) {
-                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
-            }
-            
+
             // Load data from API first
             await loadTodayData();
             await updateAllDisplays();
@@ -151,9 +150,49 @@
         async function updateAllDisplays() {
             await updateDashboard();
             await updatePaymentBreakdown();
+            await updateCurrentShopStatus();
             updateMasseusePerformance();
             updateAllTransactions();
             updateAllExpenses();
+        }
+
+        function toggleFinanceSection() {
+            const content = document.getElementById('summary-finance-content');
+            const label = document.getElementById('finance-toggle-label');
+            if (!content) return;
+            const shouldHide = !content.hidden;
+            content.hidden = shouldHide;
+            if (label) {
+                label.textContent = shouldHide ? 'แสดง' : 'ซ่อน';
+            }
+        }
+
+        function toggleSummaryDetail(section) {
+            const target = document.getElementById(`summary-detail-${section}`);
+            if (!target) return;
+            const willOpen = target.hidden;
+            const grid = target.closest('.summary-compact-grid');
+            document.querySelectorAll('.summary-card-detail').forEach((detail) => {
+                detail.hidden = true;
+                detail.closest('.summary-card-button')?.classList.remove('is-open');
+                detail.closest('.summary-card-button')?.classList.remove('is-dimmed');
+            });
+            target.hidden = !willOpen;
+            const activeCard = target.closest('.summary-card-button');
+            activeCard?.classList.toggle('is-open', willOpen);
+            grid?.classList.toggle('has-open-detail', willOpen);
+            if (willOpen && grid) {
+                grid.querySelectorAll('.summary-card-button').forEach((card) => {
+                    card.classList.toggle('is-dimmed', card !== activeCard);
+                });
+            }
+        }
+
+        function handleSummaryCardKey(event, section) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleSummaryDetail(section);
+            }
         }
 
         async function updateDashboard() {
@@ -174,6 +213,11 @@
             const netProfit = todayRevenue - todayFees - todayExpenses;
             document.getElementById('net-profit').textContent = `฿${netProfit.toFixed(2)}`;
             document.getElementById('net-profit').style.color = netProfit >= 0 ? '#34a853' : '#ea4335';
+            document.getElementById('profit-revenue').textContent = `฿${todayRevenue.toFixed(2)}`;
+            document.getElementById('profit-fees').textContent = `- ฿${todayFees.toFixed(2)}`;
+            document.getElementById('profit-expenses').textContent = `- ฿${todayExpenses.toFixed(2)}`;
+            document.getElementById('profit-total').textContent = `฿${netProfit.toFixed(2)}`;
+            document.getElementById('profit-total').style.color = netProfit >= 0 ? '#027a48' : '#b42318';
         }
 
         async function updatePaymentBreakdown() {
@@ -185,7 +229,7 @@
                 return;
             }
 
-            let html = '<table class="payment-table"><tr><th>Payment Method</th><th>Count</th><th class="amount">Revenue</th><th class="amount">Percentage</th></tr>';
+            let html = '<table class="payment-table"><tr><th>วิธีจ่าย</th><th>ครั้ง</th><th class="amount">รายรับ</th><th class="amount">%</th></tr>';
             const total = summary.todayRevenue;
             
             Object.entries(summary.paymentBreakdown)
@@ -194,7 +238,7 @@
                     const percentage = total > 0 ? (data.revenue / total * 100).toFixed(1) : 0;
                     html += `
                         <tr>
-                            <td>${method}</td>
+                            <td>${escapeStatusHtml(method)}</td>
                             <td>${data.count}</td>
                             <td class="amount">฿${data.revenue.toFixed(2)}</td>
                             <td class="amount">${percentage}%</td>
@@ -203,6 +247,134 @@
                 });
             html += '</table>';
             container.innerHTML = html;
+        }
+
+        function formatStatusTime(value) {
+            if (!value) return '-';
+            try {
+                return new Intl.DateTimeFormat('th-TH', {
+                    timeZone: 'Asia/Bangkok',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).format(new Date(value));
+            } catch (error) {
+                return '-';
+            }
+        }
+
+        function getStatusLabel(row) {
+            if (row.current_state === 'busy') return 'กำลังนวด';
+            if (row.current_state === 'booking_buffer') return 'มีจองใกล้ถึง';
+            return 'ว่าง';
+        }
+
+        function escapeStatusHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[character]));
+        }
+
+        function getStatusDetail(row) {
+            if (row.current_state === 'busy') {
+                return {
+                    primary: `จองเวลา ${row.busy_started || '-'} · นวดถึง ${row.busy_until || '-'}`,
+                    secondary: `ว่างได้ตั้งแต่ ${row.free_at || '-'} · เหลือ ${row.remaining_minutes || 0} นาที`
+                };
+            }
+            if (row.next_booking) {
+                const usable = row.usable_minutes_before_booking;
+                return {
+                    primary: `มีจอง ${formatStatusTime(row.next_booking.scheduled_start)}-${formatStatusTime(row.next_booking.scheduled_end)}`,
+                    secondary: `ว่างก่อนจอง ${usable ?? 0} นาที`
+                };
+            }
+            return {
+                primary: 'ว่างรับลูกค้า',
+                secondary: 'ไม่มีจองที่กระทบตอนนี้'
+            };
+        }
+
+        function renderStatusSummary(staffRows) {
+            const summary = document.getElementById('current-shop-status-summary');
+            if (!summary) return;
+
+            if (!Array.isArray(staffRows) || staffRows.length === 0) {
+                summary.innerHTML = '<div class="summary-status-summary-item">ยังไม่มีพนักงานในวันนี้</div>';
+                return;
+            }
+
+            const availableRows = staffRows.filter((row) => row.current_state === 'available');
+            const futureFreeRows = staffRows
+                .filter((row) => row.current_state === 'busy' && row.free_at)
+                .sort((a, b) => Date.parse(a.free_at_iso || 0) - Date.parse(b.free_at_iso || 0));
+            const nextAvailable = availableRows[0];
+            const nextFutureFree = futureFreeRows[0];
+            const nextThree = [
+                ...availableRows.slice(0, 3).map((row) => `${row.masseuse_name} ตอนนี้`),
+                ...futureFreeRows.slice(0, Math.max(0, 3 - availableRows.length)).map((row) => `${row.masseuse_name} ${row.free_at}`)
+            ].slice(0, 3);
+
+            const nextFreeText = nextAvailable
+                ? `${nextAvailable.masseuse_name} ว่างตอนนี้`
+                : (nextFutureFree ? `${nextFutureFree.masseuse_name} ว่าง ${nextFutureFree.free_at}` : 'ยังไม่มีเวลาว่างที่เห็น');
+
+            summary.innerHTML = `
+                <div class="summary-status-summary-item">
+                    <span>ว่างตอนนี้</span>
+                    <strong>${availableRows.length} คน</strong>
+                </div>
+                <div class="summary-status-summary-item">
+                    <span>คนถัดไปว่าง</span>
+                    <strong>${escapeStatusHtml(nextFreeText)}</strong>
+                </div>
+                <div class="summary-status-summary-item summary-status-summary-wide">
+                    <span>สามคนถัดไป</span>
+                    <strong>${escapeStatusHtml(nextThree.length ? nextThree.join(' · ') : 'ไม่มีข้อมูล')}</strong>
+                </div>
+            `;
+        }
+
+        async function updateCurrentShopStatus() {
+            const container = document.getElementById('current-shop-status');
+            if (!container) return;
+
+            const status = await loadCurrentShopStatus();
+            if (status.error) {
+                renderStatusSummary([]);
+                container.innerHTML = `<div class="summary-status-empty">โหลดสถานะร้านไม่ได้: ${escapeStatusHtml(status.error)}</div>`;
+                return;
+            }
+
+            const staffRows = Array.isArray(status.staff) ? status.staff : [];
+            if (staffRows.length === 0) {
+                renderStatusSummary([]);
+                container.innerHTML = '<div class="summary-status-empty">ยังไม่มีรายชื่อพนักงานวันนี้</div>';
+                return;
+            }
+
+            renderStatusSummary(staffRows);
+            container.innerHTML = staffRows.map((row) => {
+                const detail = getStatusDetail(row);
+                return `
+                <div class="summary-status-row summary-status-${escapeStatusHtml(row.current_state)}">
+                    <div class="summary-status-main">
+                        <strong>${escapeStatusHtml(row.masseuse_name)}</strong>
+                        <span>${escapeStatusHtml(detail.primary)}</span>
+                        <span>${escapeStatusHtml(detail.secondary)}</span>
+                    </div>
+                    <div class="summary-status-pill">${escapeStatusHtml(getStatusLabel(row))}</div>
+                    <div class="summary-status-count">
+                        <span>นวดวันนี้</span>
+                        <strong>${escapeStatusHtml(row.today_massages || 0)} ครั้ง</strong>
+                    </div>
+                </div>
+            `;
+            }).join('');
         }
 
         function updateMasseusePerformance() {
@@ -221,7 +393,7 @@
                 }
                 masseuseStats[t.masseuse].count++;
                 masseuseStats[t.masseuse].revenue += t.paymentAmount;
-                masseuseStats[t.masseuse].fees += t.masseuseeFee;
+                masseuseStats[t.masseuse].fees += Number(t.masseuseFee || 0);
             });
 
             if (Object.keys(masseuseStats).length === 0) {
@@ -229,13 +401,13 @@
                 return;
             }
 
-            let html = '<table class="payment-table"><tr><th>Masseuse</th><th>Services</th><th class="amount">Revenue Generated</th><th class="amount">Fees Earned</th></tr>';
+            let html = '<table class="payment-table"><tr><th>หมอนวด</th><th>ครั้ง</th><th class="amount">รายรับ</th><th class="amount">ค่าแรง</th></tr>';
             Object.entries(masseuseStats)
                 .sort(([,a], [,b]) => b.revenue - a.revenue)
                 .forEach(([masseuse, stats]) => {
                     html += `
                         <tr>
-                            <td><strong>${masseuse}</strong></td>
+                            <td><strong>${escapeStatusHtml(masseuse)}</strong></td>
                             <td>${stats.count}</td>
                             <td class="amount">฿${stats.revenue.toFixed(2)}</td>
                             <td class="amount">฿${stats.fees.toFixed(2)}</td>
@@ -278,8 +450,8 @@
 
                 div.innerHTML = `
                     <div>${formatTime(transaction.timestamp)}</div>
-                    <div>${transaction.service} ${statusBadge}</div>
-                    <div>${transaction.masseuse}</div>
+                    <div>${escapeStatusHtml(transaction.service)} ${statusBadge}</div>
+                    <div>${escapeStatusHtml(transaction.masseuse)}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
                     <div class="btn-group">
                         <button onclick="editTransaction('${transaction.id}')" class="btn btn-small btn-secondary" ${transaction.status && transaction.status.includes('EDITED') ? 'disabled' : ''}>✏️ Edit</button>
@@ -304,6 +476,15 @@
             window.location.href = '/api/main/transaction';
         }
 
+        function escapeSummaryHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function updateAllExpenses() {
             const container = document.getElementById('all-expenses');
             
@@ -312,12 +493,12 @@
                 return;
             }
 
-            let html = '<table class="payment-table"><tr><th>Time</th><th>Description</th><th class="amount">Amount</th></tr>';
+            let html = '<table class="payment-table"><tr><th>เวลา</th><th>รายการ</th><th class="amount">จำนวนเงิน</th></tr>';
             appData.expenses.slice().reverse().forEach(expense => {
                 html += `
                     <tr>
                         <td>${formatTime(expense.timestamp)}</td>
-                        <td>${expense.description}</td>
+                        <td>${escapeSummaryHtml(expense.description)}</td>
                         <td class="amount">฿${expense.amount.toFixed(2)}</td>
                     </tr>
                 `;
@@ -343,8 +524,8 @@
     <!-- Logout Button at Bottom -->
     <div style="text-align: center; padding: 20px; margin-top: 20px; border-top: 1px solid #dee2e6;">
                     <button onclick="logout()" class="btn" style="background: #ff4444; color: white; padding: 10px 20px;">
-                <span class="label-en">👋 Logout</span>
                 <span class="label-th">👋 ออกจากระบบ</span>
+                <span class="label-en">👋 Logout</span>
             </button>
     </div>
 </body>

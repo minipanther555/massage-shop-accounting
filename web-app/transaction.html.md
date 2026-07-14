@@ -2,15 +2,16 @@
 
 ## 1. Header Section
 
-*   **Overall Purpose:** This file provides the primary user interface for taking a new customer and creating the corresponding financial transaction. It is the main data entry point for the application's daily operations. The page is designed as a single-page application experience, with dynamic dropdowns and client-side logic to guide the user through creating a valid transaction. The visual hierarchy is Thai-first and staff-facing: navigation is muted, the intake form is the dominant first viewport, and the primary action is to save the new customer. Secondary panels still provide correction, daily summary, recent transaction, and expense context without competing with the intake workflow.
+*   **Overall Purpose:** This file provides the Thai-first interface for walk-in intake, future reservation creation, and reservation arrival conversion. A future reservation is schedule state, not a financial transaction; payment is requested only when the customer is present.
 
 *   **End-to-End Data Flow:**
     1.  **Initialization:** On page load (`DOMContentLoaded`), the inline script calls `loadData()` from `shared.js`. This function fetches initial state from multiple backend API endpoints: staff roster, all available services, and payment methods.
     2.  **User Interaction:** The user follows the Thai-first intake sequence: confirm the auto-selected next staff member, confirm or change the default `In-Shop` location, choose a service category button, choose a duration button, choose payment, optionally enter a customer name or phone number, then review the auto-filled start/end time and calculated price/fee. Because nearly all work is in-shop, the location field defaults to `In-Shop` and the page immediately populates matching service options on load. The original `service` and `duration` selects remain in the DOM as hidden contract controls, but staff use the large button layer. Button clicks write the exact historical select values so existing pricing, time, correction, and submission logic continues to work.
-    3.  **Submission:** The user clicks the Thai primary action button `บันทึกลูกค้าใหม่`, triggering the `handleSubmit()` function. This function packages the form data into a JSON object.
-    4.  **API Call:** The data is passed to `submitTransaction()` in `shared.js`, which then uses the `api.createTransaction()` method from `api.js` to send a `POST` request to the `/api/transactions` backend endpoint.
-    5.  **Backend Processing:** The backend validates the data, calculates fees, and inserts a new record into the `transactions` table in the database.
-    6.  **UI Refresh:** Upon a successful API response, the frontend script clears the form and calls `updateAllDisplays()`, which re-fetches the recent transactions and daily summary to immediately reflect the new entry on the page.
+    3.  **Mode Selection:** Walk-in mode auto-selects the next queue member. Selecting another staff member means the customer requested that person and changes the form to booking mode. Explicit booking mode may leave staff blank for queue assignment on arrival.
+    4.  **Reservation Submission:** Booking mode saves the future schedule, service, duration, location, customer contact, and optional requested staff through `POST /api/bookings`. It hides payment and creates no transaction or earnings.
+    5.  **Arrival Conversion:** The upcoming-bookings panel offers `ลูกค้ามาถึง`. It restores saved details, requests payment, and submits the booking ID through the existing transaction path.
+    6.  **Backend Processing:** Walk-ins create transactions normally. Booking arrivals atomically create one linked transaction, mark the booking `COMPLETED`, and add a separate `฿50` credit only for requested-staff bookings. The credit is backend payroll state and is intentionally not displayed in the receptionist intake form.
+    7.  **UI Refresh:** A successful walk-in action advances the Today Staff queue only when the selected staff is the auto-selected next queue member, reloads the roster, re-renders the staff dropdown, then clears the form. A successful action also refreshes transactions, summaries, and upcoming bookings as applicable.
 
 ## 2. Module API & Logic Breakdown
 
@@ -27,6 +28,9 @@ This module consists of an HTML structure and a large inline `<script>` block th
         *   `payment`: Dropdown for payment methods.
         *   `startTime` / `endTime`: Time fields, auto-calculated based on service selection.
         *   `original-transaction-id`: A hidden input that stores the ID of a transaction being corrected.
+        *   `customer-mode`: Walk-in/booking segmented control.
+        *   `booking-start`: Future reservation date/time, required in booking mode.
+        *   `active-booking-id`: Hidden reservation link used during arrival conversion.
 
 *   **Top Navigation:**
     *   **Purpose:** Provides links to other primary pages without rendering a self-reference to the current New Customer page.
@@ -59,6 +63,14 @@ This module consists of an HTML structure and a large inline `<script>` block th
     *   **Purpose:** To handle the editing/correction of a transaction.
     *   **Logic:** The `checkForEdit` function checks `sessionStorage` for a transaction to be edited (placed there by another page). It pre-populates the form with the transaction details, sets critical global state variables (`appData.correctionMode` and `appData.originalTransactionId`), and sets a hidden input field (`original-transaction-id`) to link the new, corrected transaction to the old one. The `loadCorrection` button fetches the most recent transaction via the API. Both functions ensure that corrections are properly tracked in the global state for downstream processing.
 
+*   **Booking Functions (`setCustomerMode()`, `loadUpcomingBookings()`, `startBookingArrival()`):**
+    *   **Purpose:** Switches reservation semantics, renders pending bookings, and converts an arrival into a minimal payment-confirmation flow.
+    *   **Logic:** Explicit booking mode allows nullable staff. Overriding the auto-selected next staff member records requested-staff intent. Arrival restores authoritative reservation fields and changes the primary action back to transaction submission.
+
+*   **`escapeBookingText(value)`:**
+    *   **Purpose:** Escapes server-provided booking text before upcoming rows are rendered with `innerHTML`.
+    *   **Returns:** HTML-safe text.
+
 ## 3. Dependency Mapping
 
 *   **Upstream Dependencies (Inputs):**
@@ -69,6 +81,9 @@ This module consists of an HTML structure and a large inline `<script>` block th
         *   `GET /api/staff/roster`: Returns `[{ position, masseuse_name, status }]`
         *   `GET /api/reports/summary/today`: Returns `{ total_revenue, transaction_count, ... }`
         *   `GET /api/transactions/recent`: Returns `[{ transaction_id, masseuse_name, ... }]`
+        *   `GET /api/bookings/upcoming`: Returns pending reservations.
+        *   `POST /api/bookings`: Creates a non-financial reservation.
+        *   `GET /api/bookings/availability`: Checks requested-staff availability with the 15-minute buffer.
 
 *   **Downstream Dependencies (Outputs):**
     *   **Called Modules/Services:** This page makes calls to the backend API via the wrapper functions in `web-app/api.js`.
@@ -83,11 +98,65 @@ This module consists of an HTML structure and a large inline `<script>` block th
           "start_time": "string",
           "end_time": "string",
           "customer_contact": "string",
-          "original_transaction_id": "string | null"
+          "original_transaction_id": "string | null",
+          "booking_id": "string | null",
+          "start_datetime": "ISO timestamp | null",
+          "end_datetime": "ISO timestamp | null"
         }
         ```
 
+    *   **Reservation Output:** `POST /api/bookings` omits payment and financial fields. The reservation becomes financial only through a later `POST /api/transactions` carrying its `booking_id`.
+
 ## 4. Bug & Resolution History
+
+### Bug #0.6: Backend Booking Credit Appeared as Walk-In UI (2026-07-13)
+**Bug Summary:** A large `+฿50` card appeared in the pricing panel during normal walk-in intake even though the credit applies only to completed requested-staff bookings.
+
+**Validated Hypothesis:** The accounting rule had been unnecessarily represented as receptionist-facing UI. In addition, `.transaction-booking-credit { display: flex; }` overrode the element's HTML `hidden` attribute, making the card visible in walk-in mode.
+
+**Invalidated Hypotheses:**
+- Walk-in transactions were actually receiving booking credit.
+- The selected next-in-queue staff member should be treated as requested staff.
+- More conditional JavaScript around the card would improve the workflow.
+
+**Resolution:** Removed the credit card, all UI toggle logic, credit-specific styling, and credit toast copy from both templates. The separate backend credit ledger and arrival-conversion behavior remain unchanged.
+
+### Bug #0.7: Reservation Seed Marker Looked Like Customer or Staff Data (2026-07-13)
+**Bug Summary:** Upcoming reservation rows combined time and raw `customer_contact` in one bold line. Preview records contained an internal `DAILY_SUMMARY_STATUS_DEMO_V1` marker and synthetic phone numbers, making the list look like machine data and obscuring which value represented the customer versus requested staff.
+
+**Validated Hypothesis:** The API was returning the stored reservation correctly; the problem was unrealistic preview content plus an unlabeled renderer.
+
+**Resolution:** Reservation rows now show time separately and label `ลูกค้า`, `บริการ`, and `พนักงาน`. Queue-assigned bookings explicitly say staff will be selected from the queue when the customer arrives. The three bounded preview rows were cleaned to realistic customer names without internal markers or synthetic phone numbers.
+
+### Bug #0.8: Expense Labels Differed Between New Customer and Daily Summary (2026-07-13)
+**Bug Summary:** New Customer displayed raw preview expense descriptions while Daily Summary displayed `Big C` and `Oil` for the same records.
+
+**Validated Hypothesis:** `loadTodayData()` correctly loaded the stored descriptions through `api.getExpenses()`. Daily Summary alone applied page-local aliases, masking stale preview database values.
+
+**Resolution:** Updated the two bounded preview expense rows to `Big C` and `Oil`, removed the Summary-only aliases, and retained direct API-backed rendering on New Customer. Both pages now show the same stored value.
+
+### Bug #0.9: Walk-In Submit Did Not Refresh the Next Staff Dropdown (2026-07-13)
+**Bug Summary:** After submitting a normal walk-in for the auto-selected next staff member, the form reset back to the same staff instead of the next active Today Staff row.
+
+**Validated Hypothesis:** The success path called `clearForm()` before reloading the roster state used by `autoSelectedMasseuse`. `clearForm()` therefore wrote the stale previous value back into `#masseuse`, even after queue advancement. The backend also advanced the legacy `staff_roster` queue instead of the active `today_staff` order rendered by this page.
+
+**Invalidated Hypotheses:**
+- The dropdown option was selected manually by the receptionist.
+- The transaction record failed to save.
+- Booking/requested-staff mode should advance the same queue.
+
+**Resolution:** The success path now calls `refreshRosterForDropdown()` after `advanceQueue()` and before `clearForm()`. The helper reloads `GET /api/staff/roster`, updates `appData.roster`, re-renders only the staff dropdown, and lets `clearForm()` select the new `autoSelectedMasseuse`. Backend `advance-queue` now rotates `today_staff`.
+
+### Bug #0.10: Dynamic Transaction Page Values Needed Escaping (2026-07-13)
+**Bug Summary:** Checkpoint security review found that several New Customer side panels used `innerHTML` with payment method, recent transaction, expense, service, and staff values that can come from stored data.
+
+**Validated Hypothesis:** Static Thai labels were safe, but dynamic strings inside payment breakdown, recent transactions, expense rows, and option builders needed explicit escaping or DOM text assignment.
+
+**Invalidated Hypotheses:**
+- Escaping `<option>` value strings was safe for all dropdowns; that would have changed submitted legacy values when names contained HTML-sensitive characters.
+- Only Daily Summary needed escaping.
+
+**Resolution:** Rendered side-panel dynamic text through `escapeBookingText()` and switched staff/service/duration/payment option creation to DOM `option.value` plus `option.textContent`, preserving exact form values while preventing HTML interpretation.
 
 ### Bug #0: Navigation Label Did Not Match Business Workflow (2026-07-09)
 **Bug Summary:** The transaction page was exposed in navigation as "New Transaction / ธุรกรรมใหม่", which describes an internal record instead of the staff-facing action of taking a new customer.

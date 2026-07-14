@@ -293,7 +293,12 @@
           console.log('🔍 PWTEST: isLoggedIn() called, returning true');
           return true;
         };
-        window.getCurrentUser = () => ({ username: 'pwtest' });
+        window.getCurrentUser = () => ({
+          username: 'pwtest',
+          role: 'manager',
+          displayName: 'PW Test Manager',
+          permissions: ['*']
+        });
         window.requireAuth = () => {
           console.log('🔍 PWTEST: requireAuth() called, returning true');
           return true;
@@ -346,12 +351,22 @@
 
       // make the page think we're logged in
       try {
-        localStorage.setItem('currentUser', JSON.stringify({ username: 'pwtest' }));
+        localStorage.setItem('currentUser', JSON.stringify({
+          username: 'pwtest',
+          role: 'manager',
+          displayName: 'PW Test Manager',
+          permissions: ['*']
+        }));
       } catch {}
 
       // ensure the helpers used by shared.js exist
       window.isLoggedIn = () => true;
-      window.getCurrentUser = () => ({ username: 'pwtest' });
+      window.getCurrentUser = () => ({
+        username: 'pwtest',
+        role: 'manager',
+        displayName: 'PW Test Manager',
+        permissions: ['*']
+      });
       window.requireAuth = () => true;  // swallow redirects
 
       // defang client redirects to /login

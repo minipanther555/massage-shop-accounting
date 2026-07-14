@@ -8,7 +8,7 @@ test('test', async ({ page }) => {
   await page.getByRole('button', { name: 'Login' }).click();
 
   // --- Create a new transaction to be edited ---
-  await page.getByRole('link', { name: '💳 New Transaction' }).click();
+  await page.getByRole('link', { name: '👤 ลูกค้าใหม่ 👤 New Customer' }).click();
   
   // Add delays between dropdown selections to handle sequential loading
   await page.getByLabel('Masseuse Name:').selectOption('พี่วัน');

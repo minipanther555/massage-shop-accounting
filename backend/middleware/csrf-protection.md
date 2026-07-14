@@ -1,59 +1,54 @@
-# `backend/middleware/csrf-protection.md`
+# `backend/middleware/csrf-protection.js`
 
 ## 1. Header Section
 
-*   **Overall Purpose:** This module implements the Synchronizer Token Pattern to defend against Cross-Site Request Forgery (CSRF) attacks. It is responsible for generating, storing, validating, and refreshing unique, session-specific CSRF tokens. This ensures that only requests originating from the legitimate frontend application can modify state on the server.
-*   **End-to-End Data Flow:**
-    1.  **Token Generation:** After a user successfully logs in (via `routes/auth.js`), the `addCSRFToken` middleware is called. It generates a cryptographically secure random token, associates it with the user's `sessionId` (from cookies), and stores this pair in an in-memory `Map` with a 24-hour expiration. The generated token is then sent back to the client in the `X-CSRF-Token` response header.
-    2.  **Token Submission:** The frontend client-side code is responsible for storing this token and including it in the `X-CSRF-Token` header of all subsequent state-changing requests (POST, PUT, DELETE, PATCH).
-    3.  **Token Validation:** When a state-changing request arrives at the server, the `validateCSRFToken` middleware (placed before the route handler in `server.js`) intercepts it. It extracts the `sessionId` from the cookie and the token from the `X-CSRF-Token` header. It then looks up the expected token in the in-memory `Map` using the `sessionId`. If the tokens match and the token has not expired, the request is allowed to proceed to the route handler. Otherwise, a 403 Forbidden error is returned, blocking the request.
+*   **Overall Purpose:** This module wraps the `csurf` cookie-mode middleware used by the Express app. It provides CSRF protection for browser state-changing requests while allowing deterministic local/test preview runs outside production.
+*   **End-to-End Data Flow:** `backend/server.js` imports `csrfProtection` and installs it globally after parsing cookies and request bodies. In production and normal development, the request enters `conditionalCsrfProtection()`, which calls `enhancedCsrfProtection()`, then the underlying `csurf` middleware validates or creates the cookie-mode CSRF token. `server.js` later exposes the current token to templates through `res.locals.csrfToken` and `/csrf`. In local preview/testing only, the middleware bypasses `csurf` when `NODE_ENV !== "production"` and either `NODE_ENV === "testing"` or `PWTEST=1`; production never bypasses CSRF because of PWTEST.
 
 ## 2. Module API & Logic Breakdown
 
-*   **`generateCSRFToken(sessionId)`:**
-    *   **Purpose:** The core function for creating a new, secure CSRF token.
-    *   **Parameters:**
-        *   `sessionId` (string, required): The user's session identifier.
-    *   **Returns:** A 64-character hexadecimal string representing the new token.
-    *   **Logic Notes:** Uses `crypto.randomBytes` for strong randomness. Stores the token and a 24-hour expiration date in the `csrfTokens` Map, keyed by the `sessionId`.
+### `csrfProtection`
+- **Purpose:** Cookie-mode `csurf` middleware configured with `sameSite: "Lax"`, production-only secure cookies, `httpOnly: true`, and root path.
+- **Parameters:** Standard Express `req`, `res`, and `next`.
+- **Returns:** No direct return value; calls `next()` or passes a CSRF error to downstream error handling.
+- **Raises / Throws:** `EBADCSRFTOKEN` is passed through `next(err)` by `csurf` when token validation fails.
+- **Usage & Logic Notes:** This internal middleware is called by `enhancedCsrfProtection()` and is not exported directly.
 
-*   **`validateCSRFToken(req, res, next)` (Express Middleware):**
-    *   **Purpose:** To protect endpoints by validating the CSRF token on incoming requests.
-    *   **Logic Notes:**
-        *   Skips validation for safe methods (`GET`, `HEAD`, `OPTIONS`).
-        *   Extracts the session ID from `req.cookies.sessionId` and the token from the `req.headers['x-csrf-token']`.
-        *   Retrieves the stored token from the `csrfTokens` map.
-        *   Checks for token existence, expiration, and performs a timing-safe comparison using `crypto.timingSafeEqual` to prevent timing attacks.
-        *   If any check fails, it sends a 403 response. Otherwise, it calls `next()`.
+### `enhancedCsrfProtection(req, res, next)`
+- **Purpose:** Add debug logging around the underlying `csurf` middleware.
+- **Parameters:** Standard Express `req`, `res`, and `next`.
+- **Returns:** No direct return value; delegates to `csrfProtection`.
+- **Raises / Throws:** Passes CSRF validation errors to the caller's `next`.
+- **Usage & Logic Notes:** It wraps `req.csrfToken()` and `next()` so CSRF token creation and failures are visible in local logs.
 
-*   **`addCSRFToken(req, res, next)` (Express Middleware):**
-    *   **Purpose:** To generate a new CSRF token if one doesn't exist or has expired, and attach it to the outgoing response.
-    *   **Logic Notes:**
-        *   Typically used right after authentication or on routes that render a page with a form.
-        *   Checks for an existing, valid token for the session. If one isn't found, it calls `generateCSRFToken`.
-        *   Sets the token on the response via `res.setHeader('X-CSRF-Token', ...)`.
-        *   Also attaches the token to `res.locals.csrfToken` for potential server-side rendering use cases.
-
-*   **`cleanupExpiredTokens()`:**
-    *   **Purpose:** A maintenance function to prevent the `csrfTokens` map from growing indefinitely in memory.
-    *   **Logic Notes:** Iterates through the map and deletes any entries where the expiration date is in the past. It is automatically run every hour via `setInterval`.
-
-*   **`getCSRFToken(sessionId)`:**
-    *   **Purpose:** A utility/testing function to retrieve the current token for a given session ID.
-    *   **Returns:** The token string, or `null` if no valid token exists.
+### `conditionalCsrfProtection(req, res, next)`
+- **Purpose:** Exported middleware installed by `backend/server.js`.
+- **Parameters:** Standard Express `req`, `res`, and `next`.
+- **Returns:** No direct return value; either calls `next()` for allowed test/preview bypass or delegates to `enhancedCsrfProtection()`.
+- **Raises / Throws:** Passes `EBADCSRFTOKEN` through to the server error handler in protected modes.
+- **Usage & Logic Notes:** Test bypass is deliberately non-production only: `NODE_ENV !== "production"` and (`NODE_ENV === "testing"` or `PWTEST=1`). This keeps local preview flows reliable while preventing production deployments from disabling CSRF through an environment flag.
 
 ## 3. Dependency Mapping
 
-*   **Upstream Dependencies (Inputs):**
-    *   **Calling Modules/Services:**
-        *   `server.js`: Applies the `validateCSRFToken` middleware to protected routes.
-        *   `routes/auth.js`: Applies the `addCSRFToken` middleware after successful login.
-    *   **Input Data Contracts / Schemas:** Standard Express `req` and `res` objects. Expects `req.cookies.sessionId` to be populated by the `cookie-parser` middleware and `req.headers['x-csrf-token']` to be provided by the client.
+### Upstream Dependencies
+- `backend/server.js`: Imports `{ csrfProtection }` and installs it globally.
+- `cookie-parser`, `express.json`, and `express.urlencoded`: Must run before this middleware so cookies/body fields are available.
+- Browser/API clients: Must send valid CSRF token data for protected state-changing requests outside local preview/test bypass.
 
-*   **Downstream Dependencies (Outputs):**
-    *   **Called Modules/Services:** None. It is self-contained and uses the native `crypto` module.
-    *   **Output Data Contracts / Schemas:** Modifies the Express `res` object by setting the `X-CSRF-Token` header. Does not return a body, but calls `next()` or sends a JSON error response.
+### Downstream Dependencies
+- `csurf`: Performs cookie-mode CSRF validation.
+- `backend/server.js` EBADCSRFTOKEN handler: Converts CSRF failures to `{ error: "Invalid CSRF token." }` with HTTP 403.
 
 ## 4. Bug & Resolution History
-*   (This section will be populated as bugs are identified and resolved.)
 
+### Stale Documentation Described Removed Custom Token Store (2026-07-13)
+- **Bug Summary:** The co-located docs described a custom synchronizer-token map with helpers that no longer exist in the source file.
+- **Validated Hypothesis:** The implementation had moved to `csurf` cookie mode, but the docs were not updated.
+- **Invalidated Hypotheses:** The source still exported `generateCSRFToken`, `validateCSRFToken`, or `addCSRFToken`.
+- **Resolution:** Rewrote the module spec around the actual exported middleware and cookie-mode `csurf` flow.
+
+### PWTEST Could Disable CSRF Outside Intended Preview Scope (2026-07-13)
+- **Bug Summary:** Checkpoint security review found the CSRF wrapper skipped protection whenever `PWTEST=1`, even if a production environment accidentally carried that variable.
+- **Validated Hypothesis:** `conditionalCsrfProtection()` checked `process.env.PWTEST === "1"` directly.
+- **Invalidated Hypotheses:** The server-level PWTEST request flag alone controlled CSRF bypass.
+- **Resolution:** CSRF bypass now uses the same non-production guard as the server preview shim: production never bypasses CSRF because of PWTEST.

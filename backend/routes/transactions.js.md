@@ -2,7 +2,7 @@
 
 ## 1. Header Section
 
-*   **Overall Purpose:** This module defines all API endpoints related to creating, reading, and managing financial transactions. It is the primary endpoint for the user-facing "New Transaction" page and is critical for the application's core data-entry functionality. It handles transaction creation, edit/correction logic, and provides data for summaries and reports.
+*   **Overall Purpose:** This module defines financial transaction endpoints, including atomic conversion of a non-financial reservation after customer arrival. Requested-staff booking credit is tracked separately from base commission so it remains payable without changing Today Staff next-day ranking.
 
 ## 2. Module API & Logic Breakdown
 
@@ -19,28 +19,32 @@
     *   **Purpose:** Fetches recent transactions for the dashboard display, specifically designed to show transactions that should be visible to users (including edited ones).
     *   **Parameters (Query):**
         *   `limit` (number, optional, default: 5): Maximum number of transactions to return.
+        *   `date` (string, optional): UTC date filter used by the current dashboard/New Customer summary views.
     *   **Logic:** Filters transactions by status to include:
         *   `ACTIVE` - Normal, unedited transactions
         *   `CORRECTED` - New transactions that replace edited ones
         *   `EDITED%` - Original transactions that have been edited (using LIKE for partial matching)
-    *   **Returns:** Array of transaction objects ordered by timestamp (most recent first).
+    *   **Returns:** Array of transaction objects ordered newest-first by `timestamp DESC, id DESC`, so rows created with the same timestamp still appear in deterministic insertion order. The date-filtered dashboard path is supported by `idx_transactions_recent_date_timestamp`.
 
 *   **`POST /`**
     *   **Purpose:** Creates a new transaction. This is the main endpoint for submitting the "New Transaction" form. It also contains the logic for handling "transaction corrections" (edits).
     *   **Parameters (Body):** A JSON object containing all transaction details (`masseuse_name`, `service_type`, `location`, `duration`, etc.). If `original_transaction_id` is provided, the endpoint enters "edit mode".
+    *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`.
+    *   **Logic (Booking Arrival):** With `booking_id`, the handler loads the `BOOKED` reservation and treats its service, duration, location, and optional requested staff as authoritative. One `BEGIN IMMEDIATE TRANSACTION` inserts the transaction, marks the booking `COMPLETED`, and creates one separate active `฿50` credit only for requested staff. A generic booking receives queue-selected staff at arrival and no booking credit.
+    *   **Failure Modes:** Missing or closed bookings, duplicate conversion, invalid staff/service, and violation of another booking's 15-minute buffer are rejected. Any write failure rolls back the conversion.
     *   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
         1.  Find the original transaction.
-        2.  Reverse the `masseuse_fee` from the original transaction in the `staff` table.
+        2.  Reverse the `masseuse_fee` from the original transaction's masseuse and reverse any active linked booking credit.
         3.  Update the status of the original transaction to 'EDITED'.
         4.  Create the new transaction with a `corrected_from_id` linking it back to the original.
-    *   **Returns:** The newly created transaction object.
+    *   **Returns:** The newly created transaction object, including `business_day` when the schema column is present.
 
 ## 3. Dependency Mapping
 
 *   **Upstream Dependencies:**
     *   **Calling Modules/Services:** Primarily called by the frontend (`web-app/api.js`, `web-app/shared.js`) and integration tests.
 *   **Downstream Dependencies:**
-    *   **Called Modules/Services:** `backend/models/database.js` for all database interactions.
+    *   **Called Modules/Services:** `backend/models/database.js`, `backend/utils/business-day.js`, and `backend/services/booking-service.js` for timestamp parsing, conflict checks, and requested-staff credit eligibility.
 
 ## 4. Bug & Resolution History
 
@@ -77,6 +81,14 @@
 *   **Root Cause:** Missing parentheses in the SQL WHERE clause caused the date filter to only apply to `EDITED%` transactions, not to `ACTIVE` and `CORRECTED` transactions.
 *   **Resolution:** Fixed the SQL query by adding parentheses: `WHERE (status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%') AND date = ?` to ensure the date filter applies to all status conditions.
 *   **Status:** ✅ **RESOLVED** - Date filtering now works correctly, returning only today's transactions from the `/recent` endpoint.
+
+*   **Bug Summary (2026-07-13):** The New Customer recent transactions list did not reliably put the just-submitted transaction first. Rows with identical timestamps could show older transactions before newer ones, and the frontend helper reversed a backend result that was not actually newest-first.
+*   **Validated Hypothesis:** `GET /recent` used `ORDER BY timestamp ASC LIMIT ?`, then `shared.js#getRecentTransactions()` took the tail of the loaded array and reversed it. This split ordering responsibility across backend and frontend and had no deterministic tie-break for same-timestamp rows.
+*   **Invalidated Hypotheses:**
+    *   The transaction insert failed.
+    *   The New Customer page was reading a different database than Daily Summary for recent transactions.
+    *   The issue was only a CSS/responsive rendering problem.
+*   **Resolution:** `/recent` now returns the authoritative newest-first order with `ORDER BY timestamp DESC, id DESC LIMIT ?`. `shared.js#getRecentTransactions()` preserves that order and only applies the visible limit.
 
 *   **Bug Summary (August 2025):** Transaction editing styling is not working on the new transaction page, while it works correctly on the daily summary page. EDITED transactions should appear with red highlight and strikethrough styling, but they appear unstyled on the new transaction page.
 *   **Validated Hypothesis:** The backend transaction editing logic is working correctly - it properly sets `EDITED` status on original transactions and `CORRECTED` status on new transactions. The issue is in the frontend styling logic, not the backend.

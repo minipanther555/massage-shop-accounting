@@ -15,7 +15,7 @@ This module does not export any functions or classes. It sets up and runs the Ex
 
 *   **Server Initialization:**
     *   **Purpose:** To create and configure the Express application instance.
-    *   **Logic Notes:** It dynamically configures middleware like `cors` and `rateLimit` based on the `NODE_ENV` environment variable, applying stricter rules for 'production'. It uses `dotenv` to load environment variables from a `.env` file. Security headers are now handled by the custom `security-headers.js` middleware instead of helmet.js.
+    *   **Logic Notes:** It dynamically configures middleware like `cors` and `rateLimit` based on the `NODE_ENV` environment variable, applying stricter rules for 'production'. It uses `dotenv` to load environment variables from a `.env` file. Security headers are now handled by the custom `security-headers.js` middleware instead of helmet.js. Proxy trust is disabled unless `TRUST_PROXY_HOPS` is explicitly set by the deployment, preventing local or direct clients from spoofing `req.ip` through `X-Forwarded-For`.
 
 *   **Middleware Chain:**
     *   **Purpose:** To process and secure all incoming requests before they reach the route handlers.
@@ -36,7 +36,11 @@ This module does not export any functions or classes. It sets up and runs the Ex
 
 *   **Routing:**
     *   **Purpose:** To map API endpoints to their corresponding logic handlers.
-    *   **Logic Notes:** The server defines base paths for different resources (e.g., `/api/auth`, `/api/transactions`). It imports router objects from files in the `/routes` directory and mounts them on these paths. Most routes are protected by the `validateCSRFToken` middleware.
+    *   **Logic Notes:** The server defines base paths for different resources (e.g., `/api/auth`, `/api/transactions`). It imports router objects from files in the `/routes` directory and mounts them on these paths. Most routes are protected by the `validateCSRFToken` middleware. `/api/bookings` is mounted behind `authenticateToken`, so reservation creation, upcoming booking reads, cancellation, no-show, and arrival conversion require an authenticated session.
+
+*   **`isPwtestAllowed()` and `pwtestFlag()`:**
+    *   **Purpose:** Provide deterministic preview/test browser behavior without exposing the PWTEST bypass in production.
+    *   **Logic Notes:** PWTEST is honored only when `NODE_ENV !== "production"` and either `NODE_ENV === "testing"` or `PWTEST=1`. Production ignores `PWTEST` cookies, query parameters, and headers. The same guard controls the fake `/api/auth/me` response, CSRF test token, and global rate-limit bypass.
 
 *   **`startServer()` function:**
     *   **Purpose:** An async function that ensures the database connection is successfully established *before* the server starts listening for requests.
@@ -62,6 +66,7 @@ This module does not export any functions or classes. It sets up and runs the Ex
         *   `./models/database.js`: For database connection and operations.
         *   `./routes/auth.js`: For authentication routes.
         *   `./routes/transactions.js`: For transaction-related routes.
+        *   `./routes/bookings.js`: For non-financial reservation creation, upcoming reads, availability checks, and cancellation/no-show status changes.
         *   `./routes/staff.js`: For staff-related routes.
         *   `./routes/services.js`: For service-related routes.
         *   `./routes/expenses.js`: For expense-related routes.
@@ -119,3 +124,6 @@ This module does not export any functions or classes. It sets up and runs the Ex
     2.  Updating `docker-compose.yml` to use a variable for the Node environment (`NODE_ENV=${NODE_ENV:-development}`), allowing it to be overridden.
     3.  Restarting the server for the codegen session with the command `docker-compose --env-file .env.testing up`. This forces the server into "testing" mode, where the conditional middleware in `csrf-protection.js` correctly bypasses the CSRF check entirely, eliminating the race condition.
 
+*   **Bug Summary (2026-07-13):** Checkpoint security review found that the preview `PWTEST` shortcut and booking routes could be unsafe if copied into production unchanged.
+*   **Validated Hypothesis:** `PWTEST` was gated inconsistently: some paths checked only `PWTEST=1`, and `/api/bookings` was mounted without `authenticateToken`. The server also trusted one proxy hop unconditionally, making rate-limit identity depend on client-controllable headers in direct/local deployments.
+*   **Resolution:** Added `isPwtestAllowed()` as the shared guard for PWTEST cookie/query/header handling, fake auth response, CSRF preview token, and rate-limit bypass. Mounted `/api/bookings` behind `authenticateToken`. Replaced unconditional `app.set("trust proxy", 1)` with explicit `TRUST_PROXY_HOPS` configuration.

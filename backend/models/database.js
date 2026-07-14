@@ -203,6 +203,34 @@ class Database {
         actor_user_id TEXT,
         details TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS bookings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        booking_id TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        scheduled_start TEXT NOT NULL,
+        scheduled_end TEXT NOT NULL,
+        service_type TEXT NOT NULL,
+        location TEXT NOT NULL,
+        duration INTEGER NOT NULL,
+        requested_masseuse_name TEXT,
+        customer_contact TEXT,
+        status TEXT NOT NULL DEFAULT 'BOOKED',
+        transaction_id TEXT,
+        completed_at DATETIME,
+        cancelled_at DATETIME
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS booking_credits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        booking_id TEXT NOT NULL,
+        transaction_id TEXT UNIQUE NOT NULL,
+        masseuse_name TEXT NOT NULL,
+        amount DECIMAL(10,2) NOT NULL DEFAULT 50,
+        status TEXT NOT NULL DEFAULT 'ACTIVE',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        reversed_at DATETIME
       )`
     ];
 
@@ -239,7 +267,8 @@ class Database {
         { name: 'location', definition: 'TEXT' },
         { name: 'duration', definition: 'INTEGER' },
         { name: 'business_day', definition: 'DATE' },
-        { name: 'corrected_from_id', definition: 'TEXT' }
+        { name: 'corrected_from_id', definition: 'TEXT' },
+        { name: 'booking_id', definition: 'TEXT' }
       ].map(c => ({ table: 'transactions', ...c })),
 
       // Archived transactions table columns
@@ -276,12 +305,17 @@ class Database {
   async ensureIndexes() {
     const indexes = [
       'CREATE INDEX IF NOT EXISTS idx_transactions_business_day_staff ON transactions (business_day, masseuse_name, status)',
+      'CREATE INDEX IF NOT EXISTS idx_transactions_recent_date_timestamp ON transactions (date, timestamp DESC, id DESC)',
       'CREATE INDEX IF NOT EXISTS idx_today_staff_business_day_position ON today_staff (business_day, position)',
       'CREATE INDEX IF NOT EXISTS idx_today_staff_business_day_staff ON today_staff (business_day, staff_id)',
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_today_staff_one_active_staff_day ON today_staff (business_day, staff_id) WHERE removed_at IS NULL',
       'CREATE INDEX IF NOT EXISTS idx_today_staff_planning_business_day_status ON today_staff_planning (business_day, planning_status)',
       'CREATE INDEX IF NOT EXISTS idx_today_staff_planning_staff ON today_staff_planning (staff_id)',
-      'CREATE INDEX IF NOT EXISTS idx_today_staff_audit_business_day ON today_staff_audit_log (business_day, staff_id, action)'
+      'CREATE INDEX IF NOT EXISTS idx_today_staff_audit_business_day ON today_staff_audit_log (business_day, staff_id, action)',
+      'CREATE INDEX IF NOT EXISTS idx_bookings_status_start ON bookings (status, scheduled_start)',
+      'CREATE INDEX IF NOT EXISTS idx_bookings_staff_status_start ON bookings (requested_masseuse_name, status, scheduled_start)',
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_one_active_booking ON transactions (booking_id) WHERE booking_id IS NOT NULL AND status IN ('ACTIVE', 'CORRECTED')",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_credits_one_active ON booking_credits (booking_id) WHERE status = 'ACTIVE'"
     ];
 
     for (const indexSql of indexes) {

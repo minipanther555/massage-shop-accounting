@@ -1,7 +1,14 @@
+const crypto = require('crypto');
 const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { getBusinessDay } = require('../utils/business-day');
+const {
+  BOOKING_CREDIT_AMOUNT,
+  hasBookingConflict,
+  isBookingCreditEligible
+} = require('../services/booking-service');
 
 // Get all transactions (with pagination and filtering)
 router.get('/', async (req, res) => {
@@ -76,7 +83,7 @@ router.get('/recent', async (req, res) => {
       console.log('🔍 [RECENT] Added date filter for:', date);
     }
 
-    sql += ` ORDER BY timestamp ASC LIMIT ?`;
+    sql += ` ORDER BY timestamp DESC, id DESC LIMIT ?`;
     params.push(parseInt(limit));
 
     console.log('🔍 [RECENT] Final SQL (raw):', JSON.stringify(sql));
@@ -108,8 +115,9 @@ router.get('/recent', async (req, res) => {
 // Create new transaction
 router.post('/', async (req, res) => {
   console.log('--- [TX CREATE] Received POST request to /api/transactions ---');
+  let dbTransactionStarted = false;
   try {
-    const {
+    let {
       masseuse_name: masseuseName,
       service_type: serviceType,
       location,
@@ -118,9 +126,37 @@ router.post('/', async (req, res) => {
       start_time: startTime,
       end_time: endTime,
       customer_contact: customerContact = '',
-      corrected_transaction_id: originalTransactionId = null
+      corrected_transaction_id: originalTransactionId = null,
+      booking_id: bookingId = null,
+      start_datetime: startDateTime = null,
+      end_datetime: endDateTime = null
     } = req.body;
     console.log('[TX CREATE - STEP 1] Request body destructured:', req.body);
+
+    let booking = null;
+    if (bookingId) {
+      booking = await database.get('SELECT * FROM bookings WHERE booking_id = ?', [bookingId]);
+      if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+      const isCorrectionOfCompletedBooking = originalTransactionId
+        && booking.status === 'COMPLETED'
+        && booking.transaction_id === originalTransactionId;
+      if (booking.status !== 'BOOKED' && !isCorrectionOfCompletedBooking) {
+        return res.status(409).json({ error: 'Booking has already been completed or closed' });
+      }
+
+      serviceType = booking.service_type;
+      location = booking.location;
+      duration = booking.duration;
+      customerContact = booking.customer_contact || customerContact;
+      startDateTime = booking.scheduled_start;
+      endDateTime = booking.scheduled_end;
+      startTime = startTime || booking.scheduled_start;
+      endTime = endTime || booking.scheduled_end;
+      if (booking.requested_masseuse_name) {
+        masseuseName = booking.requested_masseuse_name;
+      }
+    }
 
     // Validate required fields
     if (!masseuseName || !serviceType || !location || !duration || !paymentMethod || !startTime || !endTime) {
@@ -144,22 +180,64 @@ router.post('/', async (req, res) => {
     }
     console.log(`[TX CREATE - STEP 4] Service found: Price=${service.price}, Fee=${service.masseuse_fee}`);
 
+    if (startDateTime && endDateTime) {
+      const blockingBookings = await database.all(
+        `SELECT booking_id, scheduled_start, scheduled_end
+         FROM bookings
+         WHERE status = 'BOOKED'
+           AND requested_masseuse_name = ?
+           AND booking_id != COALESCE(?, '')`,
+        [masseuseName, bookingId]
+      );
+      if (hasBookingConflict(startDateTime, endDateTime, blockingBookings)) {
+        return res.status(409).json({
+          error: 'This massage would leave less than 15 minutes before or after a booking'
+        });
+      }
+    }
+
     const timestamp = new Date();
-    const transactionId = timestamp.toISOString().replace(/[-:T.]/g, '').slice(0, 17);
+    const transactionId = `TX-${timestamp.getTime()}-${crypto.randomBytes(3).toString('hex')}`;
     const date = timestamp.toISOString().split('T')[0];
+    const businessDay = getBusinessDay(timestamp);
     console.log(`[TX CREATE - STEP 5] Generated Transaction ID: ${transactionId}`);
 
-    // --- Start of Edit Logic ---
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
     if (originalTransactionId) {
       console.log(`[TX CREATE - STEP 6a] EDIT MODE DETECTED. Original TX ID: ${originalTransactionId}`);
-      const originalTransaction = await database.get('SELECT masseuse_fee FROM transactions WHERE transaction_id = ?', [originalTransactionId]);
+      const originalTransaction = await database.get(
+        'SELECT masseuse_fee, masseuse_name, booking_id FROM transactions WHERE transaction_id = ?',
+        [originalTransactionId]
+      );
 
       if (originalTransaction) {
         console.log(`[TX CREATE - STEP 6b] Original transaction found. Reversing fee of ${originalTransaction.masseuse_fee}`);
         await database.run(
           'UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?',
-          [originalTransaction.masseuse_fee, masseuseName]
+          [originalTransaction.masseuse_fee, originalTransaction.masseuse_name]
         );
+
+        const originalCredit = await database.get(
+          `SELECT id, masseuse_name, amount FROM booking_credits
+           WHERE transaction_id = ? AND status = 'ACTIVE'`,
+          [originalTransactionId]
+        );
+        if (originalCredit) {
+          await database.run(
+            `UPDATE booking_credits
+             SET status = 'REVERSED', reversed_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [originalCredit.id]
+          );
+          await database.run(
+            'UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?',
+            [originalCredit.amount, originalCredit.masseuse_name]
+          );
+        }
+
+        bookingId = bookingId || originalTransaction.booking_id;
 
         console.log('[TX CREATE - STEP 6c] Marking original transaction as EDITED.');
         await database.run(
@@ -168,19 +246,21 @@ router.post('/', async (req, res) => {
         );
       }
     }
-    // --- End of Edit Logic ---
 
     console.log('[TX CREATE - STEP 7] Inserting new transaction into database...');
     const result = await database.run(
       `INSERT INTO transactions (
         transaction_id, timestamp, date, masseuse_name, service_type,
         location, duration, payment_amount, payment_method, masseuse_fee,
-        start_time, end_time, status, corrected_from_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        start_time, end_time, customer_contact, status, business_day,
+        corrected_from_id, booking_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         transactionId, timestamp, date, masseuseName, serviceType,
         location, duration, service.price, paymentMethod, service.masseuse_fee,
-        startTime, endTime, originalTransactionId ? 'CORRECTED' : 'ACTIVE', originalTransactionId
+        startTime, endTime, customerContact,
+        originalTransactionId ? 'CORRECTED' : 'ACTIVE', businessDay,
+        originalTransactionId, bookingId
       ]
     );
     console.log('[TX CREATE - STEP 8] New transaction inserted successfully.');
@@ -194,6 +274,34 @@ router.post('/', async (req, res) => {
     );
     console.log('[TX CREATE - STEP 10] Staff fees updated.');
 
+    const creditBooking = booking
+      ? { ...booking, status: 'BOOKED' }
+      : null;
+    if (bookingId && isBookingCreditEligible(creditBooking, masseuseName)) {
+      await database.run(
+        `INSERT INTO booking_credits (
+          booking_id, transaction_id, masseuse_name, amount, status
+        ) VALUES (?, ?, ?, ?, 'ACTIVE')`,
+        [bookingId, transactionId, masseuseName, BOOKING_CREDIT_AMOUNT]
+      );
+      await database.run(
+        'UPDATE staff SET total_fees_earned = total_fees_earned + ? WHERE name = ?',
+        [BOOKING_CREDIT_AMOUNT, masseuseName]
+      );
+    }
+
+    if (bookingId) {
+      await database.run(
+        `UPDATE bookings
+         SET status = 'COMPLETED', transaction_id = ?, completed_at = CURRENT_TIMESTAMP
+         WHERE booking_id = ?`,
+        [transactionId, bookingId]
+      );
+    }
+
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
+
     const newTransaction = await database.get(
       'SELECT * FROM transactions WHERE id = ?',
       [result.id]
@@ -202,6 +310,13 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(newTransaction);
   } catch (error) {
+    if (dbTransactionStarted) {
+      try {
+        await database.run('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Failed to roll back transaction creation:', rollbackError);
+      }
+    }
     console.error('--- [TX CREATE - CATASTROPHIC ERROR] ---');
     console.error(error);
     res.status(500).json({ error: 'Failed to create transaction' });

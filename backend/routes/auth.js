@@ -6,22 +6,62 @@ const { loginRateLimiter, resetRateLimits } = require('../middleware/rate-limite
 // In-memory session store (for development - in production would use Redis/database)
 const sessions = new Map();
 
+const receptionPermissions = ['view_staff', 'view_services', 'view_transactions', 'create_transactions', 'view_summary'];
+const branches = [
+  { key: 'top_thai_49', location_id: 49, location_name: 'Top Thai 49' },
+  { key: 'top_thai_43', location_id: 43, location_name: 'Top Thai 43' },
+  { key: 'top_thai_33', location_id: 33, location_name: 'Top Thai 33' },
+  { key: 'top_thai_thonglor_9', location_id: 9, location_name: 'Top Thai Thonglor 9' }
+];
+
+function createBranchUsers() {
+  return branches.flatMap((branch, index) => {
+    const baseId = (index * 2) + 1;
+    return [
+      {
+        id: baseId,
+        username: `reception_${branch.key}`,
+        password: 'reception123',
+        role: 'reception',
+        displayName: `Reception Staff - ${branch.location_name}`,
+        location_id: branch.location_id,
+        location_name: branch.location_name,
+        permissions: receptionPermissions,
+        active: true
+      },
+      {
+        id: baseId + 1,
+        username: `manager_${branch.key}`,
+        password: 'manager456',
+        role: 'manager',
+        displayName: `Manager - ${branch.location_name}`,
+        location_id: branch.location_id,
+        location_name: branch.location_name,
+        permissions: ['*'],
+        active: true
+      }
+    ];
+  });
+}
+
 // Enhanced user store with location-based access control
 const users = [
+  ...createBranchUsers(),
+
   // Main Branch Users
   {
-    id: 1,
+    id: 101,
     username: 'reception_main',
     password: 'reception123',
     role: 'reception',
     displayName: 'Reception Staff - Main Branch',
     location_id: 1,
     location_name: 'Main Branch',
-    permissions: ['view_staff', 'view_services', 'view_transactions', 'create_transactions', 'view_summary'],
+    permissions: receptionPermissions,
     active: true
   },
   {
-    id: 2,
+    id: 102,
     username: 'manager_main',
     password: 'manager456',
     role: 'manager',
@@ -34,18 +74,18 @@ const users = [
 
   // Downtown Branch Users
   {
-    id: 3,
+    id: 103,
     username: 'reception_downtown',
     password: 'reception123',
     role: 'reception',
     displayName: 'Reception Staff - Downtown',
     location_id: 2,
     location_name: 'Downtown',
-    permissions: ['view_staff', 'view_services', 'view_transactions', 'create_transactions', 'view_summary'],
+    permissions: receptionPermissions,
     active: true
   },
   {
-    id: 4,
+    id: 104,
     username: 'manager_downtown',
     password: 'manager456',
     role: 'manager',
@@ -58,18 +98,18 @@ const users = [
 
   // Suburban Branch Users
   {
-    id: 5,
+    id: 105,
     username: 'reception_suburban',
     password: 'reception123',
     role: 'reception',
     displayName: 'Reception Staff - Suburban',
     location_id: 3,
     location_name: 'Suburban',
-    permissions: ['view_staff', 'view_services', 'view_transactions', 'create_transactions', 'view_summary'],
+    permissions: receptionPermissions,
     active: true
   },
   {
-    id: 6,
+    id: 106,
     username: 'manager_suburban',
     password: 'manager456',
     role: 'manager',
@@ -82,18 +122,18 @@ const users = [
 
   // Legacy users for backward compatibility (assigned to Main Branch)
   {
-    id: 7,
+    id: 107,
     username: 'reception',
     password: 'reception123',
     role: 'reception',
     displayName: 'Reception Staff',
     location_id: 1,
     location_name: 'Main Branch',
-    permissions: ['view_staff', 'view_services', 'view_transactions', 'create_transactions', 'view_summary'],
+    permissions: receptionPermissions,
     active: true
   },
   {
-    id: 8,
+    id: 108,
     username: 'manager',
     password: 'manager456',
     role: 'manager',

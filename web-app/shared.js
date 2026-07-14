@@ -2,11 +2,11 @@
 
 // Shared JavaScript for Massage Shop POS (API-backed version)
 
-// Bilingual Navigation Labels (EN + TH)
+// Bilingual Navigation Labels (primary line first + secondary line second)
 window.NAV_LABELS = {
   home: { en: "🏠 Home", th: "🏠 หน้าแรก" },
   daily_staff: { en: "👥 Daily Staff", th: "👥 พนักงานประจำวัน" },
-  new_transaction: { en: "💳 New Transaction", th: "💳 ธุรกรรมใหม่" },
+  new_transaction: { en: "👤 New Customer", th: "👤 ลูกค้าใหม่" },
   daily_summary: { en: "📊 Daily Summary", th: "📊 สรุปรายวัน" },
   payday_tracking: { en: "💰 Payday Tracking", th: "💰 ติดตามการจ่ายเงิน" },
   services_pricing: { en: "💰 Services & Pricing", th: "💰 บริการและราคา" },
@@ -20,8 +20,8 @@ window.renderBilingualLabel = function(key) {
   const entry = (window.NAV_LABELS || {})[key];
   if (!entry) return '';
   return `
-    <span class="label-en">${entry.en}</span>
     <span class="label-th">${entry.th}</span>
+    <span class="label-en">${entry.en}</span>
   `;
 };
 
@@ -60,6 +60,7 @@ let appData = {
   transactions: [],
   roster: [],
   expenses: [],
+  currentShopStatus: null,
   correctionMode: false,
   originalTransactionId: null
 };
@@ -106,6 +107,7 @@ function loadDataFromLocalStorage() {
   if (!appData.transactions) appData.transactions = [];
   if (!appData.roster) appData.roster = [];
   if (!appData.expenses) appData.expenses = [];
+  if (!appData.currentShopStatus) appData.currentShopStatus = null;
 }
 
 let loadTodayDataCounter = 0;
@@ -147,6 +149,23 @@ async function loadTodayData() {
     appData.transactions = [];
     appData.expenses = [];
     throw error; // Re-throw to let caller handle it
+  }
+}
+
+async function loadCurrentShopStatus() {
+  try {
+    appData.currentShopStatus = await api.getCurrentShopStatus();
+    return appData.currentShopStatus;
+  } catch (error) {
+    console.error('Failed to load current shop status:', error);
+    appData.currentShopStatus = {
+      business_day: null,
+      generated_at: new Date().toISOString(),
+      buffer_minutes: 15,
+      staff: [],
+      error: error.message || 'Failed to load current shop status'
+    };
+    return appData.currentShopStatus;
   }
 }
 
@@ -220,7 +239,7 @@ async function loadData() {
       .map((r) => r.masseuse_name))];
 
     // Load today's data
-    await loadTodayData();
+    await Promise.all([loadTodayData(), loadCurrentShopStatus()]);
 
     console.log('Data loaded from API successfully');
   } catch (error) {
@@ -316,7 +335,10 @@ async function submitTransaction(formData) {
       start_time: formData.startTime,
       end_time: formData.endTime,
       customer_contact: formData.customerContact || '',
-      corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null
+      corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null,
+      booking_id: formData.bookingId || null,
+      start_datetime: formData.startDateTime || null,
+      end_datetime: formData.endDateTime || null
     };
 
     console.log('🚀 SUBMITTING TRANSACTION - TRANSFORMED DATA:', transactionData);
@@ -441,6 +463,7 @@ async function loadTransactionForCorrection() {
       startTime: transaction.start_time,
       endTime: transaction.end_time,
       customerContact: transaction.customer_contact || '',
+      bookingId: transaction.booking_id || null,
       status: transaction.status
     };
   } catch (error) {
@@ -663,8 +686,8 @@ function getRecentTransactions(limit = 5) {
   console.log('🔄 STEP 10: Filtered transactions count:', filtered.length);
   console.log('🔄 STEP 10: Filtered transactions:', filtered);
 
-  console.log('🔄 STEP 10: Applying limit and reversing order...');
-  const recent = filtered.slice(-limit).reverse();
+  console.log('🔄 STEP 10: Applying limit while preserving API newest-first order...');
+  const recent = filtered.slice(0, limit);
   console.log('🔄 STEP 10: Final recent transactions count:', recent.length);
   console.log('🔄 STEP 10: Final recent transactions:', recent);
 
@@ -688,9 +711,56 @@ function getRecentTransactions(limit = 5) {
 }
 
 // Authentication utilities
+function getPwtestUser() {
+  return {
+    id: 'pwtest-user',
+    username: 'pwtest',
+    role: 'manager',
+    displayName: 'PW Test Manager',
+    permissions: ['*']
+  };
+}
+
+function isPwtestPreview() {
+  return /(^|[?&])PWTEST=1(&|$)/.test(location.search || '')
+    || (document.cookie || '').includes('PWTEST=1');
+}
+
+function normalizeCurrentUser(user) {
+  if (!user || typeof user !== 'object') {
+    return null;
+  }
+
+  if (user.username === 'pwtest') {
+    return {
+      ...getPwtestUser(),
+      ...user,
+      role: user.role || 'manager',
+      displayName: user.displayName || 'PW Test Manager'
+    };
+  }
+
+  return user;
+}
+
 function getCurrentUser() {
   const userStr = localStorage.getItem('currentUser');
-  return userStr ? JSON.parse(userStr) : null;
+  if (!userStr) {
+    if (isPwtestPreview()) {
+      const pwtestUser = getPwtestUser();
+      localStorage.setItem('currentUser', JSON.stringify(pwtestUser));
+      return pwtestUser;
+    }
+    return null;
+  }
+
+  try {
+    return normalizeCurrentUser(JSON.parse(userStr));
+  } catch (error) {
+    console.error('Failed to parse current user from localStorage:', error);
+    localStorage.removeItem('currentUser');
+    return null;
+  }
 }
 
 function isLoggedIn() {

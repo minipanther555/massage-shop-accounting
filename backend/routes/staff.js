@@ -2,6 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { BOOKING_BUFFER_MINUTES } = require('../services/booking-service');
 const { getBusinessDayParts, getNextBusinessDay } = require('../utils/business-day');
 
 function getActor(req) {
@@ -158,6 +159,124 @@ function parseTimeToMinutes(timeStr) {
   return hours * 60 + minutes;
 }
 
+function formatBangkokTime(timestamp) {
+  if (!timestamp) return null;
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Bangkok',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(new Date(timestamp));
+}
+
+function addMinutes(timestamp, minutes) {
+  return new Date(Date.parse(timestamp) + (Number(minutes || 0) * 60000));
+}
+
+function minutesUntil(fromTimestamp, toTimestamp) {
+  return Math.max(0, Math.ceil((Date.parse(toTimestamp) - Date.parse(fromTimestamp)) / 60000));
+}
+
+async function getActiveTransactionByStaff(businessDay) {
+  const rows = await database.all(
+    `SELECT
+       transaction_id,
+       masseuse_name,
+       timestamp,
+       duration,
+       end_time,
+       service_type
+     FROM transactions
+     WHERE business_day = ?
+       AND status = 'ACTIVE'
+     ORDER BY timestamp DESC`,
+    [businessDay]
+  );
+
+  const byStaff = new Map();
+  rows.forEach((row) => {
+    const end = addMinutes(row.timestamp, row.duration);
+    const existing = byStaff.get(row.masseuse_name);
+    if (!existing || Date.parse(end) > Date.parse(existing.busyEnd)) {
+      byStaff.set(row.masseuse_name, { ...row, busyStart: row.timestamp, busyEnd: end.toISOString() });
+    }
+  });
+  return byStaff;
+}
+
+async function getNextBookingByStaff(nowIso) {
+  const rows = await database.all(
+    `SELECT
+       booking_id,
+       scheduled_start,
+       scheduled_end,
+       requested_masseuse_name,
+       service_type,
+       duration
+     FROM bookings
+     WHERE status = 'BOOKED'
+       AND requested_masseuse_name IS NOT NULL
+       AND requested_masseuse_name != ''
+       AND datetime(scheduled_start) >= datetime(?)
+     ORDER BY scheduled_start ASC`,
+    [nowIso]
+  );
+
+  const byStaff = new Map();
+  rows.forEach((row) => {
+    if (!byStaff.has(row.requested_masseuse_name)) {
+      byStaff.set(row.requested_masseuse_name, row);
+    }
+  });
+  return byStaff;
+}
+
+function buildStatusRow({ staff, nowIso, activeTransaction, nextBooking }) {
+  const busyUntilIso = activeTransaction && Date.parse(activeTransaction.busyEnd) > Date.parse(nowIso)
+    ? activeTransaction.busyEnd
+    : null;
+  const busyStartedIso = busyUntilIso ? activeTransaction.busyStart : null;
+  const freeAtIso = busyUntilIso
+    ? new Date(Date.parse(busyUntilIso) + BOOKING_BUFFER_MINUTES * 60000).toISOString()
+    : null;
+  const remainingMinutes = busyUntilIso ? minutesUntil(nowIso, busyUntilIso) : 0;
+  const bookingStart = nextBooking?.scheduled_start || null;
+  const usableMinutesBeforeBooking = bookingStart
+    ? Math.max(0, minutesUntil(nowIso, bookingStart) - BOOKING_BUFFER_MINUTES)
+    : null;
+
+  let currentState = 'available';
+  if (busyUntilIso) {
+    currentState = 'busy';
+  } else if (usableMinutesBeforeBooking !== null && usableMinutesBeforeBooking < 60) {
+    currentState = 'booking_buffer';
+  }
+
+  return {
+    staff_id: staff.staff_id,
+    position: staff.position,
+    masseuse_name: staff.masseuse_name,
+    queue_status: staff.status || null,
+    current_state: currentState,
+    busy_started: busyStartedIso ? formatBangkokTime(busyStartedIso) : null,
+    busy_started_iso: busyStartedIso,
+    busy_until: busyUntilIso ? formatBangkokTime(busyUntilIso) : null,
+    busy_until_iso: busyUntilIso,
+    free_at: freeAtIso ? formatBangkokTime(freeAtIso) : null,
+    free_at_iso: freeAtIso,
+    remaining_minutes: remainingMinutes,
+    today_massages: staff.today_massages || 0,
+    next_booking: nextBooking ? {
+      booking_id: nextBooking.booking_id,
+      scheduled_start: nextBooking.scheduled_start,
+      scheduled_end: nextBooking.scheduled_end,
+      service_type: nextBooking.service_type,
+      duration: nextBooking.duration
+    } : null,
+    usable_minutes_before_booking: usableMinutesBeforeBooking
+  };
+}
+
 // Helper function to reset expired busy statuses
 async function resetExpiredBusyStatuses() {
   try {
@@ -270,6 +389,46 @@ router.get('/roster', async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching staff roster:', error);
     res.status(500).json({ error: 'Failed to fetch staff roster' });
+  }
+});
+
+router.get('/current-status', async (req, res) => {
+  try {
+    const now = req.query?.at ? new Date(req.query.at) : new Date();
+    if (Number.isNaN(now.getTime())) {
+      return res.status(400).json({ error: 'Invalid at timestamp' });
+    }
+    const nowIso = now.toISOString();
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const todayStaff = await getActiveTodayStaff(currentBusinessDay);
+    const activeByStaff = await getActiveTransactionByStaff(currentBusinessDay);
+    const bookingByStaff = await getNextBookingByStaff(nowIso);
+    const statusRows = todayStaff.map((staff) => buildStatusRow({
+      staff,
+      nowIso,
+      activeTransaction: activeByStaff.get(staff.masseuse_name),
+      nextBooking: bookingByStaff.get(staff.masseuse_name)
+    }));
+    const statusPriority = { busy: 0, booking_buffer: 1, available: 2 };
+    statusRows.sort((a, b) => {
+      const stateDifference = (statusPriority[a.current_state] ?? 9) - (statusPriority[b.current_state] ?? 9);
+      if (stateDifference !== 0) return stateDifference;
+      if (a.current_state === 'busy') return (a.remaining_minutes || 0) - (b.remaining_minutes || 0);
+      if (a.next_booking && b.next_booking) return Date.parse(a.next_booking.scheduled_start) - Date.parse(b.next_booking.scheduled_start);
+      if (a.next_booking) return -1;
+      if (b.next_booking) return 1;
+      return a.masseuse_name.localeCompare(b.masseuse_name, 'th');
+    });
+
+    res.json({
+      business_day: currentBusinessDay,
+      generated_at: nowIso,
+      buffer_minutes: BOOKING_BUFFER_MINUTES,
+      staff: statusRows
+    });
+  } catch (error) {
+    console.error('❌ Error fetching current shop status:', error);
+    res.status(500).json({ error: 'Failed to fetch current shop status' });
   }
 });
 
@@ -405,69 +564,66 @@ router.post('/serve-next', async (req, res) => {
 
 // Advance queue (set next person in line)
 router.post('/advance-queue', async (req, res) => {
+  let dbTransactionStarted = false;
   try {
     const { currentMasseuse } = req.body;
+    const { currentBusinessDay } = await getCurrentBusinessDay(req);
+    const todayStaff = await getActiveTodayStaff(currentBusinessDay);
+    const currentNext = todayStaff[0];
 
-    // Find current next in line person
-    const currentNext = await database.get(
-      'SELECT * FROM staff_roster WHERE status = "Next" ORDER BY position ASC LIMIT 1'
+    if (!currentNext) {
+      res.json({ message: 'No Today Staff to advance', today_staff: [] });
+      return;
+    }
+
+    if (currentNext.masseuse_name !== currentMasseuse) {
+      res.json({
+        message: 'Manual selection - Today Staff queue not advanced',
+        previousNext: currentNext.masseuse_name,
+        selectedMasseuse: currentMasseuse,
+        today_staff: todayStaff
+      });
+      return;
+    }
+
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
+    for (let index = 1; index < todayStaff.length; index += 1) {
+      await database.run(
+        'UPDATE today_staff SET position = ?, queue_status = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [index, todayStaff[index].id]
+      );
+    }
+
+    await database.run(
+      'UPDATE today_staff SET position = ?, queue_status = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [todayStaff.length, currentNext.id]
     );
 
-    if (currentNext && currentNext.masseuse_name === currentMasseuse) {
-      // Clear current next status
-      await database.run(
-        'UPDATE staff_roster SET status = NULL WHERE status = "Next"'
-      );
+    await auditPlanningAction(currentBusinessDay, currentNext.staff_id, 'advance_today_staff_queue', getActor(req), {
+      previous_next: currentMasseuse,
+      new_next: todayStaff[1]?.masseuse_name || currentMasseuse
+    });
 
-      // Find next person in roster order after current position (not busy)
-      const nextInLine = await database.get(
-        `SELECT * FROM staff_roster 
-         WHERE position > ? AND masseuse_name != '' 
-         AND (status IS NULL OR status NOT LIKE 'Busy until %')
-         ORDER BY position ASC LIMIT 1`,
-        [currentNext.position]
-      );
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
 
-      if (!nextInLine) {
-        // If no one after current position, loop back to first available
-        const firstAvailable = await database.get(
-          `SELECT * FROM staff_roster 
-           WHERE masseuse_name != '' 
-           AND (status IS NULL OR status NOT LIKE 'Busy until %')
-           ORDER BY position ASC LIMIT 1`
-        );
-
-        if (firstAvailable) {
-          await database.run(
-            'UPDATE staff_roster SET status = "Next", last_updated = CURRENT_TIMESTAMP WHERE position = ?',
-            [firstAvailable.position]
-          );
-
-          res.json({
-            message: 'Queue advanced',
-            previousNext: currentMasseuse,
-            newNext: firstAvailable.masseuse_name
-          });
-        } else {
-          res.json({ message: 'No available staff to advance to' });
-        }
-      } else {
-        // Set next person as "Next"
-        await database.run(
-          'UPDATE staff_roster SET status = "Next", last_updated = CURRENT_TIMESTAMP WHERE position = ?',
-          [nextInLine.position]
-        );
-
-        res.json({
-          message: 'Queue advanced',
-          previousNext: currentMasseuse,
-          newNext: nextInLine.masseuse_name
-        });
-      }
-    } else {
-      res.json({ message: 'Manual selection - queue not advanced' });
-    }
+    const updatedTodayStaff = await getActiveTodayStaff(currentBusinessDay);
+    res.json({
+      message: 'Today Staff queue advanced',
+      previousNext: currentMasseuse,
+      newNext: updatedTodayStaff[0]?.masseuse_name || null,
+      today_staff: updatedTodayStaff
+    });
   } catch (error) {
+    if (dbTransactionStarted) {
+      try {
+        await database.run('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Failed to roll back queue advance:', rollbackError);
+      }
+    }
     console.error('Error advancing queue:', error);
     res.status(500).json({ error: 'Failed to advance queue' });
   }

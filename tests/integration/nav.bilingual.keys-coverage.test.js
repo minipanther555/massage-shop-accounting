@@ -38,7 +38,7 @@ describe('Navigation Bilingual Keys Coverage', () => {
       
       // Check that each page has appropriate navigation elements
       if (page.includes('index.html')) {
-        expect(html).toMatch(/🏠 Home/);
+        expect(html).not.toMatch(/class=["'][^"']*nav-btn home[^"']*["']/);
       } else if (page.includes('admin-')) {
         // Admin pages have various navigation elements
         expect(html).toMatch(/Back to Dashboard|🏠 Home|Dashboard/);
@@ -78,12 +78,23 @@ describe('Navigation Bilingual Keys Coverage', () => {
             button.includes('Refresh Data') ||
             button.includes('Outstanding Fees') ||
             button.includes('Save Staff Member') ||
+            button.includes('Save Staff') ||
             button.includes('Record Payment') ||
             button.includes('Pay') ||
             button.includes('❌') ||
             button.includes('Save Service') ||
             button.includes('Disable') || button.includes('Enable') ||
             button.includes('History') ||
+            button.includes('staff-primary-action') ||
+            button.includes('staff-next-btn') ||
+            button.includes('staff-order-btn') ||
+            button.includes('staff-remove-btn') ||
+            button.includes('helper-collapse-btn') ||
+            button.includes('helper-restore-btn') ||
+            button.includes('cancel-roster-staff-modal') ||
+            button.includes('cancel-clear-roster-modal') ||
+            button.includes('confirm-clear-roster-btn') ||
+            button.includes('type="submit"') ||
             button.includes('Add to Roster') || button.includes('Clear All') ||
             button.includes('Set Next') || button.includes('Move Up') || button.includes('Move Down') ||
             button.includes('Remove') || button.includes('⬆️') || button.includes('⬇️') ||
@@ -102,6 +113,15 @@ describe('Navigation Bilingual Keys Coverage', () => {
         if (enSpan) expect(enSpan[1].trim()).toBeTruthy();
         if (thSpan) expect(thSpan[1].trim()).toBeTruthy();
       });
+    }
+  });
+
+  test('pages do not render active navigation self-links', () => {
+    for (const page of pages) {
+      const filePath = path.join(__dirname, '../..', page);
+      const html = fs.readFileSync(filePath, 'utf8');
+
+      expect(html).not.toMatch(/class=["'][^"']*nav-btn[^"']*active[^"']*["']/);
     }
   });
 
@@ -127,12 +147,13 @@ describe('Navigation Bilingual Keys Coverage', () => {
     
     expect(homePageHtml).toMatch(/👥 Daily Staff/);
     expect(homePageHtml).toMatch(/💰 Payday Tracking/);
+    expect(homePageHtml).not.toMatch(/class=["'][^"']*nav-btn home[^"']*["']/);
     
     // Test staff page has correct labels
     const staffPagePath = path.join(__dirname, '../../web-app/staff.html');
     const staffPageHtml = fs.readFileSync(staffPagePath, 'utf8');
     
-    expect(staffPageHtml).toMatch(/👥 Daily Staff/);
+    expect(staffPageHtml).not.toMatch(/👥 Daily Staff/);
     
     // Test admin pages have correct labels
     const adminStaffPath = path.join(__dirname, '../../web-app/admin-staff.html');
@@ -145,7 +166,6 @@ describe('Navigation Bilingual Keys Coverage', () => {
     // Pages that should have logout buttons
     const pagesWithLogout = [
       'web-app/index.html',
-      'web-app/staff.html', 
       'web-app/transaction.html',
       'web-app/summary.html',
       'web-app/admin-reports.html',
@@ -158,9 +178,8 @@ describe('Navigation Bilingual Keys Coverage', () => {
       const filePath = path.join(__dirname, '../..', page);
       const html = fs.readFileSync(filePath, 'utf8');
       
-      // Check that logout button has both EN and TH labels
-      expect(html).toMatch(/<span class=["'][^"']*label-en[^"']*["']>👋 Logout<\/span>/);
       expect(html).toMatch(/<span class=["'][^"']*label-th[^"']*["']>👋 ออกจากระบบ<\/span>/);
+      expect(html).toMatch(/<span class=["'][^"']*label-en[^"']*["']>👋 Logout<\/span>/);
     });
   });
 });

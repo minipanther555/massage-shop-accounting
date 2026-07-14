@@ -35,30 +35,19 @@ const loginRateLimiter = rateLimit({
  * General API rate limiter for other endpoints
  * Allows 100 requests per IP address per 15 minutes
  */
+const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000); // 60s
+const MAX_REQS  = Number(process.env.RATE_LIMIT_MAX || 2000);        // headroom
 const apiRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: 'Too many requests. Please try again later.',
-    retryAfter: '15 minutes'
-  },
+  windowMs: WINDOW_MS,
+  max: MAX_REQS,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res) => {
-    console.log(`🚫 API RATE LIMIT EXCEEDED: IP ${req.ip} - Too many requests`);
-    console.log(`[RL-429] ${JSON.stringify({
-      ip: req.ip,
-      path: req.originalUrl,
-      method: req.method,
-      ua: req.get('user-agent') || '',
-      ts: new Date().toISOString(),
-      headers: req.headers
-    })}`);
-    res.status(429).json({
-      error: 'Too many requests. Please try again later.',
-      retryAfter: '15 minutes'
-    });
-  }
+  skip: () => false, // keep middleware active, no skipping logic by default
+  message: { error: 'rate_limited', detail: 'Too many requests' },
+  keyGenerator: (req, _res) => {
+    // honor proxy chain if trust proxy enabled
+    return req.ip;
+  },
 });
 
 /**

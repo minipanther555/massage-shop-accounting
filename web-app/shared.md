@@ -5,7 +5,7 @@
 
 ## 🎯 Overall Purpose
 
-The shared.js file provides common JavaScript utilities, application state management, and centralized language support for the massage shop POS system. This module was recently enhanced with a comprehensive bilingual navigation system and serves as the single source of truth for all navigation labels across the application.
+The shared.js file provides common JavaScript utilities, application state management, and centralized language support for the massage shop POS system. This module was recently enhanced with a comprehensive bilingual navigation system and serves as the single source of truth for all navigation labels across the application. Navigation labels render Thai first and English second.
 
 ## 🔄 End-to-End Data Flow
 
@@ -20,7 +20,7 @@ The shared.js file provides common JavaScript utilities, application state manag
 **Data Flow:**
 - **Input:** Language keys, user preferences, navigation requests
 - **Processing:** Helper functions transform keys into bilingual HTML structures
-- **Output:** Rendered navigation elements with consistent EN/TH labels
+- **Output:** Rendered navigation elements with consistent Thai/English labels
 
 ## 🏗️ Module API & Logic Breakdown
 
@@ -33,7 +33,7 @@ The shared.js file provides common JavaScript utilities, application state manag
 window.NAV_LABELS = {
   home: { en: "🏠 Home", th: "🏠 หน้าแรก" },
   daily_staff: { en: "👥 Daily Staff", th: "👥 พนักงานประจำวัน" },
-  new_transaction: { en: "💳 New Transaction", th: "💳 ธุรกรรมใหม่" },
+  new_transaction: { en: "👤 New Customer", th: "👤 ลูกค้าใหม่" },
   daily_summary: { en: "📊 Daily Summary", th: "📊 สรุปรายวัน" },
   payday_tracking: { en: "💰 Payday Tracking", th: "💰 ติดตามการจ่ายเงิน" },
   services_pricing: { en: "💰 Services & Pricing", th: "💰 บริการและราคา" },
@@ -49,7 +49,7 @@ window.NAV_LABELS = {
 **Usage Notes:** Access via `window.NAV_LABELS[key]` or `NAV_LABELS[key]`
 
 ### renderBilingualLabel Function
-**Purpose:** Convert navigation keys into HTML with stacked EN/TH labels  
+**Purpose:** Convert navigation keys into HTML with stacked Thai/English labels
 **Scope:** Global window function accessible across all pages  
 **Signature:** `renderBilingualLabel(key: string): string`  
 
@@ -58,8 +58,8 @@ window.renderBilingualLabel = function(key) {
   const entry = (window.NAV_LABELS || {})[key];
   if (!entry) return '';
   return `
-    <span class="label-en">${entry.en}</span>
     <span class="label-th">${entry.th}</span>
+    <span class="label-en">${entry.en}</span>
   `;
 };
 ```
@@ -76,7 +76,7 @@ window.renderBilingualLabel = function(key) {
 **Current Keys:**
 - `home`: Primary navigation to homepage
 - `daily_staff`: Staff management and daily operations
-- `new_transaction`: Transaction entry and processing
+- `new_transaction`: New customer intake entry point that routes to transaction entry and processing
 - `daily_summary`: Daily reports and summaries
 - `payday_tracking`: Staff payment and administration
 - `services_pricing`: Service management and pricing
@@ -135,6 +135,18 @@ window.renderBilingualLabel = function(key) {
 - `staff_roster` → `daily_staff` ("Daily Staff")
 - `staff_admin` → `payday_tracking` ("Payday Tracking")
 
+### Staff-Facing Thai-First Navigation Update (2026-07-09)
+**Bug Summary:** Navigation labels and helper rendering were still oriented around English-first labels and internal terminology such as "New Transaction".
+
+**Validated Hypothesis:** The shared registry was the correct source for cross-page terminology, but static templates also needed mirrored updates because some pages contain hardcoded nav HTML.
+
+**Invalidated Hypotheses:**
+- CSS-only visual reordering would be sufficient.
+- The exact English phrase "New Transaction" should remain because the backend route creates a transaction.
+- Staff roster workflow controls should keep bilingual text inside the button.
+
+**Resolution:** `new_transaction` now means the staff-facing customer intake route and renders as `👤 ลูกค้าใหม่` followed by `👤 New Customer`. `renderBilingualLabel()` emits Thai first. Staff roster primary workflow buttons intentionally use Thai-only text with English helper copy outside the button.
+
 ## 🔧 Technical Implementation
 
 ### Global Object Pattern
@@ -149,19 +161,19 @@ window.renderBilingualLabel = function(key) {
 
 ### HTML Generation
 **Template Literals:** Uses ES6 template literals for clean HTML generation  
-**Structure:** Consistent span structure with label-en and label-th classes  
+**Structure:** Consistent span structure with label-th first and label-en second
 **Styling:** Ready for CSS styling without additional processing
 
 ## 🌐 Internationalization Features
 
 ### Language Support
-**Primary Language:** English (en) - Main interface language  
-**Secondary Language:** Thai (th) - Local language support  
+**Primary Language:** Thai (th) - First line for staff-facing navigation
+**Secondary Language:** English (en) - Second line for support and clarity
 **Extensibility:** Easy to add new languages by extending language objects
 
 ### Cultural Considerations
 **Font Support:** Thai-optimized fonts specified in CSS  
-**Text Hierarchy:** English prominent, Thai supportive  
+**Text Hierarchy:** The first rendered label is prominent, allowing customer-facing navigation to put Thai first while retaining English as secondary text.
 **Spacing:** Appropriate margins and sizing for both languages
 
 ### Maintenance Benefits

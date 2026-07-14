@@ -13,7 +13,7 @@ The index page serves as the primary entry point for the massage shop POS system
 1. **Entry Point:** User accesses root URL (`/` or `index.html`)
 2. **Authentication Check:** System verifies user login status
 3. **Dashboard Population:** JavaScript fetches real-time data for dashboard cards
-4. **Navigation Display:** Bilingual navigation buttons render with EN/TH labels
+4. **Navigation Display:** Bilingual navigation buttons render with Thai first and English second
 5. **User Interaction:** User clicks navigation buttons to access different modules
 6. **Data Updates:** Dashboard refreshes automatically with latest information
 
@@ -37,13 +37,14 @@ The index page serves as the primary entry point for the massage shop POS system
 - `refreshData()` - Updates dashboard with latest information
 
 ### Primary Navigation
-**Purpose:** Main navigation to core system modules  
-**Structure:** Bilingual stacked labels (English + Thai)  
+**Purpose:** Main navigation to core system modules. The homepage omits its own Home button because the user is already on that page; other pages still include Home for return navigation.
+**Structure:** Bilingual stacked labels (Thai + English)
 **Navigation Items:**
-- 🏠 Home (current page)
 - 👥 Daily Staff (staff management)
-- 💳 New Transaction (transaction entry)
+- 👤 ลูกค้าใหม่ / New Customer (customer intake entry point for transaction entry)
 - 📊 Daily Summary (daily reports)
+
+Each page omits its own route from top navigation. For example, the homepage omits Home, the staff roster page omits Daily Staff, the New Customer page omits New Customer, and the Daily Summary page omits Daily Summary.
 
 **Implementation:** Uses centralized `NAV_LABELS` registry from `shared.js`
 
@@ -51,10 +52,10 @@ The index page serves as the primary entry point for the massage shop POS system
 **Purpose:** Quick access to administrative functions  
 **Structure:** Secondary navigation with admin-specific labels  
 **Admin Items:**
-- 💰 Payday Tracking (staff administration)
-- 💰 Services & Pricing (service management)
-- 📊 Financial Reports (financial analytics)
-- 💳 Payment Types (payment method management)
+- 💰 ติดตามการจ่ายเงิน / Payday Tracking (staff administration)
+- 💰 บริการและราคา / Services & Pricing (service management)
+- 📊 รายงานการเงิน / Financial Reports (financial analytics)
+- 💳 ประเภทการชำระเงิน / Payment Types (payment method management)
 
 **Implementation:** Updated terminology from "Staff Administration" to "Payday Tracking"
 
@@ -112,7 +113,18 @@ The index page serves as the primary entry point for the massage shop POS system
 - Individual file updates would be sufficient (❌ - needed centralized management)
 - Font changes alone would solve the problem (❌ - required structural changes)
 
-**Resolution:** Implemented centralized `NAV_LABELS` registry in `shared.js` and converted all navigation buttons to bilingual stacked spans with EN/TH labels.
+**Resolution:** Implemented centralized `NAV_LABELS` registry in `shared.js` and converted all navigation buttons to bilingual stacked spans with Thai-first labels.
+
+### Self-Reference Navigation Removal and New Customer Terminology (2026-07-09)
+**Bug Summary:** Primary navigation rendered a button for the current page and the transaction route was labeled as "New Transaction", which did not match the staff workflow of taking a new customer.
+
+**Validated Hypothesis:** The problem was hardcoded page navigation, not routing. Users were confused by self-reference links and by transaction terminology.
+
+**Invalidated Hypotheses:**
+- Active self-links were useful orientation.
+- "New Transaction" was clear enough.
+
+**Resolution:** Homepage omits the Home self-link, other pages omit their own route, and the transaction route is labeled Thai-first as `ลูกค้าใหม่ / New Customer`.
 
 ## 🔒 Security Considerations
 
@@ -129,7 +141,7 @@ The index page serves as the primary entry point for the massage shop POS system
 ## 🌐 Internationalization Features
 
 ### Bilingual Support
-- **Language Coverage:** English (primary) + Thai (secondary)
+- **Language Coverage:** Thai (primary) + English (secondary)
 - **Label Structure:** Stacked display with clear visual hierarchy
 - **Font Support:** Thai-optimized fonts (Noto Sans Thai, Sarabun)
 - **Cultural Sensitivity:** Appropriate sizing and spacing for both languages

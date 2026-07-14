@@ -13,7 +13,7 @@ describe('Navigation Bilingual Labels', () => {
     'web-app/admin-payment-types.html',
   ];
   
-  test('all nav buttons have EN+TH stacked labels (target state)', () => {
+  test('all nav buttons have TH+EN stacked labels (target state)', () => {
     for (const file of files) {
       const filePath = path.join(__dirname, '..', file);
       const html = fs.readFileSync(filePath, 'utf8');
@@ -37,6 +37,36 @@ describe('Navigation Bilingual Labels', () => {
         expect(button).toMatch(/<span class=["'][^"']*label-en[^"']*["']>/);
         expect(button).toMatch(/<span class=["'][^"']*label-th[^"']*["']>/);
       });
+    }
+  });
+
+  test('bilingual navigation labels render Thai before English', () => {
+    for (const file of files) {
+      const filePath = path.join(__dirname, '..', file);
+      const html = fs.readFileSync(filePath, 'utf8');
+      const buttonMatches = html.match(/<a[^>]*class=["'][^"']*(?:nav-btn|btn)[^"']*["'][^>]*>[\s\S]*?<\/a>/g) || [];
+
+      buttonMatches.forEach(button => {
+        if (button.includes('label-en') && button.includes('label-th')) {
+          expect(button.indexOf('label-th')).toBeLessThan(button.indexOf('label-en'));
+        }
+      });
+    }
+  });
+
+  test('homepage does not render a Home self-link', () => {
+    const homePagePath = path.join(__dirname, '..', 'web-app/index.html');
+    const html = fs.readFileSync(homePagePath, 'utf8');
+
+    expect(html).not.toMatch(/class=["'][^"']*nav-btn home[^"']*["']/);
+  });
+
+  test('navigation does not render active self-links', () => {
+    for (const file of files) {
+      const filePath = path.join(__dirname, '..', file);
+      const html = fs.readFileSync(filePath, 'utf8');
+
+      expect(html).not.toMatch(/class=["'][^"']*nav-btn[^"']*active[^"']*["']/);
     }
   });
   

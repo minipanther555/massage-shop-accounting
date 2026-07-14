@@ -195,3 +195,15 @@ User loads page → Controller initializes → previous-business-day helper list
 - Booking reservations should be counted as completed massages in this Today Staff follow-up.
 
 **Resolution:** Changed the main Today Staff header to `นวดวันนี้` and rendered row counts with explicit `นวดวันนี้ N ครั้ง` accessible copy while keeping the count read-only.
+
+### Bug Summary: Staff PWTEST Shim Stored Incomplete Current User (2026-07-13)
+**Bug Summary:** Visiting the Staff page in PWTEST preview mode could store `{ username: "pwtest" }` in `localStorage.currentUser`. Other pages later rendered the current user as `${user.role} (${user.username})`, producing `undefined (pwtest)`.
+
+**Validated Hypothesis:** The Staff page contains early inline PWTEST helpers before `shared.js`; those helpers returned and stored a user object without `role` or `displayName`.
+
+**Invalidated Hypotheses:**
+- The New Customer page alone created the bad current-user text.
+- The backend PWTEST auth shim returned an incomplete user.
+- Clearing browser storage was an acceptable durable fix.
+
+**Resolution:** Updated the Staff page PWTEST shim to return and store `{ username: "pwtest", role: "manager", displayName: "PW Test Manager", permissions: ["*"] }`. `shared.js` also normalizes stale legacy preview users so older localStorage state is repaired on read.

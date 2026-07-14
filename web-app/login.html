@@ -160,10 +160,21 @@
             
             <form id="login-form">
                 <div class="form-group">
-                    <label for="username">Username</label>
+                    <label for="branch-username">Branch</label>
+                    <select id="branch-username" required>
+                        <option value="">Select your branch...</option>
+                        <option value="top_thai_49">Top Thai 49</option>
+                        <option value="top_thai_43">Top Thai 43</option>
+                        <option value="top_thai_33">Top Thai 33</option>
+                        <option value="top_thai_thonglor_9">Top Thai Thonglor 9</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Role</label>
                     <select id="username" required>
                         <option value="">Select your role...</option>
-                        <option value="reception">Reception</option>
+                        <option value="reception">Receptionist</option>
                         <option value="manager">Manager</option>
                     </select>
                 </div>
@@ -174,8 +185,8 @@
                 </div>
                 
                 <div class="role-info">
-                    <strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br>
-                    <strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings
+                    <strong>Receptionist:</strong> Access to transactions, daily roster, and basic reporting<br>
+                    <strong>Manager:</strong> All reception features plus staff management and advanced settings
                 </div>
                 
                 <button type="submit" class="login-btn" id="login-btn">
@@ -217,7 +228,9 @@
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
+            const selectedRole = document.getElementById('username').value;
+            const selectedBranch = document.getElementById('branch-username').value;
+            const username = selectedRole && selectedBranch ? `${selectedRole}_${selectedBranch}` : '';
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('error-message');
             const loginBtn = document.getElementById('login-btn');
@@ -228,7 +241,12 @@
             errorDiv.textContent = '';
             
             // Validate form
-            if (!username) {
+            if (!selectedBranch) {
+                showError('Please select your branch');
+                return;
+            }
+
+            if (!selectedRole) {
                 showError('Please select your role');
                 return;
             }
@@ -309,15 +327,15 @@
         
         // Update role info when username changes
         document.getElementById('username').addEventListener('change', function() {
-            const username = this.value;
+            const role = this.value;
             const roleInfo = document.querySelector('.role-info');
             
-            if (username === 'reception') {
-                roleInfo.innerHTML = '<strong>Reception Access:</strong> Password: <code>reception123</code><br>Create transactions, manage daily staff roster, view basic reports, track expenses';
-            } else if (username === 'manager') {
-                roleInfo.innerHTML = '<strong>Manager Access:</strong> Password: <code>manager456</code><br>All reception features + master staff management, advanced reporting, system settings, end day operations';
+            if (role === 'reception') {
+                roleInfo.innerHTML = '<strong>Receptionist Access:</strong><br>Create transactions, manage daily staff roster, view basic reports, track expenses';
+            } else if (role === 'manager') {
+                roleInfo.innerHTML = '<strong>Manager Access:</strong><br>All reception features + master staff management, advanced reporting, system settings, end day operations';
             } else {
-                roleInfo.innerHTML = '<strong>Reception:</strong> Password: <code>reception123</code> - Access to transactions, daily roster, basic reporting<br><strong>Manager:</strong> Password: <code>manager456</code> - All reception features + staff management, advanced settings';
+                roleInfo.innerHTML = '<strong>Receptionist:</strong> Access to transactions, daily roster, basic reporting<br><strong>Manager:</strong> All reception features + staff management, advanced settings';
             }
         });
     </script>

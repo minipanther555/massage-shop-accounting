@@ -16,11 +16,18 @@ const rateLimiter = require('./middleware/rate-limiter');
 require('dotenv').config();
 
 // PWTEST flag - must run before any auth/CSRF/rate-limit/static mounts
+function isPwtestAllowed() {
+  return process.env.NODE_ENV !== 'production'
+    && (process.env.NODE_ENV === 'testing' || process.env.PWTEST === '1');
+}
+
 function pwtestFlag(req, res, next) {
   const on =
-    (req.cookies && req.cookies.PWTEST === '1') ||
-    req.query?.PWTEST === '1' ||
-    req.get('x-pwtest') === '1';
+    isPwtestAllowed() && (
+      (req.cookies && req.cookies.PWTEST === '1') ||
+      req.query?.PWTEST === '1' ||
+      req.get('x-pwtest') === '1'
+    );
   if (on) {
     req.isPwtest = true;
     res.locals.isPwtest = true;
@@ -34,6 +41,7 @@ function pwtestFlag(req, res, next) {
 const securityHeaders = require('./middleware/security-headers');
 const { validateInput } = require('./middleware/input-validation');
 const { csrfProtection } = require('./middleware/csrf-protection');
+const { authenticateToken } = require('./middleware/auth');
 const {
   requestSizeLimits,
   errorHandler,
@@ -45,8 +53,12 @@ const {
 const database = require('./models/database');
 
 const app = express();
-// Trust proxy for production/proxy correctness
-app.set("trust proxy", 1);
+// Trust proxy must be explicitly configured by deployment. Leaving it off by
+// default prevents forged X-Forwarded-For headers from changing req.ip locally.
+const trustProxySetting = process.env.TRUST_PROXY_HOPS
+  ? Number(process.env.TRUST_PROXY_HOPS)
+  : false;
+app.set('trust proxy', Number.isFinite(trustProxySetting) ? trustProxySetting : false);
 const PORT = process.env.PORT || 3000;
 let server;
 let isServerStarted = false; // Singleton flag
@@ -74,8 +86,8 @@ app.use(securityHeaders);
 app.use(validateInput);
 
 // Apply rate limiting early in the middleware stack
-// Apply rate limiting only when NOT in the testing environment or PWTEST mode
-if (process.env.NODE_ENV !== 'testing' && process.env.PWTEST !== '1') {
+// Apply rate limiting only when NOT in the testing environment or allowed PWTEST mode
+if (!isPwtestAllowed()) {
   const { apiRateLimiter } = require('./middleware/rate-limiter');
   // Add PWTEST skip to the rate limiter
   const originalApiRateLimiter = apiRateLimiter;
@@ -97,7 +109,7 @@ app.use(csrfProtection);
 
 // Middleware to make CSRF token available to templates/frontend
 app.use((req, res, next) => {
-  if (process.env.PWTEST === '1') {
+  if (isPwtestAllowed()) {
     res.locals.csrfToken = 'pwtest-token';
     return next();
   }
@@ -111,7 +123,7 @@ app.use((req, res, next) => {
 
 // CSRF token endpoint for cookie-mode CSRF
 app.get('/csrf', (req, res) => {
-  if (process.env.NODE_ENV === 'testing' || process.env.PWTEST === '1') {
+  if (isPwtestAllowed()) {
     // In testing mode, return a dummy token since CSRF is bypassed
     res.json({ token: 'pwtest-token' });
   } else {
@@ -135,7 +147,7 @@ app.get('/api/_health', (req, res) => {
 
 // PWTEST auth shim - provides fake auth response for client checks
 app.get('/api/auth/me', (req, res) => {
-  if (process.env.PWTEST === '1') {
+  if (isPwtestAllowed()) {
     return res.json({ user: { username: 'pwtest', role: 'manager', id: 'pwtest-user' } });
   }
   // fall through to real logic
@@ -143,6 +155,7 @@ app.get('/api/auth/me', (req, res) => {
   return res.status(401).json({ error: 'unauthenticated' });
 });
 app.use('/api/transactions', require('./routes/transactions'));
+app.use('/api/bookings', authenticateToken, require('./routes/bookings'));
 app.use('/api/staff', require('./routes/staff'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/payment-types', require('./routes/payment-types'));

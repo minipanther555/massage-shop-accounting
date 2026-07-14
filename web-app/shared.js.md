@@ -2,11 +2,13 @@
 
 ## Overall Purpose
 
-The `shared.js` module serves as the core frontend JavaScript library for the Massage Shop POS system. It provides a comprehensive set of functions for managing the application state, handling user interactions, communicating with the backend API, and maintaining data consistency across all frontend pages. This module acts as a bridge between the HTML user interface and the backend services, implementing the business logic for staff management, transaction processing, expense tracking, and daily operations.
+The `shared.js` module serves as the core frontend JavaScript library for the Massage Shop POS system. It provides a comprehensive set of functions for managing the application state, handling user interactions, communicating with the backend API, and maintaining data consistency across all frontend pages. This module acts as a bridge between the HTML user interface and the backend services, implementing the business logic for staff management, transaction processing, expense tracking, and daily operations. It also owns the canonical bilingual navigation label registry, including the Thai-first "New Customer" label for the transaction entry route.
 
 ## End-to-End Data Flow
 
 A typical data flow through this module begins when a user interacts with the frontend (e.g., submitting a transaction form). The interaction triggers a function call (e.g., `submitTransaction()`), which validates the input data, transforms it to match the backend API schema, and sends it via the `api` client. Upon successful API response, the module updates the local `appData` state and refreshes the UI. For data retrieval, the flow reverses: API calls fetch data from the backend, transform it to frontend format, update the local state, and trigger UI updates. The module also handles error scenarios, fallback to localStorage when API is unavailable, and maintains data consistency across browser sessions.
+
+For navigation labels, pages request or hardcode the bilingual label structure using the same contract: Thai is rendered as the first stacked span and English is rendered as the second span. The `new_transaction` key represents the customer intake action and displays Thai first as `👤 ลูกค้าใหม่`, followed by English as `👤 New Customer`.
 
 ## Module API & Logic Breakdown
 
@@ -27,6 +29,7 @@ A typical data flow through this module begins when a user interacts with the fr
   - `transactions`: Array of current day's transactions (array, required)
   - `roster`: Array of staff members and their status (array, required)
   - `expenses`: Array of current day's expenses (array, required)
+  - `currentShopStatus`: Current Daily Summary status snapshot, or `{ error: true }` after a failed status fetch (object|null, required)
   - `correctionMode`: Boolean flag for transaction correction mode (boolean, required)
   - `originalTransactionId`: ID of transaction being corrected (number|null, required)
 - **Usage & Logic Notes:** All functions read from and write to this object, ensuring data consistency across the application
@@ -54,7 +57,14 @@ A typical data flow through this module begins when a user interacts with the fr
 - **Parameters:** None
 - **Returns:** Promise<void>
 - **Raises:** Error if API calls fail
-- **Usage & Logic Notes:** Calls `api.getRecentTransactions()` and `api.getExpenses()`, maps API response format to frontend format, updates `appData.transactions` and `appData.expenses`
+- **Usage & Logic Notes:** Calls `api.getRecentTransactions()` and `api.getExpenses()`, maps API response format to frontend format, and updates `appData.transactions` and `appData.expenses`. Expense descriptions remain unchanged from the API; consumers must not apply page-local aliases because the database/API value is the cross-page display source of truth.
+
+#### `loadCurrentShopStatus()`
+- **Purpose:** Fetch and refresh the Daily Summary current shop status snapshot.
+- **Parameters:** None
+- **Returns:** Promise<object|null> - the latest current-status payload, or an error marker when the API call fails.
+- **Raises:** None to callers; errors are caught and stored as `{ error: true, message }` so the page can render a Thai-first error state.
+- **Usage & Logic Notes:** Calls `api.getCurrentShopStatus()` and stores the response on `appData.currentShopStatus`. The function is read-only and does not alter transactions, bookings, Today Staff order, or local fallback transaction data.
 
 #### `calculateTodayCounts()`
 - **Purpose:** Calculate and update daily massage counts for each staff member
@@ -75,7 +85,7 @@ A typical data flow through this module begins when a user interacts with the fr
 - **Parameters:** None
 - **Returns:** Promise<void>
 - **Raises:** Error if API calls fail
-- **Usage & Logic Notes:** Loads services, payment methods, and staff roster in parallel, maps API responses to frontend format, calls `loadTodayData()` for current data, falls back to localStorage on failure
+- **Usage & Logic Notes:** Loads services, payment methods, and staff roster in parallel, maps API responses to frontend format, calls `loadTodayData()` and `loadCurrentShopStatus()` for current data, falls back to localStorage on failure
 
 #### `saveData()`
 - **Purpose:** Placeholder function for data persistence (data is now saved via API on each operation)
@@ -112,14 +122,14 @@ A typical data flow through this module begins when a user interacts with the fr
   - `formData`: Object containing transaction details (object, required)
 - **Returns:** Promise<boolean> - true if successful, false if failed
 - **Raises:** Error if validation fails or API call fails
-- **Usage & Logic Notes:** Validates required fields, transforms frontend field names to backend schema, calls `api.createTransaction()`, refreshes data, exits correction mode if applicable
+- **Usage & Logic Notes:** Validates required fields, transforms frontend field names to backend schema, calls `api.createTransaction()`, refreshes data, and exits correction mode if applicable. Nullable `booking_id`, `start_datetime`, and `end_datetime` pass through for arrival conversion; the backend remains authoritative for saved reservation details.
 
 #### `loadTransactionForCorrection()`
 - **Purpose:** Load the most recent transaction for correction mode
 - **Parameters:** None
 - **Returns:** Promise<object|null> - transaction data if found, null if none available
 - **Raises:** Error if API call fails
-- **Usage & Logic Notes:** Calls `api.getLatestTransactionForCorrection()`, enters correction mode, sets `originalTransactionId`, transforms API format to frontend format
+- **Usage & Logic Notes:** Calls `api.getLatestTransactionForCorrection()`, enters correction mode, sets `originalTransactionId`, transforms API format to frontend format, and preserves `bookingId` so correction cannot lose reservation linkage.
 
 #### `enterCorrectionMode()`
 - **Purpose:** Enter transaction correction mode
@@ -172,14 +182,36 @@ A typical data flow through this module begins when a user interacts with the fr
   - `limit`: Maximum number of transactions to return (number, optional, default: 5)
 - **Returns:** Array of filtered transactions (array)
 - **Raises:** None
-- **Usage & Logic Notes:** Filters by active/corrected status, applies limit, reverses order for most recent first, includes comprehensive logging for debugging
+- **Usage & Logic Notes:** Filters by active/corrected status and applies the visible limit while preserving the API's newest-first order. `GET /api/transactions/recent` is the ordering authority and ties rows with `id DESC`.
 
 #### `getCurrentUser()`
 - **Purpose:** Retrieve current user information from localStorage
 - **Parameters:** None
 - **Returns:** User object or null if not logged in (object|null)
 - **Raises:** None
-- **Usage & Logic Notes:** Parses JSON from localStorage, returns null if no user data exists
+- **Usage & Logic Notes:** Parses JSON from localStorage, returns null if no user data exists, and normalizes stale PWTEST preview users. Historical preview shims stored only `{ username: "pwtest" }`; this function repairs that shape to include `role: "manager"` and `displayName: "PW Test Manager"` so pages that render `${user.role} (${user.username})` never show `undefined (pwtest)`.
+
+#### `getPwtestUser()`
+- **Purpose:** Provide the canonical local preview user for PWTEST sessions.
+- **Parameters:** None.
+- **Returns:** User object with `username: "pwtest"`, `role: "manager"`, `displayName: "PW Test Manager"`, and manager permissions.
+- **Raises:** None.
+- **Usage & Logic Notes:** Used both to repair stale preview users and to bootstrap auth on a fresh preview port when the URL or cookie carries `PWTEST=1`.
+
+#### `isPwtestPreview()`
+- **Purpose:** Detect whether the current browser request is running in local PWTEST preview mode.
+- **Parameters:** None.
+- **Returns:** boolean - true when `?PWTEST=1` is present in the URL or a `PWTEST=1` cookie exists.
+- **Raises:** None.
+- **Usage & Logic Notes:** Lets new preview ports open directly to app pages without requiring manual login or preexisting localStorage state.
+
+#### `normalizeCurrentUser(user)`
+- **Purpose:** Repair known legacy/current-user shapes before page code consumes them.
+- **Parameters:**
+  - `user`: Parsed localStorage user value (object, required)
+- **Returns:** Normalized user object or null if the input is not a user object.
+- **Raises:** None
+- **Usage & Logic Notes:** Currently only applies PWTEST preview defaults. Real login users pass through unchanged because their role, display name, permissions, and branch metadata come from the auth API.
 
 #### `isLoggedIn()`
 - **Purpose:** Check if user is currently authenticated
@@ -218,6 +250,7 @@ A typical data flow through this module begins when a user interacts with the fr
 - **Input Data Contracts / Schemas:**
   - Form data objects with properties: masseuse, service, payment, startTime, endTime, location, duration, price, masseuseFee, customerContact
   - API response objects from backend routes (transactions, services, staff, expenses)
+  - Current shop status payloads from `api.getCurrentShopStatus()`
   - User authentication data from localStorage
 
 ### Downstream Dependencies (Outputs)
@@ -245,3 +278,45 @@ The module successfully handles the transition from local storage to API-based d
 
 ### Resolution
 The module now provides a robust, API-backed foundation for the frontend application with comprehensive error handling, data validation, and fallback mechanisms for offline scenarios.
+
+### Bug Summary: Shared Navigation Rendered English Before Thai (2026-07-09)
+Navigation labels were still modeled as English-first even though staff-facing screens are used primarily by Thai staff. The transaction route also used internal "New Transaction" terminology instead of the business action "New Customer".
+
+### Validated Hypothesis
+The shared `NAV_LABELS` registry and `renderBilingualLabel()` helper define the intended cross-page label order, so both the registry and the renderer needed updates. Static page templates also needed mirrored changes because not every page dynamically renders labels from the helper.
+
+### Invalidated Hypotheses
+- CSS alone could make the language order correct.
+- "New Transaction" was an acceptable staff-facing label.
+- Every workflow button should keep English inside the button.
+
+### Resolution
+`NAV_LABELS.new_transaction` now renders `👤 ลูกค้าใหม่ / 👤 New Customer`, and `renderBilingualLabel()` emits `.label-th` before `.label-en`. Staff roster primary workflow controls are documented as Thai-only with English helper text outside the button when developer context is useful.
+
+### Bug Summary: PWTEST Header Rendered `undefined (pwtest)` Across Pages (2026-07-13)
+Pages that render the current user with `${user.role} (${user.username})` showed `undefined (pwtest)` in the preview browser after an incomplete PWTEST user object was stored in localStorage.
+
+### Validated Hypothesis
+The backend PWTEST auth shim returned a role, but `shared.js#getCurrentUser()` trusted stale localStorage data and the Staff page PWTEST shim wrote only `{ username: "pwtest" }`.
+
+### Invalidated Hypotheses
+- The transaction page data load caused the header text.
+- The backend `/api/auth/me` PWTEST response lacked the role.
+- The issue was isolated to one page.
+
+### Resolution
+`getCurrentUser()` now normalizes stale PWTEST users to a complete manager preview shape, `staff.html` writes the complete preview user shape before `shared.js` loads, and fresh preview ports can open app pages directly with `?PWTEST=1` because the shared helper creates the preview user when localStorage is empty.
+
+### Bug Summary: Recent Transaction Helper Reversed Authoritative API Order (2026-07-13)
+The New Customer page did not reliably display the just-submitted transaction at the top of the recent list.
+
+### Validated Hypothesis
+`loadTodayData()` loaded `/api/transactions/recent`, but `getRecentTransactions()` then assumed the array was oldest-first and used `slice(-limit).reverse()`. Once the backend endpoint became newest-first and deterministic, this frontend reversal would reintroduce stale ordering.
+
+### Invalidated Hypotheses
+- The list failed only because the submit path skipped `loadTodayData()`.
+- CSS layout caused the transaction row to appear second.
+- Correction-mode filtering removed the newest row.
+
+### Resolution
+`getRecentTransactions()` now uses `filtered.slice(0, limit)` and keeps backend ordering unchanged. `__tests__/transaction.walkin-refresh.present.test.js` guards this contract.

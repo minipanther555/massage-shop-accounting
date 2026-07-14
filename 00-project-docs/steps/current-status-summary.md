@@ -5,6 +5,49 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ## Current Phase: 🟢 COMPLETED - Staff Roster Add Overwrites Bug Resolution
 
+## Current Phase Addendum (2026-07-09): Staff-Facing UI Rework
+
+### Booking Reservation MVP (2026-07-13)
+- Implementation and automated route/database verification are complete; the final in-app booking-create/arrival click-through is pending because the browser webview would not attach.
+- Future bookings are saved without payment or transaction revenue.
+- Staff may be requested or left unassigned for queue assignment at arrival.
+- Arrival restores saved details, requests payment, and atomically creates the transaction.
+- Requested-staff arrival adds one separate `฿50` payable credit; Today Staff ranking continues to use base transaction commission only.
+- The 15-minute pre-booking availability rule is server-authoritative.
+- Shop status visualization is implemented inside Daily Summary for this pass. Automatic post-booking queue movement remains deferred and must not be guessed.
+
+### Checkpoint Quality Review (2026-07-13)
+- Security hardening completed during checkpoint: production ignores PWTEST bypasses, booking routes require auth, CSRF bypass is non-production only, proxy trust is explicit via `TRUST_PROXY_HOPS`, login UI no longer displays seed passwords, and the local cookie jar placeholder contains no live cookies.
+- Two correctness follow-ups are tracked instead of guessed: BKG-004 for booking correction/credit/buffer hardening and DSS-008 for canonical busy-end timing in Current Shop Status.
+- Dependency audit still reports existing vulnerable packages; no dependency files were changed in this checkpoint.
+
+### Daily Summary Current Shop Status (2026-07-13)
+- Daily Summary now includes current shop status with busy/free state, next booking constraint, usable time before the 15-minute buffer, and today massage counts.
+- The Daily Summary financial area was compacted into Thai-first drill-down controls so the status section is easier to reach.
+- Checkpoint review found the status endpoint can still derive busy end from `timestamp + duration`; DSS-008 tracks moving that to canonical transaction times.
+
+### Phase Status: STAFF ROSTER UX PASS COMPLETE; NEW CUSTOMER PAGE NEXT
+The current interactive work is a staff-facing UI simplification pass. The first completed page is the daily staff roster, which was reworked to make the daily sequence obvious for Thai staff: choose a staff member, add them to today's list, reorder the list, remove mistakes, and add a new hire only when a name is missing.
+
+### Completed UX Work
+- Removed primary-page self-links from top navigation across the main pages.
+- Renamed the transaction entry route from internal "New Transaction" terminology to staff-facing `ลูกค้าใหม่ / New Customer`.
+- Converted navigation labels to Thai-first order.
+- Added a secondary Add New Staff workflow directly on the staff roster page so new hires can be added without leaving the daily roster flow.
+- Reworked the staff roster page visual hierarchy: compact nav, large Thai dropdown, dominant Thai add-to-list button, secondary Add New Staff action, larger row names/counts, visible drag hint, and Thai order/remove controls.
+- Verified the staff roster page in the in-app browser at the active 599px viewport and with focused Jest/nav tests.
+
+### Active Next Page
+The New Customer page rework in `web-app/transaction.html` / `web-app/transaction.ejs` is complete for this pass. It now applies the same principles as the staff roster page: Thai-first primary controls, reduced English prominence, obvious task sequence, and mobile/iPad usability without breaking cascading service/duration/payment logic or edit correction mode.
+
+### Completed New Customer UX Work
+- Replaced the old internal "New Transaction" hierarchy with a Thai-first `รับลูกค้าใหม่ / New Customer` page title.
+- Muted the navigation using the same compact pattern as the staff roster page.
+- Rebuilt the first viewport around the actual customer intake sequence: staff, location, service, duration, payment, optional customer contact, time, price, fee, and save.
+- Preserved all existing transaction form IDs and backend payload fields.
+- Converted JavaScript-generated placeholders, duration labels, empty states, and correction text to Thai so the page does not revert to English after initialization.
+- Verified in the in-app browser that service cascading, duration population, Bangkok-time calculation, and price/fee display still work.
+
 ### Phase Status: ADD OVERWRITES BUG RESOLVED
 **ADD OVERWRITES BUG RESOLVED**: A critical staff roster bug was identified where adding a second staff member would overwrite the first instead of appending, and labels showed gaps instead of contiguous 1...n numbering. The bug has been successfully identified, fixed, and verified.
 

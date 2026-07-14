@@ -2,7 +2,7 @@
 
 ## 1. Header Section
 
-*   **Overall Purpose:** This module is responsible for all interactions with the SQLite database. It encapsulates the database connection logic, schema initialization, and data access methods (`run`, `get`, `all`). It acts as a singleton data access layer for the entire backend application, ensuring that all other modules interact with the database through a consistent and centralized interface. It also defines the additive Today Staff business-day contracts: `business_days`, `today_staff`, `today_staff_planning`, `today_staff_audit_log`, and `transactions.business_day`.
+*   **Overall Purpose:** This module centralizes SQLite connection, additive schema initialization, and data access. It defines both Today Staff business-day state and reservation state through `bookings`, `booking_credits`, and `transactions.booking_id`.
 *   **End-to-End Data Flow:** When the application starts, the `server.js` module calls the `connect()` method of this module. This establishes a connection to the SQLite database file specified by the `DATABASE_PATH` environment variable. Upon connection, it automatically runs `initializeTables()`, which creates all necessary tables (`transactions`, `staff`, `services`, etc.) if they don't already exist and runs migrations to add any missing columns. Subsequently, route handlers (e.g., in `routes/transactions.js`) use the exported database instance to execute queries. For example, to create a new transaction, a route handler would call `database.run(INSERT_SQL, [params])`. To fetch data, it would use `database.get()` for a single row or `database.all()` for multiple rows.
 
 ## 2. Module API & Logic Breakdown
@@ -26,7 +26,7 @@ This module exports a single instance of the `Database` class.
 
 *   **`ensureIndexes()` method:**
     *   **Purpose:** To create idempotent indexes and uniqueness constraints required by Today Staff helper/planning queries.
-    *   **Logic Notes:** Creates the transaction business-day/staff lookup index, Today Staff business-day/position and staff indexes, the partial uniqueness constraint preventing duplicate active Today Staff rows for the same business day and staff member, planning status indexes, and audit-log lookup indexes.
+    *   **Logic Notes:** Creates Today Staff indexes, a recent-transaction lookup index on `(date, timestamp DESC, id DESC)`, booking status/start and staff/status/start indexes, and booking uniqueness constraints. Partial unique indexes prevent more than one active/corrected transaction and more than one active requested-staff credit per booking while still allowing a corrected transaction to replace an `EDITED` row.
 
 *   **`addMissingColumns()` method:**
     *   **Purpose:** To add new columns to existing tables without dropping them, allowing for schema evolution.
@@ -71,6 +71,9 @@ This module exports a single instance of the `Database` class.
             *   `today_staff_planning`: one planning status per business day and staff member.
             *   `today_staff_audit_log`: audit-safe planning action log.
             *   `transactions.business_day`: Bangkok business-day label used by helper earnings and reporting.
+            *   `bookings`: non-financial reservation schedule with optional requested staff and lifecycle status.
+            *   `booking_credits`: separate `฿50` payable-credit ledger linked to a completed booking transaction and excluded from Today Staff base-commission ranking.
+            *   `transactions.booking_id`: nullable reservation link with partial uniqueness across `ACTIVE` and `CORRECTED` rows, enforcing one current financial conversion per booking.
 
 ## 4. Bug & Resolution History
 

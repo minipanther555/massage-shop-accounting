@@ -166,9 +166,82 @@ class APIClient {
     return this.request('/reports/summary/today');
   }
 
+  async getUpcomingBookings() {
+    return this.request('/bookings/upcoming');
+  }
+
+  async getBooking(bookingId) {
+    return this.request(`/bookings/${encodeURIComponent(bookingId)}`);
+  }
+
+  async createBooking(bookingData) {
+    return this.request('/bookings', {
+      method: 'POST',
+      body: bookingData
+    });
+  }
+
+  async updateBookingStatus(bookingId, status) {
+    return this.request(`/bookings/${encodeURIComponent(bookingId)}/status`, {
+      method: 'POST',
+      body: { status }
+    });
+  }
+
+  async getBookingAvailability(masseuseName, massageEnd) {
+    const query = new URLSearchParams({
+      masseuse_name: masseuseName,
+      massage_end: massageEnd
+    });
+    return this.request(`/bookings/availability?${query.toString()}`);
+  }
+
   // Staff
   async getStaffRoster() {
     return this.request('/staff/roster');
+  }
+
+  async getCurrentShopStatus() {
+    return this.request('/staff/current-status');
+  }
+
+  async getTodayStaffHelper() {
+    return this.request('/staff/today/helper');
+  }
+
+  async getTodayStaffState() {
+    return this.request('/staff/today/state');
+  }
+
+  async addTodayStaff(staffIdOrData) {
+    const body = typeof staffIdOrData === 'object' ? staffIdOrData : { staff_id: staffIdOrData };
+    return this.request('/staff/today/add', {
+      method: 'POST',
+      body
+    });
+  }
+
+  async markTodayStaffDayOff(staffIdOrData) {
+    const body = typeof staffIdOrData === 'object' ? staffIdOrData : { staff_id: staffIdOrData };
+    return this.request('/staff/today/day-off', {
+      method: 'POST',
+      body
+    });
+  }
+
+  async restoreTodayStaffDayOff(staffIdOrData) {
+    const body = typeof staffIdOrData === 'object' ? staffIdOrData : { staff_id: staffIdOrData };
+    return this.request('/staff/today/restore', {
+      method: 'POST',
+      body
+    });
+  }
+
+  async reorderTodayStaff(orderedStaffIds) {
+    return this.request('/staff/today/reorder', {
+      method: 'PUT',
+      body: { ordered_staff_ids: orderedStaffIds }
+    });
   }
 
   async getAllStaff() {

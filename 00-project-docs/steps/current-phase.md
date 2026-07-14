@@ -1,4 +1,41 @@
-# Current Phase: ✅ COMPLETE - Revenue Card Removal & Bilingual Navigation Implementation
+# Current Phase: 🟡 BOOKING RESERVATION MVP + DAILY SUMMARY STATUS IMPLEMENTED; CHECKPOINT FOLLOW-UPS OPEN
+
+## 2026-07-13 Booking Addendum
+
+The New Customer page now supports a non-financial future reservation that becomes a transaction only when the customer arrives. Staff may be left unassigned for queue assignment on arrival, or a requested masseuse may be saved and receive a separate `฿50` credit after completed arrival conversion. That credit remains payable but is excluded from the previous-day commission ranking used to build Today Staff.
+
+The Daily Summary page now includes the current shop status surface that was originally discussed as a separate page: busy/free state, next booking constraints, usable time before the 15-minute buffer, and today massage counts are shown inside the existing Daily Summary workflow.
+
+### Checkpoint Review Follow-Ups
+- BKG-004 is open to harden requested-staff booking credit through correction flows and make booking-buffer enforcement independent of optional browser datetime fields.
+- DSS-008 is open to make Current Shop Status use canonical transaction start/end times so staff are not shown free too early.
+
+### Deferred Work
+- BKG-002 is superseded by the completed DSS Daily Summary status implementation for this pass.
+- BKG-003: automatic post-booking queue reordering, blocked until the manager supplies deterministic rules.
+
+# Previous Phase: ✅ STAFF ROSTER AND NEW CUSTOMER UX PASSES COMPLETE
+
+## 2026-07-09 Phase Addendum
+
+The current working phase has shifted from broad bilingual navigation to hands-on staff-facing workflow cleanup. The staff roster page is complete for this pass: navigation is secondary, the daily select/add flow is dominant, primary controls are Thai-only, and English helper text is moved outside buttons where useful for development context. The New Customer / transaction entry page is now also complete for this pass, following the same Thai-first, task-obvious pattern while preserving transaction behavior.
+
+### Completed in This Phase
+- Main navigation now omits current-page self-links.
+- Transaction entry is labeled as `ลูกค้าใหม่ / New Customer` instead of `New Transaction`.
+- Staff roster page was reworked around the first daily shop task.
+- Staff roster now includes an Add New Staff escape hatch on-page, but visually secondary to selecting existing staff.
+- Staff roster rows now show larger names, counts, Thai next/order/remove controls, and drag affordance.
+- Focused tests and browser verification passed after the rework.
+- New Customer page now uses a compact Thai-first title/nav, a dominant customer intake form, Thai labels/placeholders, price/fee cards, secondary correction controls, and muted daily summary/recent/expense panels.
+- Browser verification confirmed the location → service → duration cascade, Thai duration labels, calculated time, and price/fee updates still work after the UI pass.
+
+### Next Work Order
+Choose the next staff-facing workflow page or return to the existing backlog items in `current-steps.md`, such as payment type deletion or daily summary transaction display cleanup.
+
+---
+
+# Previous Phase: ✅ COMPLETE - Revenue Card Removal & Bilingual Navigation Implementation
 
 ## Phase Overview
 **MISSION ACCOMPLISHED**: Successfully completed the dual mission of removing sensitive "All-Time Revenue" data from the homepage and implementing comprehensive bilingual (EN/TH) navigation support across all pages. The system is now secure, accessible, and production-ready with comprehensive automated protection against regressions.
