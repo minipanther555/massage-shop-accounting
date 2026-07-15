@@ -8,6 +8,7 @@ const sessions = new Map();
 
 const receptionPermissions = ['view_staff', 'view_services', 'view_transactions', 'create_transactions', 'view_summary'];
 const branches = [
+  { key: 'top_thai_55', location_id: 55, location_name: 'Top Thai 55' },
   { key: 'top_thai_49', location_id: 49, location_name: 'Top Thai 49' },
   { key: 'top_thai_43', location_id: 43, location_name: 'Top Thai 43' },
   { key: 'top_thai_33', location_id: 33, location_name: 'Top Thai 33' },

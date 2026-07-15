@@ -79,11 +79,27 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 - `.nav-buttons`, `.nav-btn`, `.admin-nav .btn`: Turns large primary-color navigation blocks into compact secondary navigation controls.
 - `.section`, `.section-header`, `.section-content`: Uses restrained bordered panels and dark section headers for scan-friendly page areas.
 - `.dashboard-grid`, `.dashboard-card`, `.summary-card`: Makes dashboard metrics readable without card-heavy marketing styling.
+- `.home-dashboard-grid`, `.home-dashboard-card`, `.home-card-detail`, `.home-detail-row`: Makes Home dashboard cards compact and clickable while keeping detail rows scoped to the Home page.
+- `#admin-navigation`, `.home-admin-nav`: Keeps manager-only links hidden until role verification, then lets each link participate directly in the top navigation grid.
+- `.home-data-status` with `.is-loading`, `.is-error`, `.is-success`: Shows whether Home is loading, displaying saved fallback state, or displaying live API data.
 - `.btn-primary`, `.btn-secondary`, `.btn-danger`, `.btn-large`: Keeps primary actions green, secondary actions neutral, and destructive actions red.
 - `.form-group input`, `.form-group select`, `.modal-content input`, `.modal-content select`, `.modal-content textarea`: Makes remaining forms larger and easier to read while preserving existing control names and IDs.
-- `.transaction-log`, `.transaction-item`, `.payment-table`: Makes summary and activity tables quieter and more legible.
+- `.transaction-log`, `.transaction-item`, `.home-activity-row`, `.home-activity-detail`, `.payment-table`: Makes summary and activity tables quieter and more legible, with Home activity rows behaving as clickable table rows.
 - `.staff-grid`, `.services-grid`, `.payment-type-card`, `.modal-content`: Applies the same professional surface/border system to manager/admin pages.
 **Usage**: Applied broadly after the older global CSS and before responsive overrides. These rules are intentionally presentation-only and do not change any page behavior.
+
+#### Home Dashboard Drilldown Classes
+**Purpose**: Keeps the Home page short and interactive by making Today's Revenue, Active Staff, and Today's Expenses compact click targets with inline detail panels.
+**Classes**:
+- `.home-dashboard-grid`: Three-column Home dashboard grid that overrides older mobile one-column dashboard behavior down to normal tablet widths.
+- `.home-dashboard-card`: Compact metric card surface using the shared clickable summary-card treatment.
+- `.home-card-detail`: Inline detail panel revealed inside the selected Home card.
+- `.home-detail-row`: Two-column detail row for payment/transaction, staff, and expense details.
+- `.home-activity-row`: Button reset for clickable Recent Activity rows so they keep the table-row layout while exposing keyboard focus.
+- `.home-activity-detail`: Inline detail row inserted directly below the clicked Home Recent Activity row; only one detail row is open at a time.
+- `.home-payment-breakdown-row`, `.home-payment-detail`: Keyboard/click-expandable payment-method rows with matching transaction details.
+- `.home-show-more`: Compact right-aligned header control that alternates between expanding Recent Activity beyond five rows and returning it to five rows.
+**Usage**: Applied only by `index.html` and `index.ejs`. These classes are presentation-only; data remains loaded by `shared.js#loadData()` and rendered by Home page functions.
 
 #### Daily Summary Current Shop Status Classes
 **Purpose**: Renders the current shop status snapshot as a compact operational list inside Daily Summary.
@@ -247,3 +263,47 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 - Making the rows smaller had to make the text hard to read.
 
 **Resolution:** Added `.summary-compact-grid`, `.summary-card-button`, `.summary-card-detail`, `.summary-profit-*`, and final `.summary-status-*` overrides. The result keeps labels readable but removes unnecessary height and duplication.
+
+### Bug Summary: Home Dashboard Cards Were Static and Too Tall (2026-07-14)
+**Bug Summary:** Browser review at a 667px-wide Home viewport showed Today's Revenue, Active Staff, and Today's Expenses stacked as tall static cards, pushing manager/admin controls below the fold and providing no drilldown affordance.
+
+**Validated Hypothesis:** The Home page reused broad `.dashboard-grid` / `.dashboard-card` rules and an older max-width rule forced a one-column grid under 768px. The page already had the loaded data needed for details.
+
+**Invalidated Hypotheses:**
+- Daily Summary was the only page that should use compact drilldown cards.
+- The Home page needed backend/API expansion.
+
+**Resolution:** Added Home-scoped compact drilldown classes and responsive overrides. At the 667px browser viewport, the three Home cards render in one row and open a full-width detail panel when selected.
+
+### Bug Summary: Home Manager Navigation and Data State Were Separated or Ambiguous (2026-07-14)
+**Bug Summary:** Four manager links sat in a large administration section below the dashboard, and Home gave no visible distinction between live API state and local fallback data.
+
+**Validated Hypothesis:** A hidden wrapper using `display: contents` can preserve manager-only gating while allowing its child links to become ordinary top-grid items. A small Home status pill can expose loading/live/error state without adding another large card.
+
+**Resolution:** Added `#admin-navigation`, `.home-admin-nav`, and `.home-data-status` state classes. Browser smoke at 630x998 confirmed all seven manager links in the top grid and a compact live-data status above the dashboard.
+
+### Bug Summary: Current User Text Looked Like Random Header Debug Output (2026-07-14)
+**Bug Summary:** Browser review of the New Customer page showed `manager (pwtest)` as loose gray text under the nav. A previous fix had corrected the missing role, but the remaining styling still made the auth identity look accidental.
+
+**Validated Hypothesis:** The page needed a shared user badge style. The auth data was valid, but the unstyled `#current-user` span inherited nav layout space and looked like body text.
+
+**Invalidated Hypotheses:**
+- The text was generated by transaction data loading.
+- The whole nav header needed to be removed.
+- PWTEST auth should display the raw username for staff.
+
+**Resolution:** Added shared `#current-user` badge styling, a hidden state, and admin-header color overrides. Mobile nav keeps the badge on its own row without forcing a large empty block.
+
+### Bug Summary: Booking Credit Needed A Compact Cross-Page Treatment (2026-07-14)
+**Bug Summary:** The first credit treatment was a large intake card that competed with the primary submit action; removing it entirely made the paid credit invisible.
+
+**Validated Hypothesis:** Credit is persisted transaction metadata and belongs as a small badge in list rows, with a compact breakdown line where staff-pay totals are shown.
+
+**Resolution:** Added `.transaction-booking-credit-badge` and `.transaction-fee-breakdown`. The badge is inline, Thai-first, and remains readable in the 630px transaction table without changing global card/button styles.
+
+### Bug Summary: Home Recent Activity Needed Clickable Booking Rows (2026-07-14)
+**Bug Summary:** Home Recent Activity could not show a saved Booking-mode reservation because the activity list only rendered transaction and expense rows, and none of the rows opened details.
+
+**Validated Hypothesis:** The missing behavior was in the Home renderer, not in generic table CSS. Home needed a button-style row that preserved `.transaction-item` grid layout and a compact inline detail surface below the list.
+
+**Resolution:** Added `.home-activity-row` and `.home-activity-detail` so activity rows remain visually consistent while becoming keyboard/click accessible and revealing escaped details directly below the clicked row with toggle collapse behavior.

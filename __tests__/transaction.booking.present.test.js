@@ -16,11 +16,21 @@ describe('New Customer booking workflow contracts', () => {
     expect(source).toContain('id="upcoming-bookings"');
     expect(source).toContain("setTransactionMode('booking')");
     expect(source).toContain('loadBookingForArrival');
+    expect(source).toContain('markBookingNoShow');
+    expect(source).toContain("api.updateBookingStatus(bookingId, 'NO_SHOW')");
+    expect(source).toContain('ไม่มา (No-show)');
     expect(source).toContain('requested_masseuse_name: selectedMasseuse || null');
     expect(source).toContain('escapeBookingText');
     expect(source).not.toContain('id="booking-credit-card"');
-    expect(source).not.toContain('+฿50');
     expect(source).not.toContain('ค่าจอง ฿50');
+    expect(source).toContain('transaction-booking-credit-badge');
+    expect(source).toContain('จองพนักงาน +฿50');
+    expect(source).toContain('requestedStaffBooking');
+    expect(source).toContain('currentBaseMasseuseFee');
+    expect(source).toContain('bookingFee');
+    expect(source).toContain("`฿${currentBaseMasseuseFee.toFixed(2)} + ฿${bookingFee.toFixed(2)}`");
+    expect(source).not.toContain('เลือกพนักงานนอกคิว จึงเปลี่ยนเป็นรายการจอง');
+    expect(source).not.toContain("setTransactionMode('booking', { preserveMasseuse: true })");
     expect(source).toContain('ลูกค้า:');
     expect(source).toContain('บริการ:');
     expect(source).toContain('พนักงาน:');
@@ -38,5 +48,31 @@ describe('New Customer booking workflow contracts', () => {
     const helperRoute = source.slice(source.indexOf("router.get('/today/helper'"));
     expect(helperRoute).toContain('t.masseuse_fee');
     expect(helperRoute).not.toContain('booking_credits');
+  });
+
+  test('transaction reads expose active booking credit without changing base fee', () => {
+    const route = read('backend/routes/transactions.js');
+    const shared = read('web-app/shared.js');
+    expect(route).toContain('booking_credit_amount');
+    expect(route).toContain("bc.status = 'ACTIVE'");
+    expect(shared).toContain('bookingCredit: Number(t.booking_credit_amount || 0)');
+  });
+
+  test.each(templates)('%s selects the next queue member from live current status and excludes booking-constrained staff', (template) => {
+    const source = read(template);
+    expect(source).toContain('appData.currentShopStatus && Array.isArray(appData.currentShopStatus.staff)');
+    expect(source).toContain("current_state === 'available'");
+    expect(source).toContain('staff.walk_in_priority');
+    expect(source).not.toContain("String(staff.queue_status || '').toLowerCase() === 'next'");
+    expect(source).toContain('getNextInLineFromStaff');
+    expect(source).toContain('masseuse-availability-message');
+    expect(source).toContain('ตอนนี้พนักงานทุกคนไม่ว่าง');
+  });
+
+  test.each(templates)('%s disables unavailable staff for Walk-in mode', (template) => {
+    const source = read(template);
+    expect(source).toContain('isMasseuseUnavailableForWalkIn');
+    expect(source).toContain('option.disabled = transactionMode !== \'booking\'');
+    expect(source).toContain('refreshMasseuseAvailabilityOptions');
   });
 });

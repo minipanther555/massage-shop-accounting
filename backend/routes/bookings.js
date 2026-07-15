@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const express = require('express');
 
 const database = require('../models/database');
@@ -6,15 +5,13 @@ const {
   BOOKING_BUFFER_MINUTES,
   calculateScheduledEnd,
   canFinishBeforeBooking,
+  createBookingId,
   hasBookingConflict,
+  normalizeBookingStart,
   parseTimestamp
 } = require('../services/booking-service');
 
 const router = express.Router();
-
-function createBookingId() {
-  return `BK-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-}
 
 router.get('/upcoming', async (req, res) => {
   try {
@@ -95,10 +92,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'customer_contact must be 100 characters or fewer' });
     }
 
-    const startTimestamp = parseTimestamp(scheduledStart, 'scheduled_start');
-    if (startTimestamp <= Date.now()) {
-      return res.status(400).json({ error: 'Booking time must be in the future' });
-    }
+    const normalizedStart = normalizeBookingStart(scheduledStart);
 
     const service = await database.get(
       `SELECT id FROM services
@@ -115,7 +109,7 @@ router.post('/', async (req, res) => {
       if (!staff) return res.status(400).json({ error: 'Requested staff member is not active' });
     }
 
-    const scheduledEnd = calculateScheduledEnd(scheduledStart, Number(duration));
+    const scheduledEnd = calculateScheduledEnd(normalizedStart, Number(duration));
     if (requestedMasseuseName) {
       const existingBookings = await database.all(
         `SELECT scheduled_start, scheduled_end
@@ -123,7 +117,7 @@ router.post('/', async (req, res) => {
          WHERE requested_masseuse_name = ? AND status = 'BOOKED'`,
         [requestedMasseuseName]
       );
-      if (hasBookingConflict(scheduledStart, scheduledEnd, existingBookings)) {
+      if (hasBookingConflict(normalizedStart, scheduledEnd, existingBookings)) {
         return res.status(409).json({
           error: 'Requested staff member does not have the required 15-minute gap'
         });
@@ -138,7 +132,7 @@ router.post('/', async (req, res) => {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'BOOKED')`,
       [
         bookingId,
-        scheduledStart,
+        normalizedStart,
         scheduledEnd,
         serviceType,
         location,

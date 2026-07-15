@@ -12,10 +12,12 @@ The index page serves as the primary entry point for the massage shop POS system
 **User Journey:**
 1. **Entry Point:** User accesses root URL (`/` or `index.html`)
 2. **Authentication Check:** System verifies user login status
-3. **Dashboard Population:** JavaScript calls `loadData()` to load services, payment methods, roster, recent transactions, current shop status, and expenses before rendering dashboard cards
-4. **Navigation Display:** Bilingual navigation buttons render with Thai first and English second
-5. **User Interaction:** User clicks navigation buttons to access different modules
-6. **Data Updates:** Dashboard refreshes automatically with latest information
+3. **Dashboard Population:** JavaScript calls `refreshHomeData()`, which marks the page loading, calls `loadData()` for services, payment methods, roster, recent transactions, current shop status, and expenses, renders all widgets, then marks the source as live or fallback/error
+4. **Dashboard Drilldown:** User taps a compact dashboard card to open an inline detail panel for today's revenue, active staff, or today's expenses; the panel renders from already loaded API-backed state.
+5. **Recent Activity Drilldown:** Home also loads upcoming bookings, merges them with current transactions and expenses, and lets the user tap any activity row to inspect details inline; Show more expands the visible activity window beyond the initial five rows.
+6. **Navigation Display:** Bilingual navigation buttons render with Thai first and English second; manager-only administration links occupy the same top navigation grid and remain hidden for non-manager users
+7. **User Interaction:** User clicks navigation buttons to access different modules
+8. **Data Updates:** Dashboard refreshes automatically with latest information and refreshes any currently open drilldown panel
 
 **Data Flow:**
 - **Input:** User authentication, navigation clicks, dashboard refresh requests
@@ -27,16 +29,27 @@ The index page serves as the primary entry point for the massage shop POS system
 ### Dashboard Cards
 **Purpose:** Display key operational metrics in real-time  
 **Rendering:** Automatically populated via JavaScript API calls  
-**Current Cards:** 3 cards (reduced from 4 after revenue card removal)
-- Today's Revenue
-- Active Staff  
-- Today's Expenses
+**Current Cards:** 3 compact clickable cards (reduced from 4 after all-time revenue card removal)
+- Today's Revenue: opens today's payment breakdown and recent transaction detail.
+- Active Staff: opens current staff status detail from `appData.currentShopStatus.staff` when available, falling back to loaded roster state.
+- Today's Expenses: opens today's expense rows from `appData.expenses`.
 
 **JavaScript Functions:**
 - `loadData()` - Loads API-backed shared state before homepage widgets render
+- `refreshHomeData()` - Owns the Home loading -> render -> live/error sequence for initial load and 30-second refresh
+- `setHomeDataStatus()` - Renders explicit loading, API error/fallback, and live-success states
 - `updateDashboard()` - Fetches and displays current metrics
 - `updateRecentActivity()` - Renders recent transactions/expenses from loaded shared state with escaped labels
-- `updatePaymentBreakdown()` - Renders payment breakdown from the server summary with escaped payment names
+- `updatePaymentBreakdown()` / `toggleHomePaymentBreakdown()` - Renders expandable payment-method rows and the matching transactions
+- `setupHomeDashboardCards()` - Binds each dashboard card once so cards remain interactive after auto-refresh
+- `toggleHomeDetail()` - Opens one card detail panel at a time and marks sibling cards as temporarily hidden
+- `renderHomeRevenueDetail()` - Renders escaped payment and transaction detail rows
+- `renderHomeStaffDetail()` - Renders receptionist-readable active staff status/count rows, including massage start/end, the 15-minute buffer, and the next time the staff member can accept a new customer
+- `getHomeStaffStatusMessage()` - Converts backend status values into plain-language Thai messages without exposing internal states such as `booking_buffer`
+- `renderHomeExpensesDetail()` - Renders escaped expense detail rows
+- `parseHomeActivityTimestamp()` - Normalizes booking, transaction, and expense timestamps before Home mixes rows in Recent Activity
+- `toggleHomeActivityDetail()` / `renderHomeActivityDetail()` - Toggle one escaped detail row directly below the clicked transaction, booking, or expense row; clicking again collapses it
+- `formatBookingActivityTime()` - Formats booking schedule timestamps for the activity detail panel
 - `refreshData()` - Updates dashboard with latest information
 
 ### Primary Navigation
@@ -51,9 +64,9 @@ Each page omits its own route from top navigation. For example, the homepage omi
 
 **Implementation:** Uses centralized `NAV_LABELS` registry from `shared.js`
 
-### Admin Section
-**Purpose:** Quick access to administrative functions  
-**Structure:** Secondary navigation with admin-specific labels  
+### Manager Navigation
+**Purpose:** Quick access to administrative functions without forcing managers to scroll below the dashboard
+**Structure:** Manager-only links inside the same top `.nav-buttons` grid, exposed with `display: contents` so each link remains an individual grid item
 **Admin Items:**
 - 💰 ติดตามการจ่ายเงิน / Payday Tracking (staff administration)
 - 💰 บริการและราคา / Services & Pricing (service management)
@@ -90,6 +103,8 @@ Each page omits its own route from top navigation. For example, the homepage omi
 **Output Data Contracts:**
 - Navigation links to other pages
 - Dashboard metric displays
+- Inline dashboard detail panels with escaped transaction, payment, staff, and expense labels
+- Clickable Recent Activity rows backed by current transactions, upcoming bookings, and expenses, with escaped detail inserted directly below the selected row and collapsed on a second click; the compact header control alternates between Show more and Show less
 - User authentication status
 
 ## 🐛 Bug & Resolution History
@@ -139,6 +154,67 @@ Each page omits its own route from top navigation. For example, the homepage omi
 - The static and EJS pages intentionally differed.
 
 **Resolution:** Both `index.html` and `index.ejs` call `loadData()` before initial render and before each 30-second refresh, escape dynamic recent-activity and payment labels, and are guarded by `__tests__/homepage.contract.present.test.js`.
+
+### Interactive Home Dashboard Drilldowns (2026-07-14)
+**Bug Summary:** Browser review found the Home dashboard cards were static, too tall at a 667px-wide viewport, and left detail-seeking users with no direct way to inspect today's revenue, staff, or expense details from the Home page.
+
+**Validated Hypothesis:** The page had enough API-backed state after `loadData()`, but the cards were plain static `.dashboard-card` blocks and the global mobile dashboard rule stacked them vertically.
+
+**Invalidated Hypotheses:**
+- A backend endpoint was required for this pass.
+- The details needed a modal or separate page.
+- The existing tall one-column card layout was appropriate for repeated receptionist use.
+
+**Resolution:** Converted the three Home cards into compact accessible buttons with inline drilldown panels, reused the existing Daily Summary compact-card pattern, added Home-scoped responsive CSS so the three cards share one row at the 667px viewport, and expanded the homepage contract test.
+
+### Home Navigation and Live Recent Activity Follow-Up (2026-07-14)
+**Bug Summary:** Manager navigation remained in a separate block below the dashboard, and Home could omit newly entered massages or show an empty Revenue drilldown even when the API had returned transactions.
+
+**Validated Hypothesis:** Mixed `Z` / `+07:00` timestamp strings were previously ordered lexically in `/api/transactions/recent`, while the Revenue drilldown additionally compared mapped JavaScript `Date` objects directly with a `YYYY-MM-DD` string. The backend ordering was corrected by BKG-005; the remaining Home comparison always rejected dated rows.
+
+**Invalidated Hypotheses:**
+- Transaction creation was failing.
+- Home needed a new backend endpoint or schema change.
+- The admin links needed to remain a separate section for authorization.
+
+**Resolution:** Preserve BKG-005's normalized backend ordering, trust the already date-scoped `appData.transactions` array on Home, consolidate manager links into the top navigation, and display explicit loading/live/fallback state. Browser verification at 630x998 confirmed seven top navigation links, live API state, populated Recent Activity, and eight Revenue-detail transaction rows.
+
+### Requested-Staff Credit Annotation In Recent Activity (2026-07-14)
+**Bug Summary:** Home Recent Activity showed the service and amount but did not reveal that a transaction carried the separate requested-staff `฿50` pay credit.
+
+**Validated Hypothesis:** `shared.js` now provides `bookingCredit`, so Home can reuse the same compact transaction annotation without changing its data source.
+
+**Resolution:** Transaction activity entries carry `bookingCredit` and render `จองพนักงาน +฿50` only when positive; expense activity is unchanged.
+
+### Booking Rows Missing From Home Recent Activity (2026-07-14)
+**Bug Summary:** A saved Booking-mode reservation showed a success message on New Customer but did not appear in Home Recent Activity, and existing activity rows could not be clicked for detail.
+
+**Validated Hypothesis:** Booking mode writes a non-financial `BOOKED` row through `/api/bookings`, while Home Recent Activity only merged transactions and expenses. The renderer also created inert `div.transaction-item` rows with no click handler or detail surface.
+
+**Invalidated Hypotheses:**
+- The Booking submit failed.
+- `/api/transactions/recent` ordering was still the blocker.
+- A schema change was required.
+
+**Resolution:** Home now fetches upcoming bookings during `refreshHomeData()`, merges booking rows with transaction and expense activity by normalized activity time, renders each activity row as a clickable button, and inserts one escaped detail row directly below the selected transaction, booking, or expense row; clicking the same row collapses it and opening another closes the prior detail.
+
+### Future Booking Mistakenly Shown As Revenue (2026-07-15)
+**Bug Summary:** Home Recent Activity showed a future reservation such as `Coconut lovers - coconut oil massage Booking` as green `+฿50.00`, although the customer had not arrived or paid.
+
+**Validated Hypothesis:** `updateRecentActivity()` explicitly assigned `amount: 50` to every booking row before the renderer formatted it as a positive financial amount. The local database contained the corresponding `BOOKED` reservation but no transaction or `booking_credits` row; the booking route is intentionally non-financial.
+
+**Invalidated Hypotheses:** Booking insertion did not write the wrong payment amount. The `฿50` value is a deferred requested-staff credit created only by arrival conversion, not reservation revenue.
+
+**Resolution:** Future booking activity now carries a null amount and renders `ยังไม่ชำระ` in a neutral color. The inline booking detail retains the explanation that any eligible `฿50` credit is created when the customer arrives and pays. `index.html` and `index.ejs` remain mirrored and are guarded by the homepage contract test.
+
+### Internal Staff Status Labels Were Not Receptionist-Friendly (2026-07-15)
+**Bug Summary:** Home Active Staff detail exposed the internal `booking_buffer` state and showed only a bare time such as `13:27`, forcing the receptionist to infer whether that was a massage end time or a free-again time.
+
+**Validated Hypothesis:** `renderHomeStaffDetail()` rendered `current_state`, `busy_until`, or the next booking start as one compact status string, while the status API already supplied the start, end, free-after-buffer, booking interval, and buffer duration.
+
+**Invalidated Hypotheses:** The backend status calculation and 15-minute rule were not the problem; this was a presentation and terminology defect.
+
+**Resolution:** Home now says when a massage starts and ends, explicitly names the 15-minute waiting period, and states when the staff member can accept a new customer. Future booking-buffer rows show the booking interval and calculate the free-again time as booking end plus the configured buffer. Internal state names are no longer shown to receptionists.
 
 ## 🔒 Security Considerations
 

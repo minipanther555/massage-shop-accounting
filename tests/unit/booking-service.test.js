@@ -3,6 +3,7 @@
 const {
   BOOKING_CREDIT_AMOUNT,
   calculateScheduledEnd,
+  normalizeBookingStart,
   hasBookingConflict,
   canFinishBeforeBooking,
   isBookingCreditEligible
@@ -12,6 +13,14 @@ describe('booking reservation business rules', () => {
   test('calculates the scheduled end from an offset-aware start', () => {
     expect(calculateScheduledEnd('2026-07-13T18:00:00+07:00', 90))
       .toBe('2026-07-13T19:30:00+07:00');
+  });
+
+  test('accepts the current minute and rejects a materially stale start', () => {
+    const nowMs = Date.parse('2026-07-14T10:20:42.000Z');
+    expect(normalizeBookingStart('2026-07-14T10:20:00+00:00', nowMs))
+      .toBe('2026-07-14T10:20:42+00:00');
+    expect(() => normalizeBookingStart('2026-07-14T10:17:59+00:00', nowMs))
+      .toThrow('Booking time cannot be in the past');
   });
 
   test('enforces the 15-minute gap before a requested booking', () => {
@@ -38,7 +47,7 @@ describe('booking reservation business rules', () => {
     )).toBe(true);
   });
 
-  test('awards the fixed credit only for a requested-staff arrival', () => {
+  test('awards the fixed credit for any paid booking-mode arrival with serving staff', () => {
     expect(BOOKING_CREDIT_AMOUNT).toBe(50);
     expect(isBookingCreditEligible(
       { status: 'BOOKED', requested_masseuse_name: 'May' },
@@ -47,6 +56,10 @@ describe('booking reservation business rules', () => {
     expect(isBookingCreditEligible(
       { status: 'BOOKED', requested_masseuse_name: null },
       'May'
+    )).toBe(true);
+    expect(isBookingCreditEligible(
+      { status: 'BOOKED', requested_masseuse_name: 'May' },
+      ''
     )).toBe(false);
     expect(isBookingCreditEligible(
       { status: 'NO_SHOW', requested_masseuse_name: 'May' },

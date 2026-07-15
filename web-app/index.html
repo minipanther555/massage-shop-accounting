@@ -29,62 +29,63 @@
                     <span class="label-th">📊 สรุปรายวัน</span>
                     <span class="label-en">📊 Daily Summary</span>
                 </a>
+                <div id="admin-navigation" style="display: none;">
+                    <a href="/api/admin/staff-page" class="nav-btn home-admin-nav">
+                        <span class="label-th">💰 ติดตามการจ่ายเงิน</span>
+                        <span class="label-en">💰 Payday Tracking</span>
+                    </a>
+                    <a href="/api/admin/services-page" class="nav-btn home-admin-nav">
+                        <span class="label-th">💰 บริการและราคา</span>
+                        <span class="label-en">💰 Services &amp; Pricing</span>
+                    </a>
+                    <a href="/api/admin/reports-page" class="nav-btn home-admin-nav">
+                        <span class="label-th">📊 รายงานการเงิน</span>
+                        <span class="label-en">📊 Financial Reports</span>
+                    </a>
+                    <a href="/api/admin/payment-types-page" class="nav-btn home-admin-nav">
+                        <span class="label-th">💳 ประเภทการชำระเงิน</span>
+                        <span class="label-en">💳 Payment Types</span>
+                    </a>
+                </div>
             <div class="user-info" id="user-info" style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
                 <span id="current-user" style="color: #666; font-size: 14px;"></span>
             </div>
         </div>
 
+        <div class="home-data-status is-loading" id="home-data-status" role="status" aria-live="polite">กำลังโหลดข้อมูล / Loading live data…</div>
+
         <!-- Dashboard Overview -->
-        <div class="dashboard-grid">
-            <div class="dashboard-card">
+        <div class="dashboard-grid home-dashboard-grid" id="home-dashboard-grid">
+            <button class="dashboard-card home-dashboard-card summary-card-button" type="button" data-home-card="revenue" aria-expanded="false" aria-controls="home-revenue-detail">
                 <h3>Today's Revenue</h3>
                 <div class="big-number" id="today-revenue">฿0.00</div>
                 <div class="subtitle" id="today-transactions">0 transactions</div>
-            </div>
+                <div class="summary-card-hint">แตะเพื่อดูรายละเอียด</div>
+                <div class="summary-card-detail home-card-detail" id="home-revenue-detail" hidden></div>
+            </button>
             
-            <div class="dashboard-card">
+            <button class="dashboard-card home-dashboard-card summary-card-button" type="button" data-home-card="staff" aria-expanded="false" aria-controls="home-staff-detail">
                 <h3>Active Staff</h3>
                 <div class="big-number" id="active-staff">0</div>
                 <div class="subtitle" id="available-staff">0 available</div>
-            </div>
+                <div class="summary-card-hint">แตะเพื่อดูรายละเอียด</div>
+                <div class="summary-card-detail home-card-detail" id="home-staff-detail" hidden></div>
+            </button>
             
-            <div class="dashboard-card">
+            <button class="dashboard-card home-dashboard-card summary-card-button" type="button" data-home-card="expenses" aria-expanded="false" aria-controls="home-expenses-detail">
                 <h3>Today's Expenses</h3>
                 <div class="big-number" id="today-expenses">฿0.00</div>
                 <div class="subtitle" id="expense-count">0 expenses</div>
-            </div>
+                <div class="summary-card-hint">แตะเพื่อดูรายละเอียด</div>
+                <div class="summary-card-detail home-card-detail" id="home-expenses-detail" hidden></div>
+            </button>
             
 
-        </div>
-
-        <!-- Admin Access (Manager Only) -->
-        <div class="section" id="admin-section" style="display: none;">
-            <div class="section-header">ADMINISTRATION (Manager Only)</div>
-            <div class="section-content">
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                                            <a href="/api/admin/staff-page" class="btn btn-primary btn-large">
-                            <span class="label-th">💰 ติดตามการจ่ายเงิน</span>
-                            <span class="label-en">💰 Payday Tracking</span>
-                        </a>
-                        <a href="/api/admin/services-page" class="btn btn-secondary btn-large">
-                            <span class="label-th">💰 บริการและราคา</span>
-                            <span class="label-en">💰 Services & Pricing</span>
-                        </a>
-                        <a href="/api/admin/reports-page" class="btn btn-secondary btn-large">
-                            <span class="label-th">📊 รายงานการเงิน</span>
-                            <span class="label-en">📊 Financial Reports</span>
-                        </a>
-                        <a href="/api/admin/payment-types-page" class="btn btn-secondary btn-large">
-                            <span class="label-th">💳 ประเภทการชำระเงิน</span>
-                            <span class="label-en">💳 Payment Types</span>
-                        </a>
-                </div>
-            </div>
         </div>
 
         <!-- Recent Activity -->
         <div class="section">
-            <div class="section-header">RECENT ACTIVITY</div>
+                <div class="section-header home-section-header"><span>RECENT ACTIVITY</span><button type="button" class="home-show-more" id="home-show-more" hidden>Show more</button></div>
             <div class="section-content">
                 <div class="transaction-log" id="recent-activity">
                     <div class="transaction-item">
@@ -118,6 +119,10 @@
                 .replace(/'/g, '&#39;');
         }
 
+            let homeRecentBookings = [];
+            let homeRecentActivity = [];
+            let homeRecentActivityLimit = 5;
+
         document.addEventListener('DOMContentLoaded', async function() {
             // Check authentication first
             if (!requireAuth()) {
@@ -127,64 +132,304 @@
             // Display current user and show admin section for managers
             const user = getCurrentUser();
             if (user) {
-                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                renderCurrentUser();
                 
-                // Show admin section only for managers
+                // Show manager-only links inside the top navigation.
                 if (user.role === 'manager') {
-                    document.getElementById('admin-section').style.display = 'block';
+                    document.getElementById('admin-navigation').style.display = 'contents';
                 }
             }
 
-            await loadData();
-            
-            await updateDashboard();
-            await updateRecentActivity();
-            await updatePaymentBreakdown();
+            await refreshHomeData();
+            setupHomeDashboardCards();
             setInterval(async () => {
-                await loadData();
-                await updateDashboard();
-                await updateRecentActivity();
-                await updatePaymentBreakdown();
+                await refreshHomeData();
             }, 30000);
         });
+
+        function setHomeDataStatus(state) {
+            const status = document.getElementById('home-data-status');
+            const messages = {
+                loading: 'กำลังโหลดข้อมูล / Loading live data…',
+                error: 'โหลดข้อมูลล่าสุดไม่ได้ / Live data unavailable; showing saved fallback data',
+                success: 'ข้อมูลล่าสุด / Live data'
+            };
+            status.className = `home-data-status is-${state}`;
+            status.textContent = messages[state];
+        }
+
+        async function refreshHomeData() {
+            setHomeDataStatus('loading');
+            const loadedFromApi = await loadData();
+            try {
+                homeRecentBookings = await api.getUpcomingBookings();
+            } catch (error) {
+                console.error('Failed to load bookings for Home Recent Activity:', error);
+                homeRecentBookings = [];
+            }
+            await updateDashboard();
+            updateRecentActivity();
+            await updatePaymentBreakdown();
+            if (loadedFromApi) {
+                setHomeDataStatus('success');
+            } else {
+                setHomeDataStatus('error');
+            }
+        }
 
         async function updateDashboard() {
             const summary = await getTodaySummary();
             document.getElementById('today-revenue').textContent = `฿${summary.todayRevenue.toFixed(2)}`;
             document.getElementById('today-transactions').textContent = `${summary.todayCount} transaction${summary.todayCount !== 1 ? 's' : ''}`;
             
-            const activeStaff = appData.roster.filter(m => m.name && m.status !== 'Off').length;
-            const availableStaff = appData.roster.filter(m => m.name && (m.status === 'Available' || m.status === 'Next')).length;
+            const staffStatusRows = getHomeStaffStatusRows();
+            const activeStaff = staffStatusRows.filter(staff => (staff.masseuse_name || staff.name) && (staff.status || staff.current_state) !== 'Off').length;
+            const availableStaff = staffStatusRows.filter(staff => ['Available', 'Next', 'available', 'next'].includes(staff.status || staff.current_state)).length;
             document.getElementById('active-staff').textContent = activeStaff;
             document.getElementById('available-staff').textContent = `${availableStaff} available`;
             
             document.getElementById('today-expenses').textContent = `฿${summary.todayExpenses.toFixed(2)}`;
             document.getElementById('expense-count').textContent = `${appData.expenses.length} expense${appData.expenses.length !== 1 ? 's' : ''}`;
 
+            refreshOpenHomeDetail();
+        }
+
+        function setupHomeDashboardCards() {
+            document.querySelectorAll('[data-home-card]').forEach(card => {
+                if (card.dataset.homeCardBound === 'true') {
+                    return;
+                }
+                card.dataset.homeCardBound = 'true';
+                card.addEventListener('click', function(event) {
+                    if (event.target.closest('.home-card-detail')) {
+                        return;
+                    }
+                    toggleHomeDetail(card.dataset.homeCard);
+                });
+            });
+        }
+
+        function toggleHomeDetail(cardName) {
+            const grid = document.getElementById('home-dashboard-grid');
+            const cards = Array.from(document.querySelectorAll('[data-home-card]'));
+            const selected = cards.find(card => card.dataset.homeCard === cardName);
+            if (!selected) {
+                return;
+            }
+
+            const isOpen = selected.classList.contains('is-open');
+            cards.forEach(card => {
+                const detail = document.getElementById(card.getAttribute('aria-controls'));
+                card.classList.remove('is-open', 'is-dimmed');
+                card.setAttribute('aria-expanded', 'false');
+                if (detail) {
+                    detail.hidden = true;
+                    detail.innerHTML = '';
+                }
+            });
+            grid.classList.remove('has-open-detail');
+
+            if (isOpen) {
+                return;
+            }
+
+            grid.classList.add('has-open-detail');
+            cards.forEach(card => {
+                if (card === selected) {
+                    card.classList.add('is-open');
+                    card.setAttribute('aria-expanded', 'true');
+                } else {
+                    card.classList.add('is-dimmed');
+                }
+            });
+            renderHomeDetail(cardName);
+        }
+
+        function refreshOpenHomeDetail() {
+            const openCard = document.querySelector('[data-home-card].is-open');
+            if (openCard) {
+                renderHomeDetail(openCard.dataset.homeCard);
+            }
+        }
+
+        function renderHomeDetail(cardName) {
+            if (cardName === 'revenue') {
+                renderHomeRevenueDetail();
+            } else if (cardName === 'staff') {
+                renderHomeStaffDetail();
+            } else if (cardName === 'expenses') {
+                renderHomeExpensesDetail();
+            }
+        }
+
+        function renderHomeRevenueDetail() {
+            const detail = document.getElementById('home-revenue-detail');
+            const transactions = getRecentTransactions(8);
+            const summaryRows = transactions.map(transaction => `
+                <div class="home-detail-row">
+                    <span>${escapeHomeHtml(transaction.service)}</span>
+                    <strong>${escapeHomeHtml(transaction.masseuse)} · ฿${Number(transaction.paymentAmount || 0).toFixed(2)}</strong>
+                </div>
+            `).join('');
+
+            const paymentRows = Object.entries(getTodaySummarySync().paymentBreakdown || {})
+                .sort(([, a], [, b]) => b.revenue - a.revenue)
+                .map(([method, data]) => `
+                    <div class="home-detail-row">
+                        <span>${escapeHomeHtml(method)}</span>
+                        <strong>${data.count} · ฿${Number(data.revenue || 0).toFixed(2)}</strong>
+                    </div>
+                `).join('');
+
+            detail.innerHTML = `
+                <div class="summary-detail-title">
+                    <span class="label-th">รายได้วันนี้</span>
+                    <span class="label-en">Today's revenue detail</span>
+                </div>
+                ${paymentRows || '<div class="empty-state">No payments processed today</div>'}
+                <div class="summary-detail-title">
+                    <span class="label-th">รายการล่าสุด</span>
+                    <span class="label-en">Recent transactions</span>
+                </div>
+                ${summaryRows || '<div class="empty-state">No transactions today</div>'}
+            `;
+            detail.hidden = false;
+        }
+
+        function renderHomeStaffDetail() {
+            const detail = document.getElementById('home-staff-detail');
+            const statusRows = getHomeStaffStatusRows();
+            const rows = statusRows
+                .filter(staff => staff.masseuse_name || staff.name)
+                .map(staff => {
+                    const name = escapeHomeHtml(staff.masseuse_name || staff.name);
+                    const count = Number(staff.today_massages || staff.todayMassages || 0);
+                    const statusMessage = getHomeStaffStatusMessage(staff);
+                    return `
+                        <div class="home-detail-row">
+                            <span>${name}</span>
+                            <strong>${statusMessage}<br><span class="home-staff-count">นวดวันนี้ ${count} ครั้ง</span></strong>
+                        </div>
+                    `;
+                }).join('');
+
+            detail.innerHTML = `
+                <div class="summary-detail-title">
+                    <span class="label-th">พนักงานวันนี้</span>
+                    <span class="label-en">Active staff detail</span>
+                </div>
+                ${rows || '<div class="empty-state">No active staff loaded</div>'}
+            `;
+            detail.hidden = false;
+        }
+
+        function formatHomeStaffTime(value) {
+            if (!value) return '-';
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? escapeHomeHtml(value) : escapeHomeHtml(formatTime(parsed));
+        }
+
+        function getHomeStaffStatusMessage(staff) {
+            const bufferMinutes = Number(appData.currentShopStatus?.buffer_minutes || 15);
+            const state = staff.current_state || staff.status || 'available';
+            if (state === 'busy' && staff.busy_until && staff.free_at) {
+                return `กำลังนวด · เริ่ม ${escapeHomeHtml(staff.busy_started || '-')} · จบ ${escapeHomeHtml(staff.busy_until)} · เว้น ${bufferMinutes} นาที · รับลูกค้าใหม่ได้ ${escapeHomeHtml(staff.free_at)}`;
+            }
+            if (state === 'booking_buffer' && staff.next_booking) {
+                const bookingEnd = new Date(staff.next_booking.scheduled_end);
+                const freeAfterBooking = Number.isNaN(bookingEnd.getTime())
+                    ? '-'
+                    : formatHomeStaffTime(new Date(bookingEnd.getTime() + bufferMinutes * 60000).toISOString());
+                return `มีจอง ${formatHomeStaffTime(staff.next_booking.scheduled_start)}-${formatHomeStaffTime(staff.next_booking.scheduled_end)} · เว้น ${bufferMinutes} นาทีหลังจบ · รับลูกค้าใหม่ได้ ${freeAfterBooking}`;
+            }
+            if (state === 'available') {
+                return 'ว่าง · รับลูกค้าใหม่ได้เลย';
+            }
+            return escapeHomeHtml(state);
+        }
+
+        function getHomeStaffStatusRows() {
+            return (appData.currentShopStatus && Array.isArray(appData.currentShopStatus.staff)) ? appData.currentShopStatus.staff : appData.roster;
+        }
+
+        function renderHomeExpensesDetail() {
+            const detail = document.getElementById('home-expenses-detail');
+            const rows = appData.expenses.map(expense => `
+                <div class="home-detail-row">
+                    <span>${escapeHomeHtml(expense.description)}</span>
+                    <strong>฿${Number(expense.amount || 0).toFixed(2)}</strong>
+                </div>
+            `).join('');
+
+            detail.innerHTML = `
+                <div class="summary-detail-title">
+                    <span class="label-th">รายจ่ายวันนี้</span>
+                    <span class="label-en">Today's expense detail</span>
+                </div>
+                ${rows || '<div class="empty-state">No expenses today</div>'}
+            `;
+            detail.hidden = false;
+        }
+
+        function getTodaySummarySync() {
+            return appData.transactions.reduce((summary, transaction) => {
+                const payment = transaction.payment || transaction.paymentMethod || 'Unknown';
+                const amount = Number(transaction.paymentAmount || transaction.amount || 0);
+                if (!summary.paymentBreakdown[payment]) {
+                    summary.paymentBreakdown[payment] = { count: 0, revenue: 0 };
+                }
+                summary.paymentBreakdown[payment].count += 1;
+                summary.paymentBreakdown[payment].revenue += amount;
+                return summary;
+            }, { paymentBreakdown: {} });
+        }
+
+        function parseHomeActivityTimestamp(value) {
+            if (!value) {
+                return new Date(0);
+            }
+            if (value instanceof Date) {
+                return value;
+            }
+            const text = String(value);
+            const normalized = text.includes('T') ? text : `${text.replace(' ', 'T')}Z`;
+            const parsed = new Date(normalized);
+            return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
         }
 
         function updateRecentActivity() {
             const container = document.getElementById('recent-activity');
-            const today = new Date().toISOString().split('T')[0];
-            const recentTransactions = getRecentTransactions(5, today);
+            const recentTransactions = getRecentTransactions(5);
             const recentExpenses = appData.expenses.slice(-3).reverse();
             
-            const allActivity = [
+            homeRecentActivity = [
                 ...recentTransactions.map(t => ({
-                    type: 'transaction', timestamp: t.timestamp, description: t.service,
-                    masseuse: t.masseuse, amount: t.paymentAmount, status: t.status // Pass status through
+                    type: 'transaction', timestamp: t.timestamp, sortTime: t.timestamp, description: t.service,
+                    masseuse: t.masseuse, amount: t.paymentAmount, status: t.status,
+                    bookingCredit: t.bookingCredit, details: t
+                })),
+                ...homeRecentBookings.map(booking => ({
+                    type: 'booking',
+                    timestamp: parseHomeActivityTimestamp(booking.created_at),
+                    sortTime: parseHomeActivityTimestamp(booking.created_at || booking.scheduled_start),
+                    description: `${booking.service_type} Booking`,
+                    masseuse: booking.requested_masseuse_name || 'จัดตามคิว',
+                    amount: null,
+                    status: booking.status,
+                    bookingCredit: 50,
+                    details: booking
                 })),
                 ...recentExpenses.map(e => ({
-                    type: 'expense', timestamp: e.timestamp, description: e.description,
-                    masseuse: 'Expense', amount: e.amount, status: 'N/A' // Expenses don't have a status
+                    type: 'expense', timestamp: e.timestamp, sortTime: e.timestamp, description: e.description,
+                    masseuse: 'Expense', amount: e.amount, status: 'N/A', details: e // Expenses don't have a status
                 }))
-            ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+            ].sort((a, b) => b.sortTime - a.sortTime);
 
             const header = container.querySelector('.transaction-item');
             container.innerHTML = '';
             container.appendChild(header);
 
-            if (allActivity.length === 0) {
+            if (homeRecentActivity.length === 0) {
                 const div = document.createElement('div');
                 div.className = 'empty-state';
                 div.innerHTML = '<div class="icon">📋</div><div>No activity yet today</div>';
@@ -192,29 +437,108 @@
                 return;
             }
 
-            allActivity.forEach(activity => {
-                const div = document.createElement('div');
-                div.className = 'transaction-item';
+            const visibleActivities = homeRecentActivity.slice(0, homeRecentActivityLimit);
+            const showMore = document.getElementById('home-show-more');
+            showMore.hidden = homeRecentActivity.length <= 5;
+            showMore.textContent = homeRecentActivityLimit > 5 ? 'Show less' : 'Show more';
+            showMore.onclick = () => { homeRecentActivityLimit = homeRecentActivityLimit > 5 ? 5 : Math.min(homeRecentActivity.length, 20); updateRecentActivity(); };
+            visibleActivities.forEach((activity, index) => {
+                const div = document.createElement('button');
+                div.type = 'button';
+                div.className = 'transaction-item home-activity-row';
+                div.dataset.activityIndex = String(index);
+                div.setAttribute('aria-expanded', 'false');
 
                 let statusBadge = '';
                 if (activity.type === 'transaction' && activity.status && activity.status.includes('EDITED')) {
                     div.classList.add('edited-transaction');
                     statusBadge = `<span class="edited-status-badge">(EDITED)</span>`;
                 }
+                const bookingCreditBadge = activity.type === 'transaction' && Number(activity.bookingCredit || 0) > 0
+                    ? '<span class="transaction-booking-credit-badge">จองพนักงาน +฿50</span>'
+                    : '';
                 
-                const icon = activity.type === 'transaction' ? '💳' : '💰';
-                const color = activity.type === 'transaction' ? '#34a853' : '#ea4335';
-                const prefix = activity.type === 'transaction' ? '+' : '-';
+                const icon = activity.type === 'transaction' ? '💳' : activity.type === 'booking' ? '📅' : '💰';
+                const color = activity.type === 'booking' ? '#6b7280' : activity.type === 'expense' ? '#ea4335' : '#34a853';
+                const prefix = activity.type === 'expense' ? '-' : '+';
+                const amountLabel = activity.type === 'booking'
+                    ? 'ยังไม่ชำระ'
+                    : `${prefix}฿${Number(activity.amount || 0).toFixed(2)}`;
                 const description = escapeHomeHtml(activity.description);
                 const masseuse = escapeHomeHtml(activity.masseuse);
                 div.innerHTML = `
                     <div>${formatTime(activity.timestamp)}</div>
-                    <div>${icon} ${description} ${statusBadge}</div>
+                    <div>${icon} ${description} ${statusBadge} ${bookingCreditBadge}</div>
                     <div>${masseuse}</div>
-                    <div style="color: ${color}">${prefix}฿${activity.amount.toFixed(2)}</div>
+                    <div style="color: ${color}">${amountLabel}</div>
                 `;
+                div.addEventListener('click', () => {
+                    toggleHomeActivityDetail(activity, div);
+                });
                 container.appendChild(div);
             });
+        }
+
+        function toggleHomeActivityDetail(activity, row) {
+            const existing = row.nextElementSibling;
+            if (existing && existing.classList.contains('home-activity-detail')) {
+                existing.remove();
+                row.setAttribute('aria-expanded', 'false');
+                return;
+            }
+            document.querySelectorAll('#recent-activity .home-activity-detail').forEach(detail => detail.remove());
+            document.querySelectorAll('#recent-activity .home-activity-row[aria-expanded="true"]').forEach(openRow => openRow.setAttribute('aria-expanded', 'false'));
+            const detail = document.createElement('div');
+            detail.className = 'home-activity-detail';
+            detail.innerHTML = renderHomeActivityDetail(activity);
+            row.insertAdjacentElement('afterend', detail);
+            row.setAttribute('aria-expanded', 'true');
+        }
+
+        function renderHomeActivityDetail(activity) {
+            const data = activity.details || {};
+            const rows = [];
+            if (activity.type === 'transaction') {
+                rows.push(['Type', 'Transaction']);
+                rows.push(['Service', data.service || activity.description]);
+                rows.push(['Masseuse', data.masseuse || activity.masseuse]);
+                rows.push(['Payment', data.paymentMethod || '']);
+                rows.push(['Amount', `฿${Number(data.paymentAmount || activity.amount || 0).toFixed(2)}`]);
+                rows.push(['Staff pay', `฿${Number(data.masseuseFee || 0).toFixed(2)}${Number(data.bookingCredit || 0) > 0 ? ` + ฿${Number(data.bookingCredit).toFixed(2)} booking` : ''}`]);
+                rows.push(['Time', `${data.startTime || ''}${data.endTime ? ` - ${data.endTime}` : ''}`]);
+                rows.push(['Status', data.status || activity.status || '']);
+            } else if (activity.type === 'booking') {
+                rows.push(['Type', 'Booking']);
+                rows.push(['Service', data.service_type || activity.description]);
+                rows.push(['Masseuse', data.requested_masseuse_name || 'จัดตามคิวเมื่อลูกค้ามาถึง']);
+                rows.push(['Booking credit', '฿50 when the customer arrives']);
+                rows.push(['Scheduled', `${formatBookingActivityTime(data.scheduled_start)} - ${formatBookingActivityTime(data.scheduled_end)}`]);
+                rows.push(['Customer', data.customer_contact || 'ไม่ระบุชื่อ']);
+                rows.push(['Status', data.status || activity.status || '']);
+            } else {
+                rows.push(['Type', 'Expense']);
+                rows.push(['Description', data.description || activity.description]);
+                rows.push(['Amount', `฿${Number(data.amount || activity.amount || 0).toFixed(2)}`]);
+                rows.push(['Time', formatTime(activity.timestamp)]);
+            }
+
+            return `
+                <div class="summary-detail-title">
+                    <span class="label-th">รายละเอียดรายการ</span>
+                    <span class="label-en">Activity detail</span>
+                </div>
+                ${rows.map(([label, value]) => `
+                    <div class="home-detail-row">
+                        <span>${escapeHomeHtml(label)}</span>
+                        <strong>${escapeHomeHtml(value)}</strong>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        function formatBookingActivityTime(value) {
+            const date = parseHomeActivityTimestamp(value);
+            return date.getTime() ? formatTime(date) : '';
         }
 
         async function updatePaymentBreakdown() {
@@ -230,10 +554,27 @@
             Object.entries(summary.paymentBreakdown)
                 .sort(([,a], [,b]) => b.revenue - a.revenue)
                 .forEach(([method, data]) => {
-                    html += `<tr><td>${escapeHomeHtml(method)}</td><td>${data.count}</td><td class="amount">฿${data.revenue.toFixed(2)}</td></tr>`;
+                    html += `<tr class="home-payment-breakdown-row" data-payment-method="${escapeHomeHtml(method)}" tabindex="0" aria-expanded="false"><td>${escapeHomeHtml(method)}</td><td>${data.count}</td><td class="amount">฿${data.revenue.toFixed(2)}</td></tr>`;
                 });
             html += '</table>';
             container.innerHTML = html;
+            container.querySelectorAll('.home-payment-breakdown-row').forEach(row => {
+                row.addEventListener('click', () => toggleHomePaymentBreakdown(row));
+            });
+        }
+
+        function toggleHomePaymentBreakdown(row) {
+            const existing = row.nextElementSibling;
+            if (existing && existing.classList.contains('home-payment-detail')) { existing.remove(); row.setAttribute('aria-expanded', 'false'); return; }
+            document.querySelectorAll('.home-payment-detail').forEach(detail => detail.remove());
+            document.querySelectorAll('.home-payment-breakdown-row[aria-expanded="true"]').forEach(openRow => openRow.setAttribute('aria-expanded', 'false'));
+            const method = row.dataset.paymentMethod;
+            const transactions = appData.transactions.filter(transaction => transaction.paymentMethod === method);
+            const detail = document.createElement('tr');
+            detail.className = 'home-payment-detail';
+            detail.innerHTML = `<td colspan="3">${transactions.length ? transactions.map(transaction => `<div class="home-detail-row"><span>${escapeHomeHtml(transaction.service)}</span><strong>${escapeHomeHtml(transaction.masseuse)} · ฿${Number(transaction.paymentAmount || 0).toFixed(2)}</strong></div>`).join('') : '<div class="empty-state">No transactions found</div>'}</td>`;
+            row.insertAdjacentElement('afterend', detail);
+            row.setAttribute('aria-expanded', 'true');
         }
 
         // Functions removed: handleServeNext and handleEndDay (Quick Actions deprecated)

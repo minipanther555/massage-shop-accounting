@@ -11,7 +11,7 @@
     4.  **Reservation Submission:** Booking mode saves the future schedule, service, duration, location, customer contact, and optional requested staff through `POST /api/bookings`. It hides payment and creates no transaction or earnings.
     5.  **Arrival Conversion:** The upcoming-bookings panel offers `ลูกค้ามาถึง`. It restores saved details, requests payment, and submits the booking ID through the existing transaction path.
     6.  **Backend Processing:** Walk-ins create transactions normally. Booking arrivals atomically create one linked transaction, mark the booking `COMPLETED`, and add a separate `฿50` credit only for requested-staff bookings. The credit is backend payroll state and is intentionally not displayed in the receptionist intake form.
-    7.  **UI Refresh:** A successful walk-in action advances the Today Staff queue only when the selected staff is the auto-selected next queue member, reloads the roster, re-renders the staff dropdown, then clears the form. A successful action also refreshes transactions, summaries, and upcoming bookings as applicable.
+    7.  **UI Refresh:** A successful walk-in action refreshes the workload/status snapshot and Today Staff roster, re-renders the staff dropdown, then clears the form. The original Today Staff positions remain fixed; counts and booking eligibility determine the next walk-in. A successful action also refreshes transactions, summaries, and upcoming bookings as applicable.
 
 ## 2. Module API & Logic Breakdown
 
@@ -42,7 +42,7 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
 *   **`populateDropdowns()` (JavaScript Function):**
     *   **Purpose:** To populate the `select` elements with data fetched from the API during page load.
-    *   **Logic:** It reads the `CONFIG.settings` object (populated by `loadData()`) and dynamically creates `<option>` elements for masseuses, services (initially), and payment methods. It orders staff from `appData.roster`, auto-selects the staff member whose roster status is `Next` or the first queue position, and labels that option `คิวถัดไป`. It also attaches the critical `change` event listeners that drive the form's cascading logic.
+    *   **Logic:** It reads the `CONFIG.settings` object (populated by `loadData()`) and dynamically creates `<option>` elements for masseuses, services (initially), and payment methods. It derives the next staff member from the backend `walk_in_priority` flag in `appData.currentShopStatus.staff`; that flag uses assigned workload first and stable original Today Staff order for ties. Busy and booking-buffer rows are excluded before the roster fallback. If no staff is eligible, the page leaves the walk-in staff value blank and shows that everyone is busy plus the earliest calculated free time. In Walk-in mode, every live non-available option is disabled and cannot be selected; Booking mode re-enables intentional future-staff selection. It labels the selected option `คิวถัดไป` and attaches the critical `change` event listeners that drive the form's cascading logic.
 
 *   **Cascading Update Functions (`updateServiceOptions()`, `updateDurationOptions()`, `updatePricing()`):**
     *   **Purpose:** A set of functions that are triggered by `change` events on the dropdowns.
@@ -63,9 +63,9 @@ This module consists of an HTML structure and a large inline `<script>` block th
     *   **Purpose:** To handle the editing/correction of a transaction.
     *   **Logic:** The `checkForEdit` function checks `sessionStorage` for a transaction to be edited (placed there by another page). It pre-populates the form with the transaction details, sets critical global state variables (`appData.correctionMode` and `appData.originalTransactionId`), and sets a hidden input field (`original-transaction-id`) to link the new, corrected transaction to the old one. The `loadCorrection` button fetches the most recent transaction via the API. Both functions ensure that corrections are properly tracked in the global state for downstream processing.
 
-*   **Booking Functions (`setCustomerMode()`, `loadUpcomingBookings()`, `startBookingArrival()`):**
+    *   **Booking Functions (`setCustomerMode()`, `loadUpcomingBookings()`, `startBookingArrival()`, `markBookingNoShow()`):**
     *   **Purpose:** Switches reservation semantics, renders pending bookings, and converts an arrival into a minimal payment-confirmation flow.
-    *   **Logic:** Explicit booking mode allows nullable staff. Overriding the auto-selected next staff member records requested-staff intent. Arrival restores authoritative reservation fields and changes the primary action back to transaction submission.
+    *   **Logic:** Explicit booking mode allows nullable staff. Overriding the auto-selected next staff member records requested-staff intent. Arrival restores authoritative reservation fields and changes the primary action back to transaction submission. Each active booking also exposes a confirmed `ไม่มา (No-show)` action that calls `POST /api/bookings/:bookingId/status` with `NO_SHOW`, reloads the booking list, and refreshes staff availability.
 
 *   **`escapeBookingText(value)`:**
     *   **Purpose:** Escapes server-provided booking text before upcoming rows are rendered with `innerHTML`.
@@ -145,7 +145,7 @@ This module consists of an HTML structure and a large inline `<script>` block th
 - The transaction record failed to save.
 - Booking/requested-staff mode should advance the same queue.
 
-**Resolution:** The success path now calls `refreshRosterForDropdown()` after `advanceQueue()` and before `clearForm()`. The helper reloads `GET /api/staff/roster`, updates `appData.roster`, re-renders only the staff dropdown, and lets `clearForm()` select the new `autoSelectedMasseuse`. Backend `advance-queue` now rotates `today_staff`.
+**Resolution:** The success path now calls `refreshRosterForDropdown()` after the compatibility `advanceQueue()` call and before `clearForm()`. The helper reloads the current status/roster data, updates `appData`, re-renders only the staff dropdown, and lets `clearForm()` select the workload-based priority. Backend `advance-queue` retains the original `today_staff.position` order instead of rotating it.
 
 ### Bug #0.10: Dynamic Transaction Page Values Needed Escaping (2026-07-13)
 **Bug Summary:** Checkpoint security review found that several New Customer side panels used `innerHTML` with payment method, recent transaction, expense, service, and staff values that can come from stored data.
@@ -239,6 +239,18 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
 **Resolution:** Reordered category definitions so Thai, Foot, Oil, and Shoulder/Back render first. Added `sortComboServices()` to put `Foot + back, neck & shoulder` first in the Combo list. Added `getServiceThaiHint()` and changed Combo rendering so the Thai hint is the large primary line while the canonical English service name is retained as smaller secondary text and as the hidden select value.
 
+### Bug #0.6: Service Button Grid Disappeared After Next-Staff Refresh Work (2026-07-14)
+**Bug Summary:** Browser review of the New Customer page showed the `บริการ` label but no large service category buttons. This contradicted the current transaction-page contract, which requires the Thai-first service and duration button layer to be generated from the hidden `#service` and `#duration` selects.
+
+**Validated Hypothesis:** The button markup and rendering functions were still present, but page initialization aborted inside `populateDropdowns()` before `updateServiceOptions()` and `renderServiceButtons()` ran. The failure was a `ReferenceError` from logging `nextInLineName` after `renderMasseuseDropdown()` returned; `nextInLineName` is local to that function.
+
+**Invalidated Hypotheses:**
+- The service button functionality had been intentionally removed.
+- `/api/services` was returning no service rows.
+- The hidden service select contract had been deleted.
+
+**Resolution:** Changed the post-population debug log in both transaction templates to use page-level `autoSelectedMasseuse`. Browser verification after reload showed 19 hidden service options, 7 category buttons, and Thai Massage selecting 60/90/120 minute duration buttons. Added a regression assertion in `__tests__/transaction.walkin-refresh.present.test.js`.
+
 ### Bug #1: checkForEdit Global State Management (2024-12-19)
 **Bug Summary:** The `checkForEdit()` function was failing to set global state variables `appData.correctionMode` and `appData.originalTransactionId` when editing transactions, causing edited transactions to remain with "ACTIVE" status instead of becoming "EDITED".
 
@@ -259,3 +271,33 @@ appData.originalTransactionId = transaction.id;
 **Impact:** Edited transactions now properly show as "EDITED" status and are correctly tracked as corrections in the backend.
 
 **Testing:** Comprehensive test suite created including regression tests, side-effect guards, and edge-case handling to prevent future regressions.
+
+### Bug #0.7: Non-Next Walk-In Was Silently Changed Into A Future Reservation (2026-07-14)
+**Bug Summary:** Selecting a non-next staff member while `ลูกค้ามาแล้ว / Walk-in` was active automatically switched the page to `จองเวลา / Booking`, hiding payment and preventing the intended one-submit immediate requested-staff transaction.
+
+**Validated Hypothesis:** The `masseuse` change listener explicitly called `setTransactionMode('booking')`; the submit path already had the correct `requestedStaffBooking` classification but could never reach it.
+
+**Invalidated Hypotheses:** The backend lacked immediate conversion; the receptionist needed to create a reservation and then mark arrival for a customer already present.
+
+**Resolution:** Removed the automatic mode switch from both templates. Walk-in remains active, and submit classifies a manually selected non-next staff member as an immediate requested-staff booking while ordinary next-staff selection remains a normal walk-in.
+
+### Bug #0.8: Immediate Booking Default and Credit Visibility (2026-07-14)
+**Bug Summary:** Explicit booking defaulted thirty minutes ahead, while the real `฿50` credit was either shown as an oversized intake card or hidden from transaction lists.
+
+**Validated Hypothesis:** Booking time should default to the current Bangkok minute, and credit belongs as a compact annotation on persisted transaction rows rather than as a form decision.
+
+**Invalidated Hypotheses:** Every booking required a future lead time; the credit should be merged into the displayed base staff fee.
+
+**Resolution:** Booking datetime uses one-minute precision and defaults to now. Recent rows render `จองพนักงาน +฿50` only when `bookingCredit > 0`; the old large card remains forbidden. Browser verification at 630x998 confirmed the badge fits inside the service cell.
+
+### Bug #0.9: Walk-In Dropdown Used a Stale Current-Status Snapshot (2026-07-15)
+**Bug Summary:** After a successful walk-in or periodic refresh, the New Customer page could show the previous next-in-line staff member even though the Today Staff queue and current booking/busy state had changed.
+
+**Validated Hypothesis:** The submit path refreshed the Today Staff roster and re-rendered the dropdown without refreshing `appData.currentShopStatus`. `getNextInLineFromStaff()` therefore preferred an old status snapshot until a full page reload fetched current status again.
+
+**Invalidated Hypotheses:**
+- The queue rotation endpoint was writing the wrong list; the existing integration contract rotates `today_staff` correctly.
+- The browser failed to repaint a correct value; the dropdown was rebuilt from stale client state.
+- The current booking was absent from the backend status model; current-status coverage includes bookings already in progress.
+
+**Resolution:** `refreshRosterForDropdown()` now reloads the current-status snapshot and Today Staff roster together before rendering the dropdown. The 30-second refresh uses the same path, so submit-time and periodic refreshes apply the same authoritative state.

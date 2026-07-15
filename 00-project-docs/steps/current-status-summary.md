@@ -7,6 +7,20 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ## Current Phase Addendum (2026-07-09): Staff-Facing UI Rework
 
+### Immediate Requested-Staff Booking and Visible Credit (2026-07-14)
+- BKG-005 is complete: a present customer can select a non-next staff member, pay once, and atomically create the completed booking, transaction, and separate `฿50` credit.
+- Explicit reservations default to the current Bangkok minute but may still be scheduled later; reservations remain non-financial until arrival.
+- New Customer, Daily Summary, Home, and manager reports now expose the credit compactly while preserving separate base commission and Today Staff ranking isolation.
+- Browser smoke also fixed two adjacent regressions: non-next selection no longer silently changes modes, and recent transaction ordering parses timestamp offsets so the just-submitted row appears first.
+- Focused/integration tests, seven mirrored inline-script parses, indexed SQLite plan checks, lint, `git diff --check`, and 630x998 browser verification passed. The existing dependency advisory backlog remains unchanged.
+
+### Home Dashboard Interactive Drilldowns (2026-07-14)
+- The Home page dashboard cards for Today's Revenue, Active Staff, and Today's Expenses are now compact clickable controls instead of tall static cards.
+- At the 667px browser viewport, the three cards render in one horizontal row and open one full-width inline detail panel at a time.
+- Details are sourced from already loaded API-backed Home state: revenue/payment/transaction rows, current staff status or roster fallback, and today's expenses.
+- Focused homepage contract tests, inline script parse, local browser verification, lint, audit gate, and `git diff --check` were run. Dependency audit still reports the governed pre-existing dependency backlog.
+- HOME-001 follow-up moved all manager navigation into the top grid, added explicit loading/live/fallback status, removed the redundant `Date`-object/date-string filter, and verified populated recent transaction details at 630x998.
+
 ### Booking Reservation MVP (2026-07-13)
 - Implementation and automated route/database verification are complete; the final in-app booking-create/arrival click-through is pending because the browser webview would not attach.
 - Future bookings are saved without payment or transaction revenue.

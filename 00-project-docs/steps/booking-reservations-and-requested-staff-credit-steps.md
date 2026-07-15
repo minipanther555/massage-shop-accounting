@@ -1,6 +1,6 @@
 # Booking Reservations and Requested-Staff Credit Steps
 
-> **Status:** BKG-001 IMPLEMENTED - in-app browser click-through pending; BKG-002 superseded by DSS; BKG-003 blocked on product rule; BKG-004 OPEN; BKG-005 DONE; BKG-006 OPEN
+> **Status:** BKG-001 IMPLEMENTED - in-app browser click-through pending; BKG-002 superseded by DSS; BKG-003 DONE; BKG-004 OPEN; BKG-005 DONE; BKG-006 OPEN
 > **Feature Specification:** `00-project-docs/feature-specifications/booking-reservations-and-requested-staff-credit.md`
 
 ## BKG-001 - Reservation, Arrival Conversion, and Separate Credit
@@ -59,21 +59,31 @@
 
 **Potential Challenges and Mitigations:** Keep calculations server-authoritative and render concise Thai-first rows.
 
-## BKG-003 - Manager-Confirmed Queue Reordering
+## BKG-003 - Manager-Confirmed Walk-In Assignment
 
-**Status:** BLOCKED ON PRODUCT RULE - do not implement automatically
+**Status:** ✅ DONE (2026-07-15) - confirmed workload-first walk-in priority with stable day-start tie-break
 
-**Goal:** Implement post-booking queue movement only after the manager provides deterministic rules.
+**Goal:** Implement deterministic walk-in assignment using Today Staff workload counts, stable day-start tie-breaking, and booking reservation eligibility.
 
 **Dependencies:** BKG-001, BKG-002, manager clarification.
 
 **Traceability:** FR-012, AC-009.
 
+**Action Items:**
+- [x] Confirm the manager rule for equal workloads and late unreleased bookings.
+- [x] Calculate walk-in priority from current-day assigned workload first.
+- [x] Preserve the original Today Staff display order as the tie-break instead of rotating the queue.
+- [x] Exclude active massages and unreleased current-day requested bookings until the massage ends or reception marks the booking `NO_SHOW`.
+- [x] Prevent previous-day `BOOKED` reservations from rolling into the next business day.
+- [x] Add permanent regression coverage for stable-position tie-breaks, stale-booking exclusion, no-show release, and no-available-staff messaging.
+
 **Expected Deliverable:** A deterministic, testable reorder contract tied to daily massage counts and explicitly confirmed tie-break behavior.
 
-**Technical Considerations:** Current queue rotation aims at roughly equal massage counts, but no exact post-booking position algorithm is confirmed.
+**Technical Considerations:** Completed massages are the primary workload count. Unreleased bookings reserve staff from walk-ins and count as assigned workload. Active massages and late unreleased bookings are ineligible until the service ends or reception marks the booking `NO_SHOW`. Ties use the stable original Today Staff row order, not the rotated current position or a stale status label.
 
 **Potential Challenges and Mitigations:** Do not encode guessed behavior; use BKG-002 counts/availability to support manual reordering in the interim.
+
+**Validation:** `__tests__/transaction.booking.present.test.js`, `__tests__/transaction.walkin-refresh.present.test.js`, `tests/integration/walkin.queue-refresh.integration.test.js`, and `tests/otdd/daily-summary-current-status.test.js` cover disabled Walk-in options, current-day booking constraints, stable original-position tie-breaks, no queue rotation after submit, no-show release, previous-day booking no-rollover, and the everyone-busy free-time message. Local test database cleanup removed six stale pre-current-day `BOOKED` rows after operator approval; the browser then showed `นา (คิวถัดไป)` as the auto-selected walk-in staff.
 
 ## BKG-004 - Booking Arrival Correction and Time-Window Hardening
 
@@ -152,4 +162,4 @@
 
 **Potential Challenges and Mitigations:** Preserve existing BKG-005 transaction joins and correction semantics; add permanent regression tests before changing any shared renderer; keep the preview display separate from the persisted base-fee payload.
 
-**Completion Notes (partial):** Queue-assigned and requested-staff arrival integration tests pass with separate active credits; mirrored New Customer templates display base + `฿50` while preserving base-fee submission; Home Recent Activity now fetches upcoming bookings, merges them with transactions/expenses, and inserts one inline detail row directly below the clicked row with second-click collapse; the payment breakdown expands matching transactions and Recent Activity toggles between five and expanded rows; booking-aware Walk-in availability and persisted Today Staff drag/drop are recorded in current-steps item 18. Payday Tracking now makes Total Outstanding/Overdue/This Week/Next Due cards clickable with inline calculation panels; staff names now toggle inline current-week massage tables that list each massage with base fee, booking credit, combined pay, and a total row, and the roster header is compact Thai-first copy. Financial Reports now returns filtered `detailRows.transactions`/`detailRows.expenses`; summary cards and report rows open inline mini tables below the selected tile group while sibling tiles dim, including transaction source rows with revenue/base/booking columns. RED/GREEN `__tests__/admin-staff.contract.present.test.js` passed 8/8 and RED/GREEN `__tests__/admin-reports.contract.present.test.js` passed 8/8 after proving missing source-table contracts. In-app browser smokes at `localhost:3003/api/admin/staff-page` and `localhost:3003/api/admin/reports-page` verified the relevant inline panels. Today Staff rows now keep drag/drop as the row behavior and add a separate `Info` button that toggles an inline detail panel with massages today, base pay, booking credit, total pay, previous-day helper pay, and status; RED/GREEN `__tests__/today-staff.controller.contract.present.test.js` passed 6/6 and in-app browser smoke at `localhost:3003/api/main/staff-roster` verified first-row open/close behavior. Inline scripts parse and `git diff --check` passes. Remaining cross-page staff earnings detail surfaces and final browser verification remain open.
+**Completion Notes (partial):** Queue-assigned and requested-staff arrival integration tests pass with separate active credits; mirrored New Customer templates display base + `฿50` while preserving base-fee submission; Home Recent Activity now fetches upcoming bookings, merges them with transactions/expenses, and inserts one inline detail row directly below the clicked row with second-click collapse; the payment breakdown expands matching transactions and Recent Activity toggles between five and expanded rows; Home follow-up fixes render future bookings as `ยังไม่ชำระ` instead of false revenue and explain busy/booking-buffer status as massage end, 15-minute buffer, and next free time; booking-aware Walk-in availability and persisted Today Staff drag/drop are recorded in current-steps item 18. Payday Tracking now makes Total Outstanding/Overdue/This Week/Next Due cards clickable with inline calculation panels; staff names now toggle inline current-week massage tables that list each massage with base fee, booking credit, combined pay, and a total row, and the roster header is compact Thai-first copy. Financial Reports now returns filtered `detailRows.transactions`/`detailRows.expenses`; summary cards and report rows open inline mini tables below the selected tile group while sibling tiles dim, including transaction source rows with revenue/base/booking columns. RED/GREEN `__tests__/admin-staff.contract.present.test.js` passed 8/8 and RED/GREEN `__tests__/admin-reports.contract.present.test.js` passed 8/8 after proving missing source-table contracts. In-app browser smokes at `localhost:3003/api/admin/staff-page` and `localhost:3003/api/admin/reports-page` verified the relevant inline panels. Today Staff rows now keep drag/drop as the row behavior and add a separate `Info` button that toggles an inline detail panel with massages today, base pay, booking credit, total pay, previous-day helper pay, and status; RED/GREEN `__tests__/today-staff.controller.contract.present.test.js` passed 6/6 and in-app browser smoke at `localhost:3003/api/main/staff-roster` verified first-row open/close behavior. Inline scripts parse and `git diff --check` passes. Remaining cross-page staff earnings detail surfaces and final browser verification remain open.

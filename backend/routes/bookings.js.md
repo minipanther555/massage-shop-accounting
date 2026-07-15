@@ -26,8 +26,8 @@ The New Customer page posts reservation details through `api.js` after the brows
 ### `POST /`
 - Parameters: authenticated request plus JSON reservation contract from the feature specification; payment is intentionally absent.
 - Returns: HTTP 201 booking row plus `booking_credit_eligible` display hint.
-- Failures: 400 invalid/future/service/staff input; 409 requested-staff conflict.
-- Logic Notes: Writes only `bookings`.
+- Failures: 400 invalid/stale-past/service/staff input; 409 requested-staff conflict.
+- Logic Notes: Writes only `bookings`. The current minute is normalized to server time; future timestamps remain unchanged.
 
 ### `POST /:bookingId/status`
 - Parameters: authenticated request plus `{ status: "CANCELLED" | "NO_SHOW" }`.
@@ -58,3 +58,9 @@ The New Customer page posts reservation details through `api.js` after the brows
 - Bug Summary: Checkpoint security review found that reservation endpoints could be reached without the standard authenticated-session middleware.
 - Validated Hypothesis: The router itself assumes an authenticated request, but `backend/server.js` originally mounted `/api/bookings` directly.
 - Resolution: `backend/server.js` now mounts `/api/bookings` behind `authenticateToken`; this module spec now documents auth as an upstream contract for every public endpoint.
+
+### Current-Minute Booking Was Rejected (2026-07-14)
+- Bug Summary: Receptionists could not save an immediate reservation because the route required every booking to be strictly future-dated.
+- Validated Hypothesis: The future-only check was stricter than the accepted now-or-later workflow.
+- Invalidated Hypotheses: Immediate bookings should bypass reservation persistence; a thirty-minute minimum was operationally required.
+- Resolution: `POST /` now delegates to `normalizeBookingStart()`, accepting the current minute within a bounded grace while rejecting genuinely stale past input.

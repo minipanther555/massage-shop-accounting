@@ -453,6 +453,38 @@ body {
     border-bottom: none;
 }
 
+.home-activity-row {
+    background: transparent;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    width: 100%;
+}
+
+.home-activity-row:hover,
+.home-activity-row:focus {
+    background: #f8fbff;
+    outline: 2px solid #93c5fd;
+    outline-offset: -2px;
+}
+
+.home-activity-detail {
+    background: #f9fafb;
+    border-bottom: 1px solid #e4e7ec;
+    grid-column: 1 / -1;
+    padding: 12px;
+}
+
+.home-section-header { display: flex; flex-direction: row !important; align-items: center !important; justify-content: space-between; gap: 12px; }
+.home-show-more { flex: 0 0 auto; width: auto; min-height: 0; border: 0; border-radius: 6px; background: #e8f0fe; color: #1456b8; cursor: pointer; font: inherit; font-size: 0.8em; line-height: 1.2; padding: 5px 10px; }
+.home-payment-breakdown-row { cursor: pointer; }
+.home-payment-breakdown-row:hover, .home-payment-breakdown-row:focus { background: #f0f7ff; outline: 2px solid #93c5fd; outline-offset: -2px; }
+.home-payment-detail td { background: #f9fafb; padding: 8px 12px; }
+
 /* Summary styles */
 .summary-grid {
     display: grid;
@@ -551,6 +583,107 @@ body {
 .dashboard-card .subtitle {
     color: #666;
     font-size: 14px;
+}
+
+.home-dashboard-grid {
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 16px;
+}
+
+#admin-navigation {
+    display: none;
+}
+
+.nav-btn.home-admin-nav {
+    background: #475467;
+    color: #ffffff;
+}
+
+.home-data-status {
+    border-radius: 999px;
+    font-size: 12px;
+    margin: -10px 0 12px;
+    padding: 5px 10px;
+    text-align: center;
+}
+
+.home-data-status.is-loading {
+    background: #eef4ff;
+    color: #175cd3;
+}
+
+.home-data-status.is-error {
+    background: #fef3f2;
+    color: #b42318;
+}
+
+.home-data-status.is-success {
+    background: #ecfdf3;
+    color: #067647;
+}
+
+.home-dashboard-card {
+    border: 1px solid #d0d5dd;
+    box-shadow: 0 1px 2px rgba(16,24,40,0.05);
+    min-height: 0;
+    text-align: left;
+    width: 100%;
+}
+
+.home-dashboard-card h3 {
+    color: #344054;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.home-dashboard-card .big-number {
+    color: #101828;
+    font-size: 30px;
+    margin-bottom: 3px;
+}
+
+.home-dashboard-card .subtitle {
+    color: #667085;
+    font-size: 13px;
+}
+
+.home-dashboard-grid.has-open-detail {
+    grid-template-columns: 1fr;
+}
+
+.home-dashboard-grid.has-open-detail .home-dashboard-card.is-dimmed {
+    display: none;
+}
+
+.home-dashboard-card.is-open {
+    grid-column: 1 / -1;
+}
+
+.home-card-detail {
+    color: #344054;
+    text-align: left;
+}
+
+.home-detail-row {
+    align-items: center;
+    border-top: 1px solid #eaecf0;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 8px 0;
+}
+
+.home-detail-row span,
+.home-detail-row strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.home-detail-row strong {
+    color: #101828;
+    font-size: 13px;
+    font-weight: 900;
 }
 
 /* Payment breakdown table */
@@ -980,6 +1113,28 @@ body {
     margin-left: 10px;
     display: inline-block;
     vertical-align: middle;
+}
+
+.transaction-booking-credit-badge {
+    display: inline-block;
+    margin: 2px 0 0 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: #e7f7ef;
+    color: #087a4f;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.transaction-fee-breakdown {
+    display: block;
+    margin-top: 2px;
+    color: #5f6b7a;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* Roster Section Styles */
@@ -1873,8 +2028,29 @@ body {
     padding: 9px 12px;
 }
 
+.transaction-booking-actions {
+    display: grid;
+    gap: 6px;
+}
+
+.transaction-booking-row button.transaction-booking-no-show {
+    background: #b42318;
+}
+
 .transaction-booking-error {
     color: #b42318;
+}
+
+.transaction-availability-message {
+    background: #fff4e5;
+    border: 1px solid #f5c26b;
+    border-radius: 6px;
+    color: #8a4b08;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.4;
+    margin-top: 8px;
+    padding: 9px 11px;
 }
 
 .transaction-side-section .summary-grid {
@@ -2053,6 +2229,29 @@ body {
     flex: 1 1 180px;
     justify-content: flex-end;
     min-height: 44px;
+}
+
+#current-user {
+    background: #f1f5f9;
+    border: 1px solid var(--shop-border);
+    border-radius: 999px;
+    color: var(--shop-muted) !important;
+    display: inline-flex;
+    font-size: 12px !important;
+    font-weight: 700;
+    line-height: 1;
+    padding: 8px 10px;
+    white-space: nowrap;
+}
+
+#current-user[hidden] {
+    display: none !important;
+}
+
+.admin-header #current-user {
+    background: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: rgba(255, 255, 255, 0.94) !important;
 }
 
 .nav-btn,
@@ -2431,6 +2630,7 @@ body {
         grid-column: 1 / -1;
         justify-content: flex-start;
         margin-left: 0 !important;
+        min-height: 0;
         min-width: 0;
     }
 
@@ -2480,9 +2680,35 @@ body {
         max-width: 100%;
         white-space: normal;
     }
+
+    .dashboard-grid.home-dashboard-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .home-dashboard-card {
+        min-height: 0;
+        padding: 10px 12px !important;
+    }
+
+    .home-dashboard-card h3 {
+        font-size: 14px;
+    }
+
+    .home-dashboard-card .big-number {
+        font-size: 24px !important;
+    }
+
+    .home-dashboard-card .subtitle,
+    .home-dashboard-card .summary-card-hint {
+        font-size: 11px !important;
+    }
 }
 
 @media (max-width: 480px) {
+    .dashboard-grid.home-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
     .nav-buttons,
     .admin-nav {
         grid-template-columns: 1fr;

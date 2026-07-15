@@ -21,6 +21,7 @@ This module exports an Express `router` object and the `sessions` Map.
     *   `branches` (Array): Source list for Top Thai branches. Each item has a branch key, `location_id`, and `location_name`.
     *   `createBranchUsers()` (Function): Expands each branch into two users: a branch-scoped receptionist and a branch-scoped manager.
     *   `users` (Array): A hardcoded array of user objects, including usernames, seed passwords, roles, permissions, and location metadata. **Note: This is not production-safe. Do not show seed passwords in operator-facing UI or public documentation.** Current branch login usernames are:
+        *   `reception_top_thai_55` and `manager_top_thai_55`: `location_id: 55`, `location_name: "Top Thai 55"`.
         *   `reception_top_thai_49` and `manager_top_thai_49`: `location_id: 49`, `location_name: "Top Thai 49"`.
         *   `reception_top_thai_43` and `manager_top_thai_43`: `location_id: 43`, `location_name: "Top Thai 43"`.
         *   `reception_top_thai_33` and `manager_top_thai_33`: `location_id: 33`, `location_name: "Top Thai 33"`.

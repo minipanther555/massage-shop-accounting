@@ -62,6 +62,14 @@ describe('PWTEST current user display contract', () => {
     );
   });
 
+  test('preview user header renders as an intentional badge label, not raw debug identity', () => {
+    const context = loadSharedWithStoredUser({ username: 'pwtest' });
+
+    expect(context.formatCurrentUserLabel(context.getCurrentUser())).toBe('Preview: Manager');
+    expect(context.formatCurrentUserLabel({ username: 'manager_top_thai_49', role: 'manager', displayName: 'Top Thai Manager' }))
+      .toBe('Top Thai Manager');
+  });
+
   test('Staff page PWTEST shim stores the complete preview user shape', () => {
     const source = read('web-app/staff.html');
 

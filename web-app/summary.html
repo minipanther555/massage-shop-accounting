@@ -389,11 +389,12 @@
             const masseuseStats = {};
             todayTransactions.forEach(t => {
                 if (!masseuseStats[t.masseuse]) {
-                    masseuseStats[t.masseuse] = { count: 0, revenue: 0, fees: 0 };
+                    masseuseStats[t.masseuse] = { count: 0, revenue: 0, baseFees: 0, bookingCredits: 0 };
                 }
                 masseuseStats[t.masseuse].count++;
                 masseuseStats[t.masseuse].revenue += t.paymentAmount;
-                masseuseStats[t.masseuse].fees += Number(t.masseuseFee || 0);
+                masseuseStats[t.masseuse].baseFees += Number(t.masseuseFee || 0);
+                masseuseStats[t.masseuse].bookingCredits += Number(t.bookingCredit || 0);
             });
 
             if (Object.keys(masseuseStats).length === 0) {
@@ -401,7 +402,7 @@
                 return;
             }
 
-            let html = '<table class="payment-table"><tr><th>หมอนวด</th><th>ครั้ง</th><th class="amount">รายรับ</th><th class="amount">ค่าแรง</th></tr>';
+            let html = '<table class="payment-table"><tr><th>หมอนวด</th><th>ครั้ง</th><th class="amount">รายรับ</th><th class="amount">ค่าแรงรวม</th></tr>';
             Object.entries(masseuseStats)
                 .sort(([,a], [,b]) => b.revenue - a.revenue)
                 .forEach(([masseuse, stats]) => {
@@ -410,7 +411,7 @@
                             <td><strong>${escapeStatusHtml(masseuse)}</strong></td>
                             <td>${stats.count}</td>
                             <td class="amount">฿${stats.revenue.toFixed(2)}</td>
-                            <td class="amount">฿${stats.fees.toFixed(2)}</td>
+                            <td class="amount">฿${(stats.baseFees + stats.bookingCredits).toFixed(2)}<small class="transaction-fee-breakdown">ฐาน ฿${stats.baseFees.toFixed(0)} · จอง +฿${stats.bookingCredits.toFixed(0)}</small></td>
                         </tr>
                     `;
                 });
@@ -447,10 +448,13 @@
                 if (transaction.status && transaction.status.includes('EDITED')) {
                     statusBadge = `<span class="edited-status-badge">(EDITED)</span>`;
                 }
+                const bookingCreditBadge = Number(transaction.bookingCredit || 0) > 0
+                    ? '<span class="transaction-booking-credit-badge">จองพนักงาน +฿50</span>'
+                    : '';
 
                 div.innerHTML = `
                     <div>${formatTime(transaction.timestamp)}</div>
-                    <div>${escapeStatusHtml(transaction.service)} ${statusBadge}</div>
+                    <div>${escapeStatusHtml(transaction.service)} ${statusBadge} ${bookingCreditBadge}</div>
                     <div>${escapeStatusHtml(transaction.masseuse)}</div>
                     <div>฿${transaction.paymentAmount.toFixed(2)}</div>
                     <div class="btn-group">

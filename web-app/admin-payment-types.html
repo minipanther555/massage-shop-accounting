@@ -138,7 +138,7 @@
             // Display current user
             const user = getCurrentUser();
             if (user) {
-                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                renderCurrentUser();
             }
             
             // Load payment types

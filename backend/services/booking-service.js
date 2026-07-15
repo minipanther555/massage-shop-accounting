@@ -1,5 +1,8 @@
+const crypto = require('crypto');
+
 const BOOKING_CREDIT_AMOUNT = 50;
 const BOOKING_BUFFER_MINUTES = 15;
+const IMMEDIATE_BOOKING_GRACE_MS = 2 * 60 * 1000;
 
 function parseTimestamp(value, fieldName = 'timestamp') {
   const timestamp = Date.parse(value);
@@ -10,6 +13,7 @@ function parseTimestamp(value, fieldName = 'timestamp') {
 }
 
 function getOffsetMinutes(value) {
+  if (String(value).endsWith('Z')) return 0;
   const match = String(value).match(/([+-])(\d{2}):(\d{2})$/);
   if (!match) {
     throw new Error('timestamp must include an explicit UTC offset');
@@ -26,7 +30,22 @@ function formatWithOffset(timestamp, offsetMinutes) {
   const offsetHours = pad(Math.floor(absoluteOffset / 60));
   const offsetRemainder = pad(absoluteOffset % 60);
   return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`
-    + `T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:00${sign}${offsetHours}:${offsetRemainder}`;
+    + `T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:${pad(local.getUTCSeconds())}${sign}${offsetHours}:${offsetRemainder}`;
+}
+
+function normalizeBookingStart(scheduledStart, nowMs = Date.now()) {
+  const start = parseTimestamp(scheduledStart, 'scheduled_start');
+  if (start < nowMs - IMMEDIATE_BOOKING_GRACE_MS) {
+    throw new Error('Booking time cannot be in the past');
+  }
+  if (start <= nowMs) {
+    return formatWithOffset(nowMs, getOffsetMinutes(scheduledStart));
+  }
+  return scheduledStart;
+}
+
+function createBookingId(nowMs = Date.now()) {
+  return `BK-${nowMs}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
 function calculateScheduledEnd(scheduledStart, durationMinutes) {
@@ -62,8 +81,7 @@ function hasBookingConflict(candidateStart, candidateEnd, existingBookings) {
 function isBookingCreditEligible(booking, servingMasseuseName) {
   return booking
     && booking.status === 'BOOKED'
-    && Boolean(booking.requested_masseuse_name)
-    && booking.requested_masseuse_name === servingMasseuseName;
+    && Boolean(servingMasseuseName);
 }
 
 module.exports = {
@@ -71,7 +89,9 @@ module.exports = {
   BOOKING_CREDIT_AMOUNT,
   calculateScheduledEnd,
   canFinishBeforeBooking,
+  createBookingId,
   hasBookingConflict,
   isBookingCreditEligible,
+  normalizeBookingStart,
   parseTimestamp
 };

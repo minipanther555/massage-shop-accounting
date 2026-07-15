@@ -131,6 +131,7 @@ async function loadTodayData() {
       paymentAmount: t.payment_amount,
       paymentMethod: t.payment_method,
       masseuseFee: t.masseuse_fee,
+      bookingCredit: Number(t.booking_credit_amount || 0),
       startTime: t.start_time,
       endTime: t.end_time,
       customerContact: t.customer_contact || '',
@@ -242,6 +243,7 @@ async function loadData() {
     await Promise.all([loadTodayData(), loadCurrentShopStatus()]);
 
     console.log('Data loaded from API successfully');
+    return true;
   } catch (error) {
     console.error('🚨 ERROR in loadData():', error);
     console.error('🚨 ERROR TYPE:', error.constructor.name);
@@ -253,6 +255,7 @@ async function loadData() {
     // Fallback to localStorage if API fails
     console.log('🚀 DEBUG: Attempting fallback to localStorage');
     loadDataFromLocalStorage();
+    return false;
   }
 }
 
@@ -337,6 +340,7 @@ async function submitTransaction(formData) {
       customer_contact: formData.customerContact || '',
       corrected_transaction_id: appData.correctionMode ? appData.originalTransactionId : null,
       booking_id: formData.bookingId || null,
+      requested_staff_booking: Boolean(formData.requestedStaffBooking),
       start_datetime: formData.startDateTime || null,
       end_datetime: formData.endDateTime || null
     };
@@ -416,6 +420,7 @@ async function submitTransaction(formData) {
             paymentAmount: t.payment_amount,
             paymentMethod: t.payment_method,
             masseuseeFee: t.masseuse_fee,
+            bookingCredit: Number(t.booking_credit_amount || 0),
             startTime: t.start_time,
             endTime: t.end_time,
             customerContact: t.customer_contact || '',
@@ -649,7 +654,10 @@ async function getTodaySummary() {
 
     const todayRevenue = todayTransactions.reduce((sum, t) => sum + t.paymentAmount, 0);
     const todayCount = todayTransactions.length;
-    const todayFees = todayTransactions.reduce((sum, t) => sum + t.masseuseeFee, 0);
+    const todayFees = todayTransactions.reduce(
+      (sum, t) => sum + Number(t.masseuseFee || 0) + Number(t.bookingCredit || 0),
+      0
+    );
     const todayExpenses = appData.expenses.reduce((sum, e) => sum + e.amount, 0);
 
     const allTimeRevenue = appData.transactions
@@ -770,6 +778,30 @@ function getCurrentUser() {
     localStorage.removeItem('currentUser');
     return null;
   }
+}
+
+function formatCurrentUserLabel(user) {
+  const normalizedUser = normalizeCurrentUser(user);
+  if (!normalizedUser) {
+    return '';
+  }
+
+  if (normalizedUser.username === 'pwtest') {
+    return normalizedUser.role === 'manager' ? 'Preview: Manager' : 'Preview';
+  }
+
+  return normalizedUser.displayName || normalizedUser.role || normalizedUser.username || '';
+}
+
+function renderCurrentUser(elementId = 'current-user') {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    return;
+  }
+
+  const label = formatCurrentUserLabel(getCurrentUser());
+  element.textContent = label;
+  element.toggleAttribute('hidden', !label);
 }
 
 function isLoggedIn() {

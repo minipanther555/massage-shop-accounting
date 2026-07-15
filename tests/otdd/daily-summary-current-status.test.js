@@ -100,6 +100,15 @@ describe('Daily Summary current shop status API', () => {
     assert.match(response.body.error, /Invalid at timestamp/);
   });
 
+  it('keeps a staff member booking-constrained while a requested booking is already in progress', async () => {
+    const response = await request(app)
+      .get('/api/staff/current-status?at=2026-07-13T08:00:00.000Z')
+      .set('x-pwtest', '1');
+    const pim = response.body.staff.find((row) => row.masseuse_name === 'Pim พิม');
+    assert.strictEqual(pim.current_state, 'booking_buffer');
+    assert.strictEqual(pim.next_booking.booking_id, 'BK-status-buffer');
+  });
+
   it('uses indexed query plans for current status lookups', async () => {
     const transactionPlan = await database.all(
       `EXPLAIN QUERY PLAN
@@ -116,7 +125,7 @@ describe('Daily Summary current shop status API', () => {
        WHERE status = 'BOOKED'
          AND requested_masseuse_name IS NOT NULL
          AND requested_masseuse_name != ''
-         AND datetime(scheduled_start) >= datetime(?)
+         AND datetime(scheduled_end) > datetime(?)
        ORDER BY scheduled_start ASC`,
       ['2026-07-13T07:30:00.000Z']
     );

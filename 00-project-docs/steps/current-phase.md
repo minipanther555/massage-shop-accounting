@@ -1,4 +1,4 @@
-# Current Phase: 🟡 BOOKING RESERVATION MVP + DAILY SUMMARY STATUS IMPLEMENTED; CHECKPOINT FOLLOW-UPS OPEN
+# Current Phase: 🟢 BKG-005 AND HOME-001 COMPLETE; CHECKPOINT FOLLOW-UPS OPEN
 
 ## 2026-07-13 Booking Addendum
 
@@ -7,8 +7,11 @@ The New Customer page now supports a non-financial future reservation that becom
 The Daily Summary page now includes the current shop status surface that was originally discussed as a separate page: busy/free state, next booking constraints, usable time before the 15-minute buffer, and today massage counts are shown inside the existing Daily Summary workflow.
 
 ### Checkpoint Review Follow-Ups
+- BKG-005 is complete: immediate requested-staff arrivals, current-minute reservations, compact credit visibility, and separated report totals are implemented and browser-verified.
 - BKG-004 is open to harden requested-staff booking credit through correction flows and make booking-buffer enforcement independent of optional browser datetime fields.
 - DSS-008 is implemented: Current Shop Status now uses canonical transaction start/end times where present so staff are not shown free too early.
+- Home Dashboard drilldowns are implemented: the three Home cards are compact at the 667px browser viewport and open inline details for revenue, active staff, and expenses.
+- HOME-001 is complete: manager actions now share the top navigation grid, Home labels live versus fallback state, and both Recent Activity and the Revenue drilldown preserve the authoritative newest transaction ordering.
 
 ### Deferred Work
 - BKG-002 is superseded by the completed DSS Daily Summary status implementation for this pass.

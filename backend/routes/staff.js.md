@@ -33,14 +33,14 @@
 - **Purpose:** Returns the Daily Summary current shop status snapshot: who is busy, when they started, when the massage ends, when they are free after the booking buffer, which staff have upcoming requested bookings, which staff are free, and each staff member's active massage count for the current Bangkok business day.
 - **Parameters:**
   - `at`: Optional ISO timestamp used by tests and diagnostics to make the status calculation deterministic. Production callers omit this and the server uses `new Date()`.
-- **Returns:** `{ business_day, generated_at, buffer_minutes, staff }`, where each staff row includes `staff_id`, `position`, `masseuse_name`, `queue_status`, `current_state`, `busy_started`, `busy_started_iso`, `busy_until`, `busy_until_iso`, `free_at`, `free_at_iso`, `remaining_minutes`, `today_massages`, `next_booking`, and `usable_minutes_before_booking`.
+- **Returns:** `{ business_day, generated_at, buffer_minutes, staff }`, where each staff row includes `staff_id`, `today_staff_id`, `position`, `masseuse_name`, `queue_status`, `current_state`, `busy_started`, `busy_started_iso`, `busy_until`, `busy_until_iso`, `free_at`, `free_at_iso`, `remaining_minutes`, `today_massages`, `assigned_today`, `next_booking`, `usable_minutes_before_booking`, and `walk_in_priority`.
 - **Raises / Throws:** Returns HTTP 400 with `{error: "Invalid at timestamp"}` when the optional diagnostic `at` value cannot be parsed as a date; returns HTTP 500 only for unexpected database or route failures.
 - **Logic:**
   1. Computes the current Bangkok business day with `getCurrentBusinessDay(req)`.
   2. Reads active visible Today Staff rows with `getActiveTodayStaff()`.
   3. Reads current-day `ACTIVE` transactions and treats rows whose canonical `end_datetime` is still in the future as busy windows. If a legacy row has no canonical datetime fields, it falls back to `timestamp + duration`.
-  4. Reads future `BOOKED` reservations with a requested masseuse and attaches the next booking per staff member.
-  5. Marks active massage rows as `busy`, staff with less than one 60-minute service slot before a requested booking as `booking_buffer`, and all remaining rows as `available`.
+  4. Reads `BOOKED` reservations whose scheduled end is still in the future, including reservations already in progress, and attaches the next booking per staff member.
+  5. Reads every unreleased `BOOKED` requested-staff booking for the current Bangkok business day, including late bookings that reception has not marked `NO_SHOW`; historical bookings cannot constrain today. Staff with less than one 60-minute service slot before that booking, or with a late booking, are `booking_buffer`, and all remaining rows are `available`.
   6. Sorts the snapshot by operational state: busy first, booking-constrained rows next, free rows last.
   7. Returns the snapshot without mutating staff, transaction, booking, planning, commission, or payday tables.
 
@@ -97,8 +97,8 @@
   1. Resolves the current Bangkok business day and reads active `today_staff` rows in position order.
   2. Treats the first active Today Staff row as the next queue member. `queue_status = "Next"` is not required because the visible Today Staff order is authoritative.
   3. If `currentMasseuse` does not match that first row, returns `Manual selection - Today Staff queue not advanced` and leaves positions unchanged. This preserves requested-staff booking/manual selection semantics.
-  4. If the selected staff is the first row, rotates that row to the end of the active Today Staff list, shifts later rows up, clears queue status values, and writes an `advance_today_staff_queue` audit record.
-  5. Returns the refreshed Today Staff list so the New Customer page can re-render the dropdown before clearing the form.
+  4. If the selected staff is the first row, retains the original Today Staff positions. Completed massage counts and booking eligibility determine the next walk-in; this endpoint is retained as a refresh-compatible no-op for the existing submit flow.
+  5. Returns the unchanged Today Staff list so the New Customer page can re-render the dropdown before clearing the form.
 
 ### Performance and Analytics
 
@@ -160,10 +160,15 @@
 - **Returns:** Updated Today Staff list.
 - **Logic:** Updates only active `today_staff.position` values and logs `reorder_today_staff`.
 
+#### Walk-in priority
+- `walk_in_priority` is calculated from the active Today Staff rows after status construction.
+- Eligible means `current_state = 'available'`; active massages and unreleased near-term bookings remain ineligible.
+- The primary sort is `assigned_today` (completed active massages plus an unreleased assigned booking), and ties use the displayed Today Staff `position`, preserving the original day-start order without rotating the list.
+
 #### `router.post('/today/reset-check')`
 - **Purpose:** Runs the 2:00 a.m. Bangkok visible-list reset/recovery check.
 - **Returns:** `{ reset, business_day, reset_business_day? }`.
-- **Logic:** If the previous business day is still open, marks its active visible rows removed with `scheduled_reset`, resets that `business_days` row, ensures the current business day exists, and preserves Today Staff history.
+- **Logic:** If the previous business day is still open, marks its active visible rows removed with `scheduled_reset`, changes remaining `BOOKED` reservations from that day to `NO_SHOW`, resets that `business_days` row, ensures the current business day exists, and preserves Today Staff history. Reservations never roll over into the next business day.
 
 ## 3. Dependency Mapping
 
@@ -179,7 +184,7 @@
 - **Called Modules/Services:** Database operations via `../models/database.js`
 - **Output Data Contracts / Schemas:** 
   - Staff roster / Today Staff: `[{id, position, masseuse_name, status, busy_until, today_massages, last_updated, staff_id, business_day}]`
-  - Current status: `{ business_day: string, generated_at: string, buffer_minutes: number, staff: [{ staff_id: number, position: number, masseuse_name: string, queue_status: string|null, current_state: 'busy'|'available'|'booking_buffer', busy_started: string|null, busy_started_iso: string|null, busy_until: string|null, busy_until_iso: string|null, free_at: string|null, free_at_iso: string|null, remaining_minutes: number, today_massages: number, next_booking: object|null, usable_minutes_before_booking: number|null }] }`
+  - Current status: `{ business_day: string, generated_at: string, buffer_minutes: number, staff: [{ staff_id: number, today_staff_id: number, position: number, masseuse_name: string, queue_status: string|null, current_state: 'busy'|'available'|'booking_buffer', busy_started: string|null, busy_started_iso: string|null, busy_until: string|null, busy_until_iso: string|null, free_at: string|null, free_at_iso: string|null, remaining_minutes: number, today_massages: number, assigned_today: number, next_booking: object|null, usable_minutes_before_booking: number|null, walk_in_priority: boolean }] }`
   - Helper rows: `[{staff_id, display_name, previous_business_day, previous_day_commission, was_day_off_yesterday, today_planning_status, can_add_to_today_staff}]`
   - Performance data: `[{masseuse_name, massage_count, total_fees, total_revenue}]`
   - Status confirmations: `{message: string, masseuse: string, busyUntil: string, newStatus: string}`
@@ -246,4 +251,22 @@ The dropdown was populated from `GET /api/staff/roster`, which reads `today_staf
 - Booking/manual selection behavior should move the queue.
 
 ### Resolution
-`POST /api/staff/advance-queue` now rotates active `today_staff` rows for the current business day only when the submitted staff is the visible first row. Manual non-next selections leave the queue unchanged. `tests/integration/walkin.queue-refresh.integration.test.js` locks both behaviors.
+`POST /api/staff/advance-queue` is now a compatibility refresh hook that keeps the original `today_staff.position` order intact. Walk-in priority is calculated from current-day assigned workload first, then the stable displayed Today Staff position as the tie-break. Manual non-next selections do not rewrite the day-start queue. `tests/integration/walkin.queue-refresh.integration.test.js` locks the no-rotation behavior, stale-booking exclusion, and stable-position tie-break.
+
+### Bug Summary: Stale Bookings and Row-ID Tie-Breaks Corrupted Walk-In Priority (2026-07-15)
+
+New Customer and Daily Summary could mark a staff member unavailable because `GET /api/staff/current-status` read every future `BOOKED` requested-staff row without scoping to the current Bangkok business day. At the same time, the post-submit queue advancement rotated `today_staff.position`, and a follow-up tie-break used database row identity instead of the original visible day-start order. The combined behavior made the auto-selected walk-in staff appear random after refreshes, old bookings, or equal workload ties.
+
+#### Validated Hypothesis
+
+The status endpoint and queue endpoint were applying different concepts of "next": current status used unscoped booking rows, the transaction page rendered from status plus roster data, and `advance-queue` mutated the ordering table even though the confirmed rule is workload count first and original Today Staff order for ties.
+
+#### Invalidated Hypotheses
+
+- The browser repaint alone caused the wrong dropdown value.
+- A single booking-buffer display bug explained the full ordering failure.
+- The correct tie-break was insertion row ID or the latest rotated queue position.
+
+#### Resolution
+
+`GET /api/staff/current-status` now reads unreleased requested-staff bookings only for the active business day, exposes `assigned_today` and `walk_in_priority`, and uses stable Today Staff `position` as the workload tie-break. `resetIfStale()` marks prior-business-day `BOOKED` reservations `NO_SHOW` so they cannot roll into the next day. `POST /api/staff/advance-queue` no longer rotates Today Staff order; it returns the retained ordered roster while workload/status determine the next walk-in. The transaction page consumes `walk_in_priority`, disables busy or booking-constrained staff for Walk-in mode, and shows an "everyone busy" message with the earliest free time when no one is eligible.

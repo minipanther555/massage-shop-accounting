@@ -6,8 +6,11 @@ const database = require('../models/database');
 const { getBusinessDay } = require('../utils/business-day');
 const {
   BOOKING_CREDIT_AMOUNT,
+  calculateScheduledEnd,
+  createBookingId,
   hasBookingConflict,
-  isBookingCreditEligible
+  isBookingCreditEligible,
+  normalizeBookingStart
 } = require('../services/booking-service');
 
 // Get all transactions (with pagination and filtering)
@@ -18,17 +21,20 @@ router.get('/', async (req, res) => {
     } = req.query; // Removed default 'ACTIVE'
     const offset = (page - 1) * limit;
 
-    let sql = 'SELECT * FROM transactions';
+    let sql = `SELECT t.*, COALESCE(bc.amount, 0) AS booking_credit_amount
+               FROM transactions t
+               LEFT JOIN booking_credits bc
+                 ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'`;
     const params = [];
     const conditions = [];
 
     if (status && status.toLowerCase() !== 'all') {
-      conditions.push('status = ?');
+      conditions.push('t.status = ?');
       params.push(status);
     }
 
     if (date) {
-      conditions.push('date = ?');
+      conditions.push('t.date = ?');
       params.push(date);
     }
 
@@ -36,13 +42,13 @@ router.get('/', async (req, res) => {
       sql += ` WHERE ${conditions.join(' AND ')}`;
     }
 
-    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY datetime(t.timestamp) DESC, t.id DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit, 10), offset);
 
     const transactions = await database.all(sql, params);
 
     // Get total count
-    let countSql = 'SELECT COUNT(*) as total FROM transactions';
+    let countSql = 'SELECT COUNT(*) as total FROM transactions t';
     const countParams = [];
     if (conditions.length > 0) {
       countSql += ` WHERE ${conditions.join(' AND ')}`;
@@ -73,17 +79,20 @@ router.get('/recent', async (req, res) => {
     const { limit = 5, date } = req.query;
     console.log('🔍 [RECENT] Query params:', { limit, date });
 
-    let sql = `SELECT * FROM transactions 
-               WHERE (status = 'ACTIVE' OR status = 'CORRECTED' OR status LIKE 'EDITED%')`;
+    let sql = `SELECT t.*, COALESCE(bc.amount, 0) AS booking_credit_amount
+               FROM transactions t
+               LEFT JOIN booking_credits bc
+                 ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+               WHERE (t.status = 'ACTIVE' OR t.status = 'CORRECTED' OR t.status LIKE 'EDITED%')`;
     const params = [];
 
     if (date) {
-      sql += ` AND date = ?`;
+      sql += ` AND t.date = ?`;
       params.push(date);
       console.log('🔍 [RECENT] Added date filter for:', date);
     }
 
-    sql += ` ORDER BY timestamp DESC, id DESC LIMIT ?`;
+    sql += ` ORDER BY datetime(t.timestamp) DESC, t.id DESC LIMIT ?`;
     params.push(parseInt(limit));
 
     console.log('🔍 [RECENT] Final SQL (raw):', JSON.stringify(sql));
@@ -128,6 +137,7 @@ router.post('/', async (req, res) => {
       customer_contact: customerContact = '',
       corrected_transaction_id: originalTransactionId = null,
       booking_id: bookingId = null,
+      requested_staff_booking: requestedStaffBooking = false,
       start_datetime: startDateTime = null,
       end_datetime: endDateTime = null
     } = req.body;
@@ -180,6 +190,27 @@ router.post('/', async (req, res) => {
     }
     console.log(`[TX CREATE - STEP 4] Service found: Price=${service.price}, Fee=${service.masseuse_fee}`);
 
+    if (requestedStaffBooking) {
+      if (bookingId || originalTransactionId) {
+        return res.status(400).json({ error: 'Immediate requested-staff booking cannot reuse another booking or correction' });
+      }
+      const immediateStart = normalizeBookingStart(new Date().toISOString());
+      startDateTime = immediateStart;
+      endDateTime = calculateScheduledEnd(immediateStart, Number(duration));
+      bookingId = createBookingId();
+      booking = {
+        booking_id: bookingId,
+        scheduled_start: startDateTime,
+        scheduled_end: endDateTime,
+        service_type: serviceType,
+        location,
+        duration: Number(duration),
+        requested_masseuse_name: masseuseName,
+        customer_contact: customerContact,
+        status: 'BOOKED'
+      };
+    }
+
     if (startDateTime && endDateTime) {
       const blockingBookings = await database.all(
         `SELECT booking_id, scheduled_start, scheduled_end
@@ -197,13 +228,27 @@ router.post('/', async (req, res) => {
     }
 
     const timestamp = new Date();
+    const timestampIso = timestamp.toISOString();
     const transactionId = `TX-${timestamp.getTime()}-${crypto.randomBytes(3).toString('hex')}`;
-    const date = timestamp.toISOString().split('T')[0];
+    const date = timestampIso.split('T')[0];
     const businessDay = getBusinessDay(timestamp);
     console.log(`[TX CREATE - STEP 5] Generated Transaction ID: ${transactionId}`);
 
     await database.run('BEGIN IMMEDIATE TRANSACTION');
     dbTransactionStarted = true;
+
+    if (requestedStaffBooking) {
+      await database.run(
+        `INSERT INTO bookings (
+          booking_id, scheduled_start, scheduled_end, service_type, location,
+          duration, requested_masseuse_name, customer_contact, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'BOOKED')`,
+        [
+          bookingId, startDateTime, endDateTime, serviceType, location,
+          Number(duration), masseuseName, customerContact
+        ]
+      );
+    }
 
     if (originalTransactionId) {
       console.log(`[TX CREATE - STEP 6a] EDIT MODE DETECTED. Original TX ID: ${originalTransactionId}`);
@@ -256,7 +301,7 @@ router.post('/', async (req, res) => {
         corrected_from_id, booking_id, start_datetime, end_datetime
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        transactionId, timestamp, date, masseuseName, serviceType,
+        transactionId, timestampIso, date, masseuseName, serviceType,
         location, duration, service.price, paymentMethod, service.masseuse_fee,
         startTime, endTime, customerContact,
         originalTransactionId ? 'CORRECTED' : 'ACTIVE', businessDay,
@@ -303,7 +348,11 @@ router.post('/', async (req, res) => {
     dbTransactionStarted = false;
 
     const newTransaction = await database.get(
-      'SELECT * FROM transactions WHERE id = ?',
+      `SELECT t.*, COALESCE(bc.amount, 0) AS booking_credit_amount
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.id = ?`,
       [result.id]
     );
     console.log('[TX CREATE - STEP 11] Fetching and returning new transaction.');
@@ -375,7 +424,7 @@ router.get('/latest-for-correction', async (req, res) => {
     const transaction = await database.get(
       `SELECT * FROM transactions 
        WHERE status = 'ACTIVE' 
-       ORDER BY timestamp DESC 
+       ORDER BY datetime(timestamp) DESC, id DESC
        LIMIT 1`
     );
 

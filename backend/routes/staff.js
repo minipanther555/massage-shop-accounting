@@ -143,6 +143,12 @@ async function resetIfStale(now = new Date(), actor = 'system') {
     [previousDay]
   );
   await database.run(
+    `UPDATE bookings
+     SET status = 'NO_SHOW', cancelled_at = COALESCE(cancelled_at, CURRENT_TIMESTAMP)
+     WHERE status = 'BOOKED' AND substr(scheduled_start, 1, 10) = ?`,
+    [previousDay]
+  );
+  await database.run(
     `UPDATE business_days
      SET status = 'reset', reset_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
      WHERE business_day = ?`,
@@ -207,7 +213,7 @@ async function getActiveTransactionByStaff(businessDay) {
   return byStaff;
 }
 
-async function getNextBookingByStaff(nowIso) {
+async function getNextBookingByStaff(businessDay) {
   const rows = await database.all(
     `SELECT
        booking_id,
@@ -220,9 +226,9 @@ async function getNextBookingByStaff(nowIso) {
      WHERE status = 'BOOKED'
        AND requested_masseuse_name IS NOT NULL
        AND requested_masseuse_name != ''
-       AND datetime(scheduled_start) >= datetime(?)
+       AND substr(scheduled_start, 1, 10) = ?
      ORDER BY scheduled_start ASC`,
-    [nowIso]
+    [businessDay]
   );
 
   const byStaff = new Map();
@@ -257,6 +263,7 @@ function buildStatusRow({ staff, nowIso, activeTransaction, nextBooking }) {
 
   return {
     staff_id: staff.staff_id,
+    today_staff_id: staff.id,
     position: staff.position,
     masseuse_name: staff.masseuse_name,
     queue_status: staff.status || null,
@@ -269,6 +276,7 @@ function buildStatusRow({ staff, nowIso, activeTransaction, nextBooking }) {
     free_at_iso: freeAtIso,
     remaining_minutes: remainingMinutes,
     today_massages: staff.today_massages || 0,
+    assigned_today: (staff.today_massages || 0) + (nextBooking ? 1 : 0),
     next_booking: nextBooking ? {
       booking_id: nextBooking.booking_id,
       scheduled_start: nextBooking.scheduled_start,
@@ -278,6 +286,21 @@ function buildStatusRow({ staff, nowIso, activeTransaction, nextBooking }) {
     } : null,
     usable_minutes_before_booking: usableMinutesBeforeBooking
   };
+}
+
+function markWalkInPriority(statusRows) {
+  const eligibleRows = statusRows
+    .filter((row) => row.current_state === 'available')
+    .sort((a, b) => {
+      const workloadDifference = (a.assigned_today || 0) - (b.assigned_today || 0);
+      if (workloadDifference !== 0) return workloadDifference;
+      return (a.position || 999999) - (b.position || 999999);
+    });
+  const nextName = eligibleRows[0]?.masseuse_name || null;
+  return statusRows.map((row) => ({
+    ...row,
+    walk_in_priority: Boolean(nextName && row.masseuse_name === nextName)
+  }));
 }
 
 // Helper function to reset expired busy statuses
@@ -405,15 +428,16 @@ router.get('/current-status', async (req, res) => {
     const { currentBusinessDay } = await getCurrentBusinessDay(req);
     const todayStaff = await getActiveTodayStaff(currentBusinessDay);
     const activeByStaff = await getActiveTransactionByStaff(currentBusinessDay);
-    const bookingByStaff = await getNextBookingByStaff(nowIso);
+    const bookingByStaff = await getNextBookingByStaff(currentBusinessDay);
     const statusRows = todayStaff.map((staff) => buildStatusRow({
       staff,
       nowIso,
       activeTransaction: activeByStaff.get(staff.masseuse_name),
       nextBooking: bookingByStaff.get(staff.masseuse_name)
     }));
+    const priorityRows = markWalkInPriority(statusRows);
     const statusPriority = { busy: 0, booking_buffer: 1, available: 2 };
-    statusRows.sort((a, b) => {
+    priorityRows.sort((a, b) => {
       const stateDifference = (statusPriority[a.current_state] ?? 9) - (statusPriority[b.current_state] ?? 9);
       if (stateDifference !== 0) return stateDifference;
       if (a.current_state === 'busy') return (a.remaining_minutes || 0) - (b.remaining_minutes || 0);
@@ -427,7 +451,7 @@ router.get('/current-status', async (req, res) => {
       business_day: currentBusinessDay,
       generated_at: nowIso,
       buffer_minutes: BOOKING_BUFFER_MINUTES,
-      staff: statusRows
+      staff: priorityRows
     });
   } catch (error) {
     console.error('❌ Error fetching current shop status:', error);
@@ -589,35 +613,11 @@ router.post('/advance-queue', async (req, res) => {
       return;
     }
 
-    await database.run('BEGIN IMMEDIATE TRANSACTION');
-    dbTransactionStarted = true;
-
-    for (let index = 1; index < todayStaff.length; index += 1) {
-      await database.run(
-        'UPDATE today_staff SET position = ?, queue_status = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [index, todayStaff[index].id]
-      );
-    }
-
-    await database.run(
-      'UPDATE today_staff SET position = ?, queue_status = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [todayStaff.length, currentNext.id]
-    );
-
-    await auditPlanningAction(currentBusinessDay, currentNext.staff_id, 'advance_today_staff_queue', getActor(req), {
-      previous_next: currentMasseuse,
-      new_next: todayStaff[1]?.masseuse_name || currentMasseuse
-    });
-
-    await database.run('COMMIT');
-    dbTransactionStarted = false;
-
-    const updatedTodayStaff = await getActiveTodayStaff(currentBusinessDay);
     res.json({
-      message: 'Today Staff queue advanced',
+      message: 'Today Staff order retained; workload determines the next walk-in',
       previousNext: currentMasseuse,
-      newNext: updatedTodayStaff[0]?.masseuse_name || null,
-      today_staff: updatedTodayStaff
+      newNext: todayStaff[0]?.masseuse_name || null,
+      today_staff: todayStaff
     });
   } catch (error) {
     if (dbTransactionStarted) {

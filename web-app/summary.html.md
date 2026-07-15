@@ -180,3 +180,12 @@ Daily Summary correctly delegated to `/api/staff/current-status`; the backend st
 
 ### Resolution
 The backend now persists `transactions.start_datetime` and `transactions.end_datetime` and Current Shop Status prefers those canonical fields, falling back to `timestamp + duration` only for legacy rows.
+
+### Bug Summary: Requested-Staff Credit Was Missing From Daily Summary (2026-07-14)
+Daily Summary showed only service base commission, so a staff member's payable `฿50` requested-staff credit was invisible and the displayed staff-pay total was incomplete.
+
+### Validated Hypothesis
+The page already consumes shared transaction state; it needed to aggregate `masseuseFee` and `bookingCredit` separately and annotate credit-bearing transaction rows.
+
+### Resolution
+Per-staff details now show combined pay with `ฐาน` and `จอง` components, and transaction rows render the compact `จองพนักงาน +฿50` badge when the active credit is present.

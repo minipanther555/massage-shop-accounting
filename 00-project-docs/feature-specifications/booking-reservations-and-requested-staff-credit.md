@@ -15,7 +15,7 @@ Allow reception to record a future customer reservation without creating revenue
 - Overriding the automatically selected next staff member is treated as a requested-staff booking.
 - Arrival conversion reuses the saved service, duration, location, contact, and scheduled time and asks reception for payment.
 - A completed requested-staff booking creates a separate payable `฿50` credit.
-- A queue-assigned booking creates no booking credit.
+- A queue-assigned booking creates its `฿50` booking credit for the masseuse who serves the paid arrival.
 - Today Staff previous-day ordering continues to use base massage commission only.
 - A staff member must have a 15-minute gap between a massage ending and a later booking starting.
 - Undefined manager-driven queue reordering is not automated.
@@ -134,8 +134,8 @@ An upcoming booking has a Thai-first arrival action. It loads the saved details 
 ### FR-004: Separate Requested-Staff Credit
 Successful conversion of a requested-staff booking creates one active `฿50` booking credit for the requested masseuse. It also adds `฿50` to the staff outstanding earned balance. The transaction's base `masseuse_fee` is unchanged.
 
-### FR-005: No Credit for Queue-Assigned Booking
-If `requested_masseuse_name` is null, arrival conversion creates no booking credit regardless of which queue member serves the customer.
+### FR-005: Booking Credit Applies to Every Booking Arrival
+Every reservation created in Booking mode carries a `฿50` booking commission when it becomes a paid transaction. If a requested masseuse is selected, that masseuse receives the credit; if staff was left for queue assignment, the masseuse who serves the arrival receives it. A normal non-booking walk-in remains ineligible.
 
 ### FR-006: No-Show and Cancellation
 A reservation that remains `BOOKED`, is cancelled, or is marked no-show has no financial transaction and no booking credit. Cancellation/no-show UI may be delivered in a later step; the data model must support both states.
@@ -156,7 +156,20 @@ Previous-day helper ranking sums only active transaction `masseuse_fee`. It neve
 The current shop-status surface needs, per staff member: current busy state, busy-until time, next booking time, available minutes before that booking after the 15-minute buffer, and completed massage count for the current business day. For the current pass, this surface is implemented inside Daily Summary rather than as a separate page; see `daily-summary-current-shop-status.md`.
 
 ### FR-012: Deferred Queue Reordering
-The system must not automatically move a requested masseuse in the queue after a booking until the manager confirms the ordering algorithm. The future status page will show massage counts and availability so the manager can make a manual decision.
+Walk-in assignment uses the Today Staff list as the stable day-start tie-break order. Completed massages are the primary workload count; an unreleased booking also reserves that staff member from walk-ins and contributes to assigned workload. Active massages and unreleased bookings make a staff member ineligible, including a late booking until reception marks it `NO_SHOW`. Among eligible staff, the lowest assigned workload wins. When workloads tie, the original Today Staff order wins, even after queue rotations; a booking may temporarily change eligibility but does not rewrite the original order.
+
+### FR-013: Immediate Requested-Staff Arrival
+When a customer is already present and reception selects a staff member other than the automatically selected next Today Staff member, the page remains in `ลูกค้ามาแล้ว / Walk-in` mode and the submission is classified as an immediate requested-staff booking. Payment remains required. One submit atomically creates a completed booking record, one financial transaction, and one active `฿50` booking credit for the selected staff member. Selecting the automatically chosen next staff member remains a normal walk-in and creates no booking or credit.
+
+Explicit reservation mode accepts a start time of now or any later time. The browser defaults the reservation time to now rather than forcing a 30-minute delay. A reservation saved without payment remains non-financial until arrival conversion, even when its scheduled time is now.
+
+### FR-014: Visible Credit and Reporting Separation
+Every transaction read contract returns `booking_credit_amount`, using the active credit linked to that transaction or `0` when none exists. Staff-facing transaction lists render a compact Thai-first `จองพนักงาน +฿50` annotation only when this amount is positive. The annotation must not be rendered as a form field, price card, or primary action.
+
+Daily and manager financial reporting expose base massage commission and booking credit separately, and staff-pay totals include both. Today Staff previous-day ordering continues to use base transaction `masseuse_fee` only.
+
+### FR-015: Cross-Page Staff Earnings Detail
+Whenever a staff member is shown as an interactive row or drilldown on Home, Daily Summary, Daily Staff, recent-transaction views, financial reports, or Payday Tracking, the detail view may show that staff member's base commission, booking commission, and combined payable total. Booking commission is visible in payday and transaction detail but is excluded from the next-business-day Today Staff ranking.
 
 ## 6. Data Model Changes
 
@@ -247,10 +260,17 @@ Rollback disables booking UI/routes while leaving additive tables intact. Existi
 
 - AC-001: Saving a reservation produces one `bookings` row and zero new transaction, credit, fee, revenue, and busy-state writes.
 - AC-002: Converting a requested-staff booking produces one completed booking, one transaction, one `฿50` active credit, and staff outstanding earnings equal to base fee plus `฿50`.
-- AC-003: Converting a queue-assigned booking produces one transaction and zero booking credits.
+- AC-003: Converting a queue-assigned booking produces one transaction and one `฿50` booking credit for the masseuse who serves the arrival.
 - AC-004: Duplicate conversion returns conflict and creates no additional financial rows.
 - AC-005: A massage ending fewer than 15 minutes before a requested booking is rejected for that staff member.
 - AC-006: Today Staff helper ordering output is unchanged by booking-credit rows.
 - AC-007: Booking mode works without payment; arrival mode cannot submit without payment.
 - AC-008: Normal walk-in flow remains auto-selected to next staff and creates no booking record or credit.
 - AC-009: Queue reordering remains manual and unchanged.
+- AC-010: Submitting a present customer with a manually selected non-next staff member creates one completed booking, one transaction, and one active `฿50` credit atomically; the same submission for the auto-selected next staff member creates no booking or credit.
+- AC-011: Reservation mode defaults to now and the API accepts server-normalized immediate reservation time as well as later times without allowing materially stale past reservations.
+- AC-012: Transaction list and recent-transaction responses return `booking_credit_amount = 50` for an active requested-staff credit and `0` for ordinary walk-ins, and mirrored staff-facing transaction rows show a compact badge only for the former.
+- AC-013: Daily Summary and manager reports expose booking credit separately and total staff pay equals base commission plus active booking credit, while Today Staff ranking output remains unchanged.
+- AC-014: Every Booking-mode arrival that becomes a paid transaction creates exactly one active `฿50` booking credit for the requested masseuse or, when staff was queue-assigned, the serving masseuse; ordinary non-booking walk-ins create none.
+- AC-015: Booking-mode commission preview shows base commission plus `฿50` while preserving the base commission as the value submitted to the transaction ledger.
+- AC-016: Staff detail surfaces expose base commission, booking commission, and combined payable total wherever a staff member is expanded or selected, while Today Staff ranking continues to exclude booking commission.

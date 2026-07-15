@@ -83,9 +83,23 @@ For navigation labels, pages request or hardcode the bilingual label structure u
 #### `loadData()`
 - **Purpose:** Initialize application by loading all configuration and data from backend API
 - **Parameters:** None
-- **Returns:** Promise<void>
-- **Raises:** Error if API calls fail
-- **Usage & Logic Notes:** Loads services, payment methods, and staff roster in parallel, maps API responses to frontend format, calls `loadTodayData()` and `loadCurrentShopStatus()` for current data, falls back to localStorage on failure
+- **Returns:** `Promise<boolean>`; `true` when all API-backed state loads, `false` when the function catches an error and restores local fallback state
+- **Raises:** None to callers; API errors are logged, surfaced through the existing toast, and converted to `false`
+- **Usage & Logic Notes:** Loads services, payment methods, and staff roster in parallel, maps API responses to frontend format, calls `loadTodayData()` and `loadCurrentShopStatus()` for current data, and falls back to localStorage on failure. Home consumes the boolean so fallback data cannot be silently labeled live; existing callers that ignore the return value remain compatible.
+
+#### `formatCurrentUserLabel(user)`
+- **Purpose:** Convert a normalized user object into the short label shown in page headers.
+- **Parameters:** `user` object from `getCurrentUser()` or backend auth metadata.
+- **Returns:** String label for header display.
+- **Raises:** None.
+- **Usage & Logic Notes:** PWTEST preview users render as `Preview: Manager` instead of raw `manager (pwtest)` text. Real users prefer `displayName`, then role, then username.
+
+#### `renderCurrentUser(elementId = 'current-user')`
+- **Purpose:** Render the current auth user into a standard header badge.
+- **Parameters:** Optional DOM element id, defaulting to `current-user`.
+- **Returns:** None.
+- **Raises:** None.
+- **Usage & Logic Notes:** Hides the element when there is no label so empty placeholders do not appear as stray text. Pages should call this helper instead of formatting `${user.role} (${user.username})` directly.
 
 #### `saveData()`
 - **Purpose:** Placeholder function for data persistence (data is now saved via API on each operation)
@@ -307,6 +321,20 @@ The backend PWTEST auth shim returned a role, but `shared.js#getCurrentUser()` t
 ### Resolution
 `getCurrentUser()` now normalizes stale PWTEST users to a complete manager preview shape, `staff.html` writes the complete preview user shape before `shared.js` loads, and fresh preview ports can open app pages directly with `?PWTEST=1` because the shared helper creates the preview user when localStorage is empty.
 
+### Bug Summary: PWTEST Header Still Looked Like Loose Debug Text (2026-07-14)
+After the missing-role fix, New Customer and several admin pages still rendered the raw string `manager (pwtest)` in the nav/header area. Browser review showed this looked like random leftover text rather than an intentional page header control.
+
+### Validated Hypothesis
+The remaining problem was display formatting and styling, not authentication state. Pages still formatted the user locally with `${user.role} (${user.username})`, and some pages had a `#current-user` placeholder without a consistent renderer.
+
+### Invalidated Hypotheses
+- The header text came from backend data loading.
+- The preview user was still missing the manager role.
+- The issue was isolated to New Customer.
+
+### Resolution
+Added `formatCurrentUserLabel()` and `renderCurrentUser()` to shared auth utilities. Preview users now show `Preview: Manager`, real users prefer `displayName`, and pages with `#current-user` call the shared renderer.
+
 ### Bug Summary: Recent Transaction Helper Reversed Authoritative API Order (2026-07-13)
 The New Customer page did not reliably display the just-submitted transaction at the top of the recent list.
 
@@ -334,3 +362,12 @@ The New Customer expense delete button removed the row from `appData.expenses` a
 
 ### Resolution
 `removeExpense(index)` is now async, calls `api.deleteExpense(expense.id)`, reloads `loadTodayData()`, and transaction page handlers await it before refreshing side panels.
+
+### Bug Summary: Booking Credit Was Dropped During API Mapping (2026-07-14)
+Transaction APIs now return `booking_credit_amount`, but shared frontend state previously retained only `masseuse_fee`. As a result, no transaction list or summary could render or total the separate credit.
+
+### Validated Hypothesis
+`loadTodayData()` and its fallback mapper are the common transaction boundary for New Customer, Daily Summary, and Home.
+
+### Resolution
+Both mappers expose numeric `bookingCredit`; `submitTransaction()` sends the boolean `requested_staff_booking` contract; shared fee totals add base `masseuseFee` and `bookingCredit` without modifying either component.

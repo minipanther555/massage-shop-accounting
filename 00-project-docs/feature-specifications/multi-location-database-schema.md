@@ -3,6 +3,18 @@
 ## Overview
 This document outlines the database schema changes implemented to support multi-location operations for the EIW Massage Shop chain, extending from single-location to 3-location chain operations.
 
+## Current Direction: Database-Per-Branch
+
+The intended production model is **multi-tenant database-per-branch**. Each Top Thai branch should have the same SQLite schema in a separate database file, so every branch has its own staff list, daily staff state, transactions, services, expenses, booking data, and reports. The branch selected during login is the tenant/branch context that should select the correct database file for subsequent requests.
+
+This differs from a single shared database with only `location_id` filters. `location_id` remains useful as session metadata and for display/audit context, but it is not sufficient by itself when each branch needs an independently managed staff list and operational ledger.
+
+Current local testing status:
+- The login flow carries branch metadata in the authenticated session.
+- The backend still uses a singleton `DB_PATH` from `backend/dbPath.js`.
+- Staff and transaction routes currently query that singleton database instance.
+- Before server rollout, database access must be routed by the authenticated branch so `Top Thai 55`, `Top Thai 49`, `Top Thai 43`, `Top Thai 33`, and `Top Thai Thonglor 9` can each use a parallel database file with the same schema.
+
 ## Database Schema Changes
 
 ### 1. New Locations Table

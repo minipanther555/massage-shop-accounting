@@ -76,6 +76,7 @@
                                     <select id="masseuse" name="masseuse" required>
                                         <option value="">เลือกพนักงาน...</option>
                                     </select>
+                                    <div id="masseuse-availability-message" class="transaction-availability-message" hidden></div>
                                 </div>
 
                                 <div class="form-group transaction-field" id="payment-field">
@@ -128,7 +129,7 @@
 
                                 <div class="form-group transaction-time-field" id="booking-start-field" hidden>
                                     <label for="bookingStart">เวลาที่จอง</label>
-                                    <input type="datetime-local" id="bookingStart" name="bookingStart" step="900">
+                                    <input type="datetime-local" id="bookingStart" name="bookingStart" step="60">
                                 </div>
 
                                 <div class="form-group transaction-time-field">
@@ -244,7 +245,9 @@
         
         let correctionMode = false;
         let transactionMode = 'walk-in';
+        let currentBaseMasseuseFee = 0;
         let autoSelectedMasseuse = '';
+        let noAvailableStaffMessage = '';
         let arrivingBooking = null;
         let upcomingBookings = [];
         let currentStartDateTime = null;
@@ -266,7 +269,7 @@
                 // Display current user
                 const user = getCurrentUser();
                 if (user) {
-                    document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                    renderCurrentUser();
                 }
                 
                 await loadData(); // Load data from API first
@@ -294,19 +297,8 @@
             // Auto-refresh displays and roster every 30 seconds to clear expired busy statuses
             setInterval(async () => {
                 await updateAllDisplays();
-                // Refresh roster to trigger expired busy status clearing
-                try {
-                    const roster = await api.getStaffRoster();
-                    appData.roster = roster.map((r) => ({
-                        name: r.masseuse_name,
-                        status: r.status,
-                        position: r.position,
-                        today_massages: r.today_massages || 0
-                    }));
-                    console.log('🔄 Auto-refreshed roster, cleared expired busy statuses');
-                } catch (error) {
-                    console.error('❌ Error auto-refreshing roster:', error);
-                }
+                // Refresh the roster and live availability snapshot together.
+                await refreshRosterForDropdown();
             }, 30000);
         });
 
@@ -367,8 +359,29 @@
         }
 
         function getNextInLineFromStaff() {
+            const liveStaff = appData.currentShopStatus && Array.isArray(appData.currentShopStatus.staff)
+                ? appData.currentShopStatus.staff
+                : [];
+            const availableLiveStaff = liveStaff
+                .filter(staff => staff.masseuse_name && staff.current_state === 'available')
+                .sort((a, b) => (a.position || 999) - (b.position || 999));
+            const liveNext = availableLiveStaff.find(staff => staff.walk_in_priority) || availableLiveStaff[0];
+            if (liveNext) {
+                noAvailableStaffMessage = '';
+                return liveNext.masseuse_name;
+            }
+            const nextFreeAt = liveStaff
+                .map(staff => staff.free_at_iso || (staff.next_booking?.scheduled_end
+                    ? new Date(Date.parse(staff.next_booking.scheduled_end) + 15 * 60000).toISOString()
+                    : null))
+                .filter(Boolean)
+                .sort()[0];
+            noAvailableStaffMessage = nextFreeAt
+                ? `ตอนนี้พนักงานทุกคนไม่ว่าง · คนถัดไปจะว่างรับลูกค้าได้เวลา ${formatBookingTime(nextFreeAt)}`
+                : 'ตอนนี้พนักงานทุกคนไม่ว่าง · กรุณารอหรือเลือกเวลานัดหมาย';
             const rosterNames = appData.roster
                 .filter(r => r.name)
+                .filter(r => !liveStaff.some(staff => staff.masseuse_name === r.name && staff.current_state !== 'available'))
                 .sort((a, b) => (a.position || 999) - (b.position || 999));
             const nextStaff = rosterNames.find(r => r.status === 'Next') || rosterNames[0];
             return nextStaff ? nextStaff.name : null;
@@ -402,7 +415,7 @@
             if (!input || input.value) return;
             const now = new Date();
             const bangkokNow = new Date(now.getTime() + ((7 * 60 + now.getTimezoneOffset()) * 60000));
-            bangkokNow.setMinutes(Math.ceil((bangkokNow.getMinutes() + 30) / 15) * 15, 0, 0);
+            bangkokNow.setSeconds(0, 0);
             input.value = `${bangkokNow.getFullYear()}-${String(bangkokNow.getMonth() + 1).padStart(2, '0')}-${String(bangkokNow.getDate()).padStart(2, '0')}T${String(bangkokNow.getHours()).padStart(2, '0')}:${String(bangkokNow.getMinutes()).padStart(2, '0')}`;
         }
 
@@ -447,6 +460,22 @@
                     : 'บันทึกลูกค้าใหม่';
                 updateTimeDropdowns();
             }
+            refreshMasseuseAvailabilityOptions();
+        }
+
+        function isMasseuseUnavailableForWalkIn(name) {
+            const staff = appData.currentShopStatus?.staff?.find(row => row.masseuse_name === name);
+            return Boolean(staff && staff.current_state !== 'available');
+        }
+
+        function refreshMasseuseAvailabilityOptions() {
+            document.querySelectorAll('#masseuse option[value]').forEach(option => {
+                option.disabled = transactionMode !== 'booking' && isMasseuseUnavailableForWalkIn(option.value);
+            });
+            const select = document.getElementById('masseuse');
+            if (transactionMode !== 'booking' && select?.selectedOptions[0]?.disabled) {
+                select.value = autoSelectedMasseuse || '';
+            }
         }
 
         async function updateUpcomingBookings() {
@@ -465,11 +494,26 @@
                             <span><b>บริการ:</b> ${escapeBookingText(booking.service_type)} · ${Number(booking.duration)} นาที</span>
                             <span><b>พนักงาน:</b> ${escapeBookingText(booking.requested_masseuse_name || 'จัดตามคิวเมื่อลูกค้ามาถึง')}</span>
                         </div>
-                        <button type="button" onclick="loadBookingForArrival('${booking.booking_id}')">ลูกค้ามาถึง</button>
+                        <div class="transaction-booking-actions">
+                            <button type="button" onclick="loadBookingForArrival('${booking.booking_id}')">ลูกค้ามาถึง</button>
+                            <button type="button" class="transaction-booking-no-show" onclick="markBookingNoShow('${booking.booking_id}')">ไม่มา (No-show)</button>
+                        </div>
                     </div>
                 `).join('');
             } catch (error) {
                 container.innerHTML = '<div class="helper-text transaction-booking-error">โหลดรายการจองไม่ได้</div>';
+            }
+        }
+
+        async function markBookingNoShow(bookingId) {
+            if (!window.confirm('ยืนยันว่าลูกค้าไม่มา และปิดรายการจองนี้ใช่ไหม?')) return;
+            try {
+                await api.updateBookingStatus(bookingId, 'NO_SHOW');
+                await updateUpcomingBookings();
+                await refreshRosterForDropdown();
+                showToast('ปิดรายการจองเป็นไม่มาแล้ว');
+            } catch (error) {
+                showToast(error.message || 'ปิดรายการจองไม่ได้', 'error');
             }
         }
 
@@ -792,12 +836,18 @@
                 
                 if (service) {
                     document.getElementById('servicePrice').textContent = `฿${service.price.toFixed(2)}`;
-                    document.getElementById('masseuseeFee').textContent = `฿${service.fee.toFixed(2)}`;
+                    currentBaseMasseuseFee = Number(service.fee);
+                    const bookingFee = transactionMode === 'booking' ? 50 : 0;
+                    document.getElementById('masseuseeFee').textContent = bookingFee
+                        ? `฿${currentBaseMasseuseFee.toFixed(2)} + ฿${bookingFee.toFixed(2)}`
+                        : `฿${currentBaseMasseuseFee.toFixed(2)}`;
                 } else {
+                    currentBaseMasseuseFee = 0;
                     document.getElementById('servicePrice').textContent = '฿0.00';
                     document.getElementById('masseuseeFee').textContent = '฿0.00';
                 }
             } else {
+                currentBaseMasseuseFee = 0;
                 document.getElementById('servicePrice').textContent = '฿0.00';
                 document.getElementById('masseuseeFee').textContent = '฿0.00';
             }
@@ -993,7 +1043,7 @@
             }
 
             const price = parseFloat(document.getElementById('servicePrice').textContent.replace('฿', ''));
-            const masseuseFee = parseFloat(document.getElementById('masseuseeFee').textContent.replace('฿', ''));
+            const masseuseFee = currentBaseMasseuseFee;
             if (isNaN(price) || price <= 0) {
                 showToast('ราคาไม่ถูกต้อง กรุณาเลือกบริการและเวลาใหม่', 'error');
                 return;
@@ -1014,6 +1064,9 @@
                 customerContact: document.getElementById('customerContact').value,
                 original_transaction_id: document.getElementById('original-transaction-id').value || null,
                 bookingId: document.getElementById('booking-id').value || null,
+                requestedStaffBooking: transactionMode === 'walk-in'
+                    && selectedMasseuse !== autoSelectedMasseuse
+                    && !arrivingBooking,
                 startDateTime: currentStartDateTime,
                 endDateTime: currentEndDateTime
             };
@@ -1054,7 +1107,10 @@
 
         async function refreshRosterForDropdown() {
             try {
-                const roster = await api.getStaffRoster();
+                const [roster] = await Promise.all([
+                    api.getStaffRoster(),
+                    loadCurrentShopStatus()
+                ]);
                 appData.roster = roster.map(r => ({
                     position: r.position,
                     name: r.masseuse_name || '',
@@ -1207,10 +1263,13 @@
                 const div = document.createElement('div');
                 div.className = 'transaction-item';
                 
+                const bookingCreditBadge = Number(transaction.bookingCredit || 0) > 0
+                    ? '<span class="transaction-booking-credit-badge">จองพนักงาน +฿50</span>'
+                    : '';
                 div.innerHTML = `
                     <div>${escapeBookingText(transaction.paymentMethod || '')}</div>
                     <div>${escapeBookingText(transaction.masseuse || '')}</div>
-                    <div>${escapeBookingText(transaction.service || '')}</div>
+                    <div>${escapeBookingText(transaction.service || '')} ${bookingCreditBadge}</div>
                     <div>฿${Number(transaction.paymentAmount || 0).toFixed(2)}</div>
                     ${transaction.status && transaction.status.includes('EDITED') ? '<div class="edited-status-badge">(EDITED)</div>' : ''}
                 `;
@@ -1274,6 +1333,11 @@
             console.log('🔍 STEP 3: Finding next in line masseuse...');
             const nextInLineName = getNextInLineFromStaff();
             autoSelectedMasseuse = nextInLineName || '';
+            const availabilityMessage = document.getElementById('masseuse-availability-message');
+            if (availabilityMessage) {
+                availabilityMessage.textContent = noAvailableStaffMessage;
+                availabilityMessage.hidden = transactionMode === 'booking' || !noAvailableStaffMessage;
+            }
             console.log('🔍 STEP 3a: Next in line found:', nextInLineName);
 
             console.log('🔍 STEP 4: Adding masseuse options...');
@@ -1287,6 +1351,7 @@
                 option.value = name;
                 option.textContent = `${name}${name === nextInLineName ? ' (คิวถัดไป)' : ''}`;
                 option.selected = name === nextInLineName;
+                option.disabled = transactionMode !== 'booking' && isMasseuseUnavailableForWalkIn(name);
                 masseuseSelect.appendChild(option);
             });
             console.log('🔍 STEP 4a: Masseuse options added successfully');
@@ -1366,7 +1431,7 @@
                     console.log('❌ Payment select element not found');
                 }
                 
-                console.log('🔍 STEP 7: DROPDOWNS POPULATED - Next in line:', nextInLineName);
+                console.log('🔍 STEP 7: DROPDOWNS POPULATED - Next in line:', autoSelectedMasseuse);
                 
                 // Add event listeners for dropdown changes after elements are populated
                 console.log('🔍 ADDING EVENT LISTENERS...');
@@ -1495,13 +1560,6 @@
                 } else {
                     console.log('❌ Payment element not found');
                 }
-
-                masseuseSelect.addEventListener('change', function() {
-                    if (transactionMode === 'walk-in' && this.value && this.value !== autoSelectedMasseuse) {
-                        setTransactionMode('booking', { preserveMasseuse: true });
-                        showToast('เลือกพนักงานนอกคิว จึงเปลี่ยนเป็นรายการจอง');
-                    }
-                });
 
                 document.getElementById('bookingStart').addEventListener('change', updateBookingEndPreview);
                 
