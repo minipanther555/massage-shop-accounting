@@ -4,7 +4,7 @@
 The staff page controller manages the Today Staff workflow, including previous-business-day helper rows, dropdown add, add from helper, day-off-today planning, persistent restore, visible-list clearing, and UI state consistency. It implements the "Action → API → re-fetch → render" discipline for all Today Staff operations.
 
 ## End-to-End Data Flow
-User opens the Today Staff page → controller fetches `/api/staff/today/state` and `/api/staff/today/helper` → renders the Thai previous-day earnings helper, day-off-today section, dropdown, and visible Today Staff list → user adds from helper or dropdown → controller writes to `/api/staff/today/add` → re-fetches state/helper → UI disables or mutes already-added helper rows and removes duplicates from dropdown. If the user marks `หยุดวันนี้`, the controller writes to `/api/staff/today/day-off`, moves the person to the persistent day-off-today section, and can restore them with `/api/staff/today/restore`. Reorder and `คิวถัดไป` actions operate on the canonical `today_staff` order by sending ordered staff ids to `/api/staff/today/reorder`; they do not swap legacy `staff_roster` rows.
+User opens the Today Staff page → controller fetches `/api/staff/today/state` and `/api/staff/today/helper` → renders the Thai previous-day earnings helper, day-off-today section, dropdown, and visible Today Staff list → user adds from helper or dropdown → controller writes to `/api/staff/today/add` → re-fetches state/helper → UI disables or mutes already-added helper rows and removes duplicates from dropdown. If the user marks `หยุดวันนี้`, the controller writes to `/api/staff/today/day-off`, moves the person to the persistent day-off-today section, and can restore them with `/api/staff/today/restore`. Reorder and `คิวถัดไป` actions operate on the canonical `today_staff` order by sending ordered staff ids to `/api/staff/today/reorder`; they do not swap legacy `staff_roster` rows. The separate row `Info` button toggles an inline detail panel under the selected row without making the draggable row itself a click target.
 
 ## Module API & Logic Breakdown
 
@@ -20,10 +20,25 @@ User opens the Today Staff page → controller fetches `/api/staff/today/state` 
 - Uses visual index (i+1) for labels, not database position
 - Sets render beacon for test harness synchronization
 - Handles empty roster state by showing #empty-roster element
-- Renders large position, staff name, next-in-line control, today's massage count, drag hint, order buttons, and remove button in Thai.
+- Renders large position, staff name, next-in-line control, today's massage count, drag hint, order buttons, and remove button in Thai. Each row wires native dragstart/dragover/drop events to `reorderVisibleRoster()` so a drop persists through `/api/staff/today/reorder` and is re-rendered from the server response.
+- Renders a separate `Info` button so the row can expose detail without conflicting with drag/drop.
 - Formats today's completed massage count as `นวดวันนี้ {count} ครั้ง` using the backend-provided `today_massages` value.
 - Treats the first returned row as `คิวถัดไป` and persists queue changes through the Today Staff reorder endpoint.
 - Escapes staff names, status text, and busy-until text before inserting row markup with `innerHTML`.
+
+#### `toggleStaffInfo(staff, row)`, `renderStaffInfoDetail(staff)`, `renderStaffDetailRows(rows)`
+**Purpose**: Opens or closes one inline staff detail panel directly below the selected Today Staff row.
+**Parameters**:
+- `staff` (Object): The already-loaded Today Staff row object.
+- `row` (HTMLElement): The rendered `.roster-grid` row for the selected staff member.
+- `rows` (Array): Label/value display pairs used by the shared detail renderer.
+**Returns**: void / string for renderer helpers
+**Usage & Logic Notes**:
+- The detail is only opened by the row's `Info` button; the draggable row itself remains dedicated to drag/drop ordering.
+- Opening a second row closes any previous detail.
+- The second click on the same `Info` button removes the detail and sets `aria-expanded=false`.
+- Detail values include queue position, massages today, base pay today, booking credit today, combined total pay, previous-day helper pay, and status.
+- Dynamic labels and values are escaped before insertion.
 
 #### `renderDropdown(allStaff, roster)`
 **Purpose**: Populates dropdown with available staff (All Staff - Today's Roster)

@@ -1,6 +1,6 @@
 # Booking Reservations and Requested-Staff Credit Steps
 
-> **Status:** BKG-001 IMPLEMENTED - in-app browser click-through pending; BKG-002 superseded by DSS; BKG-003 blocked on product rule; BKG-004 OPEN from checkpoint review
+> **Status:** BKG-001 IMPLEMENTED - in-app browser click-through pending; BKG-002 superseded by DSS; BKG-003 blocked on product rule; BKG-004 OPEN; BKG-005 DONE; BKG-006 OPEN
 > **Feature Specification:** `00-project-docs/feature-specifications/booking-reservations-and-requested-staff-credit.md`
 
 ## BKG-001 - Reservation, Arrival Conversion, and Separate Credit
@@ -98,3 +98,58 @@
 **Potential Challenges and Mitigations:** Avoid making correction mode depend on fragile browser-hidden fields; fetch booking linkage server-side from `booking_transaction_links` and current booking rows.
 
 **Expected Deliverable:** A correction-safe, API-safe booking arrival path with permanent regression tests and updated docs.
+
+## BKG-005 - Immediate Requested-Staff Booking and Visible Credit
+
+**Status:** ✅ DONE (2026-07-14)
+
+**Goal:** Let a customer already at the shop request a non-next staff member without a redundant reservation/arrival round trip, allow explicit reservations to start now, and make the resulting separate `฿50` credit visible as a compact transaction annotation and explicit reporting component.
+
+**Dependencies:** BKG-001, New Customer next-staff auto-selection, `backend/routes/transactions.js`, `backend/routes/bookings.js`, `backend/routes/reports.js`, `web-app/shared.js`, and mirrored New Customer, Daily Summary, and Home templates.
+
+**Traceability:** FR-013, FR-014; AC-010 through AC-013.
+
+**Action Items:**
+- [x] Add RED tests for immediate non-next staff conversion, ordinary next-staff isolation, immediate reservation time, and credit-bearing transaction reads.
+- [x] Add an atomic immediate requested-staff transaction contract without changing the database schema.
+- [x] Default explicit reservation time to now and let the server normalize an immediate reservation timestamp.
+- [x] Return active `booking_credit_amount` from transaction read contracts.
+- [x] Render a compact Thai-first credit annotation in New Customer, Daily Summary, and Home transaction rows.
+- [x] Expose base commission, booking credit, and combined staff pay separately in Daily Summary and manager reports.
+- [x] Preserve Today Staff base-commission-only ranking and manual queue-reordering behavior.
+- [x] Run integration, browser, security, query-plan, mirrored-template, and documentation verification.
+
+**Validation:** Focused tests prove AC-010 through AC-013; a narrow in-app browser smoke shows immediate requested-staff submission and compact `จองพนักงาน +฿50` transaction badges without the old large card; SQLite query plans use transaction/credit indexes; inline scripts, lint, and `git diff --check` pass.
+
+**Technical Considerations:** Use server time for the immediate path to avoid browser clock and minute-precision drift. Keep `booking_credits` separate from base commission. Reuse the existing booking and transaction tables and active-credit uniqueness constraints; no schema change is required.
+
+**Potential Challenges and Mitigations:** Avoid a frontend create-booking-then-create-transaction sequence because it can partially succeed; the backend must own the atomic immediate conversion. Join active credit by indexed `transaction_id`. Keep compact badge markup page-scoped and escape all stored values.
+
+**Expected Deliverable:** A one-submit immediate requested-staff workflow plus visible, auditable `฿50` credit information across transaction lists and financial reporting.
+
+**Completion Notes:** Completed 2026-07-14 with no schema change and no production access. RED receipts proved missing immediate-time normalization, missing compact/report credit contracts, unintended non-next-to-reservation mode switching, unstable `Date` persistence, and mixed-offset recent ordering. GREEN receipts: 5 focused suites / 23 tests; 3 integration/adjacent suites / 13 tests; booking reservation integration 4/4; all seven modified static/EJS inline-script sets parsed. Browser smoke on isolated port 3003 proved booking defaults to the current Bangkok minute, non-next selection remains walk-in, one paid submit creates the requested-staff result, the new row becomes first, and the compact `จองพนักงาน +฿50` badge fits at 630x998. Every uniquely labeled browser canary transaction, booking, credit, and staff-pay delta was removed afterward. SQLite plan evidence used `idx_transactions_recent_date_timestamp` for the date slice and the unique `booking_credits(transaction_id)` index for the join, with a bounded temporary sort over the daily rows. `npm run lint` and `git diff --check` passed. `npm audit --omit=dev --audit-level=high` still reports the pre-existing dependency backlog of 27 vulnerabilities / 13 high; no dependency files changed in BKG-005.
+
+## BKG-006 - Universal Booking Commission and Cross-Page Staff Earnings Detail
+
+**Status:** PARTIAL (2026-07-14) - universal booking credit and Booking preview shipped; cross-page staff detail remains open
+
+**Goal:** Make the universal `฿50` booking commission explicit in Booking-mode preview and expose base commission, booking commission, and combined payable totals wherever staff earnings are expanded or reviewed.
+
+**Dependencies:** BKG-005, `backend/routes/transactions.js`, `backend/routes/reports.js`, `backend/routes/staff.js`, `web-app/shared.js`, mirrored Home/Daily Summary/Daily Staff/Reports/Payday/New Customer templates.
+
+**Traceability:** FR-004, FR-005, FR-010, FR-014, FR-015; AC-014 through AC-016.
+
+**Action Items:**
+- [x] Update booking arrival accounting so every paid Booking-mode arrival creates one active `฿50` credit for the requested or serving masseuse; preserve no credit for ordinary walk-ins.
+- [x] Show Booking-mode preview pay as base commission plus `฿50` without submitting the combined preview as `masseuse_fee`.
+- [ ] Add shared staff-pay detail data and clickable/expandable staff detail surfaces across Home, Daily Summary, Daily Staff, transaction lists, financial reports, and Payday Tracking. Home Recent Activity now includes inline-toggle booking/transaction/expense detail; Payday Tracking summary cards open inline calculation panels and staff names open inline current-week massage tables with base fee, booking credit, combined total, and a total row; Financial Reports summary cards and report rows now open inline source mini tables from filtered transaction/expense detail rows; Today Staff rows now have a separate `Info` toggle that opens inline staff detail without conflicting with drag/drop; remaining cross-page staff earnings drilldowns remain open.
+- [ ] Keep Today Staff previous-day ranking strictly base-commission-only and add regression coverage for the exclusion.
+- [ ] Add mirrored-template, integration, browser, and reporting tests plus co-located documentation updates.
+
+**Validation:** AC-014 through AC-016 pass in focused unit/integration tests; Booking preview shows base + `฿50` while ledger payload remains base-only; requested and queue-assigned arrivals each create exactly one credit; ordinary walk-ins create none; staff detail surfaces show base/booking/total; Today Staff ordering is unchanged; mirrored scripts parse, browser smoke passes at the active narrow viewport, lint and `git diff --check` pass.
+
+**Technical Considerations:** The `booking_credits` ledger remains the source of truth for the extra pay. Queue-assigned bookings resolve the credit recipient at arrival. Do not add booking credit to `Today Staff` ranking or mutate the existing base commission field.
+
+**Potential Challenges and Mitigations:** Preserve existing BKG-005 transaction joins and correction semantics; add permanent regression tests before changing any shared renderer; keep the preview display separate from the persisted base-fee payload.
+
+**Completion Notes (partial):** Queue-assigned and requested-staff arrival integration tests pass with separate active credits; mirrored New Customer templates display base + `฿50` while preserving base-fee submission; Home Recent Activity now fetches upcoming bookings, merges them with transactions/expenses, and inserts one inline detail row directly below the clicked row with second-click collapse; the payment breakdown expands matching transactions and Recent Activity toggles between five and expanded rows; booking-aware Walk-in availability and persisted Today Staff drag/drop are recorded in current-steps item 18. Payday Tracking now makes Total Outstanding/Overdue/This Week/Next Due cards clickable with inline calculation panels; staff names now toggle inline current-week massage tables that list each massage with base fee, booking credit, combined pay, and a total row, and the roster header is compact Thai-first copy. Financial Reports now returns filtered `detailRows.transactions`/`detailRows.expenses`; summary cards and report rows open inline mini tables below the selected tile group while sibling tiles dim, including transaction source rows with revenue/base/booking columns. RED/GREEN `__tests__/admin-staff.contract.present.test.js` passed 8/8 and RED/GREEN `__tests__/admin-reports.contract.present.test.js` passed 8/8 after proving missing source-table contracts. In-app browser smokes at `localhost:3003/api/admin/staff-page` and `localhost:3003/api/admin/reports-page` verified the relevant inline panels. Today Staff rows now keep drag/drop as the row behavior and add a separate `Info` button that toggles an inline detail panel with massages today, base pay, booking credit, total pay, previous-day helper pay, and status; RED/GREEN `__tests__/today-staff.controller.contract.present.test.js` passed 6/6 and in-app browser smoke at `localhost:3003/api/main/staff-roster` verified first-row open/close behavior. Inline scripts parse and `git diff --check` passes. Remaining cross-page staff earnings detail surfaces and final browser verification remain open.

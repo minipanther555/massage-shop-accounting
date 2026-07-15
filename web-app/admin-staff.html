@@ -50,10 +50,126 @@
             background: #f8f9fa;
             font-weight: bold;
             border-bottom: 2px solid #dee2e6;
+            font-size: 13px;
+            line-height: 1.15;
+        }
+
+        .staff-grid.header .label-th {
+            display: block;
+            color: #334155;
+            font-size: 15px;
+        }
+
+        .staff-grid.header .label-en {
+            display: block;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 600;
+            margin-top: 2px;
         }
         
         .staff-grid:hover:not(.header) {
             background: #f8f9fa;
+        }
+
+        .staff-grid.is-open {
+            background: #eef6ff;
+        }
+
+        .staff-name-toggle {
+            background: none;
+            border: 0;
+            color: #0f172a;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+            padding: 0;
+            text-align: left;
+        }
+
+        .staff-name-toggle:hover,
+        .staff-name-toggle:focus {
+            color: #005fcc;
+            text-decoration: underline;
+        }
+
+        .admin-staff-detail {
+            background: #f8fbff;
+            border-bottom: 1px solid #dee2e6;
+            padding: 12px;
+        }
+
+        .admin-staff-detail-inner {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .admin-staff-detail-row {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .admin-staff-detail-row span {
+            display: block;
+            color: #6c757d;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .admin-staff-detail-row strong {
+            color: #1f2937;
+        }
+
+        .admin-staff-detail-title {
+            color: #0f172a;
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        .admin-staff-massage-table-wrap {
+            overflow-x: auto;
+        }
+
+        .admin-staff-massage-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .admin-staff-massage-table th,
+        .admin-staff-massage-table td {
+            border-bottom: 1px solid #dbe3ef;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .admin-staff-massage-table th {
+            background: #edf4ff;
+            color: #334155;
+            font-size: 12px;
+        }
+
+        .admin-staff-massage-table .label-th {
+            display: block;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .admin-staff-massage-table .label-en {
+            display: block;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .admin-staff-total-row td {
+            background: #f8fafc;
+            font-weight: 800;
         }
         
         .payment-status {
@@ -103,6 +219,15 @@
             padding: 15px;
             text-align: center;
         }
+
+        .summary-card[role="button"] {
+            cursor: pointer;
+        }
+
+        .summary-card.is-open {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+        }
         
         .summary-card .value {
             font-size: 24px;
@@ -114,6 +239,14 @@
         .summary-card .label {
             color: #6c757d;
             font-size: 14px;
+        }
+
+        .admin-summary-detail {
+            grid-column: 1 / -1;
+            background: #f8fbff;
+            border: 1px solid #cfe2ff;
+            border-radius: 8px;
+            padding: 12px;
         }
         
         .payment-history {
@@ -185,19 +318,19 @@
 
         <!-- Summary Cards -->
         <div class="summary-cards">
-            <div class="summary-card">
+            <div class="summary-card" role="button" tabindex="0" data-summary-card="total-outstanding" aria-expanded="false">
                 <div class="value" id="total-outstanding">฿0.00</div>
                 <div class="label">Total Outstanding</div>
             </div>
-            <div class="summary-card">
+            <div class="summary-card" role="button" tabindex="0" data-summary-card="overdue-count" aria-expanded="false">
                 <div class="value" id="overdue-count">0</div>
                 <div class="label">Overdue Payments</div>
             </div>
-            <div class="summary-card">
+            <div class="summary-card" role="button" tabindex="0" data-summary-card="this-week-fees" aria-expanded="false">
                 <div class="value" id="this-week-fees">฿0.00</div>
                 <div class="label">This Week Fees</div>
             </div>
-            <div class="summary-card">
+            <div class="summary-card" role="button" tabindex="0" data-summary-card="next-payment-date" aria-expanded="false">
                 <div class="value" id="next-payment-date">-</div>
                 <div class="label">Next Payment Due</div>
             </div>
@@ -220,12 +353,12 @@
             <div class="section-header">STAFF ROSTER & PAYMENT TRACKING</div>
             <div class="section-content">
                 <div class="staff-grid header">
-                    <div>Staff Member</div>
-                    <div>Outstanding</div>
-                    <div>Payment Status</div>
-                    <div>This Week</div>
-                    <div>Last Payment</div>
-                    <div>Actions</div>
+                    <div><span class="label-th">พนักงาน</span><span class="label-en">Staff</span></div>
+                    <div><span class="label-th">ค้างจ่าย</span><span class="label-en">Outstanding</span></div>
+                    <div><span class="label-th">สถานะ</span><span class="label-en">Payment</span></div>
+                    <div><span class="label-th">งานสัปดาห์นี้</span><span class="label-en">This week</span></div>
+                    <div><span class="label-th">จ่ายล่าสุด</span><span class="label-en">Last paid</span></div>
+                    <div><span class="label-th">จัดการ</span><span class="label-en">Actions</span></div>
                 </div>
                 <div id="staff-list">
                     <!-- Staff members will be populated here -->
@@ -322,9 +455,10 @@
 
     <script src="/api.js"></script>
     <script src="/shared.js"></script>
-    <script>
-        let currentStaffId = null;
-        let staffData = [];
+        <script>
+            let currentStaffId = null;
+            let staffData = [];
+            let currentSummary = {};
 
         document.addEventListener('DOMContentLoaded', async function() {
             // Check authentication and manager role
@@ -335,10 +469,11 @@
             // Display current user
             const user = getCurrentUser();
             if (user) {
-                document.getElementById('current-user').textContent = `${user.role} (${user.username})`;
+                renderCurrentUser();
             }
             
             await loadStaffData();
+            setupSummaryCardToggles();
             
             // Set up form handlers
             document.getElementById('staff-form').addEventListener('submit', handleStaffSubmit);
@@ -355,6 +490,7 @@
                 console.log('🔍 DEBUG: data.staff content:', data.staff);
                 
                 staffData = data.staff;
+                currentSummary = data.summary || {};
                 console.log('🔍 DEBUG: staffData assigned:', staffData);
                 
                 if (data.summary) {
@@ -383,6 +519,88 @@
                 const date = new Date(summary.next_payment_date);
                 document.getElementById('next-payment-date').textContent = date.toLocaleDateString();
             }
+            refreshOpenSummaryCardDetail();
+        }
+
+        function setupSummaryCardToggles() {
+            document.querySelectorAll('[data-summary-card]').forEach(card => {
+                card.addEventListener('click', () => toggleSummaryCardDetail(card.dataset.summaryCard));
+                card.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleSummaryCardDetail(card.dataset.summaryCard);
+                    }
+                });
+            });
+        }
+
+        function toggleSummaryCardDetail(cardName) {
+            const cards = Array.from(document.querySelectorAll('[data-summary-card]'));
+            const selected = cards.find(card => card.dataset.summaryCard === cardName);
+            if (!selected) return;
+
+            const existing = selected.nextElementSibling;
+            if (existing && existing.classList.contains('admin-summary-detail')) {
+                existing.remove();
+                selected.classList.remove('is-open');
+                selected.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            document.querySelectorAll('.admin-summary-detail').forEach(detail => detail.remove());
+            cards.forEach(card => {
+                card.classList.remove('is-open');
+                card.setAttribute('aria-expanded', 'false');
+            });
+
+            const detail = document.createElement('div');
+            detail.className = 'admin-summary-detail';
+            detail.innerHTML = renderSummaryCardDetail(cardName);
+            selected.insertAdjacentElement('afterend', detail);
+            selected.classList.add('is-open');
+            selected.setAttribute('aria-expanded', 'true');
+        }
+
+        function refreshOpenSummaryCardDetail() {
+            const openCard = document.querySelector('[data-summary-card].is-open');
+            if (!openCard) return;
+            const detail = openCard.nextElementSibling;
+            if (detail && detail.classList.contains('admin-summary-detail')) {
+                detail.innerHTML = renderSummaryCardDetail(openCard.dataset.summaryCard);
+            }
+        }
+
+        function renderSummaryCardDetail(cardName) {
+            const activeStaff = Array.isArray(staffData) ? staffData : [];
+            if (cardName === 'total-outstanding') {
+                return renderAdminDetailRows([
+                    ['Calculation', 'Sum of every active staff outstanding balance'],
+                    ['Staff counted', `${activeStaff.length}`],
+                    ['Total outstanding', `฿${Number(currentSummary.total_outstanding || 0).toFixed(2)}`],
+                    ['Top balances', activeStaff.slice(0, 5).map(member => `${member.name || ''}: ฿${Number(member.outstanding_balance || 0).toFixed(2)}`).join(' · ') || 'No outstanding balances']
+                ]);
+            }
+            if (cardName === 'overdue-count') {
+                const overdue = activeStaff.filter(member => member.payment_status === 'Overdue');
+                return renderAdminDetailRows([
+                    ['Calculation', 'Count of active staff with Overdue payment status'],
+                    ['Overdue staff', `${overdue.length}`],
+                    ['Names', overdue.map(member => member.name || '').join(' · ') || 'None']
+                ]);
+            }
+            if (cardName === 'this-week-fees') {
+                return renderAdminDetailRows([
+                    ['Calculation', 'Sum of this week base massage fees for active staff'],
+                    ['This week fees', `฿${Number(currentSummary.total_this_week_fees || 0).toFixed(2)}`],
+                    ['This week massages', `${activeStaff.reduce((sum, member) => sum + Number(member.this_week_massages || 0), 0)}`],
+                    ['Top this week', activeStaff.slice(0, 5).map(member => `${member.name || ''}: ฿${Number(member.this_week_fees || 0).toFixed(2)}`).join(' · ') || 'No fees this week']
+                ]);
+            }
+            return renderAdminDetailRows([
+                ['Calculation', 'Next weekly payment due date from the active staff payload'],
+                ['Next payment due', currentSummary.next_payment_date ? new Date(currentSummary.next_payment_date).toLocaleDateString() : 'Not scheduled'],
+                ['Payment due count', `${Number(currentSummary.payment_due_count || 0)}`]
+            ]);
         }
 
         function updateStaffList(staff) {
@@ -409,6 +627,7 @@
             staff.forEach(member => {
                 const div = document.createElement('div');
                 div.className = 'staff-grid';
+                div.dataset.staffId = String(member.id);
                 
                 const statusClass = getPaymentStatusClass(member.payment_status);
                 const outstandingAmount = member.outstanding_balance || 0;
@@ -419,7 +638,7 @@
                 
                 div.innerHTML = `
                     <div>
-                        <strong>${escapeAdminStaffHtml(member.name || '')}</strong>
+                        <button type="button" class="staff-name-toggle" aria-expanded="false">${escapeAdminStaffHtml(member.name || '')}</button>
                         ${member.hire_date ? `<br><small>Hired: ${escapeAdminStaffHtml(new Date(member.hire_date).toLocaleDateString())}</small>` : ''}
                     </div>
                     <div class="outstanding-amount">฿${outstandingAmount.toFixed(2)}</div>
@@ -432,9 +651,127 @@
                         <button onclick="removeStaff(${member.id})" class="btn btn-small btn-danger">❌</button>
                     </div>
                 `;
+                const toggleButton = div.querySelector('.staff-name-toggle');
+                toggleButton.addEventListener('click', () => toggleStaffDetail(member, div));
                 
                 container.appendChild(div);
             });
+        }
+
+        function toggleStaffDetail(member, row) {
+            const existing = row.nextElementSibling;
+            if (existing && existing.classList.contains('admin-staff-detail')) {
+                existing.remove();
+                row.classList.remove('is-open');
+                const toggleButton = row.querySelector('.staff-name-toggle');
+                if (toggleButton) toggleButton.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            document.querySelectorAll('#staff-list .admin-staff-detail').forEach(detail => detail.remove());
+            document.querySelectorAll('#staff-list .staff-grid.is-open').forEach(openRow => {
+                openRow.classList.remove('is-open');
+                const openToggle = openRow.querySelector('.staff-name-toggle');
+                if (openToggle) openToggle.setAttribute('aria-expanded', 'false');
+            });
+
+            const detail = document.createElement('div');
+            detail.className = 'admin-staff-detail';
+            detail.innerHTML = renderStaffPayDetail(member);
+            row.insertAdjacentElement('afterend', detail);
+            row.classList.add('is-open');
+            const toggleButton = row.querySelector('.staff-name-toggle');
+            if (toggleButton) toggleButton.setAttribute('aria-expanded', 'true');
+        }
+
+        function renderStaffPayDetail(member) {
+            const earned = Number(member.total_fees_earned || 0);
+            const paid = Number(member.total_fees_paid || 0);
+            const outstanding = Number(member.outstanding_balance || 0);
+            const lastPayment = member.last_payment_date
+                ? `${new Date(member.last_payment_date).toLocaleDateString()} · ฿${Number(member.last_payment_amount || 0).toFixed(2)}`
+                : 'Never';
+
+            return `
+                <div class="admin-staff-detail-title">${escapeAdminStaffHtml(member.name || '')}</div>
+                ${renderStaffMassageTable(member)}
+                ${renderAdminDetailRows([
+                    ['Outstanding formula', `Earned ฿${earned.toFixed(2)} - Paid ฿${paid.toFixed(2)} = ฿${outstanding.toFixed(2)}`],
+                    ['Payment status', member.payment_status || ''],
+                    ['Last payment', lastPayment],
+                    ['Next payment due', member.next_payment_due ? new Date(member.next_payment_due).toLocaleDateString() : 'Not scheduled']
+                ])}
+            `;
+        }
+
+        function renderStaffMassageTable(member) {
+            const transactions = Array.isArray(member.this_week_transactions) ? member.this_week_transactions : [];
+            const totals = transactions.reduce((sum, transaction) => {
+                const base = Number(transaction.masseuse_fee || 0);
+                const booking = Number(transaction.booking_credit_amount || 0);
+                sum.base += base;
+                sum.booking += booking;
+                sum.total += base + booking;
+                return sum;
+            }, { base: 0, booking: 0, total: 0 });
+
+            if (transactions.length === 0) {
+                return '<div class="admin-staff-detail-row"><span>งานสัปดาห์นี้ / This week</span><strong>No massages this week</strong></div>';
+            }
+
+            return `
+                <div class="admin-staff-massage-table-wrap">
+                    <table class="admin-staff-massage-table">
+                        <thead>
+                            <tr>
+                                <th><span class="label-th">เวลา</span><span class="label-en">Time</span></th>
+                                <th><span class="label-th">บริการ</span><span class="label-en">Service</span></th>
+                                <th><span class="label-th">ฐาน</span><span class="label-en">Base fee</span></th>
+                                <th><span class="label-th">ค่าจอง</span><span class="label-en">Booking</span></th>
+                                <th><span class="label-th">รวม</span><span class="label-en">Total</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${transactions.map(transaction => {
+                                const base = Number(transaction.masseuse_fee || 0);
+                                const booking = Number(transaction.booking_credit_amount || 0);
+                                return `
+                                    <tr>
+                                        <td>${escapeAdminStaffHtml(formatAdminStaffTransactionTime(transaction))}</td>
+                                        <td>${escapeAdminStaffHtml(transaction.service_type || 'Massage')}</td>
+                                        <td>฿${base.toFixed(2)}</td>
+                                        <td>฿${booking.toFixed(2)}</td>
+                                        <td>฿${(base + booking).toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            <tr class="admin-staff-total-row">
+                                <td colspan="2">รวม / Total</td>
+                                <td>฿${totals.base.toFixed(2)}</td>
+                                <td>฿${totals.booking.toFixed(2)}</td>
+                                <td>฿${totals.total.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function formatAdminStaffTransactionTime(transaction) {
+            const rawTime = transaction.start_time || transaction.timestamp || '';
+            if (!rawTime) return 'Not recorded';
+            const parsed = new Date(rawTime);
+            if (Number.isNaN(parsed.getTime())) return rawTime;
+            return parsed.toLocaleString();
+        }
+
+        function renderAdminDetailRows(rows) {
+            return `<div class="admin-staff-detail-inner">${rows.map(([label, value]) => `
+                <div class="admin-staff-detail-row">
+                    <span>${escapeAdminStaffHtml(label)}</span>
+                    <strong>${escapeAdminStaffHtml(value)}</strong>
+                </div>
+            `).join('')}</div>`;
         }
 
         function getPaymentStatusClass(status) {

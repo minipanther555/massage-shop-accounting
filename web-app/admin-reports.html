@@ -51,6 +51,24 @@
             padding: 15px;
             text-align: center;
         }
+
+        .summary-card[role="button"],
+        .report-item[role="button"],
+        .report-section[role="button"] {
+            cursor: pointer;
+        }
+
+        .summary-card.is-open,
+        .report-item.is-open,
+        .report-section.is-open {
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.16);
+            background: #eaf4ff;
+        }
+
+        .report-tile-dimmed {
+            opacity: 0.42;
+        }
         
         .summary-card .value {
             font-size: 24px;
@@ -177,6 +195,43 @@
         .report-item .value.negative {
             color: #dc3545;
         }
+
+        .report-detail-panel {
+            grid-column: 1 / -1;
+            background: #f8fbff;
+            border: 1px solid #cfe2ff;
+            border-radius: 8px;
+            padding: 12px;
+            overflow-x: auto;
+        }
+
+        .report-detail-panel h4 {
+            margin: 0 0 10px 0;
+        }
+
+        .report-detail-table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .report-detail-table th,
+        .report-detail-table td {
+            border-bottom: 1px solid #dbe3ef;
+            padding: 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .report-detail-table th {
+            background: #edf4ff;
+            color: #334155;
+            font-size: 12px;
+        }
+
+        .report-detail-total-row td {
+            background: #f8fafc;
+            font-weight: 800;
+        }
         
         .chart-container {
             background: white;
@@ -278,27 +333,27 @@
         </div>
 
         <!-- Summary Cards -->
-        <div class="summary-cards">
-            <div class="summary-card">
-                <div class="value" id="total-revenue">-</div>
-                <div class="label">Total Revenue</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" id="total-transactions">-</div>
-                <div class="label">Total Transactions</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" id="avg-transaction">-</div>
-                <div class="label">Average Transaction</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" id="total-fees">-</div>
-                <div class="label">Total Masseuse Fees</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" id="net-profit">-</div>
-                <div class="label">Net Profit</div>
-            </div>
+            <div class="summary-cards">
+                <div class="summary-card" role="button" tabindex="0" data-report-summary-card="total-revenue" aria-expanded="false">
+                    <div class="value" id="total-revenue">-</div>
+                    <div class="label">Total Revenue</div>
+                </div>
+                <div class="summary-card" role="button" tabindex="0" data-report-summary-card="total-transactions" aria-expanded="false">
+                    <div class="value" id="total-transactions">-</div>
+                    <div class="label">Total Transactions</div>
+                </div>
+                <div class="summary-card" role="button" tabindex="0" data-report-summary-card="average-transaction" aria-expanded="false">
+                    <div class="value" id="avg-transaction">-</div>
+                    <div class="label">Average Transaction</div>
+                </div>
+                <div class="summary-card" role="button" tabindex="0" data-report-summary-card="total-fees" aria-expanded="false">
+                    <div class="value" id="total-fees">-</div>
+                    <div class="label">Total Masseuse Fees</div>
+                </div>
+                <div class="summary-card" role="button" tabindex="0" data-report-summary-card="net-profit" aria-expanded="false">
+                    <div class="value" id="net-profit">-</div>
+                    <div class="label">Net Profit</div>
+                </div>
         </div>
 
         <!-- Filter Controls -->
@@ -397,9 +452,64 @@
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
             checkAuth();
+            renderCurrentUser();
             initializeFilters();
+            setupReportTileToggles();
             // Don't call setTimePeriod immediately - let user choose
         });
+
+        function setupReportTileToggles(scope = document) {
+            scope.querySelectorAll('[data-report-summary-card], [data-report-tile]').forEach(tile => {
+                if (tile.dataset.reportToggleBound === 'true') return;
+                tile.dataset.reportToggleBound = 'true';
+                tile.addEventListener('click', () => {
+                    const tileKey = tile.dataset.reportSummaryCard || tile.dataset.reportTile;
+                    toggleReportTileDetail(tileKey, tile);
+                });
+                tile.addEventListener('keydown', event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        const tileKey = tile.dataset.reportSummaryCard || tile.dataset.reportTile;
+                        toggleReportTileDetail(tileKey, tile);
+                    }
+                });
+            });
+        }
+
+        function toggleReportTileDetail(tileKey, tile) {
+            if (!currentReports || !tileKey || !tile) return;
+
+            const existing = tile.nextElementSibling;
+            if (existing && existing.classList.contains('report-detail-panel')) {
+                existing.remove();
+                clearReportTileSelection();
+                return;
+            }
+
+            document.querySelectorAll('.report-detail-panel').forEach(panel => panel.remove());
+            clearReportTileSelection();
+
+            const detail = document.createElement('div');
+            detail.className = 'report-detail-panel';
+            detail.innerHTML = renderReportTileDetailTable(tileKey);
+            tile.insertAdjacentElement('afterend', detail);
+
+            const group = tile.closest('.summary-cards, .report-grid');
+            if (group) {
+                group.querySelectorAll('[data-report-summary-card], [data-report-tile]').forEach(peer => {
+                    if (peer !== tile) peer.classList.add('report-tile-dimmed');
+                });
+            }
+            tile.classList.add('is-open');
+            tile.setAttribute('aria-expanded', 'true');
+        }
+
+        function clearReportTileSelection() {
+            document.querySelectorAll('[data-report-summary-card], [data-report-tile]').forEach(tile => {
+                tile.classList.remove('is-open', 'report-tile-dimmed');
+                tile.setAttribute('aria-expanded', 'false');
+            });
+        }
 
         // Initialize filter dropdowns
         async function initializeFilters() {
@@ -559,6 +669,184 @@
             }
         }
 
+        function getReportTransactions() {
+            return Array.isArray(currentReports?.detailRows?.transactions) ? currentReports.detailRows.transactions : [];
+        }
+
+        function getReportExpenses() {
+            return Array.isArray(currentReports?.detailRows?.expenses) ? currentReports.detailRows.expenses : [];
+        }
+
+        function renderReportTileDetailTable(tileKey) {
+            const transactions = getReportTransactions();
+            const expenses = getReportExpenses();
+            const title = getReportTileTitle(tileKey);
+
+            if (tileKey === 'other-costs' || tileKey === 'total-costs' || tileKey === 'net-profit') {
+                return renderReportExpenseTable(title, expenses, tileKey === 'net-profit' ? transactions : []);
+            }
+
+            if (tileKey === 'total-fees' || tileKey === 'base-fees' || tileKey === 'booking-credits') {
+                return renderReportStaffPayTable(title, transactions);
+            }
+
+            const filteredTransactions = filterReportTransactions(tileKey, transactions);
+            return renderReportTransactionTable(title, filteredTransactions);
+        }
+
+        function getReportTileTitle(tileKey) {
+            const titles = {
+                'total-revenue': 'Total Revenue source transactions',
+                'total-transactions': 'All transactions',
+                'average-transaction': 'Average transaction source rows',
+                'total-fees': 'Total masseuse fee source rows',
+                'net-profit': 'Net profit source rows',
+                'revenue-total': 'Revenue breakdown source rows',
+                'revenue-service': 'Service revenue source rows',
+                'revenue-other': 'Other revenue source rows',
+                'base-fees': 'Base massage fee rows',
+                'booking-credits': 'Booking credit rows',
+                'total-staff-pay': 'Total staff pay rows',
+                'other-costs': 'Other cost rows',
+                'total-costs': 'Total cost rows',
+                'performance-transactions': 'Performance transaction rows'
+            };
+            if (tileKey.startsWith('payment-method:')) return `${tileKey.replace('payment-method:', '')} transactions`;
+            if (tileKey.startsWith('service:')) return `${tileKey.replace('service:', '')} service rows`;
+            if (tileKey.startsWith('staff:')) return `${tileKey.replace('staff:', '')} staff rows`;
+            return titles[tileKey] || 'Source rows';
+        }
+
+        function filterReportTransactions(tileKey, transactions) {
+            if (tileKey === 'revenue-other') return [];
+            if (tileKey.startsWith('payment-method:')) {
+                const method = tileKey.replace('payment-method:', '');
+                return transactions.filter(transaction => transaction.payment_method === method);
+            }
+            if (tileKey.startsWith('service:')) {
+                const service = tileKey.replace('service:', '');
+                return transactions.filter(transaction => transaction.service_type === service);
+            }
+            if (tileKey.startsWith('staff:')) {
+                const staff = tileKey.replace('staff:', '');
+                return transactions.filter(transaction => transaction.masseuse_name === staff);
+            }
+            return transactions;
+        }
+
+        function renderReportTransactionTable(title, transactions) {
+            const totals = transactions.reduce((sum, transaction) => {
+                sum.revenue += Number(transaction.payment_amount || 0);
+                sum.base += Number(transaction.masseuse_fee || 0);
+                sum.booking += Number(transaction.booking_credit_amount || 0);
+                return sum;
+            }, { revenue: 0, base: 0, booking: 0 });
+
+            if (transactions.length === 0) {
+                return `<h4>${escapeReportHtml(title)}</h4><p>No source transactions for this tile.</p>`;
+            }
+
+            return `
+                <h4>${escapeReportHtml(title)}</h4>
+                <table class="report-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Service</th>
+                            <th>Staff</th>
+                            <th>Payment</th>
+                            <th>Revenue</th>
+                            <th>Base</th>
+                            <th>Booking</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(transaction => `
+                            <tr>
+                                <td>${escapeReportHtml(formatReportTransactionTime(transaction))}</td>
+                                <td>${escapeReportHtml(transaction.service_type || '')}</td>
+                                <td>${escapeReportHtml(transaction.masseuse_name || '')}</td>
+                                <td>${escapeReportHtml(transaction.payment_method || '')}</td>
+                                <td>฿${Number(transaction.payment_amount || 0).toFixed(0)}</td>
+                                <td>฿${Number(transaction.masseuse_fee || 0).toFixed(0)}</td>
+                                <td>฿${Number(transaction.booking_credit_amount || 0).toFixed(0)}</td>
+                            </tr>
+                        `).join('')}
+                        <tr class="report-detail-total-row">
+                            <td colspan="4">Total</td>
+                            <td>฿${totals.revenue.toFixed(0)}</td>
+                            <td>฿${totals.base.toFixed(0)}</td>
+                            <td>฿${totals.booking.toFixed(0)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderReportStaffPayTable(title, transactions) {
+            return renderReportTransactionTable(title, transactions);
+        }
+
+        function renderReportExpenseTable(title, expenses, transactions = []) {
+            const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+            const revenueTotal = transactions.reduce((sum, transaction) => sum + Number(transaction.payment_amount || 0), 0);
+            const payTotal = transactions.reduce((sum, transaction) => sum + Number(transaction.masseuse_fee || 0) + Number(transaction.booking_credit_amount || 0), 0);
+
+            if (expenses.length === 0 && transactions.length === 0) {
+                return `<h4>${escapeReportHtml(title)}</h4><p>No source rows for this tile.</p>`;
+            }
+
+            return `
+                <h4>${escapeReportHtml(title)}</h4>
+                <table class="report-detail-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.length ? `
+                            <tr>
+                                <td>${escapeReportHtml(formatDateRange(currentReports.dateRange))}</td>
+                                <td>Revenue</td>
+                                <td>Total transaction revenue</td>
+                                <td>฿${revenueTotal.toFixed(0)}</td>
+                            </tr>
+                            <tr>
+                                <td>${escapeReportHtml(formatDateRange(currentReports.dateRange))}</td>
+                                <td>Staff pay</td>
+                                <td>Base fees plus booking credits</td>
+                                <td>-฿${payTotal.toFixed(0)}</td>
+                            </tr>
+                        ` : ''}
+                        ${expenses.map(expense => `
+                            <tr>
+                                <td>${escapeReportHtml(expense.date || '')}</td>
+                                <td>${escapeReportHtml(expense.category || 'Expense')}</td>
+                                <td>${escapeReportHtml(expense.description || '')}</td>
+                                <td>-฿${Number(expense.amount || 0).toFixed(0)}</td>
+                            </tr>
+                        `).join('')}
+                        <tr class="report-detail-total-row">
+                            <td colspan="3">Total</td>
+                            <td>฿${(revenueTotal - payTotal - expenseTotal).toFixed(0)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function formatReportTransactionTime(transaction) {
+            const rawTime = transaction.start_time || transaction.timestamp || transaction.date || '';
+            if (!rawTime) return '';
+            const parsed = new Date(rawTime);
+            if (Number.isNaN(parsed.getTime())) return rawTime;
+            return parsed.toLocaleString();
+        }
+
         // Display financial reports
         function displayReports() {
             console.log('🎨 displayReports() called');
@@ -594,15 +882,15 @@
                     <div class="report-grid">
                         <div class="report-section">
                             <h4>💰 Revenue Breakdown</h4>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="revenue-total" aria-expanded="false">
                                 <span class="label">Total Revenue:</span>
                                 <span class="value positive">฿${(currentReports.summary.total_revenue || 0).toFixed(0)}</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="revenue-service" aria-expanded="false">
                                 <span class="label">Service Revenue:</span>
                                 <span class="value">฿${(currentReports.summary.serviceRevenue || 0).toFixed(0)}</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="revenue-other" aria-expanded="false">
                                 <span class="label">Other Revenue:</span>
                                 <span class="value">฿${(currentReports.summary.otherRevenue || 0).toFixed(0)}</span>
                             </div>
@@ -610,15 +898,23 @@
                         
                         <div class="report-section">
                             <h4>💸 Cost Breakdown</h4>
-                            <div class="report-item">
-                                <span class="label">Total Masseuse Fees:</span>
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="base-fees" aria-expanded="false">
+                                <span class="label">ค่าแรงนวด:</span>
+                                <span class="value negative">฿${(currentReports.summary.baseFees || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="booking-credits" aria-expanded="false">
+                                <span class="label">ค่าจองพนักงาน:</span>
+                                <span class="value negative">+฿${(currentReports.summary.bookingCredits || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="total-staff-pay" aria-expanded="false">
+                                <span class="label">ค่าแรงรวม:</span>
                                 <span class="value negative">฿${(currentReports.summary.totalFees || 0).toFixed(0)}</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="other-costs" aria-expanded="false">
                                 <span class="label">Other Costs:</span>
                                 <span class="value negative">฿${(currentReports.summary.otherCosts || 0).toFixed(0)}</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="total-costs" aria-expanded="false">
                                 <span class="label">Total Costs:</span>
                                 <span class="value negative">฿${(currentReports.summary.totalCosts || 0).toFixed(0)}</span>
                             </div>
@@ -626,7 +922,7 @@
                         
                         <div class="report-section">
                             <h4>📈 Performance Metrics</h4>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="net-profit" aria-expanded="false">
                                 <span class="label">Net Profit:</span>
                                 <span class="value ${(currentReports.summary.net_profit || 0) >= 0 ? 'positive' : 'negative'}">฿${(currentReports.summary.net_profit || 0).toFixed(0)}</span>
                             </div>
@@ -634,7 +930,7 @@
                                 <span class="label">Profit Margin:</span>
                                 <span class="value">${(currentReports.summary.profit_margin || 0).toFixed(1)}%</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="performance-transactions" aria-expanded="false">
                                 <span class="label">Transactions:</span>
                                 <span class="value">${currentReports.summary.total_transactions || 0}</span>
                             </div>
@@ -656,11 +952,11 @@
                     reportsHTML += `
                         <div class="report-section">
                             <h4>${escapeReportHtml(paymentType.payment_method)}</h4>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="payment-method:${escapeReportHtml(paymentType.payment_method || '')}" aria-expanded="false">
                                 <span class="label">Revenue:</span>
                                 <span class="value positive">฿${(paymentType.revenue || 0).toFixed(0)}</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="payment-method:${escapeReportHtml(paymentType.payment_method || '')}" aria-expanded="false">
                                 <span class="label">Transactions:</span>
                                 <span class="value">${paymentType.count || 0}</span>
                             </div>
@@ -690,11 +986,11 @@
                     reportsHTML += `
                         <div class="report-section">
                             <h4>${escapeReportHtml(service.serviceName)}</h4>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="service:${escapeReportHtml(service.serviceName || '')}" aria-expanded="false">
                                 <span class="label">Revenue:</span>
                                 <span class="value positive">฿${(service.revenue || 0).toFixed(0)}</span>
                             </div>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="service:${escapeReportHtml(service.serviceName || '')}" aria-expanded="false">
                                 <span class="label">Transactions:</span>
                                 <span class="value">${service.transactions || 0}</span>
                             </div>
@@ -724,13 +1020,21 @@
                     reportsHTML += `
                         <div class="report-section">
                             <h4>${escapeReportHtml(staff.staffName)}</h4>
-                            <div class="report-item">
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="staff:${escapeReportHtml(staff.staffName || '')}" aria-expanded="false">
                                 <span class="label">Services:</span>
                                 <span class="value">${staff.services || 0}</span>
                             </div>
-                            <div class="report-item">
-                                <span class="label">Fees Earned:</span>
-                                <span class="value positive">฿${(staff.feesEarned || 0).toFixed(0)}</span>
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="staff:${escapeReportHtml(staff.staffName || '')}" aria-expanded="false">
+                                <span class="label">ค่าแรงนวด:</span>
+                                <span class="value positive">฿${(staff.baseFees || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="staff:${escapeReportHtml(staff.staffName || '')}" aria-expanded="false">
+                                <span class="label">ค่าจองพนักงาน:</span>
+                                <span class="value positive">+฿${(staff.bookingCredits || 0).toFixed(0)}</span>
+                            </div>
+                            <div class="report-item" role="button" tabindex="0" data-report-tile="staff:${escapeReportHtml(staff.staffName || '')}" aria-expanded="false">
+                                <span class="label">ค่าแรงรวม:</span>
+                                <span class="value positive">฿${(staff.totalStaffPay || 0).toFixed(0)}</span>
                             </div>
                             <div class="report-item">
                                 <span class="label">Avg. Rating:</span>
@@ -761,6 +1065,7 @@
             // Display the reports
             document.getElementById('reports-container').innerHTML = reportsHTML;
             document.getElementById('reports-container').style.display = 'block';
+            setupReportTileToggles(document.getElementById('reports-container'));
         }
 
         // Export report functions

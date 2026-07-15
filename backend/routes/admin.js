@@ -157,16 +157,63 @@ router.get('/staff', async (req, res) => {
             ORDER BY outstanding_balance DESC
         `);
 
+    const weeklyTransactions = await database.all(`
+            SELECT
+                t.id,
+                t.transaction_id,
+                t.masseuse_name,
+                t.service_type,
+                t.duration,
+                t.masseuse_fee,
+                t.payment_amount,
+                t.timestamp,
+                t.start_time,
+                t.end_time,
+                COALESCE(bc.amount, 0) as booking_credit_amount
+            FROM transactions t
+            LEFT JOIN booking_credits bc
+              ON bc.transaction_id = t.transaction_id
+             AND bc.status = 'ACTIVE'
+            WHERE date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
+              AND t.status = 'ACTIVE'
+            ORDER BY datetime(t.timestamp) DESC, t.id DESC
+        `);
+
+    const weeklyTransactionsByStaff = weeklyTransactions.reduce((grouped, transaction) => {
+      const staffName = transaction.masseuse_name || '';
+      if (!grouped.has(staffName)) {
+        grouped.set(staffName, []);
+      }
+      grouped.get(staffName).push({
+        id: transaction.id,
+        transaction_id: transaction.transaction_id,
+        service_type: transaction.service_type,
+        duration: transaction.duration,
+        masseuse_fee: Number(transaction.masseuse_fee || 0),
+        payment_amount: Number(transaction.payment_amount || 0),
+        booking_credit_amount: Number(transaction.booking_credit_amount || 0),
+        timestamp: transaction.timestamp,
+        start_time: transaction.start_time,
+        end_time: transaction.end_time
+      });
+      return grouped;
+    }, new Map());
+
+    const staffWithTransactions = staff.map((member) => ({
+      ...member,
+      this_week_transactions: weeklyTransactionsByStaff.get(member.name || '') || []
+    }));
+
     // Calculate totals for summary
     const summary = {
-      total_outstanding: staff.reduce((sum, s) => sum + (s.outstanding_balance || 0), 0),
-      overdue_count: staff.filter((s) => s.payment_status === 'Overdue').length,
-      payment_due_count: staff.filter((s) => s.payment_status === 'Payment Due').length,
-      total_this_week_fees: staff.reduce((sum, s) => sum + (s.this_week_fees || 0), 0),
-      next_payment_date: staff[0]?.next_payment_due
+      total_outstanding: staffWithTransactions.reduce((sum, s) => sum + (s.outstanding_balance || 0), 0),
+      overdue_count: staffWithTransactions.filter((s) => s.payment_status === 'Overdue').length,
+      payment_due_count: staffWithTransactions.filter((s) => s.payment_status === 'Payment Due').length,
+      total_this_week_fees: staffWithTransactions.reduce((sum, s) => sum + (s.this_week_fees || 0), 0),
+      next_payment_date: staffWithTransactions[0]?.next_payment_due
     };
 
-    res.json({ staff, summary });
+    res.json({ staff: staffWithTransactions, summary });
   } catch (error) {
     console.error('Error fetching staff data:', error);
     res.status(500).json({ error: 'Failed to fetch staff data' });

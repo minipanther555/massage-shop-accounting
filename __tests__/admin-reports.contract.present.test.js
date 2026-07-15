@@ -48,6 +48,43 @@ describe('admin reports page API/database contract', () => {
     expect(route).toContain('t.masseuse_name as staffName');
     expect(route).toContain('staffBreakdown,');
     expect(route).toContain('GROUP BY t.location');
+    expect(route).toContain('booking_credit_total');
+    expect(route).toContain('total_staff_pay');
+    expect(route).toContain("bc.status = 'ACTIVE'");
+    expect(route).toContain('bookingCredits');
+  });
+
+  it('renders booking credit separately from base commission', () => {
+    const html = read('web-app/admin-reports.html');
+    expect(html).toContain('ค่าจองพนักงาน');
+    expect(html).toContain('ค่าแรงรวม');
+    expect(html).toContain('bookingCredits');
+  });
+
+  it('financial report tiles expose inline source mini tables without overlapping other tiles', () => {
+    const html = read('web-app/admin-reports.html');
+
+    expect(html).toContain('data-report-summary-card="total-revenue"');
+    expect(html).toContain('data-report-summary-card="total-transactions"');
+    expect(html).toContain('setupReportTileToggles()');
+    expect(html).toContain('toggleReportTileDetail(tileKey, tile)');
+    expect(html).toContain('renderReportTileDetailTable(tileKey)');
+    expect(html).toContain('report-detail-panel');
+    expect(html).toContain('report-tile-dimmed');
+    expect(html).toContain('report-detail-table');
+    expect(html).toContain('insertAdjacentElement(\'afterend\', detail)');
+  });
+
+  it('financial endpoint returns source rows for report drilldown tables', () => {
+    const route = read('backend/routes/reports.js');
+
+    expect(route).toContain('const detailTransactions = await database.all');
+    expect(route).toContain('const detailExpenses = await database.all');
+    expect(route).toContain('detailRows: {');
+    expect(route).toContain('transactions: detailTransactions');
+    expect(route).toContain('expenses: detailExpenses');
+    expect(route).toContain('booking_credit_amount');
+    expect(route).not.toContain('category,');
   });
 
   it('exposes report filter and financial wrappers in api.js', () => {

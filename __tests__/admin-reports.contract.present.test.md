@@ -2,9 +2,9 @@
 
 ## 1. Header Section
 
-**Overall Purpose:** This test guards the manager Reports page contract. It verifies that report filters and financial reports use shared `api.js` methods, that report labels from the database are escaped, that tab switching no longer depends on a global browser event, that CSV export is real, and that the financial endpoint applies location filtering consistently.
+**Overall Purpose:** This test guards the manager Reports page contract. It verifies shared API methods, escaped database labels, stable tab switching, real CSV export, consistent filtering, explicit base commission / booking credit / total staff pay reporting, and inline source-table drilldowns for report tiles.
 
-**End-to-End Data Flow:** The test reads `web-app/admin-reports.html`, `web-app/api.js`, and `backend/routes/reports.js` as source text. It asserts that the page calls `api.getReportStaff()`, `api.getReportServiceTypes()`, `api.getReportLocations()`, and `api.getFinancialReport()`, while the backend filters financial queries by `transactions.location` and returns `staffBreakdown`.
+**End-to-End Data Flow:** The test reads `web-app/admin-reports.html`, `web-app/api.js`, and `backend/routes/reports.js` as source text. It asserts that the page calls `api.getReportStaff()`, `api.getReportServiceTypes()`, `api.getReportLocations()`, and `api.getFinancialReport()`, while the backend filters financial queries by `transactions.location`, returns `staffBreakdown`, and includes `detailRows` for transaction/expense source tables.
 
 ## 2. Module API & Logic Breakdown
 
@@ -13,7 +13,7 @@
 - **Purpose:** Preserve Reports page UI-to-database wiring.
 - **Parameters / Props:** None.
 - **Returns / Renders:** Jest pass/fail result.
-- **Raises / Throws:** Fails on direct page API fetches, missing API wrappers, unsafe report label rendering, global-event tab handling, fake PDF export controls, or missing location/staff backend contract.
+- **Raises / Throws:** Fails on direct page API fetches, missing API wrappers, unsafe report label rendering, global-event tab handling, fake PDF export controls, missing location/staff backend contract, missing source rows, or missing report tile drilldown wiring.
 - **Usage & Logic Notes:** This is static contract coverage; it should be paired with browser checks when changing report layout or export behavior.
 
 ## 3. Dependency Mapping
@@ -34,3 +34,11 @@
 - **Validated Hypothesis:** Source inspection showed the page/backend contract drift.
 - **Invalidated Hypotheses:** The financial report endpoint itself was not absent; it needed corrected filtering and response shape.
 - **Resolution:** Added shared API wrappers, switched page reads to `api.js`, fixed tab state, escaped report labels, implemented CSV export, removed the fake PDF export button, applied location to all financial queries, returned staff breakdown, and added this guard.
+
+- **Bug Summary:** Requested-staff credits were absent from report source contracts.
+- **Validated Hypothesis:** Report queries and UI labels must expose the separate credit and combined pay without changing base commission.
+- **Resolution:** Added assertions for `bookingCredits`, `totalStaffPay`, `ค่าจองพนักงาน`, and the active `booking_credits` join.
+
+- **Bug Summary:** Financial report summary cards and breakdown tiles displayed totals but did not show the transactions or expenses behind each number when clicked.
+- **Validated Hypothesis:** The page lacked report tile data attributes, toggle functions, full-width detail panel styles, and table rendering, while the backend lacked filtered transaction/expense source rows.
+- **Resolution:** Added assertions for summary-card and report-item data attributes, `setupReportTileToggles()`, `toggleReportTileDetail()`, `renderReportTileDetailTable()`, `.report-detail-panel`, `.report-tile-dimmed`, `.report-detail-table`, and backend `detailRows` with `booking_credit_amount`.

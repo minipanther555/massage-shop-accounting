@@ -4,7 +4,7 @@
 The Today Staff page provides the first daily workflow for the shop: using yesterday's commission helper list, selecting existing All Staff members, adding them to the visible Today Staff list, marking `หยุดวันนี้`, restoring that mark, ordering the list, and clearing only the visible list when needed. The page is optimized for Thai staff users, with a Thai-only previous-day earnings helper section.
 
 ## End-to-End Data Flow
-User loads page → Controller initializes → previous-business-day helper list and Today Staff state load → helper rows show staff name, commission, and `หยุดเมื่อวาน` for zero earnings → user adds from helper or dropdown → Staff row appears with large position, name, next-line control, massage count, and reorder/remove controls → user can mark `หยุดวันนี้` and later restore the person from the visible day-off section. Clear everyone clears only the visible Today Staff list and does not alter All Staff or accounting history.
+User loads page → Controller initializes → previous-business-day helper list and Today Staff state load → helper rows show staff name, commission, and `หยุดเมื่อวาน` for zero earnings → user adds from helper or dropdown → Staff row appears with large position, name, next-line control, massage count, separate Info toggle, and reorder/remove controls → user can mark `หยุดวันนี้` and later restore the person from the visible day-off section. Clear everyone clears only the visible Today Staff list and does not alter All Staff or accounting history.
 Queue order controls delegate to `staff-page-controller.js`, which writes the canonical `/api/staff/today/reorder` endpoint and then re-renders from the returned Today Staff order.
 
 ## Module API & Logic Breakdown
@@ -62,12 +62,15 @@ Queue order controls delegate to `staff-page-controller.js`, which writes the ca
 - `.roster-grid` (div): Individual roster items with labels 1...n
 - Header labels are Thai primary: queue, staff name, next in line, massages completed today, order/remove.
 - Rows include a drag hint and large staff names/counts for quick scanning; the count is explicitly labeled `นวดวันนี้` and rendered as `N ครั้ง`.
+- `.staff-info-btn` (button): Separate row control that opens or closes inline detail without hijacking drag/drop row behavior.
+- `.staff-info-detail` (div): Inline panel inserted directly below the selected row with queue position, massages today, base pay, booking credit, combined pay, previous-day helper pay, and status.
 
 **Styling**: Grid layout with larger names, larger counts, visible drag affordance, and clearer order/remove buttons.
 
 **Data Contract**:
 - The first visible row is the current `คิวถัดไป`.
 - `ตั้งคิว`, `ขึ้น`, and `ลง` persist order through `api.reorderTodayStaff()` / `/api/staff/today/reorder`.
+- `Info` is read-only and uses already-loaded row data; it does not mutate Today Staff order, planning, ledger, or payday state.
 - Staff names/status/helper labels are escaped by the controller before dynamic `innerHTML` rendering.
 
 #### Add New Staff Modal

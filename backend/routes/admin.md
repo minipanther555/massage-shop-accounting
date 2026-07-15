@@ -16,11 +16,11 @@
 - **Usage & Logic Notes:** Routes: `GET /staff-page`, `GET /services-page`, `GET /reports-page`, `GET /payment-types-page`, `GET /users-page`.
 
 ### `GET /staff`
-- **Purpose:** Return active staff with payday/outstanding/performance summary fields.
+- **Purpose:** Return active staff with payday/outstanding/performance summary fields and bounded current-week massage detail rows for inline Payday drilldowns.
 - **Parameters / Props:** Authenticated manager request.
-- **Returns / Renders:** `{ staff, summary }`.
+- **Returns / Renders:** `{ staff, summary }`. Each staff row includes `this_week_transactions`, an array of active current-week transactions for that staff member with `transaction_id`, service/time fields, base `masseuse_fee`, and `booking_credit_amount` from the active `booking_credits` row when present.
 - **Raises / Throws:** HTTP 500 on database failures.
-- **Usage & Logic Notes:** Reads `staff` and current transaction aggregates.
+- **Usage & Logic Notes:** Reads `staff` and current transaction aggregates, then performs one bounded current-week transaction read joined to active `booking_credits` and groups those rows by `masseuse_name` in memory. The aggregate payday balance still comes from `staff.total_fees_earned - staff.total_fees_paid`; the detail table exposes base fee, booking credit, and combined payable total per massage for BKG-006 staff-pay visibility.
 
 ### `POST /staff`
 - **Purpose:** Add a new active All Staff record.
@@ -78,12 +78,17 @@
 
 ### Downstream Dependencies
 - **Called Modules/Services:** `backend/models/database.js`, `backend/middleware/auth.js`.
-- **Output Data Contracts / Schemas:** Admin HTML pages, staff summary payloads, staff payment rows, outstanding-fee payloads, performance/ranking rows.
+- **Output Data Contracts / Schemas:** Admin HTML pages, staff summary payloads, staff rows with `this_week_transactions[]`, staff payment rows, outstanding-fee payloads, performance/ranking rows.
 
 ## 4. Bug & Resolution History
+
+### Payday Staff Detail Needed Per-Massage Rows (2026-07-15)
+- **Bug Summary:** Payday Tracking could expand a staff row, but the backend only exposed current-week aggregate counts/fees, so the page could not show the actual massages behind a staff member's total.
+- **Validated Hypothesis:** `GET /api/admin/staff` calculated `this_week_massages` and `this_week_fees` through scalar subqueries but did not return transaction-level rows or joined booking-credit amounts.
+- **Invalidated Hypotheses:** The issue was not a frontend-only rendering problem; a table renderer still needed source rows. It was also not a schema-change problem because existing `transactions` and `booking_credits` tables already contain the necessary data.
+- **Resolution:** Added one bounded current-week transaction read joined to active `booking_credits`, grouped the result by `masseuse_name`, and attached `this_week_transactions` to each active staff payload row.
 
 ### Missing Users Page Route (2026-07-14)
 - **Bug Summary:** `admin-users.html` linked to `/api/admin/users-page`, but the admin router did not serve that page.
 - **Validated Hypothesis:** The router had page routes for staff, services, reports, and payment types only.
 - **Resolution:** Added `GET /users-page` with the same manager-only CSRF-injected page-serving contract.
-

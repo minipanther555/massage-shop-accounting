@@ -13,9 +13,14 @@ router.get('/daily/:date?', async (req, res) => {
       `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
-        COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'`,
+        COALESCE(SUM(t.masseuse_fee), 0) as base_fee_total,
+        COALESCE(SUM(bc.amount), 0) as booking_credit_total,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_staff_pay,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_fees
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.date = ? AND t.status = 'ACTIVE'`,
       [date]
     );
 
@@ -45,19 +50,23 @@ router.get('/daily/:date?', async (req, res) => {
     // Masseuse performance
     const masseusePerformance = await database.all(
       `SELECT
-        masseuse_name,
+        t.masseuse_name,
         COUNT(*) as massage_count,
-        SUM(masseuse_fee) as total_fees,
-        SUM(payment_amount) as total_revenue
-       FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'
-       GROUP BY masseuse_name
-       ORDER BY total_fees DESC`,
+        SUM(t.masseuse_fee) as baseFees,
+        COALESCE(SUM(bc.amount), 0) as bookingCredits,
+        SUM(t.masseuse_fee) + COALESCE(SUM(bc.amount), 0) as totalStaffPay,
+        SUM(t.payment_amount) as total_revenue
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.date = ? AND t.status = 'ACTIVE'
+       GROUP BY t.masseuse_name
+       ORDER BY totalStaffPay DESC`,
       [date]
     );
 
     // Calculate net profit
-    const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
+    const netProfit = transactionSummary.total_revenue - transactionSummary.total_staff_pay - expenseSummary.total_expenses;
 
     res.json({
       date,
@@ -87,12 +96,16 @@ router.get('/weekly', async (req, res) => {
 
     const weeklyFees = await database.all(
       `SELECT
-        masseuse_name,
+        t.masseuse_name,
         COUNT(*) as weekly_massages,
-        SUM(masseuse_fee) as weekly_fees
-       FROM transactions
-       WHERE date >= ? AND date <= ? AND status IN ('ACTIVE', 'CORRECTED')
-       GROUP BY masseuse_name
+        SUM(t.masseuse_fee) as baseFees,
+        COALESCE(SUM(bc.amount), 0) as bookingCredits,
+        SUM(t.masseuse_fee) + COALESCE(SUM(bc.amount), 0) as weekly_fees
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.date >= ? AND t.date <= ? AND t.status IN ('ACTIVE', 'CORRECTED')
+       GROUP BY t.masseuse_name
        ORDER BY weekly_fees DESC`,
       [weekStart, weekEnd]
     );
@@ -123,9 +136,14 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
       `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
-        COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions
-       WHERE date >= ? AND date <= ? AND status IN ('ACTIVE', 'CORRECTED')`,
+        COALESCE(SUM(t.masseuse_fee), 0) as base_fee_total,
+        COALESCE(SUM(bc.amount), 0) as booking_credit_total,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_staff_pay,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_fees
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.date >= ? AND t.date <= ? AND t.status IN ('ACTIVE', 'CORRECTED')`,
       [monthStart, monthEnd]
     );
 
@@ -175,9 +193,14 @@ router.get('/summary/today', async (req, res) => {
       `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
-        COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'`,
+        COALESCE(SUM(t.masseuse_fee), 0) as base_fee_total,
+        COALESCE(SUM(bc.amount), 0) as booking_credit_total,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_staff_pay,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_fees
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.date = ? AND t.status = 'ACTIVE'`,
       [today]
     );
 
@@ -240,8 +263,12 @@ router.get('/financial', async (req, res) => {
       `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(t.payment_amount), 0) as total_revenue,
-        COALESCE(SUM(t.masseuse_fee), 0) as total_fees
+        COALESCE(SUM(t.masseuse_fee), 0) as base_fee_total,
+        COALESCE(SUM(bc.amount), 0) as booking_credit_total,
+        COALESCE(SUM(t.masseuse_fee), 0) + COALESCE(SUM(bc.amount), 0) as total_staff_pay
        FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
        ${whereClause}`,
       params
     );
@@ -290,7 +317,7 @@ router.get('/financial', async (req, res) => {
     );
 
     // Calculate net profit
-    const netProfit = transactionSummary.total_revenue - transactionSummary.total_fees - expenseSummary.total_expenses;
+    const netProfit = transactionSummary.total_revenue - transactionSummary.total_staff_pay - expenseSummary.total_expenses;
 
     // Calculate additional metrics
     const profitMargin = transactionSummary.total_revenue > 0
@@ -313,13 +340,52 @@ router.get('/financial', async (req, res) => {
       `SELECT
         t.masseuse_name as staffName,
         COUNT(*) as services,
-        SUM(t.masseuse_fee) as feesEarned,
+        SUM(t.masseuse_fee) as baseFees,
+        COALESCE(SUM(bc.amount), 0) as bookingCredits,
+        SUM(t.masseuse_fee) + COALESCE(SUM(bc.amount), 0) as feesEarned,
+        SUM(t.masseuse_fee) + COALESCE(SUM(bc.amount), 0) as totalStaffPay,
         SUM(t.payment_amount) as revenue
        FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
        ${whereClause}
        GROUP BY t.masseuse_name
        ORDER BY feesEarned DESC`,
       params
+    );
+
+    const detailTransactions = await database.all(
+      `SELECT
+        t.id,
+        t.transaction_id,
+        t.date,
+        t.timestamp,
+        t.start_time,
+        t.service_type,
+        t.masseuse_name,
+        t.payment_method,
+        t.location,
+        t.payment_amount,
+        t.masseuse_fee,
+        COALESCE(bc.amount, 0) as booking_credit_amount
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       ${whereClause}
+       ORDER BY t.date DESC, datetime(t.timestamp) DESC, t.id DESC`,
+      params
+    );
+
+    const detailExpenses = await database.all(
+      `SELECT
+        id,
+        date,
+        description,
+        amount
+       FROM expenses
+       ${expenseWhereClause}
+       ORDER BY date DESC, id DESC`,
+      expenseParams
     );
 
     res.json({
@@ -328,16 +394,21 @@ router.get('/financial', async (req, res) => {
         total_transactions: transactionSummary.transaction_count,
         average_transaction: transactionSummary.transaction_count > 0
           ? Number((transactionSummary.total_revenue / transactionSummary.transaction_count).toFixed(2)) : 0,
-        total_masseuse_fees: transactionSummary.total_fees,
+        base_masseuse_fees: transactionSummary.base_fee_total,
+        booking_credits: transactionSummary.booking_credit_total,
+        total_staff_pay: transactionSummary.total_staff_pay,
+        total_masseuse_fees: transactionSummary.total_staff_pay,
         total_expenses: expenseSummary.total_expenses,
         net_profit: netProfit,
         profit_margin: profitMargin,
         // Add missing properties that frontend expects
         serviceRevenue: transactionSummary.total_revenue, // All revenue is service revenue for now
         otherRevenue: 0, // No other revenue sources currently
-        totalFees: transactionSummary.total_fees,
+        baseFees: transactionSummary.base_fee_total,
+        bookingCredits: transactionSummary.booking_credit_total,
+        totalFees: transactionSummary.total_staff_pay,
         otherCosts: expenseSummary.total_expenses,
-        totalCosts: transactionSummary.total_fees + expenseSummary.total_expenses,
+        totalCosts: transactionSummary.total_staff_pay + expenseSummary.total_expenses,
         netProfit // Add camelCase version
       },
       serviceBreakdown,
@@ -349,6 +420,10 @@ router.get('/financial', async (req, res) => {
       breakdowns: {
         by_payment_method: paymentBreakdown,
         by_location: locationBreakdown
+      },
+      detailRows: {
+        transactions: detailTransactions,
+        expenses: detailExpenses
       },
       expenses: expenseSummary,
       filters: {

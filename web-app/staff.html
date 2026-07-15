@@ -125,6 +125,42 @@
             display: block;
         }
 
+        .roster-grid.is-info-open {
+            border-color: #3b82f6;
+        }
+
+        .staff-info-detail {
+            background: #f8fbff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            margin: -6px 0 10px;
+            padding: 12px;
+        }
+
+        .staff-info-detail-inner {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+        }
+
+        .staff-info-detail-row {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .staff-info-detail-row span {
+            display: block;
+            color: #64748b;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .staff-info-detail-row strong {
+            color: #0f172a;
+        }
+
         @media (max-width: 767px) {
             .today-helper-row,
             .day-off-row {
@@ -393,6 +429,7 @@
         function call(){ 
           console.log('🔧 Init stub: Calling staffControllerInit');
           try { 
+            window.renderCurrentUser?.();
             // Create API client and pass to controller
             const api = new APIClient('/api');
             window.staffControllerInit?.(api); 

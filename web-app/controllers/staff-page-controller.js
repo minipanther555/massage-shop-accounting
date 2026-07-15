@@ -96,6 +96,9 @@
         
         try {
           switch (action) {
+            case 'toggleInfo':
+              toggleStaffInfo(element.__staffRowData, element);
+              break;
             case 'setNext':
               await setNextInLine(position);
               break;
@@ -135,6 +138,31 @@
       el.className = CLASS.rosterGrid;
       el.draggable = true;
       el.dataset.index = index;
+      el.dataset.position = String(staff.position || index + 1);
+      el.__staffRowData = staff;
+
+      el.addEventListener('dragstart', (event) => {
+        event.dataTransfer?.setData('text/plain', String(index));
+        event.dataTransfer && (event.dataTransfer.effectAllowed = 'move');
+        el.classList.add('is-dragging');
+      });
+      el.addEventListener('dragend', () => el.classList.remove('is-dragging'));
+      el.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        event.dataTransfer && (event.dataTransfer.dropEffect = 'move');
+      });
+      el.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        const fromIndex = Number(event.dataTransfer?.getData('text/plain'));
+        const toIndex = Number(el.dataset.index);
+        if (!Number.isInteger(fromIndex) || fromIndex === toIndex) return;
+        try {
+          await reorderVisibleRoster(Number(CURRENT_ROSTER[fromIndex]?.position), toIndex);
+        } catch (error) {
+          console.error('Error persisting drag-and-drop reorder:', error);
+          globalThis.showToast?.('Unable to save the new order', 'error');
+        }
+      });
       
       const name = escapeStaffHtml(projectName(staff)); // ← FIXED: Use projector
       const statusText = escapeStaffHtml(staff.status || '');
@@ -154,6 +182,7 @@
         </div>
         <div class="staff-count" aria-label="นวดวันนี้ ${countText} ครั้ง"><span class="staff-count-label">นวดวันนี้</span> <strong>${countText}</strong> <span>ครั้ง</span></div>
         <div class="staff-row-actions">
+          <button class="btn btn-secondary btn-small staff-info-btn" data-action="toggleInfo" data-position="${staff.position || index + 1}" data-staff-id="${staffId}" aria-expanded="false">Info</button>
           <button class="btn btn-small staff-order-btn" data-action="moveUp" data-position="${staff.position || index + 1}" data-staff-id="${staffId}" ${index === 0 ? 'disabled' : ''} aria-label="เลื่อนขึ้น">ขึ้น</button>
           <button class="btn btn-small staff-order-btn" data-action="moveDown" data-position="${staff.position || index + 1}" data-staff-id="${staffId}" ${index === roster.length - 1 ? 'disabled' : ''} aria-label="เลื่อนลง">ลง</button>
           <button class="btn btn-danger btn-small staff-remove-btn" data-action="remove" data-position="${staff.position || index + 1}" data-staff-id="${staffId}">ลบ</button>
@@ -168,6 +197,60 @@
     
     // Render beacon for test harness
     document.documentElement.dataset.staffRender = String(Date.now());
+  }
+
+  function toggleStaffInfo(staff, row) {
+    if (!staff || !row) return;
+    const button = row.querySelector('.staff-info-btn');
+    const existing = row.nextElementSibling;
+    if (existing && existing.classList.contains('staff-info-detail')) {
+      existing.remove();
+      button?.setAttribute('aria-expanded', 'false');
+      row.classList.remove('is-info-open');
+      return;
+    }
+
+    document.querySelectorAll('#roster-list .staff-info-detail').forEach(detail => detail.remove());
+    document.querySelectorAll('#roster-list .staff-info-btn[aria-expanded="true"]').forEach(openButton => openButton.setAttribute('aria-expanded', 'false'));
+    document.querySelectorAll('#roster-list .roster-grid.is-info-open').forEach(openRow => openRow.classList.remove('is-info-open'));
+
+    const detail = document.createElement('div');
+    detail.className = 'staff-info-detail';
+    detail.innerHTML = renderStaffInfoDetail(staff);
+    row.insertAdjacentElement('afterend', detail);
+    button?.setAttribute('aria-expanded', 'true');
+    row.classList.add('is-info-open');
+  }
+
+  function renderStaffInfoDetail(staff) {
+    const name = projectName(staff);
+    const todayMassages = Number(staff.today_massages || 0);
+    const previousDayCommission = Number(staff.previous_day_commission || 0);
+    const todayBaseFees = Number(staff.today_base_fees || staff.baseFees || staff.masseuse_fee_total || 0);
+    const todayBookingCredit = Number(staff.today_booking_credit || staff.bookingCredits || staff.booking_credit_amount || 0);
+    const todayTotalPay = todayBaseFees + todayBookingCredit;
+    const status = staff.status || (staff.queue_status || 'Available');
+    const position = staff.position || '';
+
+    return renderStaffDetailRows([
+      ['Staff', name],
+      ['Queue position', position ? `#${position}` : 'Not set'],
+      ['Massages today', `${todayMassages} ครั้ง`],
+      ['Base pay today', `฿${todayBaseFees.toFixed(2)}`],
+      ['Booking credit today', `฿${todayBookingCredit.toFixed(2)}`],
+      ['Total pay today', `฿${todayTotalPay.toFixed(2)}`],
+      ['Previous-day helper pay', `฿${previousDayCommission.toFixed(2)}`],
+      ['Status', status]
+    ]);
+  }
+
+  function renderStaffDetailRows(rows) {
+    return `<div class="staff-info-detail-inner">${rows.map(([label, value]) => `
+      <div class="staff-info-detail-row">
+        <span>${escapeStaffHtml(label)}</span>
+        <strong>${escapeStaffHtml(value)}</strong>
+      </div>
+    `).join('')}</div>`;
   }
 
   // DROPDOWN POPULATION — uses projector for consistency

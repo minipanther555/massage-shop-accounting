@@ -34,6 +34,26 @@ describe('Today Staff controller UI/database contract', () => {
     expect(controller).not.toContain('await api.updateStaff(nextPosition');
   });
 
+  it('wires drag and drop rows to the same persisted reorder path', () => {
+    const controller = read('web-app/controllers/staff-page-controller.js');
+    expect(controller).toContain("addEventListener('dragstart'");
+    expect(controller).toContain("addEventListener('drop'");
+    expect(controller).toContain('reorderVisibleRoster');
+  });
+
+  it('adds a separate inline info toggle without making draggable rows the detail trigger', () => {
+    const controller = read('web-app/controllers/staff-page-controller.js');
+
+    expect(controller).toContain('data-action="toggleInfo"');
+    expect(controller).toContain('staff-info-btn');
+    expect(controller).toContain('el.__staffRowData = staff');
+    expect(controller).toContain('toggleStaffInfo(element.__staffRowData, element)');
+    expect(controller).toContain('renderStaffInfoDetail(staff)');
+    expect(controller).toContain('staff-info-detail');
+    expect(controller).toContain('renderStaffDetailRows');
+    expect(controller).toContain("case 'toggleInfo':");
+  });
+
   it('escapes staff/helper/day-off strings rendered with innerHTML', () => {
     const controller = read('web-app/controllers/staff-page-controller.js');
 
@@ -42,6 +62,8 @@ describe('Today Staff controller UI/database contract', () => {
     expect(controller).toContain('${escapeStaffHtml(row.display_name)}');
     expect(controller).toContain('${escapeStaffHtml(busyUntil)}');
     expect(controller).toContain('const statusText = escapeStaffHtml(staff.status ||');
+    expect(controller).toContain('${escapeStaffHtml(label)}');
+    expect(controller).toContain('${escapeStaffHtml(value)}');
   });
 
   it('keeps static and EJS Today Staff pages behavior-critical anchors mirrored', () => {
