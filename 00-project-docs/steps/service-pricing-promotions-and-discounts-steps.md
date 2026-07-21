@@ -1,6 +1,6 @@
 # Service Pricing, Promotions, and Time-Window Discounts Steps
 
-> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration is IN PROGRESS; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
+> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration is DONE; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
 > **Feature Specification:** `00-project-docs/feature-specifications/service-pricing-promotions-and-discounts.md`
 
 ## SPD-001 - Clarify Price, Commission, and Promotion Rules
@@ -50,7 +50,7 @@
 
 ## SPD-003 - Implement Promotion and Discount Transaction Support
 
-**Status:** PARTIAL - time-window pricing is implemented; SPD-003a manager configuration is in progress; ten-stamp and seven-day receptionist controls remain blocked by their unresolved eligibility rules
+**Status:** PARTIAL - time-window pricing and SPD-003a manager configuration are implemented; ten-stamp and seven-day receptionist controls remain blocked by their unresolved eligibility rules
 
 **Goal:** Add transaction support for ten-stamp free massage, seven-day return discount, and low-business-hour reduced pricing.
 
@@ -66,17 +66,17 @@
 
 ### SPD-003a - Manager Time-Window Promotion Configuration
 
-**Status:** IN PROGRESS
+**Status:** DONE (2026-07-21)
 
 **Goal:** Let a manager change the authenticated branch's low-business-hours promotion enabled state, Bangkok start/end times, and reception override grace from the existing Services & Pricing page without exposing the control in New Customer.
 
 **Dependencies:** SPD-003 time-window tables/service, `backend/routes/services.js`, `web-app/api.js`, `web-app/admin-services.html`, and branch-scoped manager sessions.
 
 **Action Items:**
-- [ ] Add manager-only read/write endpoints for the current branch's `time_window_promotion_settings` row.
-- [ ] Render a Thai-first time-window configuration panel on Services & Pricing with explicit save/error/success states.
-- [ ] Seed/correct defaults: Top Thai 43 `[10:00, 24:00)`, Top Thai 49 `[10:00, 18:00)`, both with fifteen-minute grace.
-- [ ] Prove a manager cannot change another branch and reception cannot write settings.
+- [x] Add manager-only read/write endpoints for the current branch's `time_window_promotion_settings` row.
+- [x] Render a Thai-first time-window configuration panel on Services & Pricing with explicit save/error/success states.
+- [x] Seed/correct defaults: Top Thai 43 `[10:00, 24:00)`, Top Thai 49 `[10:00, 18:00)`, both with fifteen-minute grace.
+- [x] Prove a manager cannot change another branch and reception cannot write settings.
 
 **Expected Output/Deliverable:** A saved manager setting takes effect in the server-side quote flow immediately and remains branch-local across restart.
 
@@ -85,3 +85,5 @@
 **Potential Challenges and Mitigations:** Existing branch-43 settings were seeded with the now-corrected 18:00 end; update only that known initial tuple during startup so later manager changes are never overwritten. Keep Home Service without a promotion row.
 
 **Validation:** Permanent route/UI contracts and integration tests cover manager read/write, validation, branch isolation, reception denial, `43=1440`, `49=1080`, and quote behavior after update; browser smoke saves branch-43 configuration and observes the success state; lint, dependency audit, and `git diff --check` pass.
+
+**Completion Notes (2026-07-21):** `promotion-settings-manager.integration.test.js`, `time-window-promotion.integration.test.js`, and their source contracts passed as 5 suites / 16 tests. `npm run lint` and `git diff --check` passed. Live `testing3414` manager smoke signed in as Top Thai 43, loaded enabled `10:00` through `00:00` with 15-minute grace, saved the unchanged setting, and displayed `บันทึกการตั้งค่าราคาโปรโมชั่นแล้ว`. The live 43 row is `enabled=1, start_minute=600, end_minute=1440, manual_override_grace_minutes=15`. The Top Thai 49 default is implemented and tested, but its branch database file is not yet provisioned on massage-server; no staff/data clone was created. A fresh dependency audit could not run because `registry.npmjs.org` DNS resolution failed; no dependency files changed.
