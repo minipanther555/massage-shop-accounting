@@ -2,6 +2,44 @@ const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { authenticateToken, authorizeRole } = require('../middleware/auth');
+
+const requireManagerAuth = [authenticateToken, authorizeRole('manager')];
+
+function normalizePromotionSettings(body) {
+  const enabled = body.enabled === true || body.enabled === 'true' || body.enabled === 1;
+  const startMinute = Number(body.start_minute);
+  const endMinute = Number(body.end_minute);
+  const graceMinutes = Number(body.manual_override_grace_minutes);
+
+  if (!Number.isInteger(startMinute) || startMinute < 0 || startMinute > 1439) {
+    throw new Error('start_minute must be an integer from 0 through 1439');
+  }
+  if (!Number.isInteger(endMinute) || endMinute < 1 || endMinute > 1440) {
+    throw new Error('end_minute must be an integer from 1 through 1440');
+  }
+  if (startMinute >= endMinute) {
+    throw new Error('end_minute must be later than start_minute; use 1440 for midnight');
+  }
+  if (!Number.isInteger(graceMinutes) || graceMinutes < 0 || graceMinutes > 120) {
+    throw new Error('manual_override_grace_minutes must be an integer from 0 through 120');
+  }
+
+  return {
+    enabled,
+    startMinute,
+    endMinute,
+    graceMinutes
+  };
+}
+
+async function getPromotionSettings() {
+  const settings = await database.get(
+    `SELECT enabled, start_minute, end_minute, manual_override_grace_minutes, updated_at
+     FROM time_window_promotion_settings WHERE id = 1`
+  );
+  return settings ? { ...settings, enabled: Boolean(settings.enabled) } : null;
+}
 
 // Get all services (admin view - includes inactive)
 router.get('/', async (req, res) => {
@@ -35,6 +73,37 @@ router.get('/payment-methods', async (req, res) => {
   } catch (error) {
     console.error('Error fetching payment methods:', error);
     res.status(500).json({ error: 'Failed to fetch payment methods' });
+  }
+});
+
+// Manager-only branch-local time-window promotion configuration.
+router.get('/promotion-settings', ...requireManagerAuth, async (req, res) => {
+  try {
+    const settings = await getPromotionSettings();
+    if (!settings) return res.status(404).json({ error: 'Promotion settings are not initialized for this branch' });
+    return res.json(settings);
+  } catch (error) {
+    console.error('Error fetching promotion settings:', error);
+    return res.status(500).json({ error: 'Failed to fetch promotion settings' });
+  }
+});
+
+router.put('/promotion-settings', ...requireManagerAuth, async (req, res) => {
+  try {
+    const settings = normalizePromotionSettings(req.body);
+    await database.run(
+      `UPDATE time_window_promotion_settings
+       SET enabled = ?, start_minute = ?, end_minute = ?,
+           manual_override_grace_minutes = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = 1`,
+      [settings.enabled ? 1 : 0, settings.startMinute, settings.endMinute, settings.graceMinutes]
+    );
+    const updated = await getPromotionSettings();
+    return res.json(updated);
+  } catch (error) {
+    if (error && error.message && error.message.includes('minute')) return res.status(400).json({ error: error.message });
+    console.error('Error updating promotion settings:', error);
+    return res.status(500).json({ error: 'Failed to update promotion settings' });
   }
 });
 

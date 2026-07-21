@@ -1,6 +1,6 @@
 # Service Pricing, Promotions, and Time-Window Discounts Steps
 
-> **Status:** SPD-001 PARTIAL - time-window rules confirmed and implemented for branch 43; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
+> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration is IN PROGRESS; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
 > **Feature Specification:** `00-project-docs/feature-specifications/service-pricing-promotions-and-discounts.md`
 
 ## SPD-001 - Clarify Price, Commission, and Promotion Rules
@@ -20,7 +20,7 @@
 - [x] Capture the supplied time-window promotion price table for Thai/Foot, Oil, and Aroma service groups.
 - [x] Capture the rule that time-window promotion prices do not change masseuse commission.
 - [ ] Confirm service-name mapping and whether unmatched table rows should create new active services.
-- [x] Define branch-43 time-window configuration: enabled, `[10:00, 18:00)` Bangkok, with receptionist override through `18:14` and expiry at `18:15`.
+- [x] Define branch time-window configuration: branch 43 `[10:00, 24:00)`, branch 49 `[10:00, 18:00)`, and receptionist override through configured end plus 14 minutes.
 - [x] Decide time-window application behavior: automatic during the window, receptionist-only override during the grace period, normal commission throughout.
 - [x] Update this spec and steps file with the confirmed time-window answers before implementation.
 
@@ -50,7 +50,7 @@
 
 ## SPD-003 - Implement Promotion and Discount Transaction Support
 
-**Status:** PARTIAL - branch-43 time-window slice implemented; ten-stamp and seven-day receptionist controls remain blocked by their unresolved eligibility rules
+**Status:** PARTIAL - time-window pricing is implemented; SPD-003a manager configuration is in progress; ten-stamp and seven-day receptionist controls remain blocked by their unresolved eligibility rules
 
 **Goal:** Add transaction support for ten-stamp free massage, seven-day return discount, and low-business-hour reduced pricing.
 
@@ -63,3 +63,25 @@
 **Potential Challenges and Mitigations:** Multiple promotions may be eligible at once; mitigate with a confirmed priority/stacking rule and regression tests.
 
 **Validation:** The time-window sub-slice has unit boundary tests, quote/transaction integration coverage, source contracts, and live branch-43 browser/API smoke still required after deployment. Ten-stamp and seven-day behavior require separate focused tests when specified.
+
+### SPD-003a - Manager Time-Window Promotion Configuration
+
+**Status:** IN PROGRESS
+
+**Goal:** Let a manager change the authenticated branch's low-business-hours promotion enabled state, Bangkok start/end times, and reception override grace from the existing Services & Pricing page without exposing the control in New Customer.
+
+**Dependencies:** SPD-003 time-window tables/service, `backend/routes/services.js`, `web-app/api.js`, `web-app/admin-services.html`, and branch-scoped manager sessions.
+
+**Action Items:**
+- [ ] Add manager-only read/write endpoints for the current branch's `time_window_promotion_settings` row.
+- [ ] Render a Thai-first time-window configuration panel on Services & Pricing with explicit save/error/success states.
+- [ ] Seed/correct defaults: Top Thai 43 `[10:00, 24:00)`, Top Thai 49 `[10:00, 18:00)`, both with fifteen-minute grace.
+- [ ] Prove a manager cannot change another branch and reception cannot write settings.
+
+**Expected Output/Deliverable:** A saved manager setting takes effect in the server-side quote flow immediately and remains branch-local across restart.
+
+**Technical Considerations:** `24:00` is stored as minute `1440`; automatic evaluation remains end-exclusive. The manager endpoint must be declared before `/:id` in the services router. Never accept a branch/location ID from the browser; the request-bound database connection remains derived from the authenticated session.
+
+**Potential Challenges and Mitigations:** Existing branch-43 settings were seeded with the now-corrected 18:00 end; update only that known initial tuple during startup so later manager changes are never overwritten. Keep Home Service without a promotion row.
+
+**Validation:** Permanent route/UI contracts and integration tests cover manager read/write, validation, branch isolation, reception denial, `43=1440`, `49=1080`, and quote behavior after update; browser smoke saves branch-43 configuration and observes the success state; lint, dependency audit, and `git diff --check` pass.

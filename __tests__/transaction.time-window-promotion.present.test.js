@@ -11,7 +11,8 @@ describe('time-window promotion contracts', () => {
     const source = read('backend/models/database.js');
     expect(source).toContain('time_window_promotion_settings');
     expect(source).toContain('time_window_promotion_prices');
-    expect(source).toContain(".branch-43.db");
+    expect(source).toContain('43: { enabled: 1, startMinute: 600, endMinute: 1440, graceMinutes: 15 }');
+    expect(source).toContain('49: { enabled: 1, startMinute: 600, endMinute: 1080, graceMinutes: 15 }');
     expect(source).toContain("['Thai Massage', 60, 'In-Shop', 399]");
     expect(source).toContain('PRIMARY KEY (service_name, duration_minutes, location)');
     expect(source).toContain('base_price');

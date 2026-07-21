@@ -4,7 +4,7 @@
 
 **Overall Purpose:** `admin-services.html` renders the manager-only Services and Pricing page. It lets managers inspect active and inactive massage service rows, filter the catalog, add new service/duration/location variants, edit price and masseuse fee details, enable or disable services, delete services, and inspect the currently stored price details for a service.
 
-**End-to-End Data Flow:** On page load, `loadServices()` calls `api.getServices({ includeInactive: true })`, which sends `GET /api/services?includeInactive=true` through `web-app/api.js`. `backend/routes/services.js` reads the `services` table and returns rows ordered by name and duration. Add/edit/toggle/delete controls call `api.createService()`, `api.updateService()`, or `api.deleteService()`, which send CSRF-protected POST/PATCH/DELETE requests to `backend/routes/services.js`; the backend validates fields and writes the `services` table. After a successful mutation, the page updates its local list from the returned row or removes the deleted row, recomputes summary cards, and reapplies the current filter.
+**End-to-End Data Flow:** On page load, `loadServices()` calls `api.getServices({ includeInactive: true })`, which sends `GET /api/services?includeInactive=true` through `web-app/api.js`. `backend/routes/services.js` reads the `services` table and returns rows ordered by name and duration. In parallel, `loadPromotionSettings()` reads the authenticated manager's branch-local time-window configuration and renders its Thai-first controls. Add/edit/toggle/delete controls call `api.createService()`, `api.updateService()`, or `api.deleteService()`, which send CSRF-protected POST/PATCH/DELETE requests to `backend/routes/services.js`; `savePromotionSettings()` similarly sends a CSRF-protected manager-only update. After a successful mutation, the page updates its local state and visible success/error status.
 
 ## 2. Module API & Logic Breakdown
 
@@ -15,6 +15,14 @@
 - **Returns / Renders:** Populates `allServices`, `filteredServices`, summary cards, and the services table.
 - **Raises / Throws:** Catches API errors and shows a toast.
 - **Usage & Logic Notes:** Uses `api.getServices({ includeInactive: true })`; raw mutation fetches must not be reintroduced because non-GET writes require CSRF handling from `api.js`.
+
+### `loadPromotionSettings()` and `savePromotionSettings(event)`
+
+- **Purpose:** Render and persist the selected branch's promotion enabled state, start/end time, and reception grace period from the Services & Pricing page.
+- **Parameters / Props:** `savePromotionSettings` receives the form submit event; all values come from the panel controls. `00:00` is converted to end minute `1440` only for the end field.
+- **Returns / Renders:** Updates the branch label and status message; save disables its button during the request and shows a success or error state.
+- **Raises / Throws:** Catches API validation, authentication, and network errors and renders a concise error.
+- **Usage & Logic Notes:** The panel is manager-facing configuration, not a reception/New Customer control. It never sends a branch ID; server session context supplies it.
 
 ### `displayServices()`
 

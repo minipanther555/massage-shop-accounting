@@ -357,14 +357,43 @@ class Database {
   }
 
   async seedBranchPromotionConfiguration() {
-    if (!this.dbPath.endsWith('.branch-43.db')) return;
+    const branchMatch = this.dbPath.match(/\.branch-(\d+)\.db$/);
+    if (!branchMatch) return;
+
+    const branchLocationId = Number(branchMatch[1]);
+    const branchDefaults = {
+      43: { enabled: 1, startMinute: 600, endMinute: 1440, graceMinutes: 15 },
+      49: { enabled: 1, startMinute: 600, endMinute: 1080, graceMinutes: 15 }
+    };
+    const defaults = branchDefaults[branchLocationId] || {
+      enabled: 0,
+      startMinute: 600,
+      endMinute: 1080,
+      graceMinutes: 15
+    };
 
     await this.run(
       `INSERT INTO time_window_promotion_settings
         (id, enabled, start_minute, end_minute, manual_override_grace_minutes, updated_at)
-       VALUES (1, 1, 600, 1080, 15, CURRENT_TIMESTAMP)
-       ON CONFLICT(id) DO NOTHING`
+       VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(id) DO NOTHING`,
+      [defaults.enabled, defaults.startMinute, defaults.endMinute, defaults.graceMinutes]
     );
+
+    // Correct the original Top Thai 43 seed once without overwriting manager-edited values.
+    if (branchLocationId === 43) {
+      await this.run(
+        `UPDATE time_window_promotion_settings
+         SET end_minute = 1440, updated_at = CURRENT_TIMESTAMP
+         WHERE id = 1
+           AND enabled = 1
+           AND start_minute = 600
+           AND end_minute = 1080
+           AND manual_override_grace_minutes = 15`
+      );
+    }
+
+    if (!branchDefaults[branchLocationId]) return;
 
     const prices = [
       ['Thai Massage', 60, 'In-Shop', 399], ['Thai Massage', 90, 'In-Shop', 598], ['Thai Massage', 120, 'In-Shop', 798],

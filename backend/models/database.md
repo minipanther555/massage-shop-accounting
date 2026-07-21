@@ -22,7 +22,7 @@ This module exports one `DatabaseRouter`, which manages one or more internal `Da
 
 *   **`initializeTables()` method:**
     *   **Purpose:** To ensure the database schema is up-to-date.
-*   **Logic Notes:** It contains a list of `CREATE TABLE IF NOT EXISTS` SQL statements for every table required by the application. Current legacy local DB data does not constrain the Today Staff redesign; the new product concepts are additive so old tables can coexist while the new route contracts use business-day-scoped tables. It then calls `addMissingColumns()` to perform simple, non-destructive schema migrations, seeds the documented Top Thai 43 time-window promotion only when its branch database has no existing configuration, and finally calls `insertDefaultData()` which is currently a no-op.
+*   **Logic Notes:** It contains a list of `CREATE TABLE IF NOT EXISTS` SQL statements for every table required by the application. Current legacy local DB data does not constrain the Today Staff redesign; the new product concepts are additive so old tables can coexist while the new route contracts use business-day-scoped tables. It then calls `addMissingColumns()` to perform simple, non-destructive schema migrations, seeds branch-local time-window configuration only when it is absent (`43` is 10:00 through midnight and `49` is 10:00 through 18:00), and finally calls `insertDefaultData()` which is currently a no-op. A narrowly scoped correction changes only the original untouched 43 seed from 18:00 to midnight; it never overwrites a manager-edited row.
 
 *   **`ensureIndexes()` method:**
     *   **Purpose:** To create idempotent indexes and uniqueness constraints required by Today Staff helper/planning queries.

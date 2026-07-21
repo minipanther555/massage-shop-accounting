@@ -4,7 +4,7 @@
 
 **Overall Purpose:** This Express router owns service catalog and payment-method catalog endpoints. It exposes read endpoints used by receptionist-facing service/payment dropdowns and manager endpoints used by Services and Pricing administration.
 
-**End-to-End Data Flow:** Frontend pages call `/api/services` through `web-app/api.js` or direct read-only fetches. `GET /api/services` reads the `services` table, optionally including inactive rows for manager pages. `POST /api/services`, `PATCH /api/services/:id`, `PATCH /api/services/bulk/update`, and `DELETE /api/services/:id` validate input and write the `services` table. Payment-method endpoints read or insert rows in `payment_methods`.
+**End-to-End Data Flow:** Frontend pages call `/api/services` through `web-app/api.js` or direct read-only fetches. `GET /api/services` reads the `services` table, optionally including inactive rows for manager pages. `POST /api/services`, `PATCH /api/services/:id`, `PATCH /api/services/bulk/update`, and `DELETE /api/services/:id` validate input and write the `services` table. Payment-method endpoints read or insert rows in `payment_methods`. Services & Pricing calls `GET` and `PUT /api/services/promotion-settings`; authenticated manager middleware derives the request-bound branch database, then the route reads or updates its one `time_window_promotion_settings` row without accepting a branch ID from the browser.
 
 ## 2. Module API & Logic Breakdown
 
@@ -23,6 +23,14 @@
 - **Returns / Renders:** JSON array of active payment method rows ordered by `method_name`.
 - **Raises / Throws:** Returns 500 on database failure.
 - **Usage & Logic Notes:** Manager payment-type administration uses `backend/routes/payment-types.js`; this endpoint is the simple active-list reader.
+
+### `GET /promotion-settings` and `PUT /promotion-settings`
+
+- **Purpose:** Read and update the authenticated manager's branch-local time-window promotion configuration.
+- **Parameters / Props:** `PUT` body is `{ enabled, start_minute, end_minute, manual_override_grace_minutes }`; start is 0-1439, end is 1-1440, start must precede end, and grace is 0-120.
+- **Returns / Renders:** The setting row with boolean `enabled`.
+- **Raises / Throws:** Returns 400 for invalid minutes, 403 for a non-manager session, 404 when initialization did not create the setting row, and 500 for a database failure.
+- **Usage & Logic Notes:** Both routes are declared before `GET /:id`. `1440` represents midnight. The server derives branch identity from the authenticated session and never trusts a browser-provided location ID.
 
 ### `GET /:id`
 

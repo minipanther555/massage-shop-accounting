@@ -228,6 +228,30 @@
             background: #f3e5f5;
             color: #7b1fa2;
         }
+
+        .promotion-settings-panel {
+            border: 1px solid #badbcc;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 0 0 20px;
+            background: #f0fff4;
+        }
+
+        .promotion-settings-panel h2 {
+            margin: 0 0 6px;
+            font-size: 20px;
+        }
+
+        .promotion-settings-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(140px, 1fr));
+            gap: 12px;
+            align-items: end;
+        }
+
+        @media (max-width: 760px) {
+            .promotion-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
     </style>
 </head>
 <body>
@@ -273,6 +297,39 @@
             </a>
 
         </div>
+
+        <section id="time-window-promotion-settings" class="promotion-settings-panel" aria-labelledby="promotion-settings-heading">
+            <h2 id="promotion-settings-heading">ราคาโปรโมชั่นตามเวลา</h2>
+            <p id="promotion-settings-branch" style="margin: 0 0 14px; color: #495057;">กำลังโหลดการตั้งค่าสาขา...</p>
+            <form id="promotion-settings-form">
+                <div class="promotion-settings-grid">
+                    <div class="form-group">
+                        <label for="promotion-enabled">เปิดใช้</label>
+                        <select id="promotion-enabled">
+                            <option value="true">เปิดใช้</option>
+                            <option value="false">ปิดใช้</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="promotion-start-time">เริ่มเวลา</label>
+                        <input id="promotion-start-time" type="time" step="60" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="promotion-end-time">สิ้นสุดเวลา</label>
+                        <input id="promotion-end-time" type="time" step="60" required>
+                        <small>00:00 = เที่ยงคืน</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="promotion-grace-minutes">ให้ใช้ราคาโปรต่อได้ (นาที)</label>
+                        <input id="promotion-grace-minutes" type="number" min="0" max="120" step="1" required>
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <span id="promotion-settings-status" role="status" style="margin-right: auto;"></span>
+                    <button id="promotion-settings-save" type="submit" class="btn" style="background: #198754; color: white;">บันทึกราคาโปรโมชั่น</button>
+                </div>
+            </form>
+        </section>
 
         <!-- Summary Cards -->
         <div class="summary-cards">
@@ -451,7 +508,73 @@
             checkAuth();
             renderCurrentUser();
             loadServices();
+            loadPromotionSettings();
+            document.getElementById('promotion-settings-form').addEventListener('submit', savePromotionSettings);
         });
+
+        function minuteToTime(minute) {
+            if (Number(minute) === 1440) return '00:00';
+            const hours = Math.floor(Number(minute) / 60).toString().padStart(2, '0');
+            const minutes = (Number(minute) % 60).toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        function timeToMinute(value) {
+            const [hours, minutes] = value.split(':').map(Number);
+            return (hours * 60) + minutes;
+        }
+
+        function timeToEndMinute(value) {
+            return value === '00:00' ? 1440 : timeToMinute(value);
+        }
+
+        async function loadPromotionSettings() {
+            const status = document.getElementById('promotion-settings-status');
+            try {
+                const [settings, session] = await Promise.all([
+                    api.getPromotionSettings(),
+                    api.checkSession()
+                ]);
+                document.getElementById('promotion-enabled').value = String(Boolean(settings.enabled));
+                document.getElementById('promotion-start-time').value = minuteToTime(settings.start_minute);
+                document.getElementById('promotion-end-time').value = minuteToTime(settings.end_minute);
+                document.getElementById('promotion-grace-minutes').value = settings.manual_override_grace_minutes;
+                document.getElementById('promotion-settings-branch').textContent = `สาขา ${session.user.location_name}`;
+                status.textContent = settings.enabled ? 'กำลังใช้ราคาโปรโมชั่น' : 'ปิดราคาโปรโมชั่น';
+            } catch (error) {
+                status.textContent = error.message || 'โหลดการตั้งค่าราคาโปรโมชั่นไม่ได้';
+                status.style.color = '#b02a37';
+            }
+        }
+
+        async function savePromotionSettings(event) {
+            event.preventDefault();
+            const status = document.getElementById('promotion-settings-status');
+            const saveButton = document.getElementById('promotion-settings-save');
+            saveButton.disabled = true;
+            status.style.color = '';
+            status.textContent = 'กำลังบันทึก...';
+            try {
+                const settings = await api.updatePromotionSettings({
+                    enabled: document.getElementById('promotion-enabled').value === 'true',
+                    start_minute: timeToMinute(document.getElementById('promotion-start-time').value),
+                    end_minute: timeToEndMinute(document.getElementById('promotion-end-time').value),
+                    manual_override_grace_minutes: Number(document.getElementById('promotion-grace-minutes').value)
+                });
+                document.getElementById('promotion-enabled').value = String(Boolean(settings.enabled));
+                document.getElementById('promotion-start-time').value = minuteToTime(settings.start_minute);
+                document.getElementById('promotion-end-time').value = minuteToTime(settings.end_minute);
+                document.getElementById('promotion-grace-minutes').value = settings.manual_override_grace_minutes;
+                status.textContent = 'บันทึกการตั้งค่าราคาโปรโมชั่นแล้ว';
+                showToast('Promotion settings saved', 'success');
+            } catch (error) {
+                status.textContent = error.message || 'บันทึกการตั้งค่าไม่ได้';
+                status.style.color = '#b02a37';
+                showToast(error.message || 'Unable to save promotion settings', 'error');
+            } finally {
+                saveButton.disabled = false;
+            }
+        }
 
         // Load all services
         async function loadServices() {

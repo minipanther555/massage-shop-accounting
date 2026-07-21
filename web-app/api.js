@@ -327,6 +327,17 @@ class APIClient {
     return this.request('/services/payment-methods');
   }
 
+  async getPromotionSettings() {
+    return this.request('/services/promotion-settings');
+  }
+
+  async updatePromotionSettings(settings) {
+    return this.request('/services/promotion-settings', {
+      method: 'PUT',
+      body: settings
+    });
+  }
+
   async createService(serviceData) {
     return this.request('/services', {
       method: 'POST',

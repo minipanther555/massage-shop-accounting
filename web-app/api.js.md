@@ -124,6 +124,12 @@
 - **Returns:** Promise with payment methods array
 - **Logic:** Sends GET to `/api/services/payment-methods`
 
+#### `getPromotionSettings()` and `updatePromotionSettings(settings)`
+- **Purpose:** Read and save the authenticated manager's branch-local time-window promotion enabled state, Bangkok start/end minutes, and reception override grace.
+- **Parameters:** `settings` is required for update and contains `enabled` (boolean), `start_minute` (0-1439), `end_minute` (1-1440, where 1440 is midnight), and `manual_override_grace_minutes` (0-120).
+- **Returns:** Promise resolving to the normalized setting row with boolean `enabled`.
+- **Logic:** Calls `/api/services/promotion-settings` through `request()`, which supplies CSRF on the write. The browser never supplies a branch/location ID.
+
 #### `createService(serviceData)`, `updateService(serviceId, serviceData)`, `deleteService(serviceId)`, `bulkUpdateServices(updateData)`
 - **Purpose:** Wrap manager service catalog mutations through the CSRF-aware request path.
 - **Parameters:** `serviceData` contains service row fields; `serviceId` is the target service row id; `updateData` contains bulk update filters and update fields.

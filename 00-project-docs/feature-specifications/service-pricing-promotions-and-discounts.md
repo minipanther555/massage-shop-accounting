@@ -164,11 +164,11 @@ Source: operator table sent on 2026-07-16. The number after `=` in the source me
 
 Source: operator table sent on 2026-07-16. During reduced-price windows, masseuse commission stays the same as the base table. The promotion is stored per branch with enable/disable, start/end, and grace settings; branch-43's initial configuration is seeded from this table without overwriting a later branch configuration change.
 
-Confirmed branch-43 promotion window:
-- Standard branch window: 10:00 a.m. to 6:00 p.m.
-- Branch `43` / Top Thai 43: 10:00 a.m. to 6:00 p.m. Bangkok time. This supersedes the earlier unconfirmed midnight note.
-- Automatic application is start-inclusive/end-exclusive: `[10:00, 18:00)` Bangkok time.
-- From `18:00` through `18:14`, reception may explicitly reapply the same promotion; the override expires at `18:15`.
+Confirmed branch promotion windows:
+- Branch `43` / Top Thai 43: 10:00 a.m. until midnight Bangkok time, start-inclusive/end-exclusive: `[10:00, 24:00)`.
+- Branch `49` / Top Thai 49: 10:00 a.m. until 6:00 p.m. Bangkok time, start-inclusive/end-exclusive: `[10:00, 18:00)`.
+- From each branch's configured end through the next 14 minutes, reception may explicitly reapply the same promotion; the override expires at the configured end plus 15 minutes.
+- A manager changes the enabled state, start time, end time, and override grace on the existing Services & Pricing page. The setting is scoped to that manager's authenticated branch.
 
 | Promotion group | Included services | Duration | Promotional customer price | Masseuse commission |
 | --- | --- | ---: | ---: | --- |
@@ -182,7 +182,7 @@ Confirmed branch-43 promotion window:
 | Aroma promotion | Aroma massage | 90 | 1049 | Same as base commission |
 | Aroma promotion | Aroma massage | 120 | 1398 | Same as base commission |
 
-Branch-43 implementation scope: these supplied promotional prices map to `In-Shop` catalog rows only. Its separate `Home Service` rows have different base prices and commissions and have no configured promotion row.
+Current implementation scope: these supplied promotional prices map to `In-Shop` catalog rows only. Separate `Home Service` rows have different base prices and commissions and have no configured promotion row.
 
 #### Promotion Metadata on Transaction
 Implemented transaction audit shape for the time-window promotion:
@@ -209,7 +209,7 @@ When a customer has ten eligible completed massage stamps, reception can redeem 
 When a customer returns within seven days of a qualifying massage, reception can apply a 10% discount. The final rule must define the date boundary, customer identifier, eligible services, whether the discount is automatic or manual-confirmed, and whether it stacks with other promotions.
 
 ### FR-SPD-004: Low-Business-Hours Reduced Pricing
-From 10:00 a.m. until 6:00 p.m. Bangkok time by default, selected services may use reduced customer-facing prices. The reduced-price window is configurable per branch, including enable/disable, start time, end time, and override grace. Top Thai 43 is seeded for the `[10:00, 18:00)` window. Reception can explicitly apply the same branch-43 price from `18:00` through `18:14`; no time-window promotion applies at or after `18:15`. Staff commission does not change during the reduced-price window; it remains the same as the base table.
+Selected services may use reduced customer-facing prices within a branch-configured Bangkok-time window. Managers set enable/disable, start time, end time, and override grace on Services & Pricing for their authenticated branch. Top Thai 43 defaults to `[10:00, 24:00)` and Top Thai 49 defaults to `[10:00, 18:00)`. Reception can explicitly apply the same promotion from the configured end through the next 14 minutes; no time-window promotion applies at or after the end plus 15 minutes. Staff commission does not change during the reduced-price window; it remains the same as the base table.
 
 ### FR-SPD-005: Reporting and Staff-Pay Separation
 Reports must show base revenue, discount/promotion impact, final paid amount, staff commission, booking credit, and combined staff pay without merging these concepts. Today Staff ordering remains based on governed base commission logic only.
@@ -222,7 +222,7 @@ The implemented time-window slice adds `transactions.base_price`, `discount_amou
 
 1. Confirm exact mapping for service names that differ from current catalog spelling/casing, especially `Body Scurb`/`Body Scrub`, `Body scurb + Aroma massage`, `Foot scurb with foot massage`, `Back,Neck&shoulder`, and `Thai massage with oil`.
 2. Confirm whether `Thai massage with oil`, `Deep oil massage`, `Oil massage with herbal compress`, and `Aroma massage with herbal compress` should be new active services if they do not already exist in the live catalog.
-3. Resolved for time-window promotion: the automatic end is exclusive; override is receptionist-only through 18:14 and expires at 18:15.
+3. Resolved for time-window promotion: automatic end is exclusive; reception override is available for fifteen minutes after each configured branch end.
 4. For the ten-stamp promotion, what customer identifier is used: phone number, name, manual stamp card only, or another value?
 5. Resolved: a ten-stamp free massage still pays the normal staff commission; service eligibility remains open and is not part of the time-window implementation.
 6. Which services are eligible for the ten-stamp free massage?
@@ -236,6 +236,7 @@ The implemented time-window slice adds `transactions.base_price`, `discount_amou
 - AC-SPD-002: A changed service row calculates final customer price and staff commission from the governed table.
 - AC-SPD-003: A ten-stamp redemption creates an auditable transaction with correct revenue, discount, and staff-pay treatment.
 - AC-SPD-004: A seven-day return discount applies exactly 10% under the confirmed eligibility rule.
-- AC-SPD-005: Time-window pricing applies only to configured service/duration rows, automatically in `[10:00, 18:00)` Bangkok time, and by reception override only through `18:14`; it must be unavailable at `18:15`.
+- AC-SPD-005: Time-window pricing applies only to configured in-shop service/duration rows, automatically in the manager-configured Bangkok-time interval, and by reception override only through the configured end plus 14 minutes.
+- AC-SPD-008: A manager can read and update only the authenticated branch's time-window enabled state, start/end time, and override grace on Services & Pricing; a reception session cannot write these settings.
 - AC-SPD-006: Reports and Payday Tracking separate base price, discount, final paid amount, base commission, booking credit, and total staff pay.
 - AC-SPD-007: Promotion and discount behavior has focused unit/integration tests plus browser verification on the New Customer page.
