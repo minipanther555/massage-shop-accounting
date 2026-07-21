@@ -1,6 +1,6 @@
 # Database-Per-Branch Routing Steps
 
-> **Status:** DBR-001 IN PROGRESS - local OTDD green; Git deployment and Top Thai 43 live canary pending.
+> **Status:** DBR-001 DONE (2026-07-21) - deployed as `testing3411`; Top Thai 43 live canary passed.
 
 ## DBR-001 - Provision and Route Top Thai 43 Independently
 
@@ -20,7 +20,7 @@
 - [x] Add permanent OTDD coverage for missing-file fail-closed behavior and cross-branch write isolation.
 - [x] Add a deterministic source-controlled branch bootstrap command.
 - [x] Update co-located docs and the multi-location feature specification.
-- [ ] Commit and deploy the Git-controlled routing code.
-- [ ] Rebuild disposable `massage_shop.branch-43.db` through the bootstrap command.
-- [ ] Run a bounded Top Thai 43 live canary and prove no shared staff visibility.
-- [ ] Record live evidence and mark DBR-001 DONE.
+- [x] Commit and deploy the Git-controlled routing code as `testing3411` (`e61ff79`).
+- [x] Rebuild disposable `massage_shop.branch-43.db` through the bootstrap command: integrity `ok`, 0 staff, 0 transactions, 0 bookings, 109 services, 7 payment methods.
+- [x] Run a bounded Top Thai 43 live canary: a valid `manager_top_thai_43` session reported `location_id: 43`, `/api/staff/allstaff` returned `[]`, while the untouched shared database retained 40 staff.
+- [x] Record live evidence and mark DBR-001 DONE.
