@@ -1,12 +1,14 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
+const { AsyncLocalStorage } = require('async_hooks');
 const DB_PATH = require('../dbPath'); // Use the centralized path
 require('dotenv').config();
 
 class Database {
-  constructor() {
+  constructor(dbPath) {
     this.db = null;
-    this.dbPath = DB_PATH; // Use the imported path
+    this.dbPath = dbPath;
   }
 
   async connect() {
@@ -389,4 +391,105 @@ class Database {
   }
 }
 
-module.exports = new Database();
+class DatabaseRouter {
+  constructor() {
+    this.defaultPath = DB_PATH;
+    this.connections = new Map();
+    this.connecting = new Map();
+    this.requestContext = new AsyncLocalStorage();
+  }
+
+  getBranchPath(locationId) {
+    const normalizedLocationId = Number(locationId);
+    if (!Number.isInteger(normalizedLocationId) || normalizedLocationId <= 0) {
+      throw new Error(`Invalid branch location id: ${locationId}`);
+    }
+
+    const extension = path.extname(this.defaultPath);
+    const baseName = path.basename(this.defaultPath, extension);
+    return path.join(path.dirname(this.defaultPath), `${baseName}.branch-${normalizedLocationId}${extension}`);
+  }
+
+  async getConnection(dbPath) {
+    if (this.connections.has(dbPath)) {
+      return this.connections.get(dbPath);
+    }
+
+    if (!this.connecting.has(dbPath)) {
+      const connection = new Database(dbPath);
+      const connectPromise = connection.connect()
+        .then(() => {
+          this.connections.set(dbPath, connection);
+          this.connecting.delete(dbPath);
+          return connection;
+        })
+        .catch((error) => {
+          this.connecting.delete(dbPath);
+          throw error;
+        });
+      this.connecting.set(dbPath, connectPromise);
+    }
+
+    return this.connecting.get(dbPath);
+  }
+
+  async connect() {
+    return this.getConnection(this.defaultPath);
+  }
+
+  async runWithLocation(locationId, callback) {
+    if (locationId === undefined || locationId === null) {
+      return callback();
+    }
+
+    const branchPath = this.getBranchPath(locationId);
+    if (!fs.existsSync(branchPath)) {
+      const error = new Error(`Branch database is not provisioned for location ${locationId}`);
+      error.code = 'BRANCH_DATABASE_MISSING';
+      throw error;
+    }
+
+    const connection = await this.getConnection(branchPath);
+    return this.requestContext.run(connection, callback);
+  }
+
+  get activeConnection() {
+    return this.requestContext.getStore() || this.connections.get(this.defaultPath);
+  }
+
+  get db() {
+    return this.activeConnection ? this.activeConnection.db : null;
+  }
+
+  get dbPath() {
+    return this.activeConnection ? this.activeConnection.dbPath : this.defaultPath;
+  }
+
+  requireActiveConnection() {
+    const connection = this.activeConnection;
+    if (!connection) {
+      throw new Error('Database connection is not initialized');
+    }
+    return connection;
+  }
+
+  run(sql, params = []) {
+    return this.requireActiveConnection().run(sql, params);
+  }
+
+  get(sql, params = []) {
+    return this.requireActiveConnection().get(sql, params);
+  }
+
+  all(sql, params = []) {
+    return this.requireActiveConnection().all(sql, params);
+  }
+
+  async close() {
+    const connections = Array.from(this.connections.values());
+    this.connections.clear();
+    await Promise.all(connections.map((connection) => connection.close()));
+  }
+}
+
+module.exports = new DatabaseRouter();

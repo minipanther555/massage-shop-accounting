@@ -9,11 +9,12 @@ The intended production model is **multi-tenant database-per-branch**. Each Top 
 
 This differs from a single shared database with only `location_id` filters. `location_id` remains useful as session metadata and for display/audit context, but it is not sufficient by itself when each branch needs an independently managed staff list and operational ledger.
 
-Current local testing status:
+Current implementation status (2026-07-21):
 - The login flow carries branch metadata in the authenticated session.
-- The backend still uses a singleton `DB_PATH` from `backend/dbPath.js`.
-- Staff and transaction routes currently query that singleton database instance.
-- Before server rollout, database access must be routed by the authenticated branch so `Top Thai 55`, `Top Thai 49`, `Top Thai 43`, `Top Thai 33`, and `Top Thai Thonglor 9` can each use a parallel database file with the same schema.
+- `backend/dbPath.js` provides one required default/source path, while `backend/models/database.js` derives a branch file only from the server-side session `location_id`.
+- An authenticated branch request fails with `503` when its branch file is missing; it must never fall back to the default/shared database.
+- `backend/scripts/bootstrap-branch-database.js <location-id>` creates a same-schema branch file with catalog/configuration data but no staff, transaction, booking, expense, payment, or business-day operational data.
+- `Top Thai 43` is the first live branch canary. The old inactive branch-named SQLite files are not a valid branch-data rollout and must not be trusted as a baseline.
 
 ## Database Schema Changes
 

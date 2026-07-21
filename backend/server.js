@@ -133,7 +133,22 @@ app.get('/csrf', (req, res) => {
 
 // --- API Routes ---
 // These no longer need individual CSRF middleware
-app.use('/api/auth', require('./routes/auth').router);
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes.router);
+
+// Bind every authenticated API request to its server-trusted branch database.
+// A missing branch file is a configuration error, never a shared-DB fallback.
+app.use('/api', (req, res, next) => {
+  const session = authRoutes.sessions.get(req.cookies?.sessionId);
+  const locationId = session?.location_id;
+
+  database.runWithLocation(locationId, next).catch((error) => {
+    if (error.code === 'BRANCH_DATABASE_MISSING') {
+      return res.status(503).json({ error: 'Branch database is not provisioned' });
+    }
+    return next(error);
+  });
+});
 
 // Health check endpoint
 app.get('/api/_health', (req, res) => {

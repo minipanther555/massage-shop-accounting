@@ -36,7 +36,7 @@ This module does not export any functions or classes. It sets up and runs the Ex
 
 *   **Routing:**
     *   **Purpose:** To map API endpoints to their corresponding logic handlers.
-    *   **Logic Notes:** The server defines base paths for different resources (e.g., `/api/auth`, `/api/transactions`). It imports router objects from files in the `/routes` directory and mounts them on these paths. Most routes are protected by the `validateCSRFToken` middleware. `/api/bookings` is mounted behind `authenticateToken`, so reservation creation, upcoming booking reads, cancellation, no-show, and arrival conversion require an authenticated session.
+    *   **Logic Notes:** The server defines base paths for different resources (e.g., `/api/auth`, `/api/transactions`). It imports router objects from files in the `/routes` directory and mounts them on these paths. After mounting auth routes it binds each API request with a valid server-side session to that session's `location_id` database through `backend/models/database.js`. A missing branch file returns `503`; it never falls back to the default/shared database. Most routes are protected by the `validateCSRFToken` middleware. `/api/bookings` is mounted behind `authenticateToken`, so reservation creation, upcoming booking reads, cancellation, no-show, and arrival conversion require an authenticated session.
 
 *   **`isPwtestAllowed()` and `pwtestFlag()`:**
     *   **Purpose:** Provide deterministic preview/test browser behavior without exposing the PWTEST bypass in production.

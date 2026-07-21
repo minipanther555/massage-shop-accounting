@@ -2,12 +2,12 @@
 
 ## 1. Header Section
 
-*   **Overall Purpose:** This module centralizes SQLite connection, additive schema initialization, and data access. It defines both Today Staff business-day state and reservation state through `bookings`, `booking_credits`, and `transactions.booking_id`.
-*   **End-to-End Data Flow:** When the application starts, the `server.js` module calls the `connect()` method of this module. This establishes a connection to the SQLite database file specified by the `DATABASE_PATH` environment variable. Upon connection, it automatically runs `initializeTables()`, which creates all necessary tables (`transactions`, `staff`, `services`, etc.) if they don't already exist and runs migrations to add any missing columns. Subsequently, route handlers (e.g., in `routes/transactions.js`) use the exported database instance to execute queries. For example, to create a new transaction, a route handler would call `database.run(INSERT_SQL, [params])`. To fetch data, it would use `database.get()` for a single row or `database.all()` for multiple rows.
+*   **Overall Purpose:** This module centralizes SQLite connection, additive schema initialization, request-scoped branch routing, and data access. It defines both Today Staff business-day state and reservation state through `bookings`, `booking_credits`, and `transactions.booking_id`.
+*   **End-to-End Data Flow:** At startup `server.js` connects the required default `DB_PATH` database. For API traffic, `server.js` reads only the server-side authenticated session's `location_id` and calls `runWithLocation()`. The router derives `massage_shop.branch-<location_id>.db` beside the default path, opens that file on first use, and stores the connection in `AsyncLocalStorage` for the request. Route handlers keep calling `database.run/get/all`, which then use that request-bound branch connection. A missing branch file raises `BRANCH_DATABASE_MISSING`; it never falls back to shared data. Unauthenticated or legacy paths retain the default connection.
 
 ## 2. Module API & Logic Breakdown
 
-This module exports a single instance of the `Database` class.
+This module exports one `DatabaseRouter`, which manages one or more internal `Database` connections while preserving the existing `run/get/all` route API.
 
 *   **`Database` class:**
     *   **Purpose:** To manage the database connection and provide methods for querying.
@@ -52,12 +52,26 @@ This module exports a single instance of the `Database` class.
 *   **`close()` method:**
     *   **Purpose:** To gracefully close the database connection.
     *   **Returns:** A `Promise` that resolves when the connection is closed, or rejects on error.
-    *   **Logic Notes:** This is called by `server.js` during a graceful shutdown.
+    *   **Logic Notes:** This is called by `server.js` during a graceful shutdown and closes all opened branch connections.
+
+*   **`getBranchPath(locationId)` method:**
+    *   **Purpose:** Derive the only permitted branch filename from a positive server-side session location ID.
+    *   **Parameters:** `locationId` (positive integer or numeric string, required).
+    *   **Returns:** A same-directory path such as `massage_shop.branch-43.db`.
+    *   **Raises / Throws:** Rejects a non-positive or non-integer ID.
+    *   **Logic Notes:** It does not accept a path from an HTTP request.
+
+*   **`runWithLocation(locationId, callback)` method:**
+    *   **Purpose:** Bind all database work initiated by `callback` to one provisioned branch connection.
+    *   **Parameters:** `locationId` (server-side session value) and `callback` (required continuation).
+    *   **Returns:** The callback result.
+    *   **Raises / Throws:** `BRANCH_DATABASE_MISSING` when the branch file is absent, plus connection/validation failures.
+    *   **Logic Notes:** `server.js` maps a missing branch database to HTTP `503`; absence cannot silently use the default/shared file.
 
 ## 3. Dependency Mapping
 
 *   **Upstream Dependencies (Inputs):**
-    *   **Calling Modules/Services:** Primarily `server.js` (for connection), but also all files in the `/routes` and `/middleware` directories that need to perform database operations.
+    *   **Calling Modules/Services:** `server.js` (startup connection and trusted session branch binding), `backend/scripts/bootstrap-branch-database.js` (matching branch filenames), and all route modules through `run/get/all`.
     *   **Input Data Contracts / Schemas:** The module is called with SQL strings and parameter arrays. The structure of the parameters depends on the specific query being executed by the calling module.
 
 *   **Downstream Dependencies (Outputs):**
@@ -77,6 +91,11 @@ This module exports a single instance of the `Database` class.
             *   `transactions.booking_id`: nullable reservation link with partial uniqueness across `ACTIVE` and `CORRECTED` rows, enforcing one current financial conversion per booking.
 
 ## 4. Bug & Resolution History
+
+*   **Bug Summary (2026-07-21):** A Top Thai 43 manager login showed the shared/49 staff list.
+*   **Validated Hypothesis:** Auth sessions already carried `location_id: 43`, but every route reached one singleton connection opened from `DB_PATH`; old branch-named files were inactive artifacts rather than runtime targets.
+*   **Invalidated Hypotheses:** The branch login option was not absent; staff did not need a `location_id` column under the database-per-branch model; merely finding a branch-named SQLite file did not activate it.
+*   **Resolution:** Add request-scoped branch routing, fail missing branch files closed, and bootstrap disposable branch files only through the bounded source-controlled command and OTDD guardrail.
 
 *   **Bug Summary (August 2024):** The server logs showed a non-fatal `SQLITE_ERROR: duplicate column name: corrected_from_id` on every startup.
 *   **Validated Hypothesis:** The `addMissingColumns()` function, while correctly designed to prevent crashes, attempts to add every column in its list on every server start. This is inefficient and clutters the logs with expected errors.
