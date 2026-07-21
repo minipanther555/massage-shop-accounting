@@ -6,7 +6,7 @@ This command creates one deterministic, disposable branch SQLite database withou
 
 ## End-to-End Data Flow
 
-An operator runs `node backend/scripts/bootstrap-branch-database.js <location-id>` with the same `DB_PATH` used by the service. The command derives `massage_shop.branch-<location-id>.db`, copies the source database, verifies integrity and the `locations` table, deletes every per-branch operational table in one SQLite transaction, inserts the branch metadata when missing, then prints counts that prove the new file has zero staff, transactions, and bookings. Runtime requests subsequently reach this file through `backend/models/database.js` when the authenticated server-side session carries the same location ID.
+An operator runs `node backend/scripts/bootstrap-branch-database.js <location-id>` from the backend deployment directory. The command loads the same `.env` `DB_PATH` used by the service, derives `massage_shop.branch-<location-id>.db`, copies the source database, verifies integrity and the `locations` table, deletes every per-branch operational table in one SQLite transaction, inserts the branch metadata when missing, then prints counts that prove the new file has zero staff, transactions, and bookings. Runtime requests subsequently reach this file through `backend/models/database.js` when the authenticated server-side session carries the same location ID.
 
 ## API & Logic
 
