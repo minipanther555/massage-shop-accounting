@@ -158,6 +158,13 @@ class APIClient {
     });
   }
 
+  async quoteTransactionPromotion(quoteData) {
+    return this.request('/transactions/quote', {
+      method: 'POST',
+      body: quoteData
+    });
+  }
+
   async getLatestTransactionForCorrection() {
     return this.request('/transactions/latest-for-correction');
   }

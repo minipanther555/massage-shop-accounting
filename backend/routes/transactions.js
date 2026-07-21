@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 const { getBusinessDay } = require('../utils/business-day');
+const { getTimeWindowQuote } = require('../services/time-window-promotion-service');
 const {
   BOOKING_CREDIT_AMOUNT,
   calculateScheduledEnd,
@@ -122,6 +123,31 @@ router.get('/recent', async (req, res) => {
 });
 
 // Create new transaction
+router.post('/quote', async (req, res) => {
+  try {
+    const {
+      service_type: serviceType,
+      location,
+      duration,
+      time_window_promotion_override: manualOverride = false
+    } = req.body;
+    if (!serviceType || !location || !duration) {
+      return res.status(400).json({ error: 'service_type, location, and duration are required' });
+    }
+    const quote = await getTimeWindowQuote(database, {
+      serviceType,
+      location,
+      duration,
+      manualOverride: manualOverride === true
+    });
+    if (!quote) return res.status(400).json({ error: 'Selected service is not active' });
+    return res.json(quote);
+  } catch (error) {
+    console.error('Error quoting transaction promotion:', error);
+    return res.status(500).json({ error: 'Failed to quote transaction promotion' });
+  }
+});
+
 router.post('/', async (req, res) => {
   console.log('--- [TX CREATE] Received POST request to /api/transactions ---');
   let dbTransactionStarted = false;
@@ -139,7 +165,8 @@ router.post('/', async (req, res) => {
       booking_id: bookingId = null,
       requested_staff_booking: requestedStaffBooking = false,
       start_datetime: startDateTime = null,
-      end_datetime: endDateTime = null
+      end_datetime: endDateTime = null,
+      time_window_promotion_override: manualTimeWindowPromotionOverride = false
     } = req.body;
     console.log('[TX CREATE - STEP 1] Request body destructured:', req.body);
 
@@ -187,6 +214,15 @@ router.post('/', async (req, res) => {
     if (!service) {
       console.error('[TX CREATE - ERROR] Service not found in database.');
       return res.status(400).json({ error: `Service not found: ${serviceType} (${duration} minutes, ${location})` });
+    }
+    const promotion = await getTimeWindowQuote(database, {
+      serviceType,
+      location,
+      duration,
+      manualOverride: manualTimeWindowPromotionOverride === true
+    });
+    if (!promotion) {
+      return res.status(400).json({ error: 'Selected service is not active' });
     }
     console.log(`[TX CREATE - STEP 4] Service found: Price=${service.price}, Fee=${service.masseuse_fee}`);
 
@@ -298,14 +334,16 @@ router.post('/', async (req, res) => {
         transaction_id, timestamp, date, masseuse_name, service_type,
         location, duration, payment_amount, payment_method, masseuse_fee,
         start_time, end_time, customer_contact, status, business_day,
-        corrected_from_id, booking_id, start_datetime, end_datetime
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        corrected_from_id, booking_id, start_datetime, end_datetime,
+        base_price, discount_amount, promotion_type, promotion_label
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         transactionId, timestampIso, date, masseuseName, serviceType,
-        location, duration, service.price, paymentMethod, service.masseuse_fee,
+        location, duration, promotion.finalPrice, paymentMethod, service.masseuse_fee,
         startTime, endTime, customerContact,
         originalTransactionId ? 'CORRECTED' : 'ACTIVE', businessDay,
-        originalTransactionId, bookingId, startDateTime, endDateTime
+        originalTransactionId, bookingId, startDateTime, endDateTime,
+        promotion.basePrice, promotion.discountAmount, promotion.promotionType, promotion.promotionLabel
       ]
     );
     console.log('[TX CREATE - STEP 8] New transaction inserted successfully.');

@@ -142,6 +142,8 @@
                                 <div class="transaction-total-card">
                                     <span>ราคา</span>
                                     <strong id="servicePrice" class="summary-value">฿0.00</strong>
+                                    <small id="time-window-promotion-label" hidden></small>
+                                    <button id="time-window-promotion-override" class="transaction-link-action" type="button" hidden onclick="applyTimeWindowPromotionOverride()">ใช้ราคาโปร 10:00-18:00</button>
                                 </div>
 
                                 <div class="transaction-fee-card">
@@ -246,6 +248,7 @@
         let correctionMode = false;
         let transactionMode = 'walk-in';
         let currentBaseMasseuseFee = 0;
+        let timeWindowPromotionOverride = false;
         let autoSelectedMasseuse = '';
         let noAvailableStaffMessage = '';
         let arrivingBooking = null;
@@ -780,6 +783,7 @@
             
             serviceSelect.innerHTML = '<option value="">เลือกบริการ...</option>';
             durationSelect.innerHTML = '<option value="">เลือกระยะเวลา...</option>';
+            timeWindowPromotionOverride = false;
             
             if (location) {
                 // Find unique service names for this location
@@ -808,6 +812,7 @@
             }
             
             durationSelect.innerHTML = '<option value="">เลือกระยะเวลา...</option>';
+            timeWindowPromotionOverride = false;
             
             if (location && serviceName) {
                 // Find all durations for this service type and location
@@ -824,10 +829,16 @@
             renderDurationButtons();
         }
 
-        function updatePricing() {
+        async function updatePricing() {
             const location = document.getElementById('location').value;
             const serviceName = document.getElementById('service').value;
             const duration = document.getElementById('duration').value;
+            const promotionLabel = document.getElementById('time-window-promotion-label');
+            const overrideButton = document.getElementById('time-window-promotion-override');
+
+            promotionLabel.hidden = true;
+            promotionLabel.textContent = '';
+            overrideButton.hidden = true;
             
             if (location && serviceName && duration) {
                 const service = CONFIG.settings.services.find(s => 
@@ -841,6 +852,28 @@
                     document.getElementById('masseuseeFee').textContent = bookingFee
                         ? `฿${currentBaseMasseuseFee.toFixed(2)} + ฿${bookingFee.toFixed(2)}`
                         : `฿${currentBaseMasseuseFee.toFixed(2)}`;
+                    try {
+                        const quote = await api.quoteTransactionPromotion({
+                            service_type: serviceName,
+                            location,
+                            duration: Number(duration),
+                            time_window_promotion_override: timeWindowPromotionOverride
+                        });
+                        if (document.getElementById('service').value !== serviceName
+                            || document.getElementById('duration').value !== String(duration)) return;
+                        document.getElementById('servicePrice').textContent = `฿${Number(quote.finalPrice).toFixed(2)}`;
+                        if (quote.promotionType) {
+                            promotionLabel.textContent = quote.manualOverrideApplied
+                                ? 'ใช้ราคาโปรโดยพนักงานรับรอง'
+                                : 'ราคาโปรอัตโนมัติ';
+                            promotionLabel.hidden = false;
+                        }
+                        if (quote.manualOverrideEligible && !quote.manualOverrideApplied) {
+                            overrideButton.hidden = false;
+                        }
+                    } catch (error) {
+                        console.error('Unable to quote time-window promotion:', error);
+                    }
                 } else {
                     currentBaseMasseuseFee = 0;
                     document.getElementById('servicePrice').textContent = '฿0.00';
@@ -851,6 +884,11 @@
                 document.getElementById('servicePrice').textContent = '฿0.00';
                 document.getElementById('masseuseeFee').textContent = '฿0.00';
             }
+        }
+
+        function applyTimeWindowPromotionOverride() {
+            timeWindowPromotionOverride = true;
+            updatePricing();
         }
 
         function formatTime(date) {
@@ -1068,7 +1106,8 @@
                     && selectedMasseuse !== autoSelectedMasseuse
                     && !arrivingBooking,
                 startDateTime: currentStartDateTime,
-                endDateTime: currentEndDateTime
+                endDateTime: currentEndDateTime,
+                time_window_promotion_override: timeWindowPromotionOverride
             };
 
             const success = await submitTransaction(formData);
@@ -1129,6 +1168,9 @@
             document.getElementById('booking-id').value = '';
             document.getElementById('servicePrice').textContent = '฿0.00';
             document.getElementById('masseuseeFee').textContent = '฿0.00';
+            document.getElementById('time-window-promotion-label').hidden = true;
+            document.getElementById('time-window-promotion-override').hidden = true;
+            timeWindowPromotionOverride = false;
             document.getElementById('location').value = 'In-Shop';
             document.getElementById('masseuse').value = autoSelectedMasseuse;
             arrivingBooking = null;

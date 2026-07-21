@@ -36,6 +36,12 @@
 - **Returns:** Promise with created transaction data
 - **Logic:** Sends POST request with transaction data, handles response
 
+#### `quoteTransactionPromotion(quoteData)`
+- **Purpose:** Gets the authoritative current price preview for the selected service before transaction save.
+- **Parameters:** `{ service_type, location, duration, time_window_promotion_override? }`.
+- **Returns:** Base/final price, discount metadata, override state, and unchanged staff fee.
+- **Logic:** Sends `POST /api/transactions/quote`; the backend remains authoritative on Bangkok time and branch configuration.
+
 #### `getRecentTransactions(limit = 5, date = null)`
 - **Purpose:** Retrieves recent transactions from the backend
 - **Parameters:** 

@@ -22,7 +22,7 @@ This module exports one `DatabaseRouter`, which manages one or more internal `Da
 
 *   **`initializeTables()` method:**
     *   **Purpose:** To ensure the database schema is up-to-date.
-    *   **Logic Notes:** It contains a list of `CREATE TABLE IF NOT EXISTS` SQL statements for every table required by the application. Current legacy local DB data does not constrain the Today Staff redesign; the new product concepts are additive so old tables can coexist while the new route contracts use business-day-scoped tables. It then calls `addMissingColumns()` to perform simple, non-destructive schema migrations. Finally, it calls `insertDefaultData()` which is currently a no-op.
+*   **Logic Notes:** It contains a list of `CREATE TABLE IF NOT EXISTS` SQL statements for every table required by the application. Current legacy local DB data does not constrain the Today Staff redesign; the new product concepts are additive so old tables can coexist while the new route contracts use business-day-scoped tables. It then calls `addMissingColumns()` to perform simple, non-destructive schema migrations, seeds the documented Top Thai 43 time-window promotion only when its branch database has no existing configuration, and finally calls `insertDefaultData()` which is currently a no-op.
 
 *   **`ensureIndexes()` method:**
     *   **Purpose:** To create idempotent indexes and uniqueness constraints required by Today Staff helper/planning queries.
@@ -89,6 +89,9 @@ This module exports one `DatabaseRouter`, which manages one or more internal `Da
             *   `bookings`: non-financial reservation schedule with optional requested staff and lifecycle status.
             *   `booking_credits`: separate `฿50` payable-credit ledger linked to a completed booking transaction and excluded from Today Staff base-commission ranking.
             *   `transactions.booking_id`: nullable reservation link with partial uniqueness across `ACTIVE` and `CORRECTED` rows, enforcing one current financial conversion per booking.
+            *   `transactions.base_price`, `discount_amount`, `promotion_type`, and `promotion_label`: immutable customer-price audit values. `payment_amount` remains the final amount received; `masseuse_fee` remains the normal earned commission.
+            *   `time_window_promotion_settings`: one branch-local configuration row with enabled state, start/end Bangkok minutes, and reception-override grace minutes.
+            *   `time_window_promotion_prices`: selected service-name/duration/location promotional prices. A missing row means that service keeps its base price.
 
 ## 4. Bug & Resolution History
 

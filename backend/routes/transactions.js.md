@@ -26,10 +26,16 @@
         *   `EDITED%` - Original transactions that have been edited (using LIKE for partial matching)
     *   **Returns:** Array of transaction objects ordered newest-first by `timestamp DESC, id DESC`, so rows created with the same timestamp still appear in deterministic insertion order. The date-filtered dashboard path is supported by `idx_transactions_recent_date_timestamp`.
 
+*   **`POST /quote`**
+    *   **Purpose:** Returns the current server-calculated customer price for an active service selection before reception saves the transaction.
+    *   **Parameters (Body):** `service_type`, `location`, `duration`, and optional boolean `time_window_promotion_override`.
+    *   **Returns:** Base/final price, discount metadata, automatic/override state, and unchanged `masseuseFee`.
+    *   **Logic:** Uses `backend/services/time-window-promotion-service.js`; it evaluates `Asia/Bangkok` time and the request-bound branch configuration. It never trusts a browser-supplied price.
+
 *   **`POST /`**
     *   **Purpose:** Creates a new transaction. This is the main endpoint for submitting the "New Transaction" form. It also contains the logic for handling "transaction corrections" (edits).
     *   **Parameters (Body):** A JSON object containing all transaction details (`masseuse_name`, `service_type`, `location`, `duration`, etc.). If `original_transaction_id` is provided, the endpoint enters "edit mode".
-    *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`. When the browser or booking flow provides `start_datetime` and `end_datetime`, the route persists those canonical service-window timestamps so Current Shop Status and booking buffer logic do not infer timing from creation time.
+    *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`. When the browser or booking flow provides `start_datetime` and `end_datetime`, the route persists those canonical service-window timestamps so Current Shop Status and booking buffer logic do not infer timing from creation time. The route recomputes any time-window promotion on the server and stores the base price, final paid amount, discount amount, promotion type, and label. The normal `services.masseuse_fee` is always used unchanged.
     *   **Logic (Booking Arrival):** With `booking_id`, the handler loads the `BOOKED` reservation and treats its service, duration, location, and optional requested staff as authoritative. One `BEGIN IMMEDIATE TRANSACTION` inserts the transaction, marks the booking `COMPLETED`, and creates one separate active `฿50` credit only for requested staff. A generic booking receives queue-selected staff at arrival and no booking credit.
     *   **Failure Modes:** Missing or closed bookings, duplicate conversion, invalid staff/service, and violation of another booking's 15-minute buffer are rejected. Any write failure rolls back the conversion.
     *   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
@@ -44,7 +50,8 @@
 *   **Upstream Dependencies:**
     *   **Calling Modules/Services:** Primarily called by the frontend (`web-app/api.js`, `web-app/shared.js`) and integration tests.
 *   **Downstream Dependencies:**
-    *   **Called Modules/Services:** `backend/models/database.js`, `backend/utils/business-day.js`, and `backend/services/booking-service.js` for timestamp parsing, conflict checks, and requested-staff credit eligibility.
+*   **Called Modules/Services:** `backend/models/database.js`, `backend/utils/business-day.js`, and `backend/services/booking-service.js` for timestamp parsing, conflict checks, and requested-staff credit eligibility.
+    *   **Promotion Dependency:** `backend/services/time-window-promotion-service.js` for branch-configured Bangkok-time quote and final-price calculation.
 
 ## 4. Bug & Resolution History
 

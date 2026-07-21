@@ -53,7 +53,11 @@ class Database {
         business_day DATE,
         corrected_from_id TEXT,
         start_datetime DATETIME,
-        end_datetime DATETIME
+        end_datetime DATETIME,
+        base_price DECIMAL(10,2),
+        discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+        promotion_type TEXT,
+        promotion_label TEXT
       )`,
 
       // Staff roster (equivalent to Daily Entry roster section)
@@ -235,6 +239,23 @@ class Database {
         status TEXT NOT NULL DEFAULT 'ACTIVE',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         reversed_at DATETIME
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS time_window_promotion_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        start_minute INTEGER NOT NULL DEFAULT 600,
+        end_minute INTEGER NOT NULL DEFAULT 1080,
+        manual_override_grace_minutes INTEGER NOT NULL DEFAULT 15,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS time_window_promotion_prices (
+        service_name TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        location TEXT NOT NULL,
+        promotional_price DECIMAL(10,2) NOT NULL,
+        PRIMARY KEY (service_name, duration_minutes, location)
       )`
     ];
 
@@ -245,6 +266,8 @@ class Database {
 
     // Add missing columns to existing tables
     await this.addMissingColumns();
+
+    await this.seedBranchPromotionConfiguration();
 
     // Insert default data
     await this.insertDefaultData();
@@ -274,7 +297,11 @@ class Database {
         { name: 'corrected_from_id', definition: 'TEXT' },
         { name: 'booking_id', definition: 'TEXT' },
         { name: 'start_datetime', definition: 'DATETIME' },
-        { name: 'end_datetime', definition: 'DATETIME' }
+        { name: 'end_datetime', definition: 'DATETIME' },
+        { name: 'base_price', definition: 'DECIMAL(10,2)' },
+        { name: 'discount_amount', definition: 'DECIMAL(10,2) NOT NULL DEFAULT 0' },
+        { name: 'promotion_type', definition: 'TEXT' },
+        { name: 'promotion_label', definition: 'TEXT' }
       ].map(c => ({ table: 'transactions', ...c })),
 
       // Archived transactions table columns
@@ -326,6 +353,32 @@ class Database {
 
     for (const indexSql of indexes) {
       await this.run(indexSql);
+    }
+  }
+
+  async seedBranchPromotionConfiguration() {
+    if (!this.dbPath.endsWith('.branch-43.db')) return;
+
+    await this.run(
+      `INSERT INTO time_window_promotion_settings
+        (id, enabled, start_minute, end_minute, manual_override_grace_minutes, updated_at)
+       VALUES (1, 1, 600, 1080, 15, CURRENT_TIMESTAMP)
+       ON CONFLICT(id) DO NOTHING`
+    );
+
+    const prices = [
+      ['Thai Massage', 60, 'In-Shop', 399], ['Thai Massage', 90, 'In-Shop', 598], ['Thai Massage', 120, 'In-Shop', 798],
+      ['Foot massage', 60, 'In-Shop', 399], ['Foot massage', 90, 'In-Shop', 598], ['Foot massage', 120, 'In-Shop', 798],
+      ['Oil massage', 60, 'In-Shop', 599], ['Oil massage', 90, 'In-Shop', 899], ['Oil massage', 120, 'In-Shop', 1198],
+      ['Aroma massage', 60, 'In-Shop', 699], ['Aroma massage', 90, 'In-Shop', 1049], ['Aroma massage', 120, 'In-Shop', 1398]
+    ];
+    for (const [serviceName, durationMinutes, location, promotionalPrice] of prices) {
+      await this.run(
+        `INSERT INTO time_window_promotion_prices (service_name, duration_minutes, location, promotional_price)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(service_name, duration_minutes, location) DO NOTHING`,
+        [serviceName, durationMinutes, location, promotionalPrice]
+      );
     }
   }
 
