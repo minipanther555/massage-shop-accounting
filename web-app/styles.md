@@ -132,13 +132,14 @@ HTML elements load → CSS rules apply → shared defaults establish app-wide be
 **Usage**: Applied only by Daily Summary templates. Payment breakdown, transactions, masseuse fees, expenses, and profit formula remain in the DOM with their existing IDs, but are hidden until the matching card is opened. When one card is open, the finance grid becomes a single focused panel so the detail table is not cut off by neighboring cards.
 
 #### New Customer Button Selection Classes
-**Purpose**: Styles the transaction-page service category, Combo service, and duration button layer that sits on top of the legacy hidden `#service` and `#duration` select contract.
+**Purpose**: Styles the transaction-page service category, Combo service, duration, and payment button layer that sits on top of the legacy hidden `#service`, `#duration`, and `#payment` select contract.
 **Classes**:
 - `.transaction-native-select-hidden`: Keeps the native select in the DOM for JavaScript/value compatibility while removing it from the visible workflow.
 - `.transaction-choice-grid`: Shared grid spacing for service category, Combo, and duration button groups.
 - `.transaction-category-grid`: Renders the main service categories in a touch-friendly grid.
 - `.transaction-combo-grid`: Renders Combo service choices in two columns; responsive overrides reduce columns on small screens.
 - `.transaction-duration-grid`: Renders duration choices as large selectable buttons.
+- `.transaction-payment-grid`: Renders payment methods as a separate full-width button row below service/duration selection.
 - `.transaction-choice-button`: Shared large button styling with bold Thai-first primary text and smaller secondary text.
 - `.transaction-choice-button.is-active`: Green selected state for the current service category, Combo choice, or duration.
 - `.transaction-subchoice-panel`: Framed panel that appears only after Combo is selected.

@@ -75,4 +75,16 @@ describe('New Customer booking workflow contracts', () => {
     expect(source).toContain('option.disabled = transactionMode !== \'booking\'');
     expect(source).toContain('refreshMasseuseAvailabilityOptions');
   });
+
+  test.each(templates)('%s renders payment methods as buttons while preserving the payment select contract', (template) => {
+    const source = read(template);
+    expect(source).toContain('id="payment-button-panel"');
+    expect(source).toContain('transaction-payment-grid');
+    expect(source).toContain('id="payment" name="payment" required class="transaction-native-select-hidden"');
+    expect(source).toContain('function renderPaymentButtons()');
+    expect(source).toContain('function selectPaymentValue(paymentMethod)');
+    expect(source).toContain("paymentSelect.dispatchEvent(new Event('change', { bubbles: true }))");
+    expect(source).toContain('updatePaymentButtonState();');
+    expect(source).toContain('renderPaymentButtons();');
+  });
 });

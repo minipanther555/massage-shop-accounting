@@ -6,7 +6,7 @@
 
 *   **End-to-End Data Flow:**
     1.  **Initialization:** On page load (`DOMContentLoaded`), the inline script calls `loadData()` from `shared.js`. This function fetches initial state from multiple backend API endpoints: staff roster, all available services, and payment methods.
-    2.  **User Interaction:** The user follows the Thai-first intake sequence: confirm the auto-selected next staff member, confirm or change the default `In-Shop` location, choose a service category button, choose a duration button, choose payment, optionally enter a customer name or phone number, then review the auto-filled start/end time and calculated price/fee. Because nearly all work is in-shop, the location field defaults to `In-Shop` and the page immediately populates matching service options on load. The original `service` and `duration` selects remain in the DOM as hidden contract controls, but staff use the large button layer. Button clicks write the exact historical select values so existing pricing, time, correction, and submission logic continues to work.
+    2.  **User Interaction:** The user follows the Thai-first intake sequence: confirm the auto-selected next staff member, confirm or change the default `In-Shop` location, choose a service category button, choose a duration button, choose a payment button on its own line, optionally enter a customer name or phone number, then review the auto-filled start/end time and calculated price/fee. Because nearly all work is in-shop, the location field defaults to `In-Shop` and the page immediately populates matching service options on load. The original `service`, `duration`, and `payment` selects remain in the DOM as hidden contract controls, but staff use the large button layer. Button clicks write the exact historical select values so existing pricing, time, correction, and submission logic continues to work.
     3.  **Mode Selection:** Walk-in mode auto-selects the next queue member. Selecting another staff member means the customer requested that person and changes the form to booking mode. Explicit booking mode may leave staff blank for queue assignment on arrival.
     4.  **Reservation Submission:** Booking mode saves the future schedule, service, duration, location, customer contact, and optional requested staff through `POST /api/bookings`. It hides payment and creates no transaction or earnings.
     5.  **Arrival Conversion:** The upcoming-bookings panel offers `ลูกค้ามาถึง`. It restores saved details, requests payment, and submits the booking ID through the existing transaction path.
@@ -19,13 +19,13 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
 *   **`transaction-form` (HTML Form):**
     *   **Purpose:** The main form for capturing all transaction details.
-    *   **Renders:** A Thai-first intake workflow panel with a numbered step header, auto-selected next staff dropdown, large service/duration button controls, visible price/fee cards, and a dominant green save button. The layout is page-scoped through `.transaction-*` CSS classes and mirrors the staff roster redesign pattern while preserving all existing DOM IDs.
+    *   **Renders:** A Thai-first intake workflow panel with a numbered step header, auto-selected next staff dropdown, large service/duration/payment button controls, visible price/fee cards, and a dominant green save button. The layout is page-scoped through `.transaction-*` CSS classes and mirrors the staff roster redesign pattern while preserving all existing DOM IDs.
     *   **Key Inputs:**
         *   `masseuse`: Dropdown for staff names, populated from the staff roster.
         *   `location`: Dropdown for "In-Shop" or "Home Service".
         *   `service`: Hidden native select for service names, populated based on the selected location and updated by the service button UI.
         *   `duration`: Hidden native select for duration, populated based on the selected service and updated by the duration button UI.
-        *   `payment`: Dropdown for payment methods.
+        *   `payment`: Hidden native select for payment methods, populated from active payment methods and updated by the payment button UI.
         *   `startTime` / `endTime`: Time fields, auto-calculated based on service selection.
         *   `original-transaction-id`: A hidden input that stores the ID of a transaction being corrected.
         *   `customer-mode`: Walk-in/booking segmented control.
@@ -51,9 +51,9 @@ This module consists of an HTML structure and a large inline `<script>` block th
         *   `updateDurationOptions`: Filters the master service list based on the selected service and location, then calls `renderDurationButtons()` so the visible duration buttons mirror the hidden select options.
         *   `updatePricing`: Shows the catalog base price immediately, then requests a server quote. The returned final price replaces the display only after the service/duration selection still matches. It shows automatic promotion state or, only during the configured grace period, the receptionist override action.
 
-*   **Service, Duration, and Payment Button Layer (`renderServiceButtons()`, `renderDurationButtons()`, `renderPaymentButtons()`, `selectServiceValue()`, `selectDurationValue()`, `selectPaymentValue()`, `sortComboServices()`):**
+*   **Service, Duration, and Payment Button Layer (`renderServiceButtons()`, `getPreferredCategoryService()`, `renderDurationButtons()`, `renderPaymentButtons()`, `selectServiceValue()`, `selectDurationValue()`, `selectPaymentValue()`, `sortComboServices()`):**
     *   **Purpose:** Replaces the visible long service/duration/payment dropdown workflow with large touch-friendly buttons while preserving the original select contract.
-    *   **Logic:** `renderServiceButtons()` reads the current hidden `service` options and groups actual menu names into available category buttons. Single-service categories render in the manager-requested priority order Thai, Foot, Oil, Shoulder/Back, then remaining available categories such as Aroma, Coconut, and Scrub. Mixed services containing `+` or `with` are grouped under Combo; choosing Combo opens a second button set containing every combo service option. `sortComboServices()` moves `Foot + back, neck & shoulder` to the first Combo position because it is the most common combo. Combo buttons render the Thai hint as the large primary line and the canonical English service name as smaller secondary text. `selectServiceValue()` still writes the exact old English service value into `#service` and dispatches the same `change` event used by the legacy cascade. `renderDurationButtons()` then reads the valid hidden `duration` options for that service, and `selectDurationValue()` writes the exact duration value into `#duration` before pricing/time updates run. `renderPaymentButtons()` reads the hidden `#payment` options, renders them as a separate full-width row under service/duration selection, and `selectPaymentValue()` writes the exact payment method into `#payment` before dispatching the legacy change event.
+*   **Logic:** `renderServiceButtons()` reads the current hidden `service` options and groups actual menu names into available category buttons. Single-service categories render in the manager-requested priority order Thai, Foot, Oil, Shoulder/Back, then remaining available categories such as Aroma, Coconut, and Scrub. `getPreferredCategoryService()` makes catalog ordering non-semantic: when the generic Oil category is tapped it selects exact `Oil massage` if active, otherwise it keeps the first available fallback. This makes the exact-service server quote reach the governed Oil promotion rows without applying those prices to Coconut, Deep Oil, or other independent catalog entries. Mixed services containing `+` or `with` are grouped under Combo; choosing Combo opens a second button set containing every combo service option. `sortComboServices()` moves `Foot + back, neck & shoulder` to the first Combo position because it is the most common combo. Combo buttons render the Thai hint as the large primary line and the canonical English service name as smaller secondary text. `selectServiceValue()` still writes the exact old English service value into `#service` and dispatches the same `change` event used by the legacy cascade. `renderDurationButtons()` then reads the valid hidden `duration` options for that service, and `selectDurationValue()` writes the exact duration value into `#duration` before pricing/time updates run. `renderPaymentButtons()` reads the hidden `#payment` options, renders them as a separate full-width row under service/duration selection, and `selectPaymentValue()` writes the exact payment method into `#payment` before dispatching the legacy change event.
 
 *   **Thai-First Dynamic Labels and Empty States:**
     *   **Purpose:** Ensures JavaScript-generated placeholders, duration labels, empty recent-transaction messages, empty expense messages, and correction-mode messages do not revert the redesigned page back to English after initialization.
@@ -158,6 +158,26 @@ This module consists of an HTML structure and a large inline `<script>` block th
 - Only Daily Summary needed escaping.
 
 **Resolution:** Rendered side-panel dynamic text through `escapeBookingText()` and switched staff/service/duration/payment option creation to DOM `option.value` plus `option.textContent`, preserving exact form values while preventing HTML interpretation.
+
+### Bug #0.12: Payment Method Was Still a Small Dropdown (2026-07-21)
+**Bug Summary:** The New Customer page had already moved service and duration selection to large buttons, but payment method remained a dropdown beside the massage controls on iPad.
+
+**Validated Hypothesis:** Payment submission already depends only on `#payment.value`, so the visible control could become a button grid while keeping the native select hidden as the contract field.
+
+**Invalidated Hypotheses:**
+- Payment needed backend changes.
+- Payment buttons should share the same row as service/duration controls.
+
+**Resolution:** Added a separate `#payment-button-panel` below the service/duration controls in both transaction templates. Payment buttons write the exact method into hidden `#payment`, dispatch the existing `change` event, and keep active-state styling in sync for correction and reset paths.
+
+### Bug #0.13: Oil Category Selected an Unpromoted Coconut Service (2026-07-22)
+**Bug Summary:** At branch 43 during the active promotion window, tapping the generic Oil category displayed the base Oil-like service price instead of the governed `Oil massage` promotion price.
+
+**Validated Hypothesis:** The category renderer selected the first catalog entry in the Oil group. The live value was `Coconut lovers - coconut oil massage`; the server quote correctly prices promotions by the exact service name, and only `Oil massage` has the configured Oil promotion rows.
+
+**Invalidated Hypotheses:** The promotion window was disabled; In-Shop Oil promotion rows were missing; Home Service was selected; the server quote failed to apply the matching exact Oil massage row.
+
+**Resolution:** Added `getPreferredCategoryService()` to select exact active `Oil massage` for the generic Oil category while preserving the first available fallback if that catalog row is unavailable. The backend catalog and promotion data remain unchanged.
 
 ### Bug #0.11: Expense Delete Was Only Local Browser State (2026-07-14)
 **Bug Summary:** The New Customer expense delete button removed a row from `appData.expenses` and refreshed the side panel, but it did not call the backend delete endpoint.

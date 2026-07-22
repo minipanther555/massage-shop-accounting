@@ -108,9 +108,10 @@
                                     </select>
                                 </div>
 
-                                <div class="form-group transaction-field">
+                                <div class="form-group transaction-field transaction-field-large">
                                     <label for="payment">จ่ายเงิน</label>
-                                    <select id="payment" name="payment" required>
+                                    <div id="payment-button-panel" class="transaction-choice-grid transaction-payment-grid" aria-label="เลือกวิธีจ่ายเงิน"></div>
+                                    <select id="payment" name="payment" required class="transaction-native-select-hidden" aria-hidden="true" tabindex="-1">
                                         <option value="">เลือกวิธีจ่ายเงิน...</option>
                                     </select>
                                 </div>
@@ -335,6 +336,7 @@
                             document.getElementById('duration').dispatchEvent(new Event('change'));
                         
                             document.getElementById('payment').value = transaction.paymentMethod;
+                            updatePaymentButtonState();
                             document.getElementById('customerContact').value = transaction.customerContact;
                         }, 100); 
                     }, 100);
@@ -658,6 +660,14 @@
             updateDurationButtonState();
         }
 
+        function selectPaymentValue(paymentMethod) {
+            const paymentSelect = document.getElementById('payment');
+            if (!paymentSelect || !paymentMethod) return;
+            paymentSelect.value = paymentMethod;
+            paymentSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            updatePaymentButtonState();
+        }
+
         function renderButton(container, className, attributes, primaryLabel, secondaryLabel, onClick) {
             const button = document.createElement('button');
             button.type = 'button';
@@ -778,6 +788,40 @@
             const durationSelect = document.getElementById('duration');
             if (!durationPanel || !durationSelect) return;
             setActiveChoice(durationPanel, 'data-duration-value', durationSelect.value);
+        }
+
+        function renderPaymentButtons() {
+            const paymentPanel = document.getElementById('payment-button-panel');
+            const paymentSelect = document.getElementById('payment');
+            if (!paymentPanel || !paymentSelect) return;
+            const paymentOptions = Array.from(paymentSelect.options)
+                .map(option => option.value)
+                .filter(Boolean);
+            paymentPanel.innerHTML = '';
+
+            if (!paymentOptions.length) {
+                paymentPanel.innerHTML = '<div class="transaction-button-empty">ยังไม่มีวิธีจ่ายเงิน</div>';
+                return;
+            }
+
+            paymentOptions.forEach(method => {
+                renderButton(
+                    paymentPanel,
+                    'transaction-choice-button transaction-payment-button',
+                    { 'data-payment-value': method },
+                    method,
+                    'จ่ายเงิน',
+                    () => selectPaymentValue(method)
+                );
+            });
+            updatePaymentButtonState();
+        }
+
+        function updatePaymentButtonState() {
+            const paymentPanel = document.getElementById('payment-button-panel');
+            const paymentSelect = document.getElementById('payment');
+            if (!paymentPanel || !paymentSelect) return;
+            setActiveChoice(paymentPanel, 'data-payment-value', paymentSelect.value);
         }
 
         function updateServiceOptions() {
@@ -1183,6 +1227,7 @@
             timeWindowPromotionOverride = false;
             document.getElementById('location').value = 'In-Shop';
             document.getElementById('masseuse').value = autoSelectedMasseuse;
+            updatePaymentButtonState();
             arrivingBooking = null;
             setTransactionMode('walk-in');
             updateServiceOptions();
@@ -1195,6 +1240,7 @@
                 document.getElementById('masseuse').value = transaction.masseuse;
                 document.getElementById('service').value = transaction.service;
                 document.getElementById('payment').value = transaction.paymentMethod;
+                updatePaymentButtonState();
                 document.getElementById('startTime').value = transaction.startTime;
                 document.getElementById('endTime').value = transaction.endTime;
                 document.getElementById('customerContact').value = transaction.customerContact;
@@ -1478,6 +1524,7 @@
                         option.textContent = method;
                         paymentSelect.appendChild(option);
                     });
+                    renderPaymentButtons();
                     console.log('🔍 STEP 6c: Payment methods added successfully');
                 } else {
                     console.log('❌ Payment select element not found');
