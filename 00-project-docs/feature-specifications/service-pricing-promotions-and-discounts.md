@@ -240,3 +240,4 @@ The implemented time-window slice adds `transactions.base_price`, `discount_amou
 - AC-SPD-008: A manager can read and update only the authenticated branch's time-window enabled state, start/end time, and override grace on Services & Pricing; a reception session cannot write these settings.
 - AC-SPD-006: Reports and Payday Tracking separate base price, discount, final paid amount, base commission, booking credit, and total staff pay.
 - AC-SPD-007: Promotion and discount behavior has focused unit/integration tests plus browser verification on the New Customer page.
+- AC-SPD-009: On New Customer, the generic Oil category selects the active exact `Oil massage` service when available, so its configured In-Shop time-window prices remain reachable rather than being shadowed by another oil-named catalog row.

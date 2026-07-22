@@ -615,6 +615,16 @@
             });
         }
 
+        function getPreferredCategoryService(categoryKey, serviceNames) {
+            const preferredServiceNames = {
+                oil: 'Oil massage'
+            };
+            const preferredServiceName = preferredServiceNames[categoryKey];
+            return preferredServiceName && serviceNames.includes(preferredServiceName)
+                ? preferredServiceName
+                : serviceNames[0];
+        }
+
         function getAvailableServiceNames() {
             const serviceSelect = document.getElementById('service');
             if (!serviceSelect) return [];
@@ -702,7 +712,7 @@
                             return;
                         }
                         comboPanel.hidden = true;
-                        selectServiceValue(servicesByCategory[definition.key][0]);
+                        selectServiceValue(getPreferredCategoryService(definition.key, servicesByCategory[definition.key]));
                     }
                 );
             });

@@ -87,3 +87,24 @@
 **Validation:** Permanent route/UI contracts and integration tests cover manager read/write, validation, branch isolation, reception denial, `43=1440`, `49=1080`, and quote behavior after update; browser smoke saves branch-43 configuration and observes the success state; lint, dependency audit, and `git diff --check` pass.
 
 **Completion Notes (2026-07-21):** `promotion-settings-manager.integration.test.js`, `time-window-promotion.integration.test.js`, and their source contracts passed as 5 suites / 16 tests. `npm run lint` and `git diff --check` passed. Live `testing3414` manager smoke signed in as Top Thai 43, loaded enabled `10:00` through `00:00` with 15-minute grace, saved the unchanged setting, and displayed `บันทึกการตั้งค่าราคาโปรโมชั่นแล้ว`. The live 43 row is `enabled=1, start_minute=600, end_minute=1440, manual_override_grace_minutes=15`. The Top Thai 49 default is implemented and tested, but its branch database file is not yet provisioned on massage-server; no staff/data clone was created. A fresh dependency audit could not run because `registry.npmjs.org` DNS resolution failed; no dependency files changed.
+
+### SPD-003b - Oil Category Promotion Selection Regression
+
+**Status:** IN PROGRESS
+
+**Goal:** Ensure the generic Oil button on New Customer resolves to the exact active `Oil massage` catalog service, preserving reachability of its governed branch time-window prices.
+
+**Dependencies:** SPD-003 time-window pricing, `web-app/transaction.html`, `web-app/transaction.ejs`, and the exact Oil massage rows in the active catalog.
+
+**Action Items:**
+- [ ] Add a preferred category-service resolver that selects exact `Oil massage` when that active row exists and otherwise preserves the first available catalog fallback.
+- [ ] Add a permanent mirrored-template regression test.
+- [ ] Verify branch-43 Oil 60/90/120 In-Shop prices in the live browser are ฿599/฿899/฿1198 during its enabled window, with unchanged commission.
+
+**Expected Output/Deliverable:** The Oil button no longer silently selects Coconut lovers or another oil-named service when the intended standard Oil massage row is active.
+
+**Technical Considerations:** The backend quote is intentionally exact-service-name based. Do not broaden the promotion table to unrelated oil-named services; repair only the frontend category default and retain each catalog row's independent price/commission contract.
+
+**Potential Challenges and Mitigations:** Catalog ordering is not a product contract. The resolver must use an explicit preferred exact name with a safe fallback, and both static/ejs templates must stay in sync.
+
+**Validation:** RED/GREEN mirrored-template contract, existing New Customer contract suite, lint, whitespace check, and authenticated live branch-43 browser verification for all three Oil durations.
