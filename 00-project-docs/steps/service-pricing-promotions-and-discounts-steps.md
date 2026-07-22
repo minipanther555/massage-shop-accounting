@@ -50,7 +50,7 @@
 
 ## SPD-003 - Implement Promotion and Discount Transaction Support
 
-**Status:** PARTIAL - time-window pricing and SPD-003a manager configuration are implemented; ten-stamp and seven-day receptionist controls remain blocked by their unresolved eligibility rules
+**Status:** PARTIAL - time-window pricing, SPD-003a manager configuration, SPD-003b Oil category selection, and SPD-003c payment-button intake are implemented; ten-stamp and seven-day receptionist controls remain blocked by their unresolved eligibility rules
 
 **Goal:** Add transaction support for ten-stamp free massage, seven-day return discount, and low-business-hour reduced pricing.
 
