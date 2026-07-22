@@ -1,6 +1,6 @@
 # Service Pricing, Promotions, and Time-Window Discounts Steps
 
-> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration and SPD-003b Oil category regression are DONE; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
+> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration, SPD-003b Oil category regression, and SPD-003c payment-button intake are DONE; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
 > **Feature Specification:** `00-project-docs/feature-specifications/service-pricing-promotions-and-discounts.md`
 
 ## SPD-001 - Clarify Price, Commission, and Promotion Rules
@@ -110,3 +110,26 @@
 **Validation:** RED/GREEN mirrored-template contract, existing New Customer contract suite, lint, whitespace check, and authenticated live branch-43 browser verification for all three Oil durations.
 
 **Completion Notes (2026-07-22):** The new Oil contract test failed RED before the resolver existed, then passed GREEN with `transaction.booking.present.test.js` and `transaction.walkin-refresh.present.test.js`: 5 suites / 38 tests passed. `npm run lint` and `git diff --check` passed. On deployed `testing3416` (`b1719e3`), a newly authenticated Top Thai 43 manager selected Oil in the live New Customer page: the hidden service resolved to exact `Oil massage`; 60/90/120 displayed respectively ฿599/฿899/฿1198, showed `ราคาโปรอัตโนมัติ`, and retained commissions ฿180/฿270/฿360.
+
+### SPD-003c - Payment Button Intake
+
+**Status:** DONE (2026-07-22)
+
+**Goal:** Make payment selection as touch-friendly as service and duration selection without changing the established transaction submission contract.
+
+**Dependencies:** `web-app/transaction.html`, `web-app/transaction.ejs`, `#payment` select, and active payment methods from `/api/services/payment-methods`.
+
+**Action Items:**
+- [x] Render active payment methods as a dedicated button grid while retaining hidden native `#payment`.
+- [x] Keep correction/reset paths synchronized with the visible payment selection.
+- [x] Add mirrored-template contract coverage and verify a live manager selection writes the submitted payment value.
+
+**Expected Output/Deliverable:** Reception can select a payment method with a large button; legacy transaction submission continues to read the exact selected `#payment.value`.
+
+**Technical Considerations:** Button labels use DOM text assignment and existing payment option values. This is presentation-only: no payment method, transaction endpoint, authorization, or database behavior changes.
+
+**Potential Challenges and Mitigations:** Mirrored static/EJS templates can drift; the permanent contract asserts both. Correction and clear-form paths explicitly refresh active-button state.
+
+**Validation:** `transaction.booking.present.test.js` verifies both templates; live Top Thai 43 manager browser smoke verifies payment buttons appear and Cash produces `#payment.value === 'Cash'` with selected styling.
+
+**Completion Notes (2026-07-22):** Focused UI contracts passed as part of 5 suites / 38 tests; lint and whitespace checks passed. Deployed `testing3416` (`416c17f`) health returned OK. Live Top Thai 43 manager smoke loaded the New Customer page, showed all seven active payment methods as buttons, and tapping Cash set the hidden submitted value to `Cash` and activated the Cash button.
