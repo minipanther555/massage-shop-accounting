@@ -1,6 +1,6 @@
 # Service Pricing, Promotions, and Time-Window Discounts Steps
 
-> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration is DONE; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
+> **Status:** SPD-001 PARTIAL - time-window rules are implemented; SPD-003a manager configuration and SPD-003b Oil category regression are DONE; catalog price/commission updates and receptionist-only loyalty/return discounts remain open
 > **Feature Specification:** `00-project-docs/feature-specifications/service-pricing-promotions-and-discounts.md`
 
 ## SPD-001 - Clarify Price, Commission, and Promotion Rules
@@ -90,16 +90,16 @@
 
 ### SPD-003b - Oil Category Promotion Selection Regression
 
-**Status:** IN PROGRESS
+**Status:** DONE (2026-07-22)
 
 **Goal:** Ensure the generic Oil button on New Customer resolves to the exact active `Oil massage` catalog service, preserving reachability of its governed branch time-window prices.
 
 **Dependencies:** SPD-003 time-window pricing, `web-app/transaction.html`, `web-app/transaction.ejs`, and the exact Oil massage rows in the active catalog.
 
 **Action Items:**
-- [ ] Add a preferred category-service resolver that selects exact `Oil massage` when that active row exists and otherwise preserves the first available catalog fallback.
-- [ ] Add a permanent mirrored-template regression test.
-- [ ] Verify branch-43 Oil 60/90/120 In-Shop prices in the live browser are ฿599/฿899/฿1198 during its enabled window, with unchanged commission.
+- [x] Add a preferred category-service resolver that selects exact `Oil massage` when that active row exists and otherwise preserves the first available catalog fallback.
+- [x] Add a permanent mirrored-template regression test.
+- [x] Verify branch-43 Oil 60/90/120 In-Shop prices in the live browser are ฿599/฿899/฿1198 during its enabled window, with unchanged commission.
 
 **Expected Output/Deliverable:** The Oil button no longer silently selects Coconut lovers or another oil-named service when the intended standard Oil massage row is active.
 
@@ -108,3 +108,5 @@
 **Potential Challenges and Mitigations:** Catalog ordering is not a product contract. The resolver must use an explicit preferred exact name with a safe fallback, and both static/ejs templates must stay in sync.
 
 **Validation:** RED/GREEN mirrored-template contract, existing New Customer contract suite, lint, whitespace check, and authenticated live branch-43 browser verification for all three Oil durations.
+
+**Completion Notes (2026-07-22):** The new Oil contract test failed RED before the resolver existed, then passed GREEN with `transaction.booking.present.test.js` and `transaction.walkin-refresh.present.test.js`: 5 suites / 38 tests passed. `npm run lint` and `git diff --check` passed. On deployed `testing3416` (`b1719e3`), a newly authenticated Top Thai 43 manager selected Oil in the live New Customer page: the hidden service resolved to exact `Oil massage`; 60/90/120 displayed respectively ฿599/฿899/฿1198, showed `ราคาโปรอัตโนมัติ`, and retained commissions ฿180/฿270/฿360.
