@@ -171,6 +171,10 @@
                         <button class="transaction-link-action" onclick="loadCorrection()" type="button">
                             โหลดรายการล่าสุดมาแก้
                         </button>
+                        <button class="transaction-link-action" onclick="showCorrectionCandidates()" type="button">
+                            เลือกรายการก่อนหน้า
+                        </button>
+                        <div id="correction-candidates" class="helper-text" hidden></div>
                     </div>
                 </div>
             </div>
@@ -1234,20 +1238,47 @@
             exitCorrectionMode();
         }
 
-        async function loadCorrection() {
-            const transaction = loadTransactionForCorrection();
+        async function loadCorrection(transactionId = null) {
+            const transaction = await loadTransactionForCorrection(transactionId);
             if (transaction) {
                 document.getElementById('masseuse').value = transaction.masseuse;
+                document.getElementById('location').value = transaction.location;
+                updateServiceOptions();
                 document.getElementById('service').value = transaction.service;
+                updateTimeDropdowns();
+                document.getElementById('duration').value = transaction.duration;
                 document.getElementById('payment').value = transaction.paymentMethod;
                 updatePaymentButtonState();
                 document.getElementById('startTime').value = transaction.startTime;
                 document.getElementById('endTime').value = transaction.endTime;
                 document.getElementById('customerContact').value = transaction.customerContact;
+                currentStartDateTime = transaction.startDateTime;
+                currentEndDateTime = transaction.endDateTime;
                 
                 updatePricing();
                 enterCorrectionMode();
                 await updateAllDisplays();
+            }
+        }
+
+        async function showCorrectionCandidates() {
+            const container = document.getElementById('correction-candidates');
+            container.hidden = false;
+            container.textContent = 'กำลังโหลดรายการ...';
+            try {
+                const candidates = await api.getCorrectionCandidates();
+                if (!candidates.length) {
+                    container.textContent = 'ไม่มีรายการของวันนี้ที่แก้ไขได้';
+                    return;
+                }
+                container.innerHTML = candidates.map(transaction => `
+                    <button class="transaction-link-action" type="button"
+                        onclick="loadCorrection('${escapeBookingText(transaction.transaction_id)}')">
+                        ${escapeBookingText(transaction.masseuse_name)} · ${escapeBookingText(transaction.service_type)} · ${escapeBookingText(transaction.start_time)}
+                    </button>
+                `).join('');
+            } catch (error) {
+                container.textContent = error.message || 'โหลดรายการไม่สำเร็จ';
             }
         }
 

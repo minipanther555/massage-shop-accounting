@@ -445,9 +445,16 @@ async function submitTransaction(formData) {
 }
 
 // Load transaction for correction - API version
-async function loadTransactionForCorrection() {
+async function loadTransactionForCorrection(transactionId = null) {
   try {
-    const transaction = await api.getLatestTransactionForCorrection();
+    let transaction;
+    if (transactionId) {
+      const candidates = await api.getCorrectionCandidates();
+      transaction = candidates.find(candidate => candidate.transaction_id === transactionId);
+      if (!transaction) throw new Error('Transaction is no longer available to correct');
+    } else {
+      transaction = await api.getLatestTransactionForCorrection();
+    }
 
     // Enter correction mode
     appData.correctionMode = true;
@@ -462,6 +469,8 @@ async function loadTransactionForCorrection() {
       date: new Date(transaction.date),
       masseuse: transaction.masseuse_name,
       service: transaction.service_type,
+      location: transaction.location,
+      duration: transaction.duration,
       paymentAmount: transaction.payment_amount,
       paymentMethod: transaction.payment_method,
       masseuseeFee: transaction.masseuse_fee,
@@ -469,6 +478,8 @@ async function loadTransactionForCorrection() {
       endTime: transaction.end_time,
       customerContact: transaction.customer_contact || '',
       bookingId: transaction.booking_id || null,
+      startDateTime: transaction.start_datetime || null,
+      endDateTime: transaction.end_datetime || null,
       status: transaction.status
     };
   } catch (error) {

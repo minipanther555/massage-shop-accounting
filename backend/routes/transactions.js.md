@@ -26,6 +26,11 @@
         *   `EDITED%` - Original transactions that have been edited (using LIKE for partial matching)
     *   **Returns:** Array of transaction objects ordered newest-first by `timestamp DESC, id DESC`, so rows created with the same timestamp still appear in deterministic insertion order. The date-filtered dashboard path is supported by `idx_transactions_recent_date_timestamp`.
 
+*   **`GET /correction-candidates` and `GET /latest-for-correction`**
+    *   **Purpose:** Returns correction targets for the active Bangkok business day. The candidate route returns at most ten `ACTIVE` or `CORRECTED` rows newest first; the latest route returns the first candidate.
+    *   **Parameters:** `limit` is optional and capped at `10`.
+    *   **Logic:** `EDITED` originals are excluded so an audit record cannot be selected again.
+
 *   **`POST /quote`**
     *   **Purpose:** Returns the current server-calculated customer price for an active service selection before reception saves the transaction.
     *   **Parameters (Body):** `service_type`, `location`, `duration`, and optional boolean `time_window_promotion_override`.
@@ -38,11 +43,13 @@
     *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`. When the browser or booking flow provides `start_datetime` and `end_datetime`, the route persists those canonical service-window timestamps so Current Shop Status and booking buffer logic do not infer timing from creation time. The route recomputes any time-window promotion on the server and stores the base price, final paid amount, discount amount, promotion type, and label. The normal `services.masseuse_fee` is always used unchanged.
     *   **Logic (Booking Arrival):** With `booking_id`, the handler loads the `BOOKED` reservation and treats its service, duration, location, and optional requested staff as authoritative. One `BEGIN IMMEDIATE TRANSACTION` inserts the transaction, marks the booking `COMPLETED`, and creates one separate active `฿50` credit only for requested staff. A generic booking receives queue-selected staff at arrival and no booking credit.
     *   **Failure Modes:** Missing or closed bookings, duplicate conversion, invalid staff/service, and violation of another booking's 15-minute buffer are rejected. Any write failure rolls back the conversion.
-    *   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
+*   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
         1.  Find the original transaction.
         2.  Reverse the `masseuse_fee` from the original transaction's masseuse and reverse any active linked booking credit.
         3.  Update the status of the original transaction to 'EDITED'.
         4.  Create the new transaction with a `corrected_from_id` linking it back to the original.
+    *   **Correction Isolation:** A correction with `requested_staff_booking` remains a normal walk-in; it does not create an immediate booking or `฿50` credit solely because reception selected a replacement staff member.
+    *   **Correction Availability:** Before the write transaction starts, a correction derives eligible replacement staff from the current Bangkok business day's active Today Staff roster, excluding the original transaction from workload and busy-state calculations. A missing replacement defaults to the least-workloaded eligible staff member with stable Today Staff position as the tie-break; a stale/busy manual replacement is rejected with `409` before audit or financial rows change.
     *   **Returns:** The newly created transaction object, including `business_day` when the schema column is present.
 
 ## 3. Dependency Mapping

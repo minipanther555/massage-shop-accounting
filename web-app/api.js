@@ -169,6 +169,10 @@ class APIClient {
     return this.request('/transactions/latest-for-correction');
   }
 
+  async getCorrectionCandidates(limit = 10) {
+    return this.request(`/transactions/correction-candidates?limit=${limit}`);
+  }
+
   async getTodayTransactionSummary() {
     return this.request('/reports/summary/today');
   }

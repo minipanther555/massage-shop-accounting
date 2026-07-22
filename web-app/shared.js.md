@@ -138,12 +138,12 @@ For navigation labels, pages request or hardcode the bilingual label structure u
 - **Raises:** Error if validation fails or API call fails
 - **Usage & Logic Notes:** Validates required fields, transforms frontend field names to backend schema, calls `api.createTransaction()`, refreshes data, and exits correction mode if applicable. Nullable `booking_id`, `start_datetime`, and `end_datetime` pass through for arrival conversion; the backend remains authoritative for saved reservation details.
 
-#### `loadTransactionForCorrection()`
-- **Purpose:** Load the most recent transaction for correction mode
-- **Parameters:** None
+#### `loadTransactionForCorrection(transactionId = null)`
+- **Purpose:** Load the latest transaction or an explicitly selected current-business-day correction target into correction mode.
+- **Parameters:** `transactionId` is optional; when supplied it must match a server-provided correction candidate.
 - **Returns:** Promise<object|null> - transaction data if found, null if none available
 - **Raises:** Error if API call fails
-- **Usage & Logic Notes:** Calls `api.getLatestTransactionForCorrection()`, enters correction mode, sets `originalTransactionId`, transforms API format to frontend format, and preserves `bookingId` so correction cannot lose reservation linkage.
+- **Usage & Logic Notes:** Awaits the selected API result before entering correction mode, sets `originalTransactionId`, and preserves location, duration, service window, and booking linkage.
 
 #### `enterCorrectionMode()`
 - **Purpose:** Enter transaction correction mode

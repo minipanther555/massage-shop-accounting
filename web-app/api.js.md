@@ -50,6 +50,11 @@
 - **Returns:** Promise with array of transactions
 - **Logic:** Sends GET request with optional parameters, parses response
 
+#### `getLatestTransactionForCorrection()` and `getCorrectionCandidates(limit = 10)`
+- **Purpose:** Load the default latest correction target or up to ten selectable current-business-day correction targets.
+- **Returns:** A transaction object or newest-first array of eligible transaction rows.
+- **Logic:** Calls the transaction correction-read endpoints; the server determines the business day and excludes superseded originals.
+
 ### Staff API Methods
 
 #### `getStaffRoster()`

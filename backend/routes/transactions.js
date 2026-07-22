@@ -7,12 +7,58 @@ const { getBusinessDay } = require('../utils/business-day');
 const { getTimeWindowQuote } = require('../services/time-window-promotion-service');
 const {
   BOOKING_CREDIT_AMOUNT,
+  BOOKING_BUFFER_MINUTES,
   calculateScheduledEnd,
   createBookingId,
   hasBookingConflict,
   isBookingCreditEligible,
   normalizeBookingStart
 } = require('../services/booking-service');
+
+async function getCorrectionEligibleStaff(businessDay, excludedTransactionId, now = new Date()) {
+  const todayStaff = await database.all(
+    `SELECT ts.display_name AS masseuse_name, ts.position,
+       (SELECT COUNT(*) FROM transactions t
+        WHERE t.business_day = ts.business_day AND t.masseuse_name = ts.display_name
+          AND t.status = 'ACTIVE' AND t.transaction_id != ?) AS today_massages
+     FROM today_staff ts
+     WHERE ts.business_day = ? AND ts.removed_at IS NULL`,
+    [excludedTransactionId, businessDay]
+  );
+  const activeTransactions = await database.all(
+    `SELECT masseuse_name, timestamp, end_datetime, duration
+     FROM transactions
+     WHERE business_day = ? AND status = 'ACTIVE' AND transaction_id != ?`,
+    [businessDay, excludedTransactionId]
+  );
+  const bookings = await database.all(
+    `SELECT requested_masseuse_name, scheduled_start
+     FROM bookings
+     WHERE status = 'BOOKED' AND substr(scheduled_start, 1, 10) = ?`,
+    [businessDay]
+  );
+  const nowMs = now.getTime();
+  return todayStaff.filter((staff) => {
+    const busy = activeTransactions.some((transaction) => transaction.masseuse_name === staff.masseuse_name
+      && Date.parse(transaction.end_datetime || transaction.timestamp) + (transaction.end_datetime ? 0 : Number(transaction.duration) * 60000) > nowMs);
+    const constrainedByBooking = bookings.some((booking) => booking.requested_masseuse_name === staff.masseuse_name
+      && Date.parse(booking.scheduled_start) - (BOOKING_BUFFER_MINUTES * 60000) < nowMs);
+    return !busy && !constrainedByBooking;
+  }).sort((left, right) => (left.today_massages - right.today_massages) || (left.position - right.position));
+}
+
+async function getCorrectionCandidates(businessDay, requestedLimit = 10) {
+  const limit = Math.min(Math.max(Number.parseInt(requestedLimit, 10) || 10, 1), 10);
+  return database.all(
+    `SELECT *
+     FROM transactions
+     WHERE business_day = ?
+       AND status IN ('ACTIVE', 'CORRECTED')
+     ORDER BY datetime(timestamp) DESC, id DESC
+     LIMIT ?`,
+    [businessDay, limit]
+  );
+}
 
 // Get all transactions (with pagination and filtering)
 router.get('/', async (req, res) => {
@@ -196,7 +242,7 @@ router.post('/', async (req, res) => {
     }
 
     // Validate required fields
-    if (!masseuseName || !serviceType || !location || !duration || !paymentMethod || !startTime || !endTime) {
+    if ((!masseuseName && !originalTransactionId) || !serviceType || !location || !duration || !paymentMethod || !startTime || !endTime) {
       console.error('[TX CREATE - ERROR] Missing required fields.');
       return res.status(400).json({
         error: 'Missing required fields: masseuse_name, service_type, location, duration, payment_method, start_time, end_time'
@@ -227,24 +273,29 @@ router.post('/', async (req, res) => {
     console.log(`[TX CREATE - STEP 4] Service found: Price=${service.price}, Fee=${service.masseuse_fee}`);
 
     if (requestedStaffBooking) {
-      if (bookingId || originalTransactionId) {
-        return res.status(400).json({ error: 'Immediate requested-staff booking cannot reuse another booking or correction' });
+      if (originalTransactionId) {
+        // A correction stays a normal walk-in even when reception picks a non-next replacement.
+        requestedStaffBooking = false;
+      } else if (bookingId) {
+        return res.status(400).json({ error: 'Immediate requested-staff booking cannot reuse another booking' });
       }
-      const immediateStart = normalizeBookingStart(new Date().toISOString());
-      startDateTime = immediateStart;
-      endDateTime = calculateScheduledEnd(immediateStart, Number(duration));
-      bookingId = createBookingId();
-      booking = {
-        booking_id: bookingId,
-        scheduled_start: startDateTime,
-        scheduled_end: endDateTime,
-        service_type: serviceType,
-        location,
-        duration: Number(duration),
-        requested_masseuse_name: masseuseName,
-        customer_contact: customerContact,
-        status: 'BOOKED'
-      };
+      if (requestedStaffBooking) {
+        const immediateStart = normalizeBookingStart(new Date().toISOString());
+        startDateTime = immediateStart;
+        endDateTime = calculateScheduledEnd(immediateStart, Number(duration));
+        bookingId = createBookingId();
+        booking = {
+          booking_id: bookingId,
+          scheduled_start: startDateTime,
+          scheduled_end: endDateTime,
+          service_type: serviceType,
+          location,
+          duration: Number(duration),
+          requested_masseuse_name: masseuseName,
+          customer_contact: customerContact,
+          status: 'BOOKED'
+        };
+      }
     }
 
     if (startDateTime && endDateTime) {
@@ -268,6 +319,13 @@ router.post('/', async (req, res) => {
     const transactionId = `TX-${timestamp.getTime()}-${crypto.randomBytes(3).toString('hex')}`;
     const date = timestampIso.split('T')[0];
     const businessDay = getBusinessDay(timestamp);
+    if (originalTransactionId) {
+      const eligibleStaff = await getCorrectionEligibleStaff(businessDay, originalTransactionId, timestamp);
+      if (!masseuseName) masseuseName = eligibleStaff[0]?.masseuse_name;
+      if (!masseuseName || !eligibleStaff.some((staff) => staff.masseuse_name === masseuseName)) {
+        return res.status(409).json({ error: 'Selected replacement staff member is not currently available' });
+      }
+    }
     console.log(`[TX CREATE - STEP 5] Generated Transaction ID: ${transactionId}`);
 
     await database.run('BEGIN IMMEDIATE TRANSACTION');
@@ -459,12 +517,7 @@ router.post('/fix-edited-status', async (req, res) => {
 // Get most recent transaction for correction
 router.get('/latest-for-correction', async (req, res) => {
   try {
-    const transaction = await database.get(
-      `SELECT * FROM transactions 
-       WHERE status = 'ACTIVE' 
-       ORDER BY datetime(timestamp) DESC, id DESC
-       LIMIT 1`
-    );
+    const transaction = (await getCorrectionCandidates(getBusinessDay(new Date()), 1))[0];
 
     if (!transaction) {
       return res.status(404).json({ error: 'No recent transactions found to correct' });
@@ -474,6 +527,17 @@ router.get('/latest-for-correction', async (req, res) => {
   } catch (error) {
     console.error('Error fetching latest transaction:', error);
     res.status(500).json({ error: 'Failed to fetch latest transaction' });
+  }
+});
+
+// Get up to ten current-business-day transactions that can be corrected.
+router.get('/correction-candidates', async (req, res) => {
+  try {
+    const transactions = await getCorrectionCandidates(getBusinessDay(new Date()), req.query.limit);
+    res.json(transactions);
+  } catch (error) {
+    console.error('Error fetching correction candidates:', error);
+    res.status(500).json({ error: 'Failed to fetch correction candidates' });
   }
 });
 
