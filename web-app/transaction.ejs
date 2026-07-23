@@ -174,6 +174,9 @@
                         <button class="transaction-link-action" onclick="showCorrectionCandidates()" type="button">
                             เลือกรายการก่อนหน้า
                         </button>
+                        <button id="cancel-correction-button" class="transaction-link-action" onclick="cancelLoadedCorrection()" type="button" hidden>
+                            ยกเลิกรายการนี้
+                        </button>
                         <div id="correction-candidates" class="helper-text" hidden></div>
                     </div>
                 </div>
@@ -1257,6 +1260,7 @@
                 
                 updatePricing();
                 enterCorrectionMode();
+                document.getElementById('cancel-correction-button').hidden = false;
                 await updateAllDisplays();
             }
         }
@@ -1291,9 +1295,27 @@
 
         function exitCorrectionMode() {
             correctionMode = false;
+            appData.correctionMode = false;
+            appData.originalTransactionId = null;
             document.getElementById('correction-banner').style.display = 'none';
             document.getElementById('transaction-form').classList.remove('correction-mode');
             document.getElementById('correction-info').textContent = 'ยังไม่มีรายการที่โหลดมาแก้';
+            document.getElementById('cancel-correction-button').hidden = true;
+        }
+
+        async function cancelLoadedCorrection() {
+            if (!appData.originalTransactionId) {
+                showToast('ไม่มีรายการที่เลือกไว้ให้ยกเลิก', 'error');
+                return;
+            }
+            if (!window.confirm('ยกเลิกรายการนี้? รายการจะยังอยู่ในประวัติ แต่ไม่คิดยอดขายหรือค่าพนักงาน')) {
+                return;
+            }
+            const cancelledTransaction = await cancelCorrectionTransaction(appData.originalTransactionId);
+            if (cancelledTransaction) {
+                clearForm();
+                await updateAllDisplays();
+            }
         }
 
         async function updateAllDisplays() {

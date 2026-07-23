@@ -12,6 +12,7 @@ Let reception correct a saved current-business-day walk-in transaction as a norm
 - Manager/reception interview on 2026-07-22: Khwan was accidentally assigned a customer whose Thai or Oil service she could not perform; reception must move the already-saved walk-in to another staff member.
 - Manager clarification on 2026-07-22: default the replacement to the next staff member in queue, but allow reception to select a particular eligible staff member.
 - Manager clarification on 2026-07-22: show one common action for the latest transaction and a second action that reveals up to ten earlier current-day transactions.
+- Operator follow-up on 2026-07-23: the same edit/correction surface also needs a cancel action for a saved walk-in when the customer leaves before the massage begins, such as after an emergency phone call.
 - Existing booking and requested-staff-credit rules in `booking-reservations-and-requested-staff-credit.md`.
 
 ## 2. Scope
@@ -24,12 +25,14 @@ Let reception correct a saved current-business-day walk-in transaction as a norm
 - Allow a receptionist override only to an eligible available staff member.
 - Keep correction replacement as a normal walk-in: no booking row and no booking credit solely because the replacement is manually selected.
 - Support correction of a booking-backed transaction through the existing BKG-004 booking-credit rules without weakening them.
+- Cancel a saved current-business-day walk-in from the edit/correction surface when the customer leaves before the massage starts.
 
 ### Out of Scope
 - Staff service-capability configuration or automatic service-skill matching. Reception retains responsibility for knowing that Khwan currently accepts Foot massage only.
 - Changing Today Staff order. Correction restores the original staff member's normal eligibility and original day-start position; it does not rotate or rewrite the queue.
 - Editing historical transactions outside the current business day.
 - Deleting financial/audit records.
+- Refunding or external payment-provider reconciliation beyond recording the cancellation state in the app's audit trail.
 
 ## 3. Existing-System Findings
 
@@ -64,6 +67,11 @@ If the original transaction is linked to a booking, the correction retains the e
 ### FR-007: Availability Guard
 The server rejects a correction replacement assigned to staff who are busy or booking-constrained at the corrected service window. The page renders such people unavailable and never submits a partial correction. Until a replacement saves successfully, the original transaction remains unchanged.
 
+### FR-008: Cancel Saved Walk-In
+Reception can cancel an already-saved current-business-day walk-in from the same edit/correction surface when the customer leaves before receiving the massage. Cancellation is audit-preserving: the original transaction row remains visible historically with a cancelled status, but it no longer contributes active busy state, completed-workload count, payable base commission, revenue totals, or booking-credit eligibility.
+
+Cancellation is not a delete. The system must keep enough information for manager review, including the original transaction identity, staff, service, duration, price, commission, user, and time. If a cancellation target is booking-backed or already corrected/edited/cancelled, the implementation must follow the same strict state-transition rules as corrections and must not silently guess the financial behavior.
+
 ## 5. Data and API Contracts
 
 ### Correction Candidates
@@ -75,6 +83,9 @@ The server rejects a correction replacement assigned to staff who are busy or bo
 ### Correction Create Request
 `POST /api/transactions` continues to use `corrected_transaction_id` as the original audit link. The server derives correction semantics from this ID; a client cannot create a booking or booking credit merely by setting a non-next replacement while correcting a normal walk-in.
 
+### Cancellation Request
+A cancellation action targets one eligible current-business-day transaction ID from the correction/edit candidate set. The server is authoritative for whether the target may be cancelled. The request must be atomic and must not rely on client-side removal from totals or staff status.
+
 ## 6. State Transitions
 
 - Eligible `ACTIVE` or `CORRECTED` current-business-day transaction -> original record marked `EDITED (Corrected by replacement-id)` -> one replacement record marked `CORRECTED`.
@@ -82,6 +93,8 @@ The server rejects a correction replacement assigned to staff who are busy or bo
 - Normal walk-in correction -> no booking creation and no booking credit.
 - Booking-backed correction -> BKG-004 credit reversal/replacement contract.
 - Rejected replacement availability -> no state change.
+- Eligible current-business-day normal walk-in cancellation -> original row marked cancelled/audit-preserved -> no replacement row -> original staff no longer busy/credited/paid for that cancelled massage.
+- Already `EDITED`, already cancelled, historical, or otherwise ineligible cancellation target -> rejected with no state change.
 
 ## 7. Acceptance Criteria
 
@@ -93,11 +106,14 @@ The server rejects a correction replacement assigned to staff who are busy or bo
 - AC-006: A manually chosen replacement in a normal walk-in correction produces no booking row and no `booking_credits` row.
 - AC-007: Booking-backed correction still meets BKG-004: old active credit is reversed once and an eligible replacement receives exactly one active credit.
 - AC-008: Focused unit, route/integration, mirrored-template, and browser tests cover latest, earlier, automatic replacement, manual eligible replacement, unavailable rejection, audit preservation, and no-booking-credit isolation.
+- AC-009: A current-business-day normal walk-in can be cancelled from the edit/correction surface; the transaction remains auditable but is excluded from active revenue, active staff workload, busy state, payable base commission, and booking credit.
+- AC-010: Cancelling an ineligible transaction, historical transaction, already edited transaction, already cancelled transaction, or booking-backed transaction whose semantics are not explicitly implemented is rejected without partial mutation.
+- AC-011: The cancel action is Thai-first, low-clutter, available on the common latest-edit path and the earlier-transaction list path, and both mirrored templates behave identically.
 
 ## 8. Risks and Rollback
 
 - Risk: correction can change financial balances and current status. Mitigation: one SQLite transaction, server-side eligibility validation, and audit-preserving original row.
 - Risk: normal correction can be misclassified as immediate requested-staff booking. Mitigation: correction-specific backend classification and regression tests.
 - Risk: existing booking correction behavior regresses. Mitigation: retain BKG-004 as a dependency and test it separately.
+- Risk: cancellation can be incorrectly treated as deletion or as zero-price revenue instead of an audit state. Mitigation: use an explicit transaction status, exclude it from active totals through the same status filters used for `EDITED`, and lock staff/revenue effects with integration tests.
 - Rollback: revert the application release. No destructive schema or data cleanup is permitted; corrected/original records remain the audit trail.
-

@@ -43,6 +43,23 @@ describe('New Customer booking workflow contracts', () => {
     expect(source).toContain('async getBookingAvailability(masseuseName, massageEnd)');
   });
 
+  test.each(templates)('%s exposes low-clutter Thai-first cancellation only after a correction target is loaded', (template) => {
+    const source = read(template);
+    expect(source).toContain('id="cancel-correction-button"');
+    expect(source).toContain('ยกเลิกรายการนี้');
+    expect(source).toContain('cancelLoadedCorrection');
+    expect(source).toContain('cancelCorrectionTransaction(appData.originalTransactionId');
+    expect(source).toContain('appData.correctionMode = false');
+    expect(source).toContain('appData.originalTransactionId = null');
+    expect(source).not.toContain('deleteTransaction');
+  });
+
+  test('frontend API exposes transaction cancellation contract', () => {
+    const source = read('web-app/api.js');
+    expect(source).toContain('async cancelTransaction(transactionId, reason');
+    expect(source).toContain('/transactions/${encodeURIComponent(transactionId)}/cancel');
+  });
+
   test('Today Staff helper remains based on transaction base commission', () => {
     const source = read('backend/routes/staff.js');
     const helperRoute = source.slice(source.indexOf("router.get('/today/helper'"));

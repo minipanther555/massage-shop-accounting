@@ -16,17 +16,50 @@ const { getBusinessDay } = require('../../backend/utils/business-day');
 
 describe('current-business-day transaction correction', () => {
   const businessDay = getBusinessDay(new Date());
+  const today = new Date().toISOString().slice(0, 10);
+
+  async function insertWalkIn({
+    transactionId,
+    masseuseName = 'ขวัญ',
+    status = 'ACTIVE',
+    businessDayValue = businessDay,
+    bookingId = null,
+    timestamp = new Date().toISOString(),
+    staffFee = 300,
+    paymentAmount = 1000
+  }) {
+    await database.run(
+      `INSERT INTO transactions (
+        transaction_id, timestamp, date, masseuse_name, service_type,
+        location, duration, payment_amount, payment_method, masseuse_fee,
+        start_time, end_time, customer_contact, status, business_day,
+        booking_id, start_datetime, end_datetime
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        transactionId, timestamp, timestamp.slice(0, 10), masseuseName, 'Thai Massage',
+        'In-Shop', 60, paymentAmount, 'Cash', staffFee,
+        '10:00 AM', '11:00 AM', 'Cancellation test', status, businessDayValue,
+        bookingId, '2030-01-01T10:00:00+07:00', '2030-01-01T11:00:00+07:00'
+      ]
+    );
+    if (status === 'ACTIVE' || status === 'CORRECTED') {
+      await database.run(
+        'UPDATE staff SET total_fees_earned = total_fees_earned + ? WHERE name = ?',
+        [staffFee, masseuseName]
+      );
+    }
+  }
 
   beforeAll(async () => {
     await database.connect();
     await database.run(
       `INSERT INTO staff (id, name, active, total_fees_earned, total_fees_paid)
-       VALUES (1, 'ขวัญ', 1, 300, 0), (2, 'มิน', 1, 0, 0)`
+       VALUES (1, 'ขวัญ', 1, 300, 0), (2, 'มิน', 1, 0, 0), (3, 'นา', 1, 0, 0)`
     );
     await database.run(
       `INSERT INTO today_staff (business_day, staff_id, display_name, position, queue_status)
-       VALUES (?, 1, 'ขวัญ', 1, NULL), (?, 2, 'มิน', 2, NULL)`,
-      [businessDay, businessDay]
+       VALUES (?, 1, 'ขวัญ', 1, NULL), (?, 2, 'มิน', 2, NULL), (?, 3, 'นา', 3, NULL)`,
+      [businessDay, businessDay, businessDay]
     );
     await database.run(
       `INSERT INTO services (
@@ -151,6 +184,103 @@ describe('current-business-day transaction correction', () => {
     expect(rejected.status).toBe(409);
     expect(rejected.body.error).toMatch(/available/i);
     expect(await database.get("SELECT status FROM transactions WHERE transaction_id = 'TX-WRONG-KHWAN-2'"))
+      .toEqual({ status: 'ACTIVE' });
+  });
+
+  test('cancels a current-business-day normal walk-in without deleting it or leaving active effects', async () => {
+    const reportBefore = await request(app)
+      .get(`/api/reports/daily/${today}`)
+      .set('x-pwtest', '1');
+    const beforeSummary = reportBefore.body.transaction_summary;
+
+    await insertWalkIn({ transactionId: 'TX-CANCEL-WALKIN', masseuseName: 'นา' });
+    await database.run(
+      `INSERT INTO booking_credits (booking_id, transaction_id, masseuse_name, amount, status)
+       VALUES ('BKG-CANCEL-LEGACY-CREDIT', 'TX-CANCEL-WALKIN', 'นา', 50, 'ACTIVE')`
+    );
+    await database.run("UPDATE staff SET total_fees_earned = total_fees_earned + 50 WHERE name = 'นา'");
+
+    const response = await request(app)
+      .post('/api/transactions/TX-CANCEL-WALKIN/cancel')
+      .set('x-pwtest', '1')
+      .send({ reason: 'customer_left_before_service' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.transaction_id).toBe('TX-CANCEL-WALKIN');
+    expect(response.body.status).toMatch(/^CANCELLED/);
+    expect(await database.get(
+      "SELECT status FROM transactions WHERE transaction_id = 'TX-CANCEL-WALKIN'"
+    )).toEqual({ status: expect.stringMatching(/^CANCELLED/) });
+    expect(await database.get(
+      "SELECT COUNT(*) AS count FROM transactions WHERE transaction_id = 'TX-CANCEL-WALKIN'"
+    )).toEqual({ count: 1 });
+    expect(await database.get("SELECT total_fees_earned FROM staff WHERE name = 'นา'"))
+      .toEqual({ total_fees_earned: 0 });
+    expect(await database.get(
+      "SELECT status FROM booking_credits WHERE transaction_id = 'TX-CANCEL-WALKIN'"
+    )).toEqual({ status: 'REVERSED' });
+
+    const candidates = await request(app)
+      .get('/api/transactions/correction-candidates?limit=10')
+      .set('x-pwtest', '1');
+    expect(candidates.body.map(transaction => transaction.transaction_id))
+      .not.toContain('TX-CANCEL-WALKIN');
+
+    const currentStatus = await request(app)
+      .get('/api/staff/current-status')
+      .set('x-pwtest', '1');
+    const na = currentStatus.body.staff.find(staff => staff.masseuse_name === 'นา');
+    expect(na.today_massages).toBe(0);
+    expect(na.current_state).not.toBe('busy');
+
+    const report = await request(app)
+      .get(`/api/reports/daily/${today}`)
+      .set('x-pwtest', '1');
+    expect(report.body.transaction_summary.transaction_count).toBe(beforeSummary.transaction_count);
+    expect(report.body.transaction_summary.total_revenue).toBe(beforeSummary.total_revenue);
+    expect(report.body.transaction_summary.total_staff_pay).toBe(beforeSummary.total_staff_pay);
+  });
+
+  test('rejects ineligible cancellation targets without partial mutation', async () => {
+    await insertWalkIn({
+      transactionId: 'TX-CANCEL-HISTORICAL',
+      businessDayValue: '2020-01-01',
+      timestamp: '2020-01-01T03:00:00.000Z'
+    });
+    await insertWalkIn({ transactionId: 'TX-CANCEL-EDITED', status: 'EDITED (Corrected by TX-OTHER)' });
+    await insertWalkIn({ transactionId: 'TX-CANCEL-ALREADY', status: 'CANCELLED (Customer left)' });
+    await database.run(
+      `INSERT INTO bookings (
+        booking_id, scheduled_start, scheduled_end, service_type, location,
+        duration, requested_masseuse_name, customer_contact, status, transaction_id
+      ) VALUES ('BKG-CANCEL-BOOKING', '2030-01-01T10:00:00+07:00', '2030-01-01T11:00:00+07:00',
+        'Thai Massage', 'In-Shop', 60, 'ขวัญ', 'Booking cancellation test', 'COMPLETED', 'TX-CANCEL-BOOKING')`
+    );
+    await insertWalkIn({ transactionId: 'TX-CANCEL-BOOKING', bookingId: 'BKG-CANCEL-BOOKING' });
+
+    const cases = [
+      ['TX-CANCEL-HISTORICAL', 409],
+      ['TX-CANCEL-EDITED', 409],
+      ['TX-CANCEL-ALREADY', 409],
+      ['TX-CANCEL-BOOKING', 409],
+      ['TX-CANCEL-MISSING', 404]
+    ];
+
+    for (const [transactionId, expectedStatus] of cases) {
+      const response = await request(app)
+        .post(`/api/transactions/${transactionId}/cancel`)
+        .set('x-pwtest', '1')
+        .send({ reason: 'customer_left_before_service' });
+      expect(response.status).toBe(expectedStatus);
+    }
+
+    expect(await database.get("SELECT status FROM transactions WHERE transaction_id = 'TX-CANCEL-HISTORICAL'"))
+      .toEqual({ status: 'ACTIVE' });
+    expect(await database.get("SELECT status FROM transactions WHERE transaction_id = 'TX-CANCEL-EDITED'"))
+      .toEqual({ status: 'EDITED (Corrected by TX-OTHER)' });
+    expect(await database.get("SELECT status FROM transactions WHERE transaction_id = 'TX-CANCEL-ALREADY'"))
+      .toEqual({ status: 'CANCELLED (Customer left)' });
+    expect(await database.get("SELECT status FROM transactions WHERE transaction_id = 'TX-CANCEL-BOOKING'"))
       .toEqual({ status: 'ACTIVE' });
   });
 });

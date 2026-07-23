@@ -173,6 +173,13 @@ class APIClient {
     return this.request(`/transactions/correction-candidates?limit=${limit}`);
   }
 
+  async cancelTransaction(transactionId, reason = 'customer_left_before_service') {
+    return this.request(`/transactions/${encodeURIComponent(transactionId)}/cancel`, {
+      method: 'POST',
+      body: { reason }
+    });
+  }
+
   async getTodayTransactionSummary() {
     return this.request('/reports/summary/today');
   }

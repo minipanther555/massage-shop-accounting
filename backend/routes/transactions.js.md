@@ -31,6 +31,14 @@
     *   **Parameters:** `limit` is optional and capped at `10`.
     *   **Logic:** `EDITED` originals are excluded so an audit record cannot be selected again.
 
+*   **`POST /:transactionId/cancel`**
+    *   **Purpose:** Cancels a saved current-business-day normal walk-in when the customer leaves before service starts, without deleting the transaction row.
+    *   **Parameters (Route):** `transactionId` string, required.
+    *   **Parameters (Body):** `reason` string, optional; currently accepted for forward compatibility while the persisted status uses the governed customer-left cancellation label.
+    *   **Returns:** The preserved transaction row after status transition, with active booking-credit amount joined as `0` when no active credit remains.
+    *   **Logic:** Loads the target by `transaction_id`, rejects missing rows with `404`, and rejects historical, booking-backed, edited, corrected, or already cancelled rows with `409`. Eligible cancellation runs inside `BEGIN IMMEDIATE TRANSACTION`: subtracts the original base commission from `staff.total_fees_earned`, reverses any active linked booking credit through the shared credit reversal helper, and updates the row to `CANCELLED (Customer left before service)`. The update must affect exactly one active row before commit.
+    *   **Raises / Throws:** Responds `500` and rolls back if any atomic write fails.
+
 *   **`POST /quote`**
     *   **Purpose:** Returns the current server-calculated customer price for an active service selection before reception saves the transaction.
     *   **Parameters (Body):** `service_type`, `location`, `duration`, and optional boolean `time_window_promotion_override`.
@@ -45,7 +53,7 @@
     *   **Failure Modes:** Missing or closed bookings, duplicate conversion, invalid staff/service, and violation of another booking's 15-minute buffer are rejected. Any write failure rolls back the conversion.
 *   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
         1.  Find the original transaction.
-        2.  Reverse the `masseuse_fee` from the original transaction's masseuse and reverse any active linked booking credit.
+        2.  Reverse the `masseuse_fee` from the original transaction's masseuse and reverse any active linked booking credit through the same helper used by cancellation.
         3.  Update the status of the original transaction to 'EDITED'.
         4.  Create the new transaction with a `corrected_from_id` linking it back to the original.
     *   **Correction Isolation:** A correction with `requested_staff_booking` remains a normal walk-in; it does not create an immediate booking or `฿50` credit solely because reception selected a replacement staff member.
@@ -152,3 +160,9 @@
 * **Validated Hypothesis:** The insert passed a JavaScript `Date` object to SQLite, yielding environment-dependent values, while raw string ordering compared UTC `Z` timestamps with `+07:00` timestamps lexically rather than chronologically.
 * **Invalidated Hypotheses:** The transaction was not committed; frontend refresh did not run; responsive CSS reordered rows.
 * **Resolution:** New transactions persist `timestamp.toISOString()`. Paginated, recent, and latest-for-correction queries order by `datetime(timestamp) DESC, id DESC`, so offset-aware timestamps use real chronological order with a deterministic tie-break.
+
+### Current-Day Walk-In Cancellation Needed an Audit-Preserving Reversal Path (2026-07-23)
+* **Bug Summary:** Reception could correct a wrong walk-in but had no governed way to cancel a saved current-day walk-in when the customer left before massage started.
+* **Validated Hypothesis:** Cancellation needed to be a server-side status transition with atomic reversal of active staff effects, not a delete or a frontend-only hide.
+* **Invalidated Hypotheses:** Deleting the transaction would preserve audit history; zeroing price/fee fields would be enough for reports; booking-backed cancellations could safely reuse normal walk-in semantics without a separate booking-state decision.
+* **Resolution:** Added `POST /api/transactions/:transactionId/cancel`, kept the row with `CANCELLED (Customer left before service)`, reversed base commission and active linked booking credit, rejected ineligible targets, and relied on existing active-status report/status filters to exclude cancelled rows from active revenue, workload, busy state, and payday totals.
