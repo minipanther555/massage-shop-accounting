@@ -6,7 +6,7 @@ Reception can add paid time or an additional service to a massage that has alrea
 
 Phase ordering below is derived from spec §10 Integration Architecture; the lifecycle guarded in Phase 2 is spec §11; the deploy and rollback posture in Phase 7 is spec §12.
 
-> **Status:** Phases 0–4 ✅ DONE and PTE-END-001 done (2026-07-23) — the feature is functional end to end: reception can extend a massage, price is server-derived, pending/settle/cancel work, counts and revenue are correct, and outstanding add-ons survive end-day. 34 integration + 22 DOM contract tests green. Remaining: PTE-END-002/003 (end-day prompt and manager notice), Phase 6 verification, Phase 7 deploy, Phase 8 docs. Next runnable step: `PTE-DEP-001`. Not yet applied to production; the schema lands there only via `PTE-DEP-001` with operator authorization.
+> **Status:** Phases 0–4 ✅ DONE and PTE-END-001 done (2026-07-23) — the feature is functional end to end: reception can extend a massage, price is server-derived, pending/settle/cancel work, counts and revenue are correct, and outstanding add-ons survive end-day. 34 integration + 22 DOM contract tests green. Remaining: PTE-END-002/003 (end-day prompt and manager notice), Phase 6 verification, Phase 7 deploy, Phase 8 docs. Next runnable step: `PTE-DEP-002` (live-verify on the reception iPad). **LIVE = `claude/docs-shop-bookkeeping-updates-8156d7` @ `04de19e`.** Not yet applied to production; the schema lands there only via `PTE-DEP-001` with operator authorization.
 
 ## Dependencies
 
@@ -297,12 +297,12 @@ Placed before the UI deliberately: this is the highest-regression-risk work in t
 
 ---
 
-## Phase 7 — Deploy & Live-Verify — OPEN
+## Phase 7 — Deploy & Live-Verify — 🟡 PARTIAL (2026-07-23) — Deploy #1 done; live-verify on the iPad open
 **Phase goal:** the feature is proven on the real reception iPad against real data.
 
 **Live-verify decision (authoring time):** this lane **requires** deploy and live-verify. It touches reception UI and live shop data, which is the default case.
 
-### STEP_ID: PTE-DEP-001 — Verify-push and Deploy #1 — OPEN
+### STEP_ID: PTE-DEP-001 — Verify-push and Deploy #1 — ✅ DONE (2026-07-23)
 
 - [ ] **Gates first:** all FSM gates green before anything is deployed — only gate-passed code ever reaches a server.
 - [ ] **Verify-push:** push the session's `claude/…` working branch (commit message flagged `live-verify test`). **NO `testingNN` is minted here** — numbers come only from post-checkpoint `/push`; this push exists solely so the server can fetch the code.
@@ -311,6 +311,18 @@ Placed before the UI deliberately: this is the highest-regression-risk work in t
 - [ ] **Restart rules:** reader services (dashboards, read APIs) restart freely. **Writer/ingestor services (live ingest, bots mid-message, anything writing as it runs): HARD STOP — the operator's explicit OK is required before restart.** Interrupting a live write is irreversible. **This application serves reads and writes from one process, so this restart is writer-class and REQUIRES the operator's explicit OK.**
 - [ ] **Health-check after:** service up, one read endpoint 200; record `LIVE = <branch>` in the step's Completion Notes.
 - **Validation:** the server runs the working branch, health check returns 200, and `LIVE = <branch>` is recorded.
+
+**Completion Notes (2026-07-23):**
+- [x] All gates green before deploy; the only failing suites are the five that also fail at `c140413`, verified in a throwaway worktree at that commit.
+- [x] Verify-push of `claude/docs-shop-bookkeeping-updates-8156d7` @ `04de19e`, commit flagged `live-verify test`. **No `testingNN` minted.**
+- [x] **Rollback stated before touching anything:** `git checkout testing3419` + restart. The three columns remain after rollback and are inert — prior code never selects them and the defaults make every row read as before.
+- [x] **Pre-deploy backups taken** of both live databases: `massage_shop.pre-pte-20260723-182830.db` and `massage_shop.branch-43.pre-pte-20260723-182830.db`. The live paths were identified from the running process's open file descriptors, not guessed.
+- [x] Writer-class restart performed with operator authorization (single Node process serves reads and writes).
+- [x] Schema verified landed on the main database: `parent_transaction_id` TEXT, `add_on_kind` TEXT, `payment_status` TEXT NOT NULL DEFAULT `'PAID'`.
+- [x] Health check `GET /api/staff/current-status` → 200; zero errors in the service log since restart.
+- [x] Add-on route confirmed registered: `POST /api/transactions/add-ons` returns 403 CSRF rather than 404, and the probe created no rows.
+- **`LIVE = claude/docs-shop-bookkeeping-updates-8156d7 @ 04de19e`**
+- ⚠️ **Branch databases upgrade lazily.** Routing comes from `session.location_id` (`backend/server.js:143`), so an unauthenticated request always hits the main database — `massage_shop.branch-43.db` did **not** receive the columns during this deploy. It will self-upgrade on the first authenticated request from a branch-43 user, through `getConnection()` → `connect()` → `addMissingColumns()`, the identical path just proven on the main database. This is reasoned, **not** observed: I could not authenticate as a branch-43 user from here. Watch the first branch-43 use.
 
 ### STEP_ID: PTE-DEP-002 — Live-verify on the reception iPad — OPEN
 
