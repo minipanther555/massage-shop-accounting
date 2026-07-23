@@ -69,7 +69,7 @@
 - **Parameters / Props:** `staffRows` array, required; each row follows the `/api/staff/current-status` staff contract.
 - **Returns / Renders:** Populates `#current-shop-status-summary` with Thai-first cards for `ว่างตอนนี้`, `คนถัดไปว่าง`, and `สามคนถัดไป`.
 - **Raises / Throws:** None.
-- **Usage & Logic Notes:** Available staff count uses `current_state === 'available'`. Future free times use busy rows with `free_at`/`free_at_iso`, sorted earliest first.
+- **Usage & Logic Notes:** Available staff count uses `current_state === 'available'`. Future free times use busy rows with `free_at`/`free_at_iso`, sorted earliest first. As of the 2026-07-23 checkpoint, the `สามคนถัดไป` label is an open follow-up because the renderer takes the first three available rows from the Daily Summary status order, while New Customer chooses the walk-in dropdown default from `walk_in_priority`.
 
 ### `escapeStatusHtml(value)`
 - **Purpose:** Escapes server-provided status values before inserting current-status rows with `innerHTML`.
@@ -189,3 +189,17 @@ The page already consumes shared transaction state; it needed to aggregate `mass
 
 ### Resolution
 Per-staff details now show combined pay with `ฐาน` and `จอง` components, and transaction rows render the compact `จองพนักงาน +฿50` badge when the active credit is present.
+
+### Bug Summary: Current Status Summary Can Contradict New Customer Priority (2026-07-23)
+The live Daily Summary summary strip showed `สามคนถัดไป พี่ดาว ตอนนี้ · พี่นิชา ตอนนี้ · พี่ภัทร ตอนนี้`, while the operator reported the New Customer next-masseuse dropdown appeared to show the correct free staff. The wording can make reception read the strip as the same assignment order as the dropdown.
+
+### Validated Hypothesis
+`renderStatusSummary()` builds `สามคนถัดไป` from the first three `available` rows in the `/api/staff/current-status` payload order. New Customer's `getNextInLineFromStaff()` instead filters available staff and prefers the row marked `walk_in_priority`.
+
+### Invalidated Hypotheses
+- The selected div was directly reading the New Customer dropdown state.
+- The Daily Summary strip was explicitly sorting by `walk_in_priority`.
+- The screenshot alone proved the backend availability calculation was wrong.
+
+### Resolution
+No runtime change was made in this checkpoint. DSS-009 now tracks the required follow-up: either align the summary strip to the New Customer walk-in priority contract or rename/reframe it so it is clearly only a "currently free people" summary.

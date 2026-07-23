@@ -14,6 +14,16 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 - Booking rows are created only through explicit Booking mode; booking arrivals still create the separate `฿50` credit.
 - Focused/integration tests, seven mirrored inline-script parses, indexed SQLite plan checks, lint, `git diff --check`, and 630x998 browser verification passed. The existing dependency advisory backlog remains unchanged.
 
+### Daily Summary Current Status Follow-Up (opened 2026-07-23)
+- Live browser evidence showed the compact `สามคนถัดไป` strip can appear to disagree with the New Customer next-masseuse dropdown.
+- Source review found the Summary strip takes the first three `available` rows from the status payload order, while New Customer chooses the walk-in dropdown default from `walk_in_priority`.
+- DSS-009 is open to decide whether the strip should use the same walk-in priority order or be renamed so staff do not read it as queue order.
+
+### Paid Time Extension / Add-On Service (spec created 2026-07-23)
+- A new spec and steps file now govern customers who add time or another service after already paying and starting a massage.
+- The original paid transaction must stay intact; add-time/add-service should create a linked add-on or linked transaction and charge only the extra amount due.
+- The first implementation step is CFEP/data-model confirmation before any code: same-service duration upgrade and different-service add-on must both be covered.
+
 ### Home Dashboard Interactive Drilldowns (2026-07-14)
 - The Home page dashboard cards for Today's Revenue, Active Staff, and Today's Expenses are now compact clickable controls instead of tall static cards.
 - At the 667px browser viewport, the three cards render in one horizontal row and open one full-width inline detail panel at a time.

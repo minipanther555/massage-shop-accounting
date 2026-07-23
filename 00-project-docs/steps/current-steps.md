@@ -177,3 +177,23 @@
     *   **Technical Considerations**: Do not infer service-name mapping, eligible loyalty services, customer identity rules, or promotion stacking. Use Bangkok/server time for low-business-hour pricing. The branch-43 promotion is stored per branch and only maps the provided in-shop service/duration rows; it does not change masseuse commission. Preserve active service catalog visibility so duration buttons do not disappear from New Customer.
     *   **Potential Challenges and Mitigations**: Free-text customer contact may not be enough for loyalty/return eligibility; clarify customer identifier first. Multiple promotions may overlap; define priority/stacking before code. Price updates can accidentally deactivate services; use service-catalog checks before and after changes.
     *   **Validation**: Unit tests cover Bangkok boundaries and missing configuration; integration tests prove final payment/audit storage while normal commission remains earned, including a Home Service non-application regression. `testing3414` live browser smoke verified Top Thai 43 manager Services & Pricing shows enabled `10:00`-`00:00`, 15-minute grace, and the save-success state. Top Thai 49's `10:00`-`18:00` default remains source/test verified pending branch database provisioning.
+
+20. **[Bugfix/UX] Daily Summary Current Status Summary Priority Wording.**
+    *   **Status**: ⚪ `open` - DSS-009 created 2026-07-23
+    *   **Priority**: High
+    *   **Required**: The compact `สามคนถัดไป` strip on Current Shop Status can appear to disagree with the New Customer next-masseuse dropdown. The dropdown appears to use the correct free/priority staff; the summary strip needs CFEP/debug before changing behavior.
+    *   **Dependencies**: `00-project-docs/steps/daily-summary-current-shop-status-steps.md`, `00-project-docs/feature-specifications/daily-summary-current-shop-status.md`, `web-app/summary.html`, `web-app/summary.html.md`, `web-app/transaction.html`, `backend/routes/staff.js`, and the New Customer walk-in priority contract.
+    *   **Expected Output/Deliverable**: Either the summary strip uses the same walk-in assignment priority as New Customer, or the Thai label/copy is changed so reception understands it is only showing currently free staff, not queue order.
+    *   **Technical Considerations**: Daily Summary groups/sorts status rows for operational scanning. New Customer selects by `walk_in_priority`. Do not assume those two surfaces should have identical ordering until the product intent is confirmed.
+    *   **Potential Challenges and Mitigations**: The label sounds like "next in queue" even when the implementation is "first three available rows." Add a regression with a payload where status sort and walk-in priority differ.
+    *   **Validation**: DOM/API test and browser check prove the selected Daily Summary div no longer contradicts the New Customer dropdown.
+
+21. **[Feature] Paid Time Extension / Add-On Service.**
+    *   **Status**: ⚪ `spec created only` - implementation not started (2026-07-23)
+    *   **Priority**: High
+    *   **Required**: Customers may add time or a second service after already paying and starting a massage. The system must charge only the additional amount owed while preserving the original paid transaction.
+    *   **Dependencies**: `00-project-docs/feature-specifications/paid-time-extension.md`, `00-project-docs/steps/paid-time-extension-steps.md`, New Customer transaction flow, correction/reversal flow, service catalog pricing, Current Shop Status, reports, and Payday Tracking.
+    *   **Expected Output/Deliverable**: A separate add-time/add-service action that supports same-service duration upgrades and different-service add-ons, calculates amount due server-side, updates staff occupied time, and reports add-on payment/commission without double-counting.
+    *   **Technical Considerations**: Do not silently edit the original paid transaction. Decide during CFEP whether to model add-ons as linked transaction rows or a dedicated add-on table. Server must calculate price/commission from trusted catalog data.
+    *   **Potential Challenges and Mitigations**: Add-time touches money, staff pay, and availability. Start with RED tests for the two operator examples: 60-to-90 same-service upgrade and 90-minute massage plus 60-minute foot massage.
+    *   **Validation**: Governed PTE steps must pass focused integration, UI contract, report/status regression, browser smoke, lint, and security review before deployment.

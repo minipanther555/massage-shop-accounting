@@ -105,6 +105,7 @@ The lower page must not duplicate the same payment and fee breakdowns as separat
 - AC-DSS-017: The finance summary has a Thai-first collapsible section header so the receptionist can hide finances and move Current Shop Status upward.
 - AC-DSS-018: Current Shop Status shows a compact summary below its header with free-now count, the next free staff member/time, and the next three free staff entries.
 - AC-DSS-019: The Daily Summary navigation link to the Today Staff page is labeled as Today's Staff Queue, not a generic staff roster.
+- AC-DSS-020: The compact `สามคนถัดไป` summary must not contradict the New Customer next-masseuse dropdown. If the summary is intended to show walk-in assignment order, it must use the same `walk_in_priority` / workload / Today Staff tie-break contract as New Customer. If it is intended to show alphabetical free-now status, the Thai label must be changed so reception does not read it as queue order.
 
 ## 5. Data Contract Draft
 
@@ -160,3 +161,4 @@ Response:
 
 1. Should `booking_buffer` remain a hard warning state for normal 60-minute walk-ins, or should a later pass add shorter-service exceptions when usable minutes are positive?
 2. If the operator wants another Daily Summary iteration, should Current Shop Status move above finances by default, or is the implemented finance collapse enough?
+3. Should `สามคนถัดไป` mean the next three walk-in assignment candidates using the New Customer dropdown priority, or should it be renamed to clarify that it is only the first three currently free rows from the Daily Summary status sort?

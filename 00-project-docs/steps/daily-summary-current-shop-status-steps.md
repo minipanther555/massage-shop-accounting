@@ -193,3 +193,21 @@
 - [x] Updated `GET /api/staff/current-status` to prefer canonical datetimes and fall back to `timestamp + duration` for legacy rows.
 - [x] Updated OTDD coverage so a row with `timestamp=14:00`, `start_datetime=14:10`, and `end_datetime=15:20` remains busy until `15:20` and free at `15:35`.
 - Evidence: `mocha tests/otdd/daily-summary-current-status.test.js --reporter dot` and `jest __tests__/daily-summary.current-status.present.test.js --testEnvironment=node --runInBand` passed during the whole-app UI/database audit.
+
+## DSS-009 - Current Status Summary Priority Wording
+
+**Status:** OPEN (2026-07-23)
+
+**Goal:** Resolve the live discrepancy where the compact `สามคนถัดไป` summary can appear to disagree with the New Customer next-masseuse dropdown.
+
+**Dependencies:** `00-project-docs/feature-specifications/daily-summary-current-shop-status.md`, `web-app/summary.html`, `web-app/summary.html.md`, `web-app/transaction.html`, `backend/routes/staff.js`, `backend/routes/staff.js.md`, `/api/staff/current-status`, and the New Customer walk-in priority contract.
+
+**Expected Output/Deliverable:** Either make the Daily Summary strip use the same walk-in assignment priority as New Customer, or rename/reframe the strip so it clearly means "currently free people" rather than queue/assignment order.
+
+**Technical Considerations:** The backend sorts Current Shop Status by operational state for Daily Summary readability, while New Customer chooses `walk_in_priority` from available staff by workload and Today Staff tie-break. Do not change the dropdown unless CFEP proves it is wrong; the operator said the dropdown appears correct.
+
+**Potential Challenges and Mitigations:** The Thai label `สามคนถัดไป` sounds like queue order. Mitigate by writing a RED DOM/API contract that reproduces a case where alphabetical/status order differs from `walk_in_priority`.
+
+**Validation:** Browser or DOM test proves the summary no longer contradicts the New Customer next-masseuse selection in the same status payload.
+
+**Observed Evidence (2026-07-23):** Live Daily Summary rendered `สามคนถัดไป พี่ดาว ตอนนี้ · พี่นิชา ตอนนี้ · พี่ภัทร ตอนนี้` while the detailed rows showed five currently free staff. Source review showed `renderStatusSummary()` uses `availableRows.slice(0, 3)` from the status payload order, while `getNextInLineFromStaff()` on New Customer prefers the `walk_in_priority` flag.
