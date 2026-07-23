@@ -189,7 +189,7 @@ describe('booking reservation to financial transaction boundary', () => {
     expect(await database.get('SELECT COUNT(*) AS count FROM transactions')).toEqual({ count: 2 });
   });
 
-  test('present requested staff creates one completed booking, transaction, and visible credit', async () => {
+  test('present walk-in with manually selected staff does not create an implicit booking or credit', async () => {
     const today = new Date().toISOString().split('T')[0];
     const oneMinuteAgoBangkok = new Date(Date.now() - 60000 + (7 * 60 * 60 * 1000))
       .toISOString()
@@ -211,7 +211,10 @@ describe('booking reservation to financial transaction boundary', () => {
       bookings: await database.get('SELECT COUNT(*) AS count FROM bookings'),
       completedBookings: await database.get("SELECT COUNT(*) AS count FROM bookings WHERE status = 'COMPLETED'"),
       transactions: await database.get('SELECT COUNT(*) AS count FROM transactions'),
-      credits: await database.get('SELECT COUNT(*) AS count FROM booking_credits')
+      credits: await database.get('SELECT COUNT(*) AS count FROM booking_credits'),
+      activeCreditTotal: await database.get(
+        "SELECT COALESCE(SUM(amount), 0) AS total FROM booking_credits WHERE status = 'ACTIVE'"
+      )
     };
 
     const response = await request(app)
@@ -230,30 +233,31 @@ describe('booking reservation to financial transaction boundary', () => {
       });
 
     expect(response.status).toBe(201);
-    expect(response.body.booking_credit_amount).toBe(50);
+    expect(response.body.booking_credit_amount).toBe(0);
+    expect(response.body.booking_id).toBeNull();
     expect(typeof response.body.timestamp).toBe('string');
     expect(response.body.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(await database.get('SELECT COUNT(*) AS count FROM bookings'))
-      .toEqual({ count: before.bookings.count + 1 });
+      .toEqual({ count: before.bookings.count });
     expect(await database.get("SELECT COUNT(*) AS count FROM bookings WHERE status = 'COMPLETED'"))
-      .toEqual({ count: before.completedBookings.count + 1 });
+      .toEqual({ count: before.completedBookings.count });
     expect(await database.get('SELECT COUNT(*) AS count FROM transactions'))
       .toEqual({ count: before.transactions.count + 1 });
     expect(await database.get('SELECT COUNT(*) AS count FROM booking_credits'))
-      .toEqual({ count: before.credits.count + 1 });
+      .toEqual({ count: before.credits.count });
 
     const recent = await request(app)
       .get('/api/transactions/recent?limit=1')
       .set('x-pwtest', '1');
     expect(recent.status).toBe(200);
     expect(recent.body[0].transaction_id).toBe(response.body.transaction_id);
-    expect(recent.body[0].booking_credit_amount).toBe(50);
+    expect(recent.body[0].booking_credit_amount).toBe(0);
 
     const all = await request(app)
       .get('/api/transactions?limit=10')
       .set('x-pwtest', '1');
     expect(all.status).toBe(200);
-    expect(all.body.transactions[0].booking_credit_amount).toBe(50);
+    expect(all.body.transactions[0].booking_credit_amount).toBe(0);
 
     const filtered = await request(app)
       .get(`/api/transactions?limit=10&date=${response.body.date}&status=ACTIVE`)
@@ -267,17 +271,14 @@ describe('booking reservation to financial transaction boundary', () => {
       .get(`/api/reports/financial?from_date=${response.body.date}&to_date=${response.body.date}`)
       .set('x-pwtest', '1');
     expect(financial.status).toBe(200);
-    expect(financial.body.summary.booking_credits).toBeGreaterThanOrEqual(50);
+    expect(financial.body.summary.booking_credits).toBe(before.activeCreditTotal.total);
     expect(financial.body.summary.total_staff_pay).toBe(
-      financial.body.summary.base_masseuse_fees + financial.body.summary.booking_credits
+      financial.body.summary.base_masseuse_fees + before.activeCreditTotal.total
     );
 
     const requestedStaff = financial.body.staffBreakdown.find(
       staff => staff.staffName === 'May เมย์'
     );
-    expect(requestedStaff.bookingCredits).toBeGreaterThanOrEqual(50);
-    expect(requestedStaff.totalStaffPay).toBe(
-      requestedStaff.baseFees + requestedStaff.bookingCredits
-    );
+    expect(requestedStaff.totalStaffPay).toBe(requestedStaff.baseFees + requestedStaff.bookingCredits);
   });
 });

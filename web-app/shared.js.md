@@ -370,4 +370,4 @@ Transaction APIs now return `booking_credit_amount`, but shared frontend state p
 `loadTodayData()` and its fallback mapper are the common transaction boundary for New Customer, Daily Summary, and Home.
 
 ### Resolution
-Both mappers expose numeric `bookingCredit`; `submitTransaction()` sends the boolean `requested_staff_booking` contract; shared fee totals add base `masseuseFee` and `bookingCredit` without modifying either component.
+Both mappers expose numeric `bookingCredit`; `submitTransaction()` preserves the request field shape while normal Walk-in pages now send `requested_staff_booking: false`; shared fee totals add base `masseuseFee` and `bookingCredit` without modifying either component.
