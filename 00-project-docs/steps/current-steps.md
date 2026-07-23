@@ -130,15 +130,15 @@
     *   **Potential Challenges and Mitigations**: The homepage is a shared entry point and has older global CSS plus newer compact summary overrides; mitigate by adding Home-scoped classes instead of broad dashboard changes. Empty local preview data must render useful empty states instead of blank panels.
     *   **Verification**: RED homepage interaction contract failed before implementation; GREEN `__tests__/homepage.contract.present.test.js` passed 9/9 after implementation; inline scripts parsed for `web-app/index.html` and `web-app/index.ejs`; in-app browser verification at 667x998 showed the three Home cards in one row at 206px wide by 100px tall and each card opened one full-width detail panel with `aria-expanded=true`; `npm run lint` passed; `npm audit --omit=dev --audit-level=high` still reports the governed pre-existing dependency backlog of 27 vulnerabilities / 13 high; `git diff --check` passed.
 
-15. **[Feature] Immediate Requested-Staff Booking and Visible Credit.**
-    *   **Status**: ✅ `done` - BKG-005 (2026-07-14)
+15. **[Feature] Manual Staff Walk-In and Visible Booking Credit.**
+    *   **Status**: ✅ `done / clarified` - BKG-005 updated 2026-07-23
     *   **Priority**: High
-    *   **Required**: A customer already present can request a non-next staff member and complete payment in one submit with the separate `฿50` credit; explicit reservations may start now; credit-bearing transactions visibly show a compact annotation.
+    *   **Required**: A customer already present can use a manually selected non-next staff member as a normal walk-in with no booking row or credit; explicit reservations may start now; actual credit-bearing booking arrivals visibly show a compact annotation.
     *   **Dependencies**: Booking/transaction routes, active `booking_credits`, transaction read APIs, `shared.js`, mirrored New Customer/Daily Summary/Home templates, and manager financial reports.
-    *   **Expected Output/Deliverable**: Atomic immediate requested-staff conversion, now-or-later reservation scheduling, `booking_credit_amount` on transaction reads, compact transaction badges, and separate base-credit-total staff-pay reporting.
-    *   **Technical Considerations**: No schema change. Preserve credit isolation from Today Staff previous-day ranking and preserve manual queue ordering. Use server time for immediate conversion and indexed transaction-credit joins.
-    *   **Potential Challenges and Mitigations**: Prevent partial booking/transaction writes by keeping immediate conversion in one backend transaction; prevent the old oversized UI from returning by contract-testing compact list-only markup.
-    *   **Verification**: AC-010 through AC-013 passed through focused/integration tests, parsed mirrored scripts, indexed SQLite plan checks, and a 630x998 in-app browser canary; see the BKG-005 completion notes.
+    *   **Expected Output/Deliverable**: Manual non-next walk-in isolation, now-or-later explicit reservation scheduling, `booking_credit_amount` on transaction reads, compact transaction badges for actual booking credits, and separate base-credit-total staff-pay reporting.
+    *   **Technical Considerations**: No schema change. Preserve credit isolation from Today Staff previous-day ranking and preserve manual queue ordering. Do not infer booking intent from non-next staff selection; use explicit Booking mode and indexed transaction-credit joins.
+    *   **Potential Challenges and Mitigations**: Prevent accidental booking rows by contract-testing `requestedStaffBooking: false` in normal walk-in submission and by ignoring stale immediate-booking payloads on the server; prevent the old oversized UI from returning by contract-testing compact list-only markup.
+    *   **Verification**: AC-010 through AC-013 passed through focused/integration tests, parsed mirrored scripts, indexed SQLite plan checks, and browser canaries; see the BKG-005 completion notes.
 
 16. **[Bugfix/UX] Home Navigation Consolidation and Live Recent Activity.**
     *   **Status**: ✅ DONE (2026-07-14) - HOME-001

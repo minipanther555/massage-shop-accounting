@@ -16,7 +16,7 @@ The suite initializes the production database model in a temporary database, see
 - The partial unique transaction index enforces one current financial conversion per booking while allowing correction history.
 - Converting a generic reservation uses arrival-time staff selection and writes one booking credit for the serving masseuse.
 - Creating a reservation in the current minute succeeds without a forced future delay.
-- A present requested-staff submit atomically creates one completed booking, one transaction, and one active credit.
+- A present walk-in with manually selected staff creates one transaction and no implicit booking or booking credit, even if a stale client sends `requested_staff_booking: true`.
 - Transaction read APIs expose `booking_credit_amount`; filtered pagination remains valid.
 - Financial reports expose base commission, booking credit, and combined staff pay.
 - Mixed UTC/`+07:00` timestamps are ordered chronologically and new timestamps are stored as ISO text.
@@ -31,4 +31,4 @@ The suite initializes the production database model in a temporary database, see
 
 Added with the reservation feature to prevent bookings from being treated as immediate revenue or requested-staff credit from being issued before arrival.
 
-Expanded for BKG-005 after browser smoke exposed two integration-only failures: non-next walk-ins could not reach the immediate path, and raw timestamp ordering left a successfully submitted credit-bearing row below older offset-formatted rows.
+Expanded for BKG-005 after browser smoke exposed timestamp ordering and credit visibility gaps. Updated again on 2026-07-23 after manager clarification that non-next staff selection during a present walk-in must not imply Booking mode or create booking credit.

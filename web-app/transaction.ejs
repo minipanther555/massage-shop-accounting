@@ -1163,9 +1163,7 @@
                 customerContact: document.getElementById('customerContact').value,
                 original_transaction_id: document.getElementById('original-transaction-id').value || null,
                 bookingId: document.getElementById('booking-id').value || null,
-                requestedStaffBooking: transactionMode === 'walk-in'
-                    && selectedMasseuse !== autoSelectedMasseuse
-                    && !arrivingBooking,
+                requestedStaffBooking: false,
                 startDateTime: currentStartDateTime,
                 endDateTime: currentEndDateTime,
                 time_window_promotion_override: timeWindowPromotionOverride

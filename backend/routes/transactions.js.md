@@ -49,7 +49,8 @@
     *   **Purpose:** Creates a new transaction. This is the main endpoint for submitting the "New Transaction" form. It also contains the logic for handling "transaction corrections" (edits).
     *   **Parameters (Body):** A JSON object containing all transaction details (`masseuse_name`, `service_type`, `location`, `duration`, etc.). If `original_transaction_id` is provided, the endpoint enters "edit mode".
     *   **Logic:** Every new transaction computes `business_day` through `backend/utils/business-day.js` so late-night Bangkok transactions before 2:00 a.m. belong to the previous business day. This value is stored alongside the legacy UTC-derived `date`. When the browser or booking flow provides `start_datetime` and `end_datetime`, the route persists those canonical service-window timestamps so Current Shop Status and booking buffer logic do not infer timing from creation time. The route recomputes any time-window promotion on the server and stores the base price, final paid amount, discount amount, promotion type, and label. The normal `services.masseuse_fee` is always used unchanged.
-    *   **Logic (Booking Arrival):** With `booking_id`, the handler loads the `BOOKED` reservation and treats its service, duration, location, and optional requested staff as authoritative. One `BEGIN IMMEDIATE TRANSACTION` inserts the transaction, marks the booking `COMPLETED`, and creates one separate active `฿50` credit only for requested staff. A generic booking receives queue-selected staff at arrival and no booking credit.
+    *   **Logic (Booking Arrival):** With `booking_id`, the handler loads the `BOOKED` reservation and treats its service, duration, location, and optional requested staff as authoritative. One `BEGIN IMMEDIATE TRANSACTION` inserts the transaction, marks the booking `COMPLETED`, and creates one separate active `฿50` credit for booking arrivals.
+    *   **Walk-In Staff Selection Boundary:** A normal walk-in remains a walk-in even when reception manually selects a non-next staff member. The route ignores stale `requested_staff_booking` payloads for ordinary transaction creation; only explicit booking rows passed by `booking_id` can create booking credits.
     *   **Failure Modes:** Missing or closed bookings, duplicate conversion, invalid staff/service, and violation of another booking's 15-minute buffer are rejected. Any write failure rolls back the conversion.
 *   **Logic (Edit Mode):** When `original_transaction_id` is present, the handler will:
         1.  Find the original transaction.
@@ -149,11 +150,11 @@
     *   Frontend styling is applied correctly (edited-transaction class, edited-status-badge)
     *   Edit buttons are properly disabled for EDITED transactions
 
-### Immediate Requested-Staff Conversion and Credit Reads (2026-07-14)
-* **Bug Summary:** A present customer requesting a non-next staff member required a redundant reservation/arrival flow, and transaction read APIs did not expose the already-persisted separate booking credit.
-* **Validated Hypothesis:** The immediate path must create a completed booking, transaction, and active credit inside one SQLite transaction; list APIs must join the active credit by `transaction_id`.
-* **Invalidated Hypotheses:** Selecting non-next staff should automatically switch the browser into non-financial reservation mode; the credit should be merged into `transactions.masseuse_fee`.
-* **Resolution:** `POST /` accepts `requested_staff_booking`, uses server time, inserts and completes the booking atomically, and preserves the separate `booking_credits` row. `GET /`, `GET /recent`, and the create response expose `booking_credit_amount`; the paginated count query now aliases `transactions` consistently with filtered conditions.
+### Manual Walk-In Staff Selection and Credit Reads (updated 2026-07-23)
+* **Bug Summary:** A present walk-in manually assigned to a non-next staff member could be converted into an unexpected completed booking and booking credit.
+* **Validated Hypothesis:** Non-next selection does not always mean booking intent; the next queue member may be unable to perform the requested massage.
+* **Invalidated Hypotheses:** The transaction route should trust `requested_staff_booking` on ordinary walk-ins; the credit should be merged into `transactions.masseuse_fee`; selecting non-next staff should automatically switch the browser into non-financial reservation mode.
+* **Resolution:** `POST /` now treats ordinary manual staff selection as a normal walk-in and ignores stale immediate `requested_staff_booking` payloads. `GET /`, `GET /recent`, and the create response still expose `booking_credit_amount` for actual booking-arrival transactions; the paginated count query aliases `transactions` consistently with filtered conditions.
 
 ### Recent Transactions Used Unstable Timestamp Storage and Ordering (2026-07-14)
 * **Bug Summary:** A successful submit updated revenue/count but the new row remained below older preview transactions, hiding its compact credit badge and making correction selection stale.

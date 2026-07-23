@@ -7,11 +7,11 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 
 ## Current Phase Addendum (2026-07-09): Staff-Facing UI Rework
 
-### Immediate Requested-Staff Booking and Visible Credit (2026-07-14)
-- BKG-005 is complete: a present customer can select a non-next staff member, pay once, and atomically create the completed booking, transaction, and separate `฿50` credit.
+### Manual Staff Walk-In and Visible Booking Credit (updated 2026-07-23)
+- BKG-005's old immediate requested-staff booking rule is superseded: a present customer can select a non-next staff member and still remain a normal paid walk-in with no booking row and no `฿50` booking credit.
 - Explicit reservations default to the current Bangkok minute but may still be scheduled later; reservations remain non-financial until arrival.
 - New Customer, Daily Summary, Home, and manager reports now expose the credit compactly while preserving separate base commission and Today Staff ranking isolation.
-- Browser smoke also fixed two adjacent regressions: non-next selection no longer silently changes modes, and recent transaction ordering parses timestamp offsets so the just-submitted row appears first.
+- Booking rows are created only through explicit Booking mode; booking arrivals still create the separate `฿50` credit.
 - Focused/integration tests, seven mirrored inline-script parses, indexed SQLite plan checks, lint, `git diff --check`, and 630x998 browser verification passed. The existing dependency advisory backlog remains unchanged.
 
 ### Home Dashboard Interactive Drilldowns (2026-07-14)

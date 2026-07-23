@@ -25,15 +25,25 @@ describe('New Customer booking workflow contracts', () => {
     expect(source).not.toContain('ค่าจอง ฿50');
     expect(source).toContain('transaction-booking-credit-badge');
     expect(source).toContain('จองพนักงาน +฿50');
-    expect(source).toContain('requestedStaffBooking');
+    expect(source).toContain('requestedStaffBooking: false');
     expect(source).toContain('currentBaseMasseuseFee');
     expect(source).toContain('bookingFee');
     expect(source).toContain("`฿${currentBaseMasseuseFee.toFixed(2)} + ฿${bookingFee.toFixed(2)}`");
     expect(source).not.toContain('เลือกพนักงานนอกคิว จึงเปลี่ยนเป็นรายการจอง');
     expect(source).not.toContain("setTransactionMode('booking', { preserveMasseuse: true })");
+    expect(source).not.toContain("selectedMasseuse !== autoSelectedMasseuse\n                    && !arrivingBooking");
     expect(source).toContain('ลูกค้า:');
     expect(source).toContain('บริการ:');
     expect(source).toContain('พนักงาน:');
+  });
+
+  test.each(templates)('%s keeps manually selected non-next staff as walk-in unless Booking is explicitly selected', (template) => {
+    const source = read(template);
+    const submitBlock = source.slice(source.indexOf('async function handleSubmit'), source.indexOf('const success = await submitTransaction'));
+    expect(submitBlock).toContain("if (transactionMode === 'booking')");
+    expect(submitBlock).toContain('await api.createBooking');
+    expect(submitBlock).toContain('requestedStaffBooking: false');
+    expect(submitBlock).not.toContain('selectedMasseuse !== autoSelectedMasseuse');
   });
 
   test('frontend API exposes reservation contracts', () => {

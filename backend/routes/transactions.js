@@ -8,11 +8,8 @@ const { getTimeWindowQuote } = require('../services/time-window-promotion-servic
 const {
   BOOKING_CREDIT_AMOUNT,
   BOOKING_BUFFER_MINUTES,
-  calculateScheduledEnd,
-  createBookingId,
   hasBookingConflict,
   isBookingCreditEligible,
-  normalizeBookingStart
 } = require('../services/booking-service');
 
 async function getCorrectionEligibleStaff(businessDay, excludedTransactionId, now = new Date()) {
@@ -300,23 +297,8 @@ router.post('/', async (req, res) => {
         requestedStaffBooking = false;
       } else if (bookingId) {
         return res.status(400).json({ error: 'Immediate requested-staff booking cannot reuse another booking' });
-      }
-      if (requestedStaffBooking) {
-        const immediateStart = normalizeBookingStart(new Date().toISOString());
-        startDateTime = immediateStart;
-        endDateTime = calculateScheduledEnd(immediateStart, Number(duration));
-        bookingId = createBookingId();
-        booking = {
-          booking_id: bookingId,
-          scheduled_start: startDateTime,
-          scheduled_end: endDateTime,
-          service_type: serviceType,
-          location,
-          duration: Number(duration),
-          requested_masseuse_name: masseuseName,
-          customer_contact: customerContact,
-          status: 'BOOKED'
-        };
+      } else {
+        requestedStaffBooking = false;
       }
     }
 

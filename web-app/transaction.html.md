@@ -7,7 +7,7 @@
 *   **End-to-End Data Flow:**
     1.  **Initialization:** On page load (`DOMContentLoaded`), the inline script calls `loadData()` from `shared.js`. This function fetches initial state from multiple backend API endpoints: staff roster, all available services, and payment methods.
     2.  **User Interaction:** The user follows the Thai-first intake sequence: confirm the auto-selected next staff member, confirm or change the default `In-Shop` location, choose a service category button, choose a duration button, choose a payment button on its own line, optionally enter a customer name or phone number, then review the auto-filled start/end time and calculated price/fee. Because nearly all work is in-shop, the location field defaults to `In-Shop` and the page immediately populates matching service options on load. The original `service`, `duration`, and `payment` selects remain in the DOM as hidden contract controls, but staff use the large button layer. Button clicks write the exact historical select values so existing pricing, time, correction, and submission logic continues to work.
-    3.  **Mode Selection:** Walk-in mode auto-selects the next queue member. Selecting another staff member means the customer requested that person and changes the form to booking mode. Explicit booking mode may leave staff blank for queue assignment on arrival.
+    3.  **Mode Selection:** Walk-in mode auto-selects the next queue member. Reception may manually select another available staff member while staying in Walk-in mode, for example when the next queue member cannot perform the requested massage. Only explicit Booking mode creates a booking. Explicit booking mode may leave staff blank for queue assignment on arrival.
     4.  **Reservation Submission:** Booking mode saves the future schedule, service, duration, location, customer contact, and optional requested staff through `POST /api/bookings`. It hides payment and creates no transaction or earnings.
     5.  **Arrival Conversion:** The upcoming-bookings panel offers `ลูกค้ามาถึง`. It restores saved details, requests payment, and submits the booking ID through the existing transaction path.
     6.  **Backend Processing:** Walk-ins create transactions normally. Booking arrivals atomically create one linked transaction, mark the booking `COMPLETED`, and add a separate `฿50` credit only for requested-staff bookings. The credit is backend payroll state and is intentionally not displayed in the receptionist intake form.
@@ -65,7 +65,7 @@ This module consists of an HTML structure and a large inline `<script>` block th
 
     *   **Booking Functions (`setCustomerMode()`, `loadUpcomingBookings()`, `startBookingArrival()`, `markBookingNoShow()`):**
     *   **Purpose:** Switches reservation semantics, renders pending bookings, and converts an arrival into a minimal payment-confirmation flow.
-    *   **Logic:** Explicit booking mode allows nullable staff. Overriding the auto-selected next staff member records requested-staff intent. Arrival restores authoritative reservation fields and changes the primary action back to transaction submission. Each active booking also exposes a confirmed `ไม่มา (No-show)` action that calls `POST /api/bookings/:bookingId/status` with `NO_SHOW`, reloads the booking list, and refreshes staff availability.
+    *   **Logic:** Explicit booking mode allows nullable staff. Manually selecting a non-next staff member in Walk-in mode remains a normal walk-in and does not record requested-staff booking intent. Arrival restores authoritative reservation fields and changes the primary action back to transaction submission. Each active booking also exposes a confirmed `ไม่มา (No-show)` action that calls `POST /api/bookings/:bookingId/status` with `NO_SHOW`, reloads the booking list, and refreshes staff availability.
 
 *   **`escapeBookingText(value)`:**
     *   **Purpose:** Escapes server-provided booking text before upcoming rows are rendered with `innerHTML`.
@@ -313,7 +313,19 @@ appData.originalTransactionId = transaction.id;
 
 **Invalidated Hypotheses:** The backend lacked immediate conversion; the receptionist needed to create a reservation and then mark arrival for a customer already present.
 
-**Resolution:** Removed the automatic mode switch from both templates. Walk-in remains active, and submit classifies a manually selected non-next staff member as an immediate requested-staff booking while ordinary next-staff selection remains a normal walk-in.
+**Resolution:** Removed the automatic mode switch from both templates. Walk-in remains active, and submit keeps manually selected non-next staff as a normal walk-in while ordinary next-staff selection also remains a normal walk-in. Booking rows are created only through explicit Booking mode.
+
+### Bug #0.15: Non-Next Walk-In Created Unexpected Booking Rows (2026-07-23)
+**Bug Summary:** The manager saw bookings that reception did not intentionally create. The old workflow treated manually selecting a non-next staff member during a present walk-in as requested-staff booking intent.
+
+**Validated Hypothesis:** A non-next staff selection can still be a true walk-in because the next queue member may not perform the requested service. The hidden `requestedStaffBooking` flag and backend immediate-booking branch converted that walk-in into a completed booking and booking credit.
+
+**Invalidated Hypotheses:**
+- Every non-next staff selection means the customer made a booking.
+- Removing only the visible auto-switch is enough while leaving the hidden request flag.
+- The backend can safely trust stale `requested_staff_booking` payloads for transaction creation.
+
+**Resolution:** Both templates now submit `requestedStaffBooking: false` for normal Walk-in mode, and `POST /api/transactions` ignores stale immediate requested-staff booking payloads. Only explicit Booking mode calls `POST /api/bookings`; booking arrival conversion with `booking_id` still creates booking credits.
 
 ### Bug #0.8: Immediate Booking Default and Credit Visibility (2026-07-14)
 **Bug Summary:** Explicit booking defaulted thirty minutes ahead, while the real `฿50` credit was either shown as an oversized intake card or hidden from transaction lists.

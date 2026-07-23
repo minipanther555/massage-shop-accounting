@@ -1,6 +1,6 @@
 # Booking Reservations and Requested-Staff Credit Steps
 
-> **Status:** BKG-001 IMPLEMENTED - in-app browser click-through pending; BKG-002 superseded by DSS; BKG-003 DONE; BKG-004 OPEN; BKG-005 DONE; BKG-006 OPEN
+> **Status:** BKG-001 IMPLEMENTED - in-app browser click-through pending; BKG-002 superseded by DSS; BKG-003 DONE; BKG-004 OPEN; BKG-005 SUPERSEDED BY MANUAL-STAFF WALK-IN CLARIFICATION; BKG-006 OPEN
 > **Feature Specification:** `00-project-docs/feature-specifications/booking-reservations-and-requested-staff-credit.md`
 
 ## BKG-001 - Reservation, Arrival Conversion, and Separate Credit
@@ -109,19 +109,19 @@
 
 **Expected Deliverable:** A correction-safe, API-safe booking arrival path with permanent regression tests and updated docs.
 
-## BKG-005 - Immediate Requested-Staff Booking and Visible Credit
+## BKG-005 - Present Manual Staff Selection and Visible Booking Credit
 
-**Status:** ✅ DONE (2026-07-14)
+**Status:** SUPERSEDED / UPDATED (2026-07-23)
 
-**Goal:** Let a customer already at the shop request a non-next staff member without a redundant reservation/arrival round trip, allow explicit reservations to start now, and make the resulting separate `฿50` credit visible as a compact transaction annotation and explicit reporting component.
+**Goal:** Keep a customer already at the shop in the normal Walk-in flow even when reception manually selects a non-next staff member, while preserving explicit Booking-mode reservations and booking-credit visibility for actual booking arrivals.
 
 **Dependencies:** BKG-001, New Customer next-staff auto-selection, `backend/routes/transactions.js`, `backend/routes/bookings.js`, `backend/routes/reports.js`, `web-app/shared.js`, and mirrored New Customer, Daily Summary, and Home templates.
 
 **Traceability:** FR-013, FR-014; AC-010 through AC-013.
 
 **Action Items:**
-- [x] Add RED tests for immediate non-next staff conversion, ordinary next-staff isolation, immediate reservation time, and credit-bearing transaction reads.
-- [x] Add an atomic immediate requested-staff transaction contract without changing the database schema.
+- [x] Add RED tests for manual non-next staff walk-in isolation, ordinary next-staff isolation, immediate reservation time, and credit-bearing booking-arrival transaction reads.
+- [x] Remove the implicit immediate requested-staff booking contract from normal walk-in submission without changing the database schema.
 - [x] Default explicit reservation time to now and let the server normalize an immediate reservation timestamp.
 - [x] Return active `booking_credit_amount` from transaction read contracts.
 - [x] Render a compact Thai-first credit annotation in New Customer, Daily Summary, and Home transaction rows.
@@ -129,15 +129,15 @@
 - [x] Preserve Today Staff base-commission-only ranking and manual queue-reordering behavior.
 - [x] Run integration, browser, security, query-plan, mirrored-template, and documentation verification.
 
-**Validation:** Focused tests prove AC-010 through AC-013; a narrow in-app browser smoke shows immediate requested-staff submission and compact `จองพนักงาน +฿50` transaction badges without the old large card; SQLite query plans use transaction/credit indexes; inline scripts, lint, and `git diff --check` pass.
+**Validation:** Focused tests prove AC-010 through AC-013 under the clarified rule; normal manual staff walk-ins do not create booking rows or booking credits, while actual Booking-mode arrivals still expose compact `จองพนักงาน +฿50` transaction badges without the old large card; SQLite query plans use transaction/credit indexes; inline scripts, lint, and `git diff --check` pass.
 
-**Technical Considerations:** Use server time for the immediate path to avoid browser clock and minute-precision drift. Keep `booking_credits` separate from base commission. Reuse the existing booking and transaction tables and active-credit uniqueness constraints; no schema change is required.
+**Technical Considerations:** Use explicit Booking mode for booking creation. Keep `booking_credits` separate from base commission and create them only from booking-arrival conversion. Reuse the existing booking and transaction tables and active-credit uniqueness constraints; no schema change is required.
 
-**Potential Challenges and Mitigations:** Avoid a frontend create-booking-then-create-transaction sequence because it can partially succeed; the backend must own the atomic immediate conversion. Join active credit by indexed `transaction_id`. Keep compact badge markup page-scoped and escape all stored values.
+**Potential Challenges and Mitigations:** Avoid reintroducing a hidden frontend or backend inference from non-next staff to booking. Join active credit by indexed `transaction_id`. Keep compact badge markup page-scoped and escape all stored values.
 
-**Expected Deliverable:** A one-submit immediate requested-staff workflow plus visible, auditable `฿50` credit information across transaction lists and financial reporting.
+**Expected Deliverable:** A normal one-submit walk-in workflow for manually selected staff plus visible, auditable `฿50` credit information across transaction lists and financial reporting for actual booking arrivals.
 
-**Completion Notes:** Completed 2026-07-14 with no schema change and no production access. RED receipts proved missing immediate-time normalization, missing compact/report credit contracts, unintended non-next-to-reservation mode switching, unstable `Date` persistence, and mixed-offset recent ordering. GREEN receipts: 5 focused suites / 23 tests; 3 integration/adjacent suites / 13 tests; booking reservation integration 4/4; all seven modified static/EJS inline-script sets parsed. Browser smoke on isolated port 3003 proved booking defaults to the current Bangkok minute, non-next selection remains walk-in, one paid submit creates the requested-staff result, the new row becomes first, and the compact `จองพนักงาน +฿50` badge fits at 630x998. Every uniquely labeled browser canary transaction, booking, credit, and staff-pay delta was removed afterward. SQLite plan evidence used `idx_transactions_recent_date_timestamp` for the date slice and the unique `booking_credits(transaction_id)` index for the join, with a bounded temporary sort over the daily rows. `npm run lint` and `git diff --check` passed. `npm audit --omit=dev --audit-level=high` still reports the pre-existing dependency backlog of 27 vulnerabilities / 13 high; no dependency files changed in BKG-005.
+**Completion Notes:** Original 2026-07-14 delivery is superseded for present walk-ins by the 2026-07-23 manager clarification: manual non-next staff selection can be a walk-in because the next queue member may not perform the requested service. The current contract keeps non-next selection in Walk-in mode, submits `requestedStaffBooking: false`, and server-side transaction creation ignores stale `requested_staff_booking` payloads unless an explicit `booking_id` is present. Explicit Booking mode and booking-arrival credits remain intact.
 
 ## BKG-006 - Universal Booking Commission and Cross-Page Staff Earnings Detail
 

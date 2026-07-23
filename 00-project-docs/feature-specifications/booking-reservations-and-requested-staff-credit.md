@@ -12,7 +12,7 @@ Allow reception to record a future customer reservation without creating revenue
 - A future reservation can be saved without a payment method.
 - Saving a reservation does not create a transaction, revenue, commission, payday balance, or busy status.
 - A reservation can either request one masseuse or defer staff selection to the queue at arrival.
-- Overriding the automatically selected next staff member is treated as a requested-staff booking.
+- Overriding the automatically selected next staff member while the customer is already present remains a walk-in; only explicit Booking mode creates a booking.
 - Arrival conversion reuses the saved service, duration, location, contact, and scheduled time and asks reception for payment.
 - A completed requested-staff booking creates a separate payable `฿50` credit.
 - A queue-assigned booking creates its `฿50` booking credit for the masseuse who serves the paid arrival.
@@ -30,7 +30,7 @@ Allow reception to record a future customer reservation without creating revenue
 ### In Scope
 - Non-financial reservation persistence.
 - Optional requested masseuse.
-- Explicit booking mode and automatic booking recognition when next-staff selection is overridden.
+- Explicit booking mode only; changing staff during a present walk-in does not create a booking.
 - Future start and calculated end times.
 - Upcoming booking list on the New Customer page.
 - Low-effort arrival conversion into the existing transaction form.
@@ -158,8 +158,8 @@ The current shop-status surface needs, per staff member: current busy state, bus
 ### FR-012: Deferred Queue Reordering
 Walk-in assignment uses the Today Staff list as the stable day-start tie-break order. Completed massages are the primary workload count; an unreleased booking also reserves that staff member from walk-ins and contributes to assigned workload. Active massages and unreleased bookings make a staff member ineligible, including a late booking until reception marks it `NO_SHOW`. Among eligible staff, the lowest assigned workload wins. When workloads tie, the original Today Staff order wins, even after queue rotations; a booking may temporarily change eligibility but does not rewrite the original order.
 
-### FR-013: Immediate Requested-Staff Arrival
-When a customer is already present and reception selects a staff member other than the automatically selected next Today Staff member, the page remains in `ลูกค้ามาแล้ว / Walk-in` mode and the submission is classified as an immediate requested-staff booking. Payment remains required. One submit atomically creates a completed booking record, one financial transaction, and one active `฿50` booking credit for the selected staff member. Selecting the automatically chosen next staff member remains a normal walk-in and creates no booking or credit.
+### FR-013: Present Walk-In Manual Staff Selection
+When a customer is already present and reception selects a staff member other than the automatically selected next Today Staff member, the page remains in `ลูกค้ามาแล้ว / Walk-in` mode and the submission is still a normal walk-in. This supports real shop cases where the next queue member cannot perform the requested service. Payment remains required. One submit creates one financial transaction and no booking row or `฿50` booking credit. A booking is created only when reception explicitly chooses `จองเวลา / Booking`.
 
 Explicit reservation mode accepts a start time of now or any later time. The browser defaults the reservation time to now rather than forcing a 30-minute delay. A reservation saved without payment remains non-financial until arrival conversion, even when its scheduled time is now.
 
@@ -267,7 +267,7 @@ Rollback disables booking UI/routes while leaving additive tables intact. Existi
 - AC-007: Booking mode works without payment; arrival mode cannot submit without payment.
 - AC-008: Normal walk-in flow remains auto-selected to next staff and creates no booking record or credit.
 - AC-009: Queue reordering remains manual and unchanged.
-- AC-010: Submitting a present customer with a manually selected non-next staff member creates one completed booking, one transaction, and one active `฿50` credit atomically; the same submission for the auto-selected next staff member creates no booking or credit.
+- AC-010: Submitting a present customer with a manually selected non-next staff member creates one normal walk-in transaction and no booking or `฿50` credit; the same no-booking/no-credit rule applies to the auto-selected next staff member.
 - AC-011: Reservation mode defaults to now and the API accepts server-normalized immediate reservation time as well as later times without allowing materially stale past reservations.
 - AC-012: Transaction list and recent-transaction responses return `booking_credit_amount = 50` for an active requested-staff credit and `0` for ordinary walk-ins, and mirrored staff-facing transaction rows show a compact badge only for the former.
 - AC-013: Daily Summary and manager reports expose booking credit separately and total staff pay equals base commission plus active booking credit, while Today Staff ranking output remains unchanged.
