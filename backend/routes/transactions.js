@@ -57,6 +57,28 @@ async function getCorrectionCandidates(businessDay, requestedLimit = 10) {
   );
 }
 
+async function reverseActiveBookingCredit(transactionId) {
+  const activeCredit = await database.get(
+    `SELECT id, masseuse_name, amount
+     FROM booking_credits
+     WHERE transaction_id = ? AND status = 'ACTIVE'`,
+    [transactionId]
+  );
+  if (!activeCredit) return null;
+
+  await database.run(
+    `UPDATE booking_credits
+     SET status = 'REVERSED', reversed_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [activeCredit.id]
+  );
+  await database.run(
+    'UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?',
+    [activeCredit.amount, activeCredit.masseuse_name]
+  );
+  return activeCredit;
+}
+
 // Get all transactions (with pagination and filtering)
 router.get('/', async (req, res) => {
   try {
@@ -651,23 +673,7 @@ router.post('/', async (req, res) => {
           [originalTransaction.masseuse_fee, originalTransaction.masseuse_name]
         );
 
-        const originalCredit = await database.get(
-          `SELECT id, masseuse_name, amount FROM booking_credits
-           WHERE transaction_id = ? AND status = 'ACTIVE'`,
-          [originalTransactionId]
-        );
-        if (originalCredit) {
-          await database.run(
-            `UPDATE booking_credits
-             SET status = 'REVERSED', reversed_at = CURRENT_TIMESTAMP
-             WHERE id = ?`,
-            [originalCredit.id]
-          );
-          await database.run(
-            'UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?',
-            [originalCredit.amount, originalCredit.masseuse_name]
-          );
-        }
+        await reverseActiveBookingCredit(originalTransactionId);
 
         bookingId = bookingId || originalTransaction.booking_id;
 
@@ -831,6 +837,75 @@ router.get('/correction-candidates', async (req, res) => {
   } catch (error) {
     console.error('Error fetching correction candidates:', error);
     res.status(500).json({ error: 'Failed to fetch correction candidates' });
+  }
+});
+
+router.post('/:transactionId/cancel', async (req, res) => {
+  let dbTransactionStarted = false;
+  try {
+    const { transactionId } = req.params;
+    const transaction = await database.get(
+      `SELECT transaction_id, status, business_day, masseuse_name, masseuse_fee, booking_id
+       FROM transactions
+       WHERE transaction_id = ?`,
+      [transactionId]
+    );
+
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const currentBusinessDay = getBusinessDay(new Date());
+    if (transaction.business_day !== currentBusinessDay) {
+      return res.status(409).json({ error: 'Only current-business-day walk-ins can be cancelled' });
+    }
+    if (transaction.booking_id) {
+      return res.status(409).json({ error: 'Booking-backed cancellation is not implemented yet' });
+    }
+    if (transaction.status !== 'ACTIVE') {
+      return res.status(409).json({ error: 'Transaction is not eligible for cancellation' });
+    }
+
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
+    await database.run(
+      'UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?',
+      [transaction.masseuse_fee, transaction.masseuse_name]
+    );
+    await reverseActiveBookingCredit(transaction.transaction_id);
+    const cancelResult = await database.run(
+      `UPDATE transactions
+       SET status = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ? AND status = 'ACTIVE'`,
+      ['CANCELLED (Customer left before service)', transaction.transaction_id]
+    );
+    if (cancelResult.changes !== 1) {
+      throw new Error('Cancellation update failed because the transaction was no longer active');
+    }
+
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
+
+    const cancelledTransaction = await database.get(
+      `SELECT t.*, COALESCE(bc.amount, 0) AS booking_credit_amount
+       FROM transactions t
+       LEFT JOIN booking_credits bc
+         ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
+       WHERE t.transaction_id = ?`,
+      [transaction.transaction_id]
+    );
+    return res.json(cancelledTransaction);
+  } catch (error) {
+    if (dbTransactionStarted) {
+      try {
+        await database.run('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Failed to roll back transaction cancellation:', rollbackError);
+      }
+    }
+    console.error('Error cancelling transaction:', error);
+    return res.status(500).json({ error: 'Failed to cancel transaction' });
   }
 });
 

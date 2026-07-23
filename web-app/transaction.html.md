@@ -59,9 +59,9 @@ This module consists of an HTML structure and a large inline `<script>` block th
     *   **Purpose:** Ensures JavaScript-generated placeholders, duration labels, empty recent-transaction messages, empty expense messages, and correction-mode messages do not revert the redesigned page back to English after initialization.
     *   **Logic:** `populateDropdowns()`, `updateServiceOptions()`, `updateDurationOptions()`, `updateTimeDropdowns()`, `updateRecentTransactions()`, `updateExpenseDisplay()`, and correction-mode helpers emit Thai text while preserving the underlying option values used by the backend contract. Service options display the existing English service name plus a short Thai hint in parentheses, but the `<option value>` remains the canonical English service name expected by pricing lookup and submission logic.
 
-*   **Correction Logic (`loadCorrection()`, `checkForEdit()`):**
-    *   **Purpose:** To handle the editing/correction of a transaction.
-    *   **Logic:** The `checkForEdit` function checks `sessionStorage` for a transaction to be edited (placed there by another page). It pre-populates the form with the transaction details, sets critical global state variables (`appData.correctionMode` and `appData.originalTransactionId`), and sets a hidden input field (`original-transaction-id`) to link the new, corrected transaction to the old one. The `loadCorrection` button fetches the most recent transaction via the API. Both functions ensure that corrections are properly tracked in the global state for downstream processing.
+*   **Correction and Cancellation Logic (`loadCorrection()`, `checkForEdit()`, `cancelLoadedCorrection()`, `exitCorrectionMode()`):**
+    *   **Purpose:** To handle editing/correction of a transaction and cancellation of a saved current-day normal walk-in after a correction target is loaded.
+    *   **Logic:** The `checkForEdit` function checks `sessionStorage` for a transaction to be edited (placed there by another page). It pre-populates the form with the transaction details, sets critical global state variables (`appData.correctionMode` and `appData.originalTransactionId`), and sets a hidden input field (`original-transaction-id`) to link the new, corrected transaction to the old one. The `loadCorrection` button fetches the most recent transaction via the API and reveals the hidden Thai-first `ยกเลิกรายการนี้` action. Earlier-transaction candidate buttons call the same load path, so cancellation is available only after a target is explicitly loaded. `cancelLoadedCorrection()` confirms with the receptionist, calls `cancelCorrectionTransaction(appData.originalTransactionId)`, clears the form on success, and refreshes page panels. The page-local `exitCorrectionMode()` clears both its local correction flag and shared `appData` correction state so the cancel button, banner, and backend target state stay aligned.
 
     *   **Booking Functions (`setCustomerMode()`, `loadUpcomingBookings()`, `startBookingArrival()`, `markBookingNoShow()`):**
     *   **Purpose:** Switches reservation semantics, renders pending bookings, and converts an arrival into a minimal payment-confirmation flow.
@@ -85,6 +85,7 @@ This module consists of an HTML structure and a large inline `<script>` block th
         *   `POST /api/bookings`: Creates a non-financial reservation.
         *   `GET /api/bookings/availability`: Checks requested-staff availability with the 15-minute buffer.
         *   `POST /api/transactions/quote`: Returns a server-authoritative base/final price and whether time-window override is available.
+        *   `POST /api/transactions/:transactionId/cancel`: Cancels an eligible loaded current-business-day normal walk-in without deleting the row.
 
 *   **Downstream Dependencies (Outputs):**
     *   **Called Modules/Services:** This page makes calls to the backend API via the wrapper functions in `web-app/api.js`.
@@ -178,6 +179,18 @@ This module consists of an HTML structure and a large inline `<script>` block th
 **Invalidated Hypotheses:** The promotion window was disabled; In-Shop Oil promotion rows were missing; Home Service was selected; the server quote failed to apply the matching exact Oil massage row.
 
 **Resolution:** Added `getPreferredCategoryService()` to select exact active `Oil massage` for the generic Oil category while preserving the first available fallback if that catalog row is unavailable. The backend catalog and promotion data remain unchanged.
+
+### Bug #0.14: Loaded Walk-In Had No Cancel Action (2026-07-23)
+**Bug Summary:** Reception could load the latest or an earlier transaction for correction, but if the customer left before massage there was no low-clutter cancel action from the same workflow.
+
+**Validated Hypothesis:** The edit surface already held the correct target transaction ID. A hidden Thai-first cancel button could be revealed only after a target was loaded and call a server-authoritative cancellation endpoint.
+
+**Invalidated Hypotheses:**
+- Normal transaction entry should always show a cancellation action.
+- A frontend delete/hide would preserve audit and payroll correctness.
+- The page-local reset could ignore shared `appData` correction fields.
+
+**Resolution:** Added the hidden `cancel-correction-button`, reveals it in `loadCorrection()`, hides and clears it in `exitCorrectionMode()`, and calls `cancelCorrectionTransaction(appData.originalTransactionId)` after a Thai confirmation. Browser smoke verified the button is initially hidden, appears for the loaded walk-in, then clears correction state after cancellation.
 
 ### Bug #0.11: Expense Delete Was Only Local Browser State (2026-07-14)
 **Bug Summary:** The New Customer expense delete button removed a row from `appData.expenses` and refreshed the side panel, but it did not call the backend delete endpoint.

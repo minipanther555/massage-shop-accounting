@@ -55,6 +55,14 @@
 - **Returns:** A transaction object or newest-first array of eligible transaction rows.
 - **Logic:** Calls the transaction correction-read endpoints; the server determines the business day and excludes superseded originals.
 
+#### `cancelTransaction(transactionId, reason = 'customer_left_before_service')`
+- **Purpose:** Cancels a loaded current-business-day normal walk-in through the server-authoritative transaction route.
+- **Parameters:**
+  - `transactionId`: Transaction identifier string, required.
+  - `reason`: Cancellation reason string, optional.
+- **Returns:** Promise with the preserved cancelled transaction row.
+- **Logic:** Sends `POST /api/transactions/:transactionId/cancel`; the backend owns eligibility checks, status transition, and staff/credit reversal.
+
 ### Staff API Methods
 
 #### `getStaffRoster()`
@@ -200,6 +208,7 @@
 - **Calling Modules/Services:** All frontend JavaScript files (transaction.html, shared.js, etc.)
 - **Input Data Contracts / Schemas:** 
   - Transaction objects with properties: masseuse, service, payment, startTime, endTime, etc.
+  - Transaction cancellation requests with `transactionId` and optional `reason`
   - Staff objects with properties: name, status, position, busy_until
   - Current shop status rows with staff identity, queue position, state, busy time, daily count, and next booking metadata
   - Today Staff helper rows with `staff_id`, `display_name`, `previous_day_commission`, `was_day_off_yesterday`, `today_planning_status`, and `can_add_to_today_staff`

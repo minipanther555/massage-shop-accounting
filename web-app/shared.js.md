@@ -74,7 +74,7 @@ For navigation labels, pages request or hardcode the bilingual label structure u
 - **Usage & Logic Notes:** Resets all counts to 0, filters transactions by current date and active/corrected status, increments counts for each masseuse
 
 #### `exitCorrectionMode()`
-- **Purpose:** Exit transaction correction mode and reset correction-related state
+- **Purpose:** Exit transaction correction or cancellation mode and reset correction-related state
 - **Parameters:** None
 - **Returns:** None
 - **Raises:** None
@@ -144,6 +144,15 @@ For navigation labels, pages request or hardcode the bilingual label structure u
 - **Returns:** Promise<object|null> - transaction data if found, null if none available
 - **Raises:** Error if API call fails
 - **Usage & Logic Notes:** Awaits the selected API result before entering correction mode, sets `originalTransactionId`, and preserves location, duration, service window, and booking linkage.
+
+#### `cancelCorrectionTransaction(transactionId, reason = 'customer_left_before_service')`
+- **Purpose:** Cancel the transaction currently loaded into correction mode when the customer leaves before service.
+- **Parameters:**
+  - `transactionId`: Transaction identifier string, required.
+  - `reason`: Cancellation reason string, optional.
+- **Returns:** Promise<object|null> - cancelled transaction row on success, null on validation/API failure.
+- **Raises:** None to callers; API errors are caught and shown as Thai-first toast feedback.
+- **Usage & Logic Notes:** Calls `api.cancelTransaction()`, exits correction mode, reloads current transaction/expense data and current shop status, then returns the cancelled row so the page can clear its form and refresh local panels. The server remains authoritative for eligibility and financial/staff reversal.
 
 #### `enterCorrectionMode()`
 - **Purpose:** Enter transaction correction mode

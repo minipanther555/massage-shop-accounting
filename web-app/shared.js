@@ -512,6 +512,24 @@ async function loadTransactionForCorrection(transactionId = null) {
   }
 }
 
+async function cancelCorrectionTransaction(transactionId, reason = 'customer_left_before_service') {
+  if (!transactionId) {
+    showToast('ไม่มีรายการที่เลือกไว้ให้ยกเลิก', 'error');
+    return null;
+  }
+
+  try {
+    const cancelledTransaction = await api.cancelTransaction(transactionId, reason);
+    exitCorrectionMode();
+    await Promise.all([loadTodayData(), loadCurrentShopStatus()]);
+    showToast('ยกเลิกรายการแล้ว');
+    return cancelledTransaction;
+  } catch (error) {
+    showToast(error.message || 'ยกเลิกรายการไม่สำเร็จ', 'error');
+    return null;
+  }
+}
+
 // Enter/exit correction mode
 function enterCorrectionMode() {
   appData.correctionMode = true;

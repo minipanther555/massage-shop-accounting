@@ -173,6 +173,13 @@ class APIClient {
     return this.request(`/transactions/correction-candidates?limit=${limit}`);
   }
 
+  async cancelTransaction(transactionId, reason = 'customer_left_before_service') {
+    return this.request(`/transactions/${encodeURIComponent(transactionId)}/cancel`, {
+      method: 'POST',
+      body: { reason }
+    });
+  }
+
   async getTodayTransactionSummary() {
     return this.request('/reports/summary/today');
   }
@@ -213,21 +220,21 @@ class APIClient {
   async createAddOn(payload) {
     return this.request('/transactions/add-ons', {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: payload
     });
   }
 
   async settleAddOn(transactionId, paymentMethod) {
     return this.request(`/transactions/add-ons/${encodeURIComponent(transactionId)}/settle`, {
       method: 'POST',
-      body: JSON.stringify({ payment_method: paymentMethod })
+      body: { payment_method: paymentMethod }
     });
   }
 
   async cancelAddOn(transactionId) {
     return this.request(`/transactions/add-ons/${encodeURIComponent(transactionId)}/cancel`, {
       method: 'POST',
-      body: JSON.stringify({})
+      body: {}
     });
   }
 
