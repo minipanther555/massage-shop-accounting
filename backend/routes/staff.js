@@ -2,6 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { countsAsMassage } = require('../services/add-on-sql');
 const { BOOKING_BUFFER_MINUTES } = require('../services/booking-service');
 const { getBusinessDayParts, getNextBusinessDay } = require('../utils/business-day');
 
@@ -38,6 +39,7 @@ async function getActiveTodayStaff(businessDay) {
          WHERE t.business_day = ts.business_day
            AND t.masseuse_name = ts.display_name
            AND t.status = 'ACTIVE'
+           AND ${countsAsMassage('t')}
        ), 0) AS today_massages,
        ts.added_at AS last_updated,
        ts.staff_id,

@@ -194,11 +194,13 @@
 - [x] Updated OTDD coverage so a row with `timestamp=14:00`, `start_datetime=14:10`, and `end_datetime=15:20` remains busy until `15:20` and free at `15:35`.
 - Evidence: `mocha tests/otdd/daily-summary-current-status.test.js --reporter dot` and `jest __tests__/daily-summary.current-status.present.test.js --testEnvironment=node --runInBand` passed during the whole-app UI/database audit.
 
-## DSS-009 - Current Status Summary Priority Wording
+## DSS-009 - Daily Summary Busy/Free State Discrepancy
 
-**Status:** OPEN (2026-07-23)
+**Status:** ✅ INVESTIGATED - NO STATE BUG (2026-07-23); presentational follow-up remains open
 
-**Goal:** Resolve the live discrepancy where the compact `สามคนถัดไป` summary can appear to disagree with the New Customer next-masseuse dropdown.
+**Goal:** Determine whether Daily Summary Current Shop Status can ever show a staff member's busy/free state differently from the New Customer dropdown or from live operational reality.
+
+> **Scope correction (2026-07-23):** this step was originally titled "Current Status Summary Priority Wording" and framed as a `walk_in_priority` ordering mismatch. That framing came from a browser-selected div rather than from the operator's report, which was that `แยม` was free while Daily Summary showed her busy. The ordering observation is retained below as a secondary finding, but it was never the reported bug.
 
 **Dependencies:** `00-project-docs/feature-specifications/daily-summary-current-shop-status.md`, `web-app/summary.html`, `web-app/summary.html.md`, `web-app/transaction.html`, `backend/routes/staff.js`, `backend/routes/staff.js.md`, `/api/staff/current-status`, and the New Customer walk-in priority contract.
 
@@ -210,4 +212,14 @@
 
 **Validation:** Browser or DOM test proves the summary no longer contradicts the New Customer next-masseuse selection in the same status payload.
 
-**Observed Evidence (2026-07-23):** Live Daily Summary rendered `สามคนถัดไป พี่ดาว ตอนนี้ · พี่นิชา ตอนนี้ · พี่ภัทร ตอนนี้` while the detailed rows showed five currently free staff. Source review showed `renderStatusSummary()` uses `availableRows.slice(0, 3)` from the status payload order, while `getNextInLineFromStaff()` on New Customer prefers the `walk_in_priority` flag.
+**Secondary Observation (2026-07-23):** Live Daily Summary rendered `สามคนถัดไป พี่ดาว ตอนนี้ · พี่นิชา ตอนนี้ · พี่ภัทร ตอนนี้` while the detailed rows showed five currently free staff. Source review showed `renderStatusSummary()` uses `availableRows.slice(0, 3)` from the status payload order, while `getNextInLineFromStaff()` on New Customer prefers the `walk_in_priority` flag. This is an ordering difference, not a state difference.
+
+**Investigation Result (2026-07-23): NO STATE BUG.**
+
+- `GET /staff/roster` (`backend/routes/staff.js:409`) and `GET /staff/current-status` (`backend/routes/staff.js:429`) both call `getActiveTodayStaff()`, so the two surfaces cannot disagree about which staff exist.
+- Daily Summary's free set is `current_state === 'available'` (`web-app/summary.html:311`). New Customer's enabled set is the complement of `isMasseuseUnavailableForWalkIn()` (`web-app/transaction.html:475-478`). Over a common payload these are provably the same set.
+- Production screenshots at 17:07 and 17:12 on 2026-07-23 confirm it: the same six staff busy (`พี่แอร์`, `พี่ขวัญ`, `พี่อุ้ม`, `พี่พงศ์`, `พี่นาง`, `จอย`) and the same five free (`พี่ดาว`, `พี่นิชา`, `พี่ภัทร`, `P'นิ`, `แยม`) on both surfaces. `แยม` was free on both.
+- Evidence: `__tests__/staff-availability.surface-equivalence.test.js` extracts the real predicate from both `transaction.html` and `transaction.ejs` and asserts set equality across every `current_state` combination. 10/10 green.
+- The dropdown deliberately fails **open** when the status payload is missing, while Daily Summary fails closed. This is intentional and now guarded by test: failing closed would prevent reception from recording any transaction during a transient network failure, which is worse than briefly offering a busy masseuse to a receptionist who can see the room.
+
+**Remaining Open (presentational only):** the same free staff are shown in three different orders — Daily Summary sorts them by name (`backend/routes/staff.js:447`), the dropdown lists them in Today Staff position order, and the auto-selection uses fewest massages today. The operator's ruling is that free staff should be listed in the same practical queue order as New Customer, and that each free row should show its massage count so the reason for the auto-selection is visible. No new server field is required; `position` is already in the payload and the sort must stay within the existing busy → booking-constrained → free grouping required by AC-DSS-002.

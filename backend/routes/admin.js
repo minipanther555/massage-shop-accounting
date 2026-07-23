@@ -4,6 +4,7 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const database = require('../models/database');
+const { countsAsMassage } = require('../services/add-on-sql');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 // Apply authentication and manager authorization to all admin routes
@@ -140,7 +141,7 @@ router.get('/staff', async (req, res) => {
                 END as payment_status,
                 JULIANDAY('now') - JULIANDAY(s.last_payment_date) as days_since_payment,
                 date('now', 'weekday 0') as next_payment_due,
-                (SELECT COUNT(*) FROM transactions t 
+                (SELECT COUNT(CASE WHEN ${countsAsMassage('t')} THEN 1 END) FROM transactions t
                  WHERE t.masseuse_name = s.name 
                  AND date(t.timestamp) = date('now') 
                  AND t.status = 'ACTIVE') as today_transactions,
@@ -148,7 +149,7 @@ router.get('/staff', async (req, res) => {
                  WHERE t.masseuse_name = s.name 
                  AND date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
                  AND t.status = 'ACTIVE') as this_week_fees,
-                (SELECT COUNT(*) FROM transactions t 
+                (SELECT COUNT(CASE WHEN ${countsAsMassage('t')} THEN 1 END) FROM transactions t
                  WHERE t.masseuse_name = s.name 
                  AND date(t.timestamp) >= date('now', 'weekday 1', '-6 days')
                  AND t.status = 'ACTIVE') as this_week_massages
@@ -475,7 +476,7 @@ router.get('/staff/performance', async (req, res) => {
     const performance = await database.all(`
             SELECT 
                 t.masseuse_name,
-                COUNT(*) as massage_count,
+                COUNT(CASE WHEN ${countsAsMassage('t')} THEN 1 END) as massage_count,
                 SUM(t.masseuse_fee) as total_fees_earned,
                 SUM(t.payment_amount) as total_revenue_generated,
                 AVG(t.masseuse_fee) as avg_fee_per_massage,
@@ -501,10 +502,10 @@ router.get('/staff/rankings', async (req, res) => {
     const rankings = await database.all(`
             SELECT 
                 s.name as masseuse_name,
-                COUNT(t.id) as total_massages,
+                COUNT(CASE WHEN ${countsAsMassage('t')} THEN t.id END) as total_massages,
                 COALESCE(SUM(t.masseuse_fee), 0) as total_earnings,
                 COALESCE(AVG(t.masseuse_fee), 0) as avg_fee,
-                (SELECT COUNT(*) FROM transactions t2 
+                (SELECT COUNT(CASE WHEN ${countsAsMassage('t2')} THEN 1 END) FROM transactions t2
                  WHERE t2.masseuse_name = s.name 
                  AND date(t2.timestamp) >= date('now', 'weekday 1', '-6 days')
                  AND t2.status = 'ACTIVE') as this_week_count,

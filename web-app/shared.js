@@ -135,7 +135,20 @@ async function loadTodayData() {
       startTime: t.start_time,
       endTime: t.end_time,
       customerContact: t.customer_contact || '',
-      status: t.status
+      status: t.status,
+      // Paid Time Extension works from the raw row: it must know which sale is an
+      // add-on, whether its money has arrived, and the exact occupied window.
+      transaction_id: t.transaction_id,
+      masseuse_name: t.masseuse_name,
+      service_type: t.service_type,
+      location: t.location,
+      payment_amount: t.payment_amount,
+      business_day: t.business_day,
+      start_datetime: t.start_datetime,
+      end_datetime: t.end_datetime,
+      parent_transaction_id: t.parent_transaction_id || null,
+      add_on_kind: t.add_on_kind || null,
+      payment_status: t.payment_status || 'PAID'
     }));
 
     appData.expenses = expenses.map((e) => ({
@@ -424,7 +437,18 @@ async function submitTransaction(formData) {
             startTime: t.start_time,
             endTime: t.end_time,
             customerContact: t.customer_contact || '',
-            status: t.status
+            status: t.status,
+            transaction_id: t.transaction_id,
+            masseuse_name: t.masseuse_name,
+            service_type: t.service_type,
+            location: t.location,
+            payment_amount: t.payment_amount,
+            business_day: t.business_day,
+            start_datetime: t.start_datetime,
+            end_datetime: t.end_datetime,
+            parent_transaction_id: t.parent_transaction_id || null,
+            add_on_kind: t.add_on_kind || null,
+            payment_status: t.payment_status || 'PAID'
           }));
           console.log('✅ STEP 8: Fallback successful - transactions loaded:', appData.transactions.length);
         } else {

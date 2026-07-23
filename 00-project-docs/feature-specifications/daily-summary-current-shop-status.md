@@ -105,7 +105,9 @@ The lower page must not duplicate the same payment and fee breakdowns as separat
 - AC-DSS-017: The finance summary has a Thai-first collapsible section header so the receptionist can hide finances and move Current Shop Status upward.
 - AC-DSS-018: Current Shop Status shows a compact summary below its header with free-now count, the next free staff member/time, and the next three free staff entries.
 - AC-DSS-019: The Daily Summary navigation link to the Today Staff page is labeled as Today's Staff Queue, not a generic staff roster.
-- AC-DSS-020: The compact `สามคนถัดไป` summary must not contradict the New Customer next-masseuse dropdown. If the summary is intended to show walk-in assignment order, it must use the same `walk_in_priority` / workload / Today Staff tie-break contract as New Customer. If it is intended to show alphabetical free-now status, the Thai label must be changed so reception does not read it as queue order.
+- AC-DSS-020: Daily Summary Current Shop Status and the New Customer masseuse dropdown must always name the same set of free staff for a given `/api/staff/current-status` payload. Verified 2026-07-23 and guarded by `__tests__/staff-availability.surface-equivalence.test.js`. The dropdown's deliberate fail-open behaviour on a missing payload is exempt and is separately guarded.
+- AC-DSS-021: Free staff in the compact summary are listed in Today Staff `position` order rather than name order, sorted within the existing busy → booking-constrained → free grouping, so the strip does not imply an assignment order that contradicts New Customer.
+- AC-DSS-022: Each free row in the compact summary shows that staff member's massage count for the day, so the reason the auto-selected masseuse was chosen is visible to reception.
 
 ## 5. Data Contract Draft
 

@@ -2,6 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 const database = require('../models/database');
+const { countsAsMassage, isSettled } = require('../services/add-on-sql');
 
 // Daily summary report
 router.get('/daily/:date?', async (req, res) => {
@@ -20,7 +21,7 @@ router.get('/daily/:date?', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE'`,
+       WHERE t.date = ? AND t.status = 'ACTIVE' AND ${isSettled('t')}`,
       [date]
     );
 
@@ -41,7 +42,7 @@ router.get('/daily/:date?', async (req, res) => {
         COUNT(*) as count,
         SUM(payment_amount) as revenue
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'
+       WHERE date = ? AND status = 'ACTIVE' AND ${isSettled('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
       [date]
@@ -51,7 +52,7 @@ router.get('/daily/:date?', async (req, res) => {
     const masseusePerformance = await database.all(
       `SELECT
         t.masseuse_name,
-        COUNT(*) as massage_count,
+        COUNT(CASE WHEN ${countsAsMassage('t')} THEN 1 END) as massage_count,
         SUM(t.masseuse_fee) as baseFees,
         COALESCE(SUM(bc.amount), 0) as bookingCredits,
         SUM(t.masseuse_fee) + COALESCE(SUM(bc.amount), 0) as totalStaffPay,
@@ -97,7 +98,7 @@ router.get('/weekly', async (req, res) => {
     const weeklyFees = await database.all(
       `SELECT
         t.masseuse_name,
-        COUNT(*) as weekly_massages,
+        COUNT(CASE WHEN ${countsAsMassage('t')} THEN 1 END) as weekly_massages,
         SUM(t.masseuse_fee) as baseFees,
         COALESCE(SUM(bc.amount), 0) as bookingCredits,
         SUM(t.masseuse_fee) + COALESCE(SUM(bc.amount), 0) as weekly_fees
@@ -200,7 +201,7 @@ router.get('/summary/today', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE'`,
+       WHERE t.date = ? AND t.status = 'ACTIVE' AND ${isSettled('t')}`,
       [today]
     );
 
@@ -211,7 +212,7 @@ router.get('/summary/today', async (req, res) => {
         COUNT(*) as count,
         SUM(payment_amount) as revenue
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'
+       WHERE date = ? AND status = 'ACTIVE' AND ${isSettled('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
       [today]
@@ -469,9 +470,23 @@ router.post('/end-day', async (req, res) => {
       [today, dailyData.total_revenue, dailyData.total_fees, dailyData.total_transactions, expenseData.total_expenses]
     );
 
-    // Clear today's transactions (now that they're saved to daily_summaries)
+    // Clear today's transactions (now that they're saved to daily_summaries).
+    //
+    // PTE-END-001: an add-on with payment still outstanding must survive the close,
+    // and so must the original sale it points at — deleting one without the other
+    // would strand the link and erase the record that anyone owed money. Parent and
+    // add-on are excluded as a linked pair in a single predicate.
     const clearedTransactions = await database.run(
-      'DELETE FROM transactions WHERE date = ?',
+      `DELETE FROM transactions
+       WHERE date = ?
+         AND transaction_id NOT IN (
+           SELECT transaction_id FROM transactions
+            WHERE payment_status = 'PENDING' AND status = 'ACTIVE'
+           UNION
+           SELECT parent_transaction_id FROM transactions
+            WHERE payment_status = 'PENDING' AND status = 'ACTIVE'
+              AND parent_transaction_id IS NOT NULL
+         )`,
       [today]
     );
 

@@ -189,7 +189,7 @@
     *   **Validation**: DOM/API test and browser check prove the selected Daily Summary div no longer contradicts the New Customer dropdown.
 
 21. **[Feature] Paid Time Extension / Add-On Service.**
-    *   **Status**: ⚪ `spec created only` - implementation not started (2026-07-23)
+    *   **Status**: 🟡 Phase 0 ✅ DONE (2026-07-23) - data model confirmed as linked transaction rows; steps file re-authored in canonical phase/gate format with 23 steps across 9 phases; next runnable step is `PTE-DB-001` (additive schema columns, `/db-ops-regular` Mode B)
     *   **Priority**: High
     *   **Required**: Customers may add time or a second service after already paying and starting a massage. The system must charge only the additional amount owed while preserving the original paid transaction.
     *   **Dependencies**: `00-project-docs/feature-specifications/paid-time-extension.md`, `00-project-docs/steps/paid-time-extension-steps.md`, New Customer transaction flow, correction/reversal flow, service catalog pricing, Current Shop Status, reports, and Payday Tracking.
@@ -197,3 +197,16 @@
     *   **Technical Considerations**: Do not silently edit the original paid transaction. Decide during CFEP whether to model add-ons as linked transaction rows or a dedicated add-on table. Server must calculate price/commission from trusted catalog data.
     *   **Potential Challenges and Mitigations**: Add-time touches money, staff pay, and availability. Start with RED tests for the two operator examples: 60-to-90 same-service upgrade and 90-minute massage plus 60-minute foot massage.
     *   **Validation**: Governed PTE steps must pass focused integration, UI contract, report/status regression, browser smoke, lint, and security review before deployment.
+
+22. **[Risk/Data] End-Day Deletion Hardening.**
+    *   **Status**: ⚪ `open / deferred` - logged 2026-07-23 during PTE-001, deliberately out of scope for Paid Time Extension
+    *   **Priority**: Medium; raise if end-day is used regularly in production
+    *   **Required**: `POST /api/reports/end-day` (`backend/routes/reports.js:444-490`) summarises the day into `daily_summaries` and then hard-deletes the day's rows with `DELETE FROM transactions WHERE date = ?` and `DELETE FROM expenses WHERE date = ?`. Three latent problems were found while scoping add-time, none of them caused by it:
+        *   The summary counts only `status = 'ACTIVE'` rows, but the delete has **no status filter**, so `CORRECTED` and `EDITED%` rows are destroyed without ever being summarised.
+        *   The date key is `new Date().toISOString().split('T')[0]`, a **UTC calendar date**, while the rest of the app keys on the Bangkok business day. Running end-day after 00:00 Bangkok targets the previous UTC day.
+        *   Deletion removes the audit trail that correction, booking-credit, and add-on linkage all depend on. `corrected_from_id` and `parent_transaction_id` become dangling after a close.
+    *   **Dependencies**: `backend/routes/reports.js`, `backend/utils/business-day.js`, `daily_summaries`, `web-app/shared.js` `endDay()`, mirrored Daily Summary templates.
+    *   **Expected Output/Deliverable**: End-day archives rather than deletes, filters consistently between what it summarises and what it removes, and keys on the Bangkok business day.
+    *   **Technical Considerations**: PTE-006 narrowly protects add-on and parent rows so Paid Time Extension can ship; it does not fix the underlying behaviour. The proper non-destructive rollover already exists in `business_days` / `resetIfStale()`, so the two day-closing mechanisms should be reconciled rather than both maintained.
+    *   **Potential Challenges and Mitigations**: This is the day-close path everything downstream depends on, and it is destructive by construction, so it needs its own change with a restore-from-archive test rather than being folded into a feature branch. Confirm with the operator how often end-day is actually pressed before sizing the work; it may be a legacy control that is never used.
+    *   **Validation**: A transaction of every status survives a close and is recoverable; `daily_summaries` matches what was summarised; a close run just after Bangkok midnight targets the correct business day.

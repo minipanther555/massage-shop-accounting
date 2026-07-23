@@ -57,7 +57,10 @@ class Database {
         base_price DECIMAL(10,2),
         discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
         promotion_type TEXT,
-        promotion_label TEXT
+        promotion_label TEXT,
+        parent_transaction_id TEXT,
+        add_on_kind TEXT,
+        payment_status TEXT NOT NULL DEFAULT 'PAID'
       )`,
 
       // Staff roster (equivalent to Daily Entry roster section)
@@ -301,7 +304,13 @@ class Database {
         { name: 'base_price', definition: 'DECIMAL(10,2)' },
         { name: 'discount_amount', definition: 'DECIMAL(10,2) NOT NULL DEFAULT 0' },
         { name: 'promotion_type', definition: 'TEXT' },
-        { name: 'promotion_label', definition: 'TEXT' }
+        { name: 'promotion_label', definition: 'TEXT' },
+        // Paid Time Extension (PTE-DB-001): links an add-on to the original sale,
+        // types it, and tracks whether its money has arrived. Defaults keep every
+        // pre-existing row reading exactly as it did before.
+        { name: 'parent_transaction_id', definition: 'TEXT' },
+        { name: 'add_on_kind', definition: 'TEXT' },
+        { name: 'payment_status', definition: "TEXT NOT NULL DEFAULT 'PAID'" }
       ].map(c => ({ table: 'transactions', ...c })),
 
       // Archived transactions table columns

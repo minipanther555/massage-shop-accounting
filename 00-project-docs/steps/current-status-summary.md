@@ -14,15 +14,26 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 - Booking rows are created only through explicit Booking mode; booking arrivals still create the separate `฿50` credit.
 - Focused/integration tests, seven mirrored inline-script parses, indexed SQLite plan checks, lint, `git diff --check`, and 630x998 browser verification passed. The existing dependency advisory backlog remains unchanged.
 
-### Daily Summary Current Status Follow-Up (opened 2026-07-23)
-- Live browser evidence showed the compact `สามคนถัดไป` strip can appear to disagree with the New Customer next-masseuse dropdown.
-- Source review found the Summary strip takes the first three `available` rows from the status payload order, while New Customer chooses the walk-in dropdown default from `walk_in_priority`.
-- DSS-009 is open to decide whether the strip should use the same walk-in priority order or be renamed so staff do not read it as queue order.
+### Daily Summary Busy/Free State - INVESTIGATED, NO BUG (2026-07-23)
+- The reported symptom was that `แยม` appeared busy on Daily Summary while New Customer showed her free. Debug could not reproduce any state disagreement.
+- Both surfaces read one payload from `/api/staff/current-status`, and `/staff/roster` and `/staff/current-status` both call `getActiveTodayStaff()`, so the staff set is identical by construction.
+- Production screenshots at 17:07 and 17:12 on 2026-07-23 show exact agreement: the same six staff busy and the same five free, `แยม` free on both.
+- `__tests__/staff-availability.surface-equivalence.test.js` extracts the real `isMasseuseUnavailableForWalkIn()` from both shipped templates and proves the two free-sets are equal across every `current_state` combination. 10/10 green.
+- The residual confusion is presentational: the Daily Summary strip lists free staff in Thai alphabetical order, the dropdown lists everyone in queue position order, and the auto-selection uses fewest-massages-today. Three different orders of the same correct data, none explained on screen.
+- The dropdown's deliberate fail-open behaviour when the status payload is missing is now locked in by test, with the rationale recorded: failing closed would stop reception recording any transaction during a network blip.
 
-### Paid Time Extension / Add-On Service (spec created 2026-07-23)
-- A new spec and steps file now govern customers who add time or another service after already paying and starting a massage.
-- The original paid transaction must stay intact; add-time/add-service should create a linked add-on or linked transaction and charge only the extra amount due.
-- The first implementation step is CFEP/data-model confirmation before any code: same-service duration upgrade and different-service add-on must both be covered.
+### Paid Time Extension / Add-On Service - PTE-001 DONE (2026-07-23)
+- The original paid transaction must stay intact; add-time/add-service creates a linked add-on row and charges only the extra amount due.
+- Data model confirmed by the operator: **linked add-on transaction rows**, not a separate table, with three additive columns `parent_transaction_id`, `add_on_kind`, and `payment_status`. Chosen because revenue and staff-pay aggregation stay correct with no query change, while only the count expressions need a qualifier.
+- Operator rulings: a same-service duration upgrade counts as one massage and a different-service add-on counts as two; add-ons may be settled later; upgrade pricing recalculates the final duration at today's promotion and subtracts what was paid; commission is never split.
+- CFEP surfaced a requirement the spec had missed: Extend is a third reception mode that must bypass the walk-in busy-staff guard, since the masseuse being extended is necessarily busy. Added as PTE-009 with PTE-010 and PTE-011.
+- A second operator pass then audited every step against the acceptance criteria and found four defects, all now fixed: `AC-PTE-002` still specified the rejected pricing rule and contradicted `AC-PTE-013`; the worked example in feature requirement PTE-003 used catalog-minus-catalog pricing, which overcharges a customer whose original sale was promotional; no step owned settlement or add-on correction; and PTE-004 still contained conditional language written before the data model was chosen.
+- Additional operator rulings from that pass: today's promotion applies to a different-service add-on exactly as to any sale; pending payment follows the existing pending-booking pattern with an outstanding-payment reminder and no no-show concept; cancelling an add-on reverts the occupied window to the original end plus buffer; and a recalculated upgrade price below the amount already paid is clamped to zero with no refund.
+- A third pass read every governing protocol in full before authoring, which surfaced six further defects: the steps file was in a non-canonical format with no phases or gates; the schema change was buried inside a feature step instead of isolated as the shared-contract change it is; there was no Verification & Hardening phase; there were no deploy or live-verify steps despite this being a reception-UI feature; and the spec was missing the Integration Architecture, State Transitions, Rollout Plan, and Testing Requirements sections that the steps mapping derives phase order and rollout from.
+- The spec gained sections 10 through 13, appended rather than renumbered to avoid breaking live cross-references. Section 11 defined the add-on lifecycle as two orthogonal axes — `status` for the row and `payment_status` for the money — and that in turn surfaced four uncovered failure modes, now `AC-PTE-023` through `AC-PTE-026`: double settlement, settle-after-cancel, nested add-ons, and parent immutability.
+- The steps file is re-authored in canonical format: 9 phases, 9 explicit gates, 23 steps, every step carrying a machine-checkable validation, with the seven deploy safety rules written verbatim into the deploy step rather than referenced.
+- Every acceptance criterion `AC-PTE-001` through `AC-PTE-026` is claimed by a named owning step.
+- Next runnable step is `PTE-DB-001`, the three additive columns under `/db-ops-regular` at Mode B. That protocol assumes Alembic on Postgres and this project has neither, so its revision-graph, stamp-discipline, deterministic-artifact, and hashing laws are declared inapplicable with reasons rather than silently skipped. The highest-regression-risk step remains `PTE-RPT-002`, filtering revenue on `payment_status` across roughly twelve aggregation sites in `backend/routes/reports.js`, which lands as its own commit.
 
 ### Home Dashboard Interactive Drilldowns (2026-07-14)
 - The Home page dashboard cards for Today's Revenue, Active Staff, and Today's Expenses are now compact clickable controls instead of tall static cards.

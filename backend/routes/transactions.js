@@ -191,6 +191,317 @@ router.post('/quote', async (req, res) => {
   }
 });
 
+const ADD_ON_KINDS = new Set(['DURATION_UPGRADE', 'ADDITIONAL_SERVICE']);
+const PAYMENT_STATUSES = new Set(['PAID', 'PENDING']);
+
+function addMinutesIso(iso, minutes) {
+  return new Date(Date.parse(iso) + (Number(minutes) * 60000)).toISOString();
+}
+
+/**
+ * Derive the add-on's occupied window.
+ * A duration upgrade stretches the original session to its new total length; an
+ * additional service begins where the original ended. Both are only defaults —
+ * an explicit window in the request wins.
+ */
+function deriveAddOnWindow({ parent, addOnKind, duration, startDateTime, endDateTime }) {
+  if (startDateTime && endDateTime) return { startDateTime, endDateTime };
+
+  const parentStart = parent.start_datetime || parent.timestamp;
+  const parentEnd = parent.end_datetime || addMinutesIso(parentStart, parent.duration);
+
+  if (addOnKind === 'DURATION_UPGRADE') {
+    return {
+      startDateTime: startDateTime || parentStart,
+      endDateTime: endDateTime || addMinutesIso(parentStart, duration),
+    };
+  }
+  return {
+    startDateTime: startDateTime || parentEnd,
+    endDateTime: endDateTime || addMinutesIso(parentEnd, duration),
+  };
+}
+
+// PTE-API-001 — create a paid add-on linked to an original sale.
+// The original transaction is never modified; money is always derived server-side.
+router.post('/add-ons', async (req, res) => {
+  let dbTransactionStarted = false;
+  try {
+    const {
+      parent_transaction_id: parentTransactionId,
+      add_on_kind: addOnKind,
+      service_type: serviceType,
+      location,
+      duration,
+      payment_method: paymentMethod = null,
+      payment_status: paymentStatus = 'PAID',
+      masseuse_name: requestedMasseuseName = null,
+      customer_contact: customerContact = '',
+      start_datetime: requestedStart = null,
+      end_datetime: requestedEnd = null,
+      time_window_promotion_override: manualOverride = false,
+    } = req.body;
+
+    if (!ADD_ON_KINDS.has(addOnKind)) {
+      return res.status(400).json({ error: 'add_on_kind must be DURATION_UPGRADE or ADDITIONAL_SERVICE' });
+    }
+    if (!parentTransactionId || !serviceType || !location || !duration) {
+      return res.status(400).json({
+        error: 'Missing required fields: parent_transaction_id, service_type, location, duration',
+      });
+    }
+    if (!PAYMENT_STATUSES.has(paymentStatus)) {
+      return res.status(400).json({ error: 'payment_status must be PAID or PENDING' });
+    }
+    if (paymentStatus === 'PAID' && !paymentMethod) {
+      return res.status(400).json({ error: 'payment_method is required when the add-on is paid now' });
+    }
+
+    const parent = await database.get(
+      'SELECT * FROM transactions WHERE transaction_id = ?',
+      [parentTransactionId]
+    );
+    if (!parent) return res.status(404).json({ error: 'Original transaction not found' });
+    if (parent.parent_transaction_id) {
+      return res.status(400).json({ error: 'An add-on cannot be extended; extend the original transaction instead' });
+    }
+    if (parent.status !== 'ACTIVE') {
+      return res.status(409).json({ error: 'Only an active transaction can be extended' });
+    }
+
+    const quote = await getTimeWindowQuote(database, {
+      serviceType,
+      location,
+      duration,
+      manualOverride: manualOverride === true,
+    });
+    if (!quote) return res.status(400).json({ error: 'Selected service is not active' });
+
+    let masseuseName;
+    let amountDue;
+    let masseuseFee;
+
+    if (addOnKind === 'DURATION_UPGRADE') {
+      if (serviceType !== parent.service_type) {
+        return res.status(400).json({ error: 'A duration upgrade must keep the same service as the original' });
+      }
+      if (Number(duration) <= Number(parent.duration)) {
+        return res.status(400).json({ error: 'A duration upgrade must be longer than the original duration' });
+      }
+      // The customer ends up with ONE session of the longer duration, so both the
+      // charge and the commission are the difference against what the parent already
+      // captured. Subtracting the amount actually paid (not the catalog price) is what
+      // keeps a promotional original sale from being overcharged.
+      masseuseName = parent.masseuse_name;
+      amountDue = Math.max(0, quote.finalPrice - Number(parent.payment_amount));
+      masseuseFee = Math.max(0, quote.masseuseFee - Number(parent.masseuse_fee));
+    } else {
+      // A second, separate service: full price and full commission, nothing subtracted.
+      masseuseName = requestedMasseuseName || parent.masseuse_name;
+      amountDue = quote.finalPrice;
+      masseuseFee = quote.masseuseFee;
+    }
+
+    const { startDateTime, endDateTime } = deriveAddOnWindow({
+      parent,
+      addOnKind,
+      duration,
+      startDateTime: requestedStart,
+      endDateTime: requestedEnd,
+    });
+
+    const timestamp = new Date();
+    const timestampIso = timestamp.toISOString();
+    const transactionId = `TX-${timestamp.getTime()}-${crypto.randomBytes(3).toString('hex')}`;
+    const businessDay = getBusinessDay(timestamp);
+
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
+    await database.run(
+      `INSERT INTO transactions (
+        transaction_id, timestamp, date, masseuse_name, service_type,
+        location, duration, payment_amount, payment_method, masseuse_fee,
+        start_time, end_time, customer_contact, status, business_day,
+        start_datetime, end_datetime, base_price, discount_amount,
+        promotion_type, promotion_label,
+        parent_transaction_id, add_on_kind, payment_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        transactionId, timestampIso, timestampIso.split('T')[0], masseuseName, serviceType,
+        // `payment_method` is NOT NULL, and a pending add-on genuinely has no method
+        // yet — it is recorded empty and filled in when reception settles it.
+        location, Number(duration), amountDue, paymentMethod || '', masseuseFee,
+        startDateTime, endDateTime, customerContact, businessDay,
+        startDateTime, endDateTime, quote.basePrice, quote.discountAmount,
+        quote.promotionType, quote.promotionLabel,
+        parentTransactionId, addOnKind, paymentStatus,
+      ]
+    );
+
+    // A pending add-on is work done but money not yet received, so it must not
+    // reach staff pay until it is settled (PTE-011 / AC-PTE-014).
+    if (paymentStatus === 'PAID') {
+      await database.run(
+        'UPDATE staff SET total_fees_earned = total_fees_earned + ? WHERE name = ?',
+        [masseuseFee, masseuseName]
+      );
+    }
+
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
+
+    const addOn = await database.get(
+      'SELECT * FROM transactions WHERE transaction_id = ?',
+      [transactionId]
+    );
+
+    return res.status(201).json({
+      amount_due: amountDue,
+      add_on: addOn,
+      parent: await database.get('SELECT * FROM transactions WHERE transaction_id = ?', [parentTransactionId]),
+    });
+  } catch (error) {
+    if (dbTransactionStarted) {
+      try { await database.run('ROLLBACK'); } catch (rollbackError) {
+        console.error('Failed to roll back add-on creation:', rollbackError);
+      }
+    }
+    console.error('Error creating transaction add-on:', error);
+    return res.status(500).json({ error: 'Failed to create add-on' });
+  }
+});
+
+/** Load an add-on row, or return the HTTP failure that should be sent instead. */
+async function loadAddOn(transactionId) {
+  const addOn = await database.get(
+    'SELECT * FROM transactions WHERE transaction_id = ?',
+    [transactionId]
+  );
+  if (!addOn) return { failure: { status: 404, error: 'Add-on not found' } };
+  if (!addOn.parent_transaction_id) {
+    return { failure: { status: 400, error: 'This transaction is not an add-on' } };
+  }
+  return { addOn };
+}
+
+// PTE-API-002 — settle a pending add-on.
+// Rejecting an already-settled add-on is what stops a double submit booking the
+// same money twice; the UI guard is not sufficient on its own.
+router.post('/add-ons/:transactionId/settle', async (req, res) => {
+  let dbTransactionStarted = false;
+  try {
+    const { payment_method: paymentMethod } = req.body;
+    if (!paymentMethod) {
+      return res.status(400).json({ error: 'payment_method is required to settle an add-on' });
+    }
+
+    const { addOn, failure } = await loadAddOn(req.params.transactionId);
+    if (failure) return res.status(failure.status).json({ error: failure.error });
+
+    if (addOn.status !== 'ACTIVE') {
+      return res.status(409).json({ error: 'A cancelled add-on cannot be settled' });
+    }
+    if (addOn.payment_status !== 'PENDING') {
+      return res.status(409).json({ error: 'This add-on has already been settled' });
+    }
+
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
+    // Guarded UPDATE: the WHERE clause re-checks PENDING so two concurrent submits
+    // cannot both pass the read above and both pay commission.
+    const settled = await database.run(
+      `UPDATE transactions
+       SET payment_status = 'PAID', payment_method = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ? AND payment_status = 'PENDING' AND status = 'ACTIVE'`,
+      [paymentMethod, addOn.transaction_id]
+    );
+
+    if (!settled.changes) {
+      await database.run('ROLLBACK');
+      dbTransactionStarted = false;
+      return res.status(409).json({ error: 'This add-on has already been settled' });
+    }
+
+    await database.run(
+      'UPDATE staff SET total_fees_earned = total_fees_earned + ? WHERE name = ?',
+      [addOn.masseuse_fee, addOn.masseuse_name]
+    );
+
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
+
+    return res.json({
+      add_on: await database.get('SELECT * FROM transactions WHERE transaction_id = ?', [addOn.transaction_id]),
+    });
+  } catch (error) {
+    if (dbTransactionStarted) {
+      try { await database.run('ROLLBACK'); } catch (rollbackError) {
+        console.error('Failed to roll back add-on settlement:', rollbackError);
+      }
+    }
+    console.error('Error settling add-on:', error);
+    return res.status(500).json({ error: 'Failed to settle add-on' });
+  }
+});
+
+// PTE-API-003 — cancel an add-on.
+// The staff member's occupied window returns to the parent's end plus the buffer
+// automatically, because current-status selects the latest-ending ACTIVE row and
+// this row stops being ACTIVE.
+router.post('/add-ons/:transactionId/cancel', async (req, res) => {
+  let dbTransactionStarted = false;
+  try {
+    const { addOn, failure } = await loadAddOn(req.params.transactionId);
+    if (failure) return res.status(failure.status).json({ error: failure.error });
+
+    if (addOn.status !== 'ACTIVE') {
+      return res.status(409).json({ error: 'This add-on has already been cancelled' });
+    }
+
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
+    const cancelled = await database.run(
+      `UPDATE transactions
+       SET status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP
+       WHERE transaction_id = ? AND status = 'ACTIVE'`,
+      [addOn.transaction_id]
+    );
+
+    if (!cancelled.changes) {
+      await database.run('ROLLBACK');
+      dbTransactionStarted = false;
+      return res.status(409).json({ error: 'This add-on has already been cancelled' });
+    }
+
+    // Only money that was actually paid out needs reversing; a pending add-on
+    // never reached staff pay in the first place.
+    if (addOn.payment_status === 'PAID') {
+      await database.run(
+        'UPDATE staff SET total_fees_earned = total_fees_earned - ? WHERE name = ?',
+        [addOn.masseuse_fee, addOn.masseuse_name]
+      );
+    }
+
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
+
+    return res.json({
+      add_on: await database.get('SELECT * FROM transactions WHERE transaction_id = ?', [addOn.transaction_id]),
+    });
+  } catch (error) {
+    if (dbTransactionStarted) {
+      try { await database.run('ROLLBACK'); } catch (rollbackError) {
+        console.error('Failed to roll back add-on cancellation:', rollbackError);
+      }
+    }
+    console.error('Error cancelling add-on:', error);
+    return res.status(500).json({ error: 'Failed to cancel add-on' });
+  }
+});
+
 router.post('/', async (req, res) => {
   console.log('--- [TX CREATE] Received POST request to /api/transactions ---');
   let dbTransactionStarted = false;

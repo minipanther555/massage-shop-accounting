@@ -66,9 +66,55 @@
                                     จองเวลา
                                     <small>Booking</small>
                                 </button>
+                                <button type="button" id="extend-mode-button" class="transaction-mode-button" onclick="setTransactionMode('extend')">
+                                    เพิ่มเวลา/บริการ
+                                    <small>Extend</small>
+                                </button>
                             </div>
                             <div id="booking-mode-note" class="transaction-booking-note" hidden>
                                 เลือกพนักงานเมื่อลูกค้าระบุชื่อ หรือปล่อยว่างเพื่อจัดตามคิวตอนลูกค้ามาถึง
+                            </div>
+                            <div id="extend-mode-panel" class="transaction-extend-panel" hidden>
+                                <p class="helper-text">เลือกนวดที่กำลังทำอยู่ แล้วเพิ่มเวลาหรือเพิ่มบริการ · ราคาเดิมไม่ถูกแก้</p>
+                                <div id="extend-candidates" class="transaction-extend-candidates"></div>
+                                <div id="extend-detail" hidden>
+                                    <div id="extend-original-summary" class="transaction-extend-original"></div>
+                                    <div class="transaction-extend-kind" role="group" aria-label="เลือกประเภทการเพิ่ม">
+                                        <button type="button" id="extend-kind-upgrade" class="transaction-extend-kind-button is-active" onclick="setExtendKind('DURATION_UPGRADE')">
+                                            เพิ่มเวลา
+                                            <small>More time</small>
+                                        </button>
+                                        <button type="button" id="extend-kind-service" class="transaction-extend-kind-button" onclick="setExtendKind('ADDITIONAL_SERVICE')">
+                                            เพิ่มบริการ
+                                            <small>Another service</small>
+                                        </button>
+                                    </div>
+                                    <div class="transaction-field-grid">
+                                        <div class="form-group transaction-field">
+                                            <label for="extend-service">บริการ</label>
+                                            <select id="extend-service" onchange="onExtendServiceChange()"></select>
+                                        </div>
+                                        <div class="form-group transaction-field">
+                                            <label for="extend-duration">ระยะเวลา</label>
+                                            <select id="extend-duration" onchange="updateExtendSummary()"></select>
+                                        </div>
+                                        <div class="form-group transaction-field" id="extend-masseuse-field" hidden>
+                                            <label for="extend-masseuse">พนักงาน</label>
+                                            <select id="extend-masseuse"></select>
+                                        </div>
+                                        <div class="form-group transaction-field" id="extend-payment-field">
+                                            <label for="extend-payment">การชำระเงิน</label>
+                                            <select id="extend-payment"></select>
+                                        </div>
+                                    </div>
+                                    <label class="transaction-extend-pending">
+                                        <input type="checkbox" id="extend-pending" onchange="onExtendPendingChange()">
+                                        ยังไม่ชำระ · เก็บเงินภายหลัง
+                                    </label>
+                                    <div id="extend-summary" class="transaction-extend-summary"></div>
+                                    <div id="extend-error" class="transaction-extend-error" hidden></div>
+                                    <button type="button" id="extend-submit-button" class="btn btn-primary" onclick="submitAddOn()">บันทึกการเพิ่ม</button>
+                                </div>
                             </div>
                             <div class="transaction-field-grid">
                                 <div class="form-group transaction-field transaction-field-large">
@@ -445,6 +491,21 @@
             arrivingBooking = mode === 'arrival' ? arrivingBooking : null;
             const isBooking = mode === 'booking';
             const isArrival = mode === 'arrival';
+            const isExtend = mode === 'extend';
+
+            const extendPanel = document.getElementById('extend-mode-panel');
+            const extendButton = document.getElementById('extend-mode-button');
+            if (extendPanel) extendPanel.hidden = !isExtend;
+            if (extendButton) extendButton.classList.toggle('is-active', isExtend);
+            // Extend uses its own panel, so the normal intake form steps aside.
+            const intakeForm = document.getElementById('transaction-form');
+            if (intakeForm) intakeForm.hidden = isExtend;
+            if (isExtend) {
+                renderExtendCandidates();
+                document.getElementById('walk-in-mode-button').classList.remove('is-active');
+                document.getElementById('booking-mode-button').classList.remove('is-active');
+                return;
+            }
             const payment = document.getElementById('payment');
             const masseuse = document.getElementById('masseuse');
 
@@ -473,9 +534,219 @@
         }
 
         function isMasseuseUnavailableForWalkIn(name) {
+            // Extend targets the masseuse who is mid-massage by definition, so the
+            // busy guard must not apply to her (PTE-009). Scoped deliberately:
+            // leaking this into walk-in would undo the QUEUE-002 protection.
+            if (transactionMode === 'extend') return false;
             const staff = appData.currentShopStatus?.staff?.find(row => row.masseuse_name === name);
             return Boolean(staff && staff.current_state !== 'available');
         }
+
+        // ---- Paid Time Extension (PTE-UI-001/002/003) ----
+        // Extend is a third mode: reception picks a massage already in progress and
+        // adds time or another service. The original sale is never edited.
+        let extendState = { target: null, kind: 'DURATION_UPGRADE', quote: null };
+
+        function extendableTransactions() {
+            const today = new Date().toISOString().split('T')[0];
+            return (appData.transactions || []).filter(t =>
+                t.status === 'ACTIVE'
+                && !t.parent_transaction_id
+                && (t.date === today || t.business_day === today)
+            );
+        }
+
+        function renderExtendCandidates() {
+            const container = document.getElementById('extend-candidates');
+            if (!container) return;
+            const rows = extendableTransactions();
+            if (!rows.length) {
+                container.innerHTML = '<div class="empty-state">ยังไม่มีรายการที่เพิ่มเวลาได้</div>';
+                return;
+            }
+            container.innerHTML = rows.map(row => `
+                <button type="button" class="transaction-extend-candidate" onclick="selectExtendTarget('${escapeBookingText(row.transaction_id)}')">
+                    <strong>${escapeBookingText(row.masseuse_name || '')}</strong>
+                    <span>${escapeBookingText(row.service_type || '')} · ${Number(row.duration || 0)} นาที</span>
+                    <span>จ่ายแล้ว ฿${Number(row.payment_amount || 0).toFixed(2)}</span>
+                </button>
+            `).join('');
+        }
+
+        function selectExtendTarget(transactionId) {
+            extendState.target = extendableTransactions().find(t => t.transaction_id === transactionId) || null;
+            document.getElementById('extend-detail').hidden = !extendState.target;
+            if (!extendState.target) return;
+            const t = extendState.target;
+            document.getElementById('extend-original-summary').innerHTML =
+                `<strong>${escapeBookingText(t.masseuse_name || '')}</strong> · ${escapeBookingText(t.service_type || '')} `
+                + `${Number(t.duration || 0)} นาที · จ่ายแล้ว ฿${Number(t.payment_amount || 0).toFixed(2)}`;
+            populateExtendPaymentOptions();
+            populateExtendMasseuseOptions();
+            setExtendKind('DURATION_UPGRADE');
+        }
+
+        function setExtendKind(kind) {
+            extendState.kind = kind;
+            document.getElementById('extend-kind-upgrade').classList.toggle('is-active', kind === 'DURATION_UPGRADE');
+            document.getElementById('extend-kind-service').classList.toggle('is-active', kind === 'ADDITIONAL_SERVICE');
+            // Only a second, separate service may be handed to another masseuse.
+            document.getElementById('extend-masseuse-field').hidden = kind !== 'ADDITIONAL_SERVICE';
+            populateExtendServiceOptions();
+        }
+
+        function populateExtendServiceOptions() {
+            const select = document.getElementById('extend-service');
+            const target = extendState.target;
+            if (!select || !target) return;
+            const services = (CONFIG.settings.services || []).filter(s => s.location === target.location);
+            const names = [...new Set(services.map(s => s.name))];
+            const allowed = extendState.kind === 'DURATION_UPGRADE'
+                ? names.filter(n => n === target.service_type)
+                : names;
+            select.innerHTML = allowed.map(n => `<option value="${escapeBookingText(n)}">${escapeBookingText(n)}</option>`).join('');
+            select.disabled = extendState.kind === 'DURATION_UPGRADE';
+            onExtendServiceChange();
+        }
+
+        function onExtendServiceChange() {
+            const select = document.getElementById('extend-duration');
+            const target = extendState.target;
+            const serviceName = document.getElementById('extend-service').value;
+            if (!select || !target) return;
+            let durations = (CONFIG.settings.services || [])
+                .filter(s => s.name === serviceName && s.location === target.location)
+                .map(s => Number(s.duration))
+                .sort((a, b) => a - b);
+            // An upgrade must be strictly longer than what the customer already has.
+            if (extendState.kind === 'DURATION_UPGRADE') {
+                durations = durations.filter(d => d > Number(target.duration));
+            }
+            select.innerHTML = durations.map(d => `<option value="${d}">${d} นาที</option>`).join('');
+            updateExtendSummary();
+        }
+
+        function populateExtendPaymentOptions() {
+            const select = document.getElementById('extend-payment');
+            if (!select) return;
+            select.innerHTML = (CONFIG.settings.paymentMethods || [])
+                .map(m => `<option value="${escapeBookingText(m)}">${escapeBookingText(m)}</option>`).join('');
+        }
+
+        function populateExtendMasseuseOptions() {
+            const select = document.getElementById('extend-masseuse');
+            if (!select) return;
+            const names = (appData.roster || []).filter(r => r.name).map(r => r.name);
+            select.innerHTML = names
+                .map(n => `<option value="${escapeBookingText(n)}"${n === extendState.target?.masseuse_name ? ' selected' : ''}>${escapeBookingText(n)}</option>`)
+                .join('');
+        }
+
+        function onExtendPendingChange() {
+            const pending = document.getElementById('extend-pending').checked;
+            document.getElementById('extend-payment-field').hidden = pending;
+            updateExtendSummary();
+        }
+
+        async function updateExtendSummary() {
+            const summary = document.getElementById('extend-summary');
+            const target = extendState.target;
+            const duration = Number(document.getElementById('extend-duration').value);
+            if (!summary || !target || !duration) return;
+            summary.textContent = 'กำลังคำนวณ...';
+            try {
+                // The server owns pricing; the browser never computes an amount.
+                const quote = await api.quoteTransactionPromotion({
+                    service_type: document.getElementById('extend-service').value,
+                    location: target.location,
+                    duration
+                });
+                extendState.quote = quote;
+                const due = extendState.kind === 'DURATION_UPGRADE'
+                    ? Math.max(0, Number(quote.finalPrice) - Number(target.payment_amount))
+                    : Number(quote.finalPrice);
+                const startIso = extendState.kind === 'DURATION_UPGRADE'
+                    ? (target.start_datetime || target.timestamp)
+                    : (target.end_datetime || target.timestamp);
+                const endsAt = new Date(Date.parse(startIso) + duration * 60000);
+                const dueText = due > 0
+                    ? `ต้องจ่ายเพิ่ม ฿${due.toFixed(2)}`
+                    : 'ไม่ต้องจ่ายเพิ่ม ฿0.00';
+                summary.innerHTML = `
+                    <div>จ่ายแล้ว ฿${Number(target.payment_amount || 0).toFixed(2)}</div>
+                    <div><strong>${dueText}</strong></div>
+                    <div>เสร็จเวลา ${formatBookingTime(endsAt.toISOString())}</div>
+                `;
+            } catch (error) {
+                summary.textContent = '';
+                showExtendError('คำนวณราคาไม่ได้ กรุณาลองใหม่');
+            }
+        }
+
+        function showExtendError(message) {
+            const box = document.getElementById('extend-error');
+            if (!box) return;
+            box.textContent = message || '';
+            box.hidden = !message;
+        }
+
+        async function submitAddOn() {
+            const target = extendState.target;
+            if (!target) return;
+            const button = document.getElementById('extend-submit-button');
+            const pending = document.getElementById('extend-pending').checked;
+            showExtendError('');
+            button.disabled = true;
+            try {
+                const payload = {
+                    parent_transaction_id: target.transaction_id,
+                    add_on_kind: extendState.kind,
+                    service_type: document.getElementById('extend-service').value,
+                    location: target.location,
+                    duration: Number(document.getElementById('extend-duration').value),
+                    payment_status: pending ? 'PENDING' : 'PAID'
+                };
+                if (!pending) payload.payment_method = document.getElementById('extend-payment').value;
+                if (extendState.kind === 'ADDITIONAL_SERVICE') {
+                    payload.masseuse_name = document.getElementById('extend-masseuse').value;
+                }
+                await api.createAddOn(payload);
+                showToast('บันทึกการเพิ่มเรียบร้อย', 'success');
+                extendState.target = null;
+                document.getElementById('extend-detail').hidden = true;
+                await loadTodayData();
+                await updateAllDisplays();
+                renderExtendCandidates();
+            } catch (error) {
+                showExtendError(error.message || 'บันทึกไม่สำเร็จ');
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function settleAddOn(transactionId) {
+            const method = (CONFIG.settings.paymentMethods || [])[0];
+            try {
+                await api.settleAddOn(transactionId, method);
+                showToast('เก็บเงินเรียบร้อย', 'success');
+                await loadTodayData();
+                await updateAllDisplays();
+            } catch (error) {
+                showToast(error.message || 'เก็บเงินไม่สำเร็จ', 'error');
+            }
+        }
+
+        async function cancelAddOn(transactionId) {
+            try {
+                await api.cancelAddOn(transactionId);
+                showToast('ยกเลิกรายการเพิ่มแล้ว', 'success');
+                await loadTodayData();
+                await updateAllDisplays();
+            } catch (error) {
+                showToast(error.message || 'ยกเลิกไม่สำเร็จ', 'error');
+            }
+        }
+
 
         function refreshMasseuseAvailabilityOptions() {
             document.querySelectorAll('#masseuse option[value]').forEach(option => {
@@ -1393,10 +1664,21 @@
                 const bookingCreditBadge = Number(transaction.bookingCredit || 0) > 0
                     ? '<span class="transaction-booking-credit-badge">จองพนักงาน +฿50</span>'
                     : '';
+                // An add-on is shown as an extra charge on the original sale, never
+                // as an edit of it. A pending one stays visible until it is settled.
+                const isAddOn = Boolean(transaction.parent_transaction_id);
+                const addOnBadge = isAddOn
+                    ? `<span class="transaction-add-on-badge">${transaction.add_on_kind === 'ADDITIONAL_SERVICE' ? 'เพิ่มบริการ' : 'เพิ่มเวลา'}</span>`
+                    : '';
+                const pendingControls = isAddOn && transaction.payment_status === 'PENDING'
+                    ? `<span class="transaction-pending-badge">ยังไม่ชำระ</span>
+                       <button type="button" class="transaction-settle-button" onclick="settleAddOn('${escapeBookingText(transaction.transaction_id)}')">เก็บเงิน</button>
+                       <button type="button" class="transaction-cancel-add-on-button" onclick="cancelAddOn('${escapeBookingText(transaction.transaction_id)}')">ยกเลิก</button>`
+                    : '';
                 div.innerHTML = `
                     <div>${escapeBookingText(transaction.paymentMethod || '')}</div>
                     <div>${escapeBookingText(transaction.masseuse || '')}</div>
-                    <div>${escapeBookingText(transaction.service || '')} ${bookingCreditBadge}</div>
+                    <div>${escapeBookingText(transaction.service || '')} ${bookingCreditBadge}${addOnBadge}${pendingControls}</div>
                     <div>฿${Number(transaction.paymentAmount || 0).toFixed(2)}</div>
                     ${transaction.status && transaction.status.includes('EDITED') ? '<div class="edited-status-badge">(EDITED)</div>' : ''}
                 `;

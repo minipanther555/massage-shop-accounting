@@ -207,6 +207,30 @@ class APIClient {
     return this.request(`/bookings/availability?${query.toString()}`);
   }
 
+  // Paid Time Extension add-ons.
+  // The server derives the amount due and the commission; anything money-shaped
+  // sent from here is ignored, so callers never compute a price.
+  async createAddOn(payload) {
+    return this.request('/transactions/add-ons', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  }
+
+  async settleAddOn(transactionId, paymentMethod) {
+    return this.request(`/transactions/add-ons/${encodeURIComponent(transactionId)}/settle`, {
+      method: 'POST',
+      body: JSON.stringify({ payment_method: paymentMethod })
+    });
+  }
+
+  async cancelAddOn(transactionId) {
+    return this.request(`/transactions/add-ons/${encodeURIComponent(transactionId)}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  }
+
   // Staff
   async getStaffRoster() {
     return this.request('/staff/roster');
