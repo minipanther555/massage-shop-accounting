@@ -6,7 +6,7 @@ Reception can add paid time or an additional service to a massage that has alrea
 
 Phase ordering below is derived from spec §10 Integration Architecture; the lifecycle guarded in Phase 2 is spec §11; the deploy and rollback posture in Phase 7 is spec §12.
 
-> **Status:** Phases 0–4 ✅ DONE and PTE-END-001 done (2026-07-23) — the feature is functional end to end: reception can extend a massage, price is server-derived, pending/settle/cancel work, counts and revenue are correct, and outstanding add-ons survive end-day. 34 integration + 22 DOM contract tests green. Remaining: PTE-END-002/003 (end-day prompt and manager notice), Phase 6 verification, Phase 7 deploy, Phase 8 docs. Next runnable step: `PTE-DEP-002` (live-verify on the reception iPad). **LIVE = `claude/docs-shop-bookkeeping-updates-8156d7` @ `04de19e`.** Not yet applied to production; the schema lands there only via `PTE-DEP-001` with operator authorization.
+> **Status:** Phases 0–4 ✅ DONE and PTE-END-001 done (2026-07-23) — the feature is functional end to end: reception can extend a massage, price is server-derived, pending/settle/cancel work, counts and revenue are correct, and outstanding add-ons survive end-day. 34 integration + 22 DOM contract tests green. Remaining: PTE-END-002/003 (end-day prompt and manager notice), Phase 6 verification, Phase 7 deploy, Phase 8 docs. Next runnable step: `PTE-DEP-002` (live-verify on the reception iPad). **LIVE = `claude/docs-shop-bookkeeping-updates-8156d7` @ `3540034`** (redeployed 2026-07-23 alongside the walk-in-cancellation feature; both features verified registered on the live server). Not yet applied to production; the schema lands there only via `PTE-DEP-001` with operator authorization.
 
 ## Dependencies
 
