@@ -189,7 +189,7 @@
     *   **Validation**: DOM/API test and browser check prove the selected Daily Summary div no longer contradicts the New Customer dropdown.
 
 21. **[Feature] Paid Time Extension / Add-On Service.**
-    *   **Status**: 🟡 Phase 0 ✅ DONE (2026-07-23) - data model confirmed as linked transaction rows; steps file re-authored in canonical phase/gate format with 23 steps across 9 phases; next runnable step is `PTE-DB-001` (additive schema columns, `/db-ops-regular` Mode B)
+    *   **Status**: 🟡 Phases 0-4 + PTE-END-001 ✅ DONE (2026-07-23) - schema, full add-on lifecycle, aggregation correctness, reception UI, and end-day row preservation shipped; 34 integration + 22 DOM tests green; deployed to the working branch for live-verify alongside walk-in cancellation. Open: PTE-END-002/003, Phase 6 verification, live-verify on iPad, docs/security.
     *   **Priority**: High
     *   **Required**: Customers may add time or a second service after already paying and starting a massage. The system must charge only the additional amount owed while preserving the original paid transaction.
     *   **Dependencies**: `00-project-docs/feature-specifications/paid-time-extension.md`, `00-project-docs/steps/paid-time-extension-steps.md`, New Customer transaction flow, correction/reversal flow, service catalog pricing, Current Shop Status, reports, and Payday Tracking.

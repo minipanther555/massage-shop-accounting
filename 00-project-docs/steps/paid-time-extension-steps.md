@@ -235,6 +235,7 @@ Placed before the UI deliberately: this is the highest-regression-risk work in t
 - [x] Activity rows show an add-on badge, a `ยังไม่ชำระ` badge, and `เก็บเงิน` / `ยกเลิก` buttons for pending add-ons. No no-show control, by design.
 - **Found during implementation:** `appData.transactions` in `web-app/shared.js` mapped away every raw column, so the add-on fields were invisible to the page. Both mapping sites now carry `transaction_id`, `parent_transaction_id`, `add_on_kind`, `payment_status`, `location`, and the canonical datetimes. Additive only; no existing key changed.
 - **Still open:** Q-01 governs *where* the reminder lives beyond this list.
+- **Bug fixed post-implementation (2026-07-23):** `createAddOn`/`settleAddOn`/`cancelAddOn` in `web-app/api.js` passed `JSON.stringify(body)`, but `request()` already stringifies, so the browser double-encoded and the server would have rejected the payload. Fixed to pass raw objects, matching every other client method. The integration tests missed it because supertest hits the route directly, bypassing `api.js`; this is exactly the class of bug the PTE-DEP-002 iPad live-verify exists to catch, and it was caught during the cancel-feature integration instead.
 
 **Phase 4 complete when:** both operator scenarios are completable end-to-end in the browser and the mirrored templates are byte-identical. ✅ **This gate authorizes Phase 5.** (Browser drive happens at PTE-DEP-002 on the real device.)
 
