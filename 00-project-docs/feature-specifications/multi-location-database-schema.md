@@ -9,7 +9,16 @@ The intended production model is **multi-tenant database-per-branch**. Each Top 
 
 This differs from a single shared database with only `location_id` filters. `location_id` remains useful as session metadata and for display/audit context, but it is not sufficient by itself when each branch needs an independently managed staff list and operational ledger.
 
-Current implementation status (2026-07-21):
+> **⚠️ Document currency warning.** Only the section below (lines 6-18 plus the 2026-07-27 block) is current. The header further down (*"Last Updated: August 12, 2025 / Status: Implementation Complete"*) and the schema/Success-Criteria sections that follow describe the **superseded** single-shared-database-with-`location_id`-filters model that "Current Direction" above explicitly rejects. Read the top of this file, not the bottom.
+
+Current implementation status (2026-07-27):
+- All five configured branches (`55, 49, 43, 33, 9`) now have a provisioned database file. See `00-project-docs/steps/database-per-branch-routing-steps.md` DBR-002 for full live evidence.
+- **The source `massage_shop.db` is Top Thai 49's original operational database**, not a neutral template — 30 founding staff hired between 2025-08-18 and 2026-01-23. `backend/scripts/adopt-source-as-branch.js` was written to claim it for branch 49 while preserving that roster, excluding the 10 Top Thai 43 staff created on 2026-07-21 during the pre-routing branch-43 setup. The source file is never modified and remains the archive of record.
+- Two provisioning commands now exist and are not interchangeable: **`bootstrap-branch-database.js`** for a shop that has never traded (creates an empty book), **`adopt-source-as-branch.js`** for a shop whose history is already inside the source database.
+- `backend/scripts/sync-branch-catalog.js` holds every branch at the exhaustive union of chain services (115). It is insert-only and never reprices an existing service.
+- Per-branch promotion configuration is deliberately **not** synchronised across branches.
+
+Prior implementation status (2026-07-21):
 - The login flow carries branch metadata in the authenticated session.
 - `backend/dbPath.js` provides one required default/source path, while `backend/models/database.js` derives a branch file only from the server-side session `location_id`.
 - An authenticated branch request fails with `503` when its branch file is missing; it must never fall back to the default/shared database.

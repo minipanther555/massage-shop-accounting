@@ -220,7 +220,14 @@
     *   **Validation**: TCR-001 evidence is recorded in its step ledger. TCR-002 evidence now includes focused Supertest/SQLite integration, mirrored-template/API contract Jest checks, local browser smoke through `/transaction.html?PWTEST=1`, lint, security/perf review, docs/ledger sync, and `git diff --check`.
 
 24. **[Infra/Blocker] Provision Branch Databases for All Shops.**
-    *   **Status**: 🔴 `open — ACTIVE BLOCKER, next work` (raised by operator 2026-07-23)
+    *   **Status**: ✅ `DONE (2026-07-27)` — all five configured branches provisioned; Top Thai 49 **adopted its own trading history** rather than opening empty. Full evidence in `database-per-branch-routing-steps.md` DBR-002.
+    *   **⚠️ Two claims recorded below on 2026-07-23 were disproved by reading the live data on 2026-07-27. They are left in place, struck through in meaning, because the correction is the point:**
+        *   *"There is no auto-provisioning code path"* — **false.** `backend/scripts/bootstrap-branch-database.js` existed, was tested by `__tests__/branch-database-routing.otdd.test.js:45-64`, was named by `multi-location-database-schema.md:16`, and was already deployed. It built branch-43 on 2026-07-21 (`database-per-branch-routing-steps.md:24`). Only "no *runtime, on-demand* provisioning" was true.
+        *   *"Top Thai 49 has a login but no database file"* — **true but misleading.** The shared `massage_shop.db` **is** shop 49: 30 founding staff hired 2025-08-18 → 2026-01-23, plus 10 Top Thai 43 staff created 2026-07-21 when routing shipped. Bootstrapping an empty 49 — the plan this item implied — would have discarded shop 49's thirty-masseuse roster.
+    *   **Resolution**: new `adopt-source-as-branch.js` (preserve history, exclude foreign-branch rows by creation date) + `sync-branch-catalog.js` (exhaustive 115-service union, insert-only, never reprices) + 10 OTDD guardrails. Branch-49 live with 30 staff / 0 transactions / 115 services / `integrity_check ok`. Source database untouched and retained as the archive of record.
+    *   **Residual**: branches 9/33/55 still lack a branch `locations` row and carry 17 tables. Neither blocks trading (routing never reads `locations`; schema self-repairs on first authenticated use). Tracked in DBR-002's open sub-item.
+    *   **Original entry (2026-07-23) follows, retained for provenance:**
+    *   **Status (superseded)**: 🔴 `open — ACTIVE BLOCKER, next work` (raised by operator 2026-07-23)
     *   **Priority**: CRITICAL — a shop cannot use the POS at all
     *   **Required**: The manager at **Top Thai 49** logged into the POS in-shop and got `{"error": "Branch database is not provisioned"}`. Reception and manager logins exist for five branches, but only four branch database files exist on the server.
     *   **Evidence (read from the live server, 2026-07-23)**:
@@ -241,9 +248,20 @@
     *   **Technical Considerations**: Nothing is specified yet — hardware (thermal printer model / connection), what appears on the receipt, language, whether an add-on prints as a separate receipt or combined with its parent sale, and whether reprints are allowed are all undecided. This needs `/spec-creation-new-feature` before any steps file.
     *   **Validation**: To be defined by the spec.
 
-26. **[Security] `/api/transactions` Router Has No Authentication Middleware.**
-    *   **Status**: 🟠 `open — tracked follow-up, pre-existing` (found by the checkpoint security pass 2026-07-23)
-    *   **Priority**: High — needs an operator decision, not a silent fix
+26. **[Security] Four API Routers Have No Authentication Middleware — and Unauthenticated Requests Reach the Shared Database.**
+    *   **Status**: 🟠 `open — tracked follow-up, pre-existing` (found 2026-07-23; **scope widened and severity raised 2026-07-27**)
+    *   **Priority**: High — needs an operator decision, not a silent fix. Raised in practical urgency by DBR-002: a fifth shop's takings now sit behind this gap.
+    *   **⚠️ 2026-07-27 correction — this is FOUR routers, not one.** Verified by reading each router's head for a `router.use(authenticateToken)`:
+        *   **No auth at all**: `/api/transactions` (`server.js:172`), `/api/staff` (`:174`), `/api/reports` (`:177`), `/api/expenses` (`:180`).
+        *   **Auth at the mount**: `/api/bookings` (`:173`).
+        *   **Auth inside the router** (so these are fine): `/api/admin` (`admin.js:11`), `/api/main` (`main.js:9`), `/api/services` (`services.js:7`), `/api/payment-types` (`payment-types.js:8`).
+    *   **⚠️ 2026-07-27 — the branch-isolation guarantee composes with this into something worse than either half.** `multi-location-database-schema.md:15`, `database.md:6`, and this file all state the router "never falls back to the default/shared database." That holds **only for authenticated requests**. `backend/models/database.js:532-534`:
+        ```js
+        if (locationId === undefined || locationId === null) { return callback(); }
+        ```
+        No session ⇒ no `location_id` ⇒ **no branch binding ⇒ the request runs on the shared `massage_shop.db`.** So on those four unauthenticated routers, an unauthenticated caller reads and writes the shared database, and the fail-closed guard never fires because there is no location to fail on. The shared database is now shop 49's archive of record (DBR-002).
+    *   **Not independently verified**: external reachability of the host. The `sslip.io` internet-facing claim below is from the 2026-07-23 pass; no exploit was attempted against production in either pass.
+    *   **Original entry (2026-07-23) follows, retained for provenance:**
     *   **Required**: `backend/server.js:172` mounts `app.use('/api/transactions', require('./routes/transactions'))` with **no `authenticateToken`**, while the very next line mounts `/api/bookings` **with** it. The `/api` middleware at `server.js:141` looks like a gate but is only branch routing — it reads `session.location_id` and never rejects an unauthenticated caller.
     *   **Impact**: Every money-mutating transaction endpoint is protected by CSRF alone, not authentication: create transaction, correction, walk-in cancel, and the three add-on endpoints added this session. CSRF stops a hostile website from driving a logged-in browser, but does not stop anyone who can reach the server directly. The server is internet-facing on an `sslip.io` host.
     *   **Honesty note**: this is **pre-existing**, not introduced this session — but this session added three new money endpoints to that router, widening the exposed surface, so it is logged rather than left silent. No exploit was attempted against production; the finding is from reading `server.js:137-180`.
