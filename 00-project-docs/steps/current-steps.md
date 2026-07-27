@@ -218,3 +218,34 @@
     *   **Expected Output/Deliverable**: An audit-preserving edit/cancel workflow where wrong saved walk-ins stop affecting staff busy state, workload, commission, booking credit, and active revenue, while remaining available for manager review.
     *   **Technical Considerations**: Treat cancellation as a status transition, not deletion. Preserve server-authoritative eligibility checks and current-business-day boundaries. Do not guess booking-backed cancellation behavior without spec clarification.
     *   **Validation**: TCR-001 evidence is recorded in its step ledger. TCR-002 evidence now includes focused Supertest/SQLite integration, mirrored-template/API contract Jest checks, local browser smoke through `/transaction.html?PWTEST=1`, lint, security/perf review, docs/ledger sync, and `git diff --check`.
+
+24. **[Infra/Blocker] Provision Branch Databases for All Shops.**
+    *   **Status**: 🔴 `open — ACTIVE BLOCKER, next work` (raised by operator 2026-07-23)
+    *   **Priority**: CRITICAL — a shop cannot use the POS at all
+    *   **Required**: The manager at **Top Thai 49** logged into the POS in-shop and got `{"error": "Branch database is not provisioned"}`. Reception and manager logins exist for five branches, but only four branch database files exist on the server.
+    *   **Evidence (read from the live server, 2026-07-23)**:
+        *   Logins are defined for **5** branches in `backend/routes/auth.js:10-16`: `55`, `49`, `43`, `33`, `9`.
+        *   Branch database files present in `/opt/massage-shop/KEEP/backend/data/`: `massage_shop.branch-33.db`, `.branch-43.db`, `.branch-55.db`, `.branch-9.db`. **There is no `massage_shop.branch-49.db`** — that is the whole cause of the error.
+        *   `database.js` `runWithLocation()` **fails closed by design**: if the branch file is absent it throws `BRANCH_DATABASE_MISSING`, and `backend/server.js:147` turns that into the `503` the manager saw. This is deliberate — falling back to the shared database would write one branch's takings into another's books — so the fix is to provision the file, **not** to soften the guard.
+        *   There is **no auto-provisioning code path**. The four existing files were created outside the app; nothing in the repo creates a branch database on demand.
+        *   Add-on schema state across branches: `massage_shop.db` 3/3 columns, `branch-43` 3/3 (it self-upgraded on first authenticated use, confirming the lazy-upgrade path works), `branch-33` / `branch-55` / `branch-9` 0/3 — they will upgrade on their own first authenticated use.
+    *   **Expected Output/Deliverable**: Every branch with a login has a provisioned, correctly-seeded database; ideally a governed provisioning path so a new branch is never a manual file copy.
+    *   **Technical Considerations**: Decide what a new branch database must contain — schema only, or schema plus seeded services/pricing/payment methods. `seedBranchPromotionConfiguration()` in `backend/models/database.js` already seeds the time-window promotion per branch (43 and 49 have explicit defaults), which implies branch 49 was always intended to exist. Creating a database file on production is a DB-Ops action and routes through `/db-ops-regular`.
+    *   **Potential Challenges and Mitigations**: Copying an existing branch file would carry that branch's transactions and staff into the new shop — a serious data-integrity error. Provision from empty schema plus explicit seed, and verify the new database has zero transactions before the shop uses it. `__tests__/branch-database-routing.otdd.test.js` already guards branch isolation; run it as the regression.
+    *   **Validation**: A manager at every configured branch can log in and record a transaction; each branch's data stays in its own file; the branch-isolation OTDD guard passes.
+
+25. **[Feature] Print Receipts.**
+    *   **Status**: ⚪ `open — queued behind item 24` (raised by operator 2026-07-23)
+    *   **Priority**: Medium — explicitly after branch databases are working
+    *   **Required**: Reception should be able to print a receipt for a customer.
+    *   **Technical Considerations**: Nothing is specified yet — hardware (thermal printer model / connection), what appears on the receipt, language, whether an add-on prints as a separate receipt or combined with its parent sale, and whether reprints are allowed are all undecided. This needs `/spec-creation-new-feature` before any steps file.
+    *   **Validation**: To be defined by the spec.
+
+26. **[Security] `/api/transactions` Router Has No Authentication Middleware.**
+    *   **Status**: 🟠 `open — tracked follow-up, pre-existing` (found by the checkpoint security pass 2026-07-23)
+    *   **Priority**: High — needs an operator decision, not a silent fix
+    *   **Required**: `backend/server.js:172` mounts `app.use('/api/transactions', require('./routes/transactions'))` with **no `authenticateToken`**, while the very next line mounts `/api/bookings` **with** it. The `/api` middleware at `server.js:141` looks like a gate but is only branch routing — it reads `session.location_id` and never rejects an unauthenticated caller.
+    *   **Impact**: Every money-mutating transaction endpoint is protected by CSRF alone, not authentication: create transaction, correction, walk-in cancel, and the three add-on endpoints added this session. CSRF stops a hostile website from driving a logged-in browser, but does not stop anyone who can reach the server directly. The server is internet-facing on an `sslip.io` host.
+    *   **Honesty note**: this is **pre-existing**, not introduced this session — but this session added three new money endpoints to that router, widening the exposed surface, so it is logged rather than left silent. No exploit was attempted against production; the finding is from reading `server.js:137-180`.
+    *   **Technical Considerations**: The fix looks like a one-line middleware addition, but reception's iPad flow and the PWTEST bypass both hit these routes, so it needs verification that logged-in reception is unaffected and that the `PWTEST` shim still works in test. Compare against `/api/bookings`, which is already correct.
+    *   **Validation**: An unauthenticated request to each transaction endpoint returns `401`; a logged-in receptionist can still create, correct, cancel, and extend; the branch-isolation and CSRF suites still pass.

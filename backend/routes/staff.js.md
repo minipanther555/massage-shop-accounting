@@ -270,3 +270,8 @@ The status endpoint and queue endpoint were applying different concepts of "next
 #### Resolution
 
 `GET /api/staff/current-status` now reads unreleased requested-staff bookings only for the active business day, exposes `assigned_today` and `walk_in_priority`, and uses stable Today Staff `position` as the workload tie-break. `resetIfStale()` marks prior-business-day `BOOKED` reservations `NO_SHOW` so they cannot roll into the next day. `POST /api/staff/advance-queue` no longer rotates Today Staff order; it returns the retained ordered roster while workload/status determine the next walk-in. The transaction page consumes `walk_in_priority`, disables busy or booking-constrained staff for Walk-in mode, and shows an "everyone busy" message with the earliest free time when no one is eligible.
+
+### Massage count excludes duration upgrades (2026-07-23)
+The `today_massages` projection in `getActiveTodayStaff()` now applies `countsAsMassage('t')` from `backend/services/add-on-sql.js`. Extending one customer from 60 to 90 minutes is one massage, not two, so a `DURATION_UPGRADE` add-on does not increment the count; an `ADDITIONAL_SERVICE` does. This figure feeds both the Daily Summary `นวดวันนี้` display and the walk-in workload ranking, so the rule directly affects who is offered the next customer.
+
+`getActiveTransactionByStaff()` required **no change** for Paid Time Extension: it already keeps the `ACTIVE` row with the latest end time per staff member, so an add-on extends the occupied window automatically and a cancelled add-on releases it. This was verified by test rather than rebuilt.

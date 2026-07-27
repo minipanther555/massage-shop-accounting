@@ -380,3 +380,6 @@ Transaction APIs now return `booking_credit_amount`, but shared frontend state p
 
 ### Resolution
 Both mappers expose numeric `bookingCredit`; `submitTransaction()` preserves the request field shape while normal Walk-in pages now send `requested_staff_booking: false`; shared fee totals add base `masseuseFee` and `bookingCredit` without modifying either component.
+
+### Raw transaction fields retained for Paid Time Extension (2026-07-23)
+`appData.transactions` previously mapped the API response into camelCase display fields only, discarding the raw row. Extend mode needs the underlying columns, so both mapping sites (the primary `loadTodayData` path and the localStorage fallback) now additionally carry `transaction_id`, `masseuse_name`, `service_type`, `location`, `payment_amount`, `business_day`, `start_datetime`, `end_datetime`, `parent_transaction_id`, `add_on_kind`, and `payment_status`. The addition is purely additive — no existing key changed — so every existing consumer is unaffected.

@@ -89,3 +89,14 @@
 - **Validated Hypothesis:** Credit is a separate pay component and must be joined into reports without changing base commission or Today Staff ranking.
 - **Invalidated Hypotheses:** The credit belonged in service revenue; `total_masseuse_fees` should remain base-only while another page handled credit.
 - **Resolution:** Daily, weekly, monthly, today-summary, and financial report queries join active credits. Financial responses expose `base_masseuse_fees`, `booking_credits`, `total_staff_pay`, plus per-staff `baseFees`, `bookingCredits`, and `totalStaffPay`; net profit subtracts combined staff pay.
+
+### Add-on aware aggregation (2026-07-23)
+Paid Time Extension stores add-ons as ordinary `transactions` rows linked by `parent_transaction_id`, which makes money aggregate correctly for free but makes counting and pending money wrong by default. Both rules now come from the single shared helper `backend/services/add-on-sql.js`:
+
+- **`isSettled('t')`** is applied to every revenue and fee sum, so a `PENDING` add-on contributes nothing to revenue, masseuse fees, or payable staff pay until reception settles it.
+- **`countsAsMassage('t')`** is applied to `massage_count` and `weekly_massages`, so a `DURATION_UPGRADE` does not inflate the number of massages performed while an `ADDITIONAL_SERVICE` does.
+
+The `transaction_count` figures are deliberately **not** filtered by the massage-count rule: they sit beside `total_revenue` and an add-on genuinely is a separate sale, so excluding it there would misreport activity.
+
+### End-day preserves outstanding add-ons (2026-07-23)
+`POST /end-day` summarises the day and then deletes the day's transaction rows. The delete now excludes any `PENDING` add-on **and the parent it points at**, as a linked pair in one predicate, so neither can be orphaned and an outstanding payment cannot silently vanish. Ordinary settled transactions are still cleared as before. The wider correctness of this deletion (no status filter; UTC rather than Bangkok business day) is tracked separately as item 22 in `00-project-docs/steps/current-steps.md`.

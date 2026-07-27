@@ -240,3 +240,10 @@ Adding service, payment type, and report wrappers lets the manager pages use the
 
 ### Resolution
 Added `getServices({ includeInactive })`, `updateService()`, `deleteService()`, and `bulkUpdateServices()` support for manager service administration; `getPaymentTypes()`, `createPaymentType()`, `updatePaymentType()`, and `deletePaymentType()` support for manager payment type administration; and `getFinancialReport()`, `getReportStaff()`, `getReportServiceTypes()`, and `getReportLocations()` support for manager reports.
+
+### Paid Time Extension add-on methods (2026-07-23)
+- **`createAddOn(payload)`** — `POST /transactions/add-ons`. Creates an extra-time or extra-service charge linked to an original sale.
+- **`settleAddOn(transactionId, paymentMethod)`** — `POST /transactions/add-ons/:id/settle`. Records payment for an add-on left pending.
+- **`cancelAddOn(transactionId)`** — `POST /transactions/add-ons/:id/cancel`. Cancels an add-on entered in error.
+
+All three pass a **raw object** as `body`; `request()` performs the `JSON.stringify`. Passing a pre-stringified body double-encodes it and the request fails — see the bug history in `backend/routes/transactions.js.md`. None of these methods computes money: the server derives the amount due and the commission, and ignores any money-shaped field sent from the client.

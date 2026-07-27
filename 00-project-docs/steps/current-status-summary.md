@@ -14,6 +14,14 @@ EIW Massage Shop Bookkeeping System - A comprehensive web-based management syste
 - Booking rows are created only through explicit Booking mode; booking arrivals still create the separate `฿50` credit.
 - Focused/integration tests, seven mirrored inline-script parses, indexed SQLite plan checks, lint, `git diff --check`, and 630x998 browser verification passed. The existing dependency advisory backlog remains unchanged.
 
+### Paid Time Extension + Walk-In Cancellation - BOTH LIVE FOR TESTING (2026-07-23)
+- Both features are deployed on the working branch `claude/docs-shop-bookkeeping-updates-8156d7` and verified registered on the live server. **No `testingNN` minted** — the manager has not tested yet, so this is deliberately pre-number.
+- Paid Time Extension: reception can extend a massage or add a second service, priced server-side, with pay-now or settle-later, and outstanding add-ons now survive end-day.
+- Walk-in cancellation (`TCR-002`) was already fully implemented on `codex/bkg005-credit-visibility-immediate` but that branch had **diverged from the numbered timeline and was never stacked**, which is why the feature was absent from the deployed server and the manager could not find it. Cherry-picked onto the live line; the only conflict was a duplicate item number in `current-steps.md`.
+- Three bugs were found *after* the per-step gates passed, all fixed: the add-on API client double-stringified its body and would have failed in the real browser; `ADDITIONAL_SERVICE` accepted any masseuse name and would have silently lost the commission for an unknown one; and the add-on feature's co-located docs had never been written.
+- One security finding logged, not fixed: `/api/transactions` has no authentication middleware. Pre-existing, but this session added three money endpoints to that router. See item 26 in `current-steps.md`.
+- **Next work is not this feature.** Branch databases must be provisioned for all shops — the manager at Top Thai 49 cannot use the POS at all. See item 24.
+
 ### Daily Summary Busy/Free State - INVESTIGATED, NO BUG (2026-07-23)
 - The reported symptom was that `แยม` appeared busy on Daily Summary while New Customer showed her free. Debug could not reproduce any state disagreement.
 - Both surfaces read one payload from `/api/staff/current-status`, and `/staff/roster` and `/staff/current-status` both call `getActiveTodayStaff()`, so the staff set is identical by construction.

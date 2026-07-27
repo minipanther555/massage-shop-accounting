@@ -320,6 +320,18 @@ router.post('/add-ons', async (req, res) => {
     } else {
       // A second, separate service: full price and full commission, nothing subtracted.
       masseuseName = requestedMasseuseName || parent.masseuse_name;
+      // A different masseuse must be a real active staff member. Without this the
+      // row is still written and `UPDATE staff ... WHERE name = ?` silently matches
+      // zero rows, losing the commission with no error anywhere (PTE-009).
+      if (masseuseName !== parent.masseuse_name) {
+        const performer = await database.get(
+          'SELECT id FROM staff WHERE name = ? AND active = 1',
+          [masseuseName]
+        );
+        if (!performer) {
+          return res.status(400).json({ error: 'Selected staff member is not an active staff member' });
+        }
+      }
       amountDue = quote.finalPrice;
       masseuseFee = quote.masseuseFee;
     }

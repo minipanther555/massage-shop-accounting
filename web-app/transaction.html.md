@@ -347,3 +347,8 @@ appData.originalTransactionId = transaction.id;
 - The current booking was absent from the backend status model; current-status coverage includes bookings already in progress.
 
 **Resolution:** `refreshRosterForDropdown()` now reloads the current-status snapshot and Today Staff roster together before rendering the dropdown. The 30-second refresh uses the same path, so submit-time and periodic refreshes apply the same authoritative state.
+
+### Extend mode — add time or an extra service (2026-07-23)
+A third reception mode (`เพิ่มเวลา/บริการ`) sits alongside `ลูกค้ามาแล้ว` (walk-in) and `จองเวลา` (booking). Selecting it hides the normal intake form and shows `#extend-mode-panel`, which lists the massages currently in progress. Reception picks one, chooses `เพิ่มเวลา` (`DURATION_UPGRADE`) or `เพิ่มบริการ` (`ADDITIONAL_SERVICE`), and sees `จ่ายแล้ว` / `ต้องจ่ายเพิ่ม` / `เสร็จเวลา` priced live through `api.quoteTransactionPromotion()`. A zero amount renders `ไม่ต้องจ่ายเพิ่ม ฿0.00` rather than a blank or `NaN`. Ticking `ยังไม่ชำระ` records the add-on as pending; the recent-activity row then shows a `ยังไม่ชำระ` badge with `เก็บเงิน` and `ยกเลิก` buttons.
+
+**Busy-guard exemption (PTE-009):** `isMasseuseUnavailableForWalkIn()` returns `false` early when `transactionMode === 'extend'`. The masseuse being extended is necessarily mid-massage, so the walk-in availability guard would otherwise make the feature unreachable. The exemption is deliberately scoped to extend mode only — leaking it into walk-in would undo the QUEUE-002 protection — and `__tests__/staff-availability.surface-equivalence.test.js` asserts both halves of that boundary against the real shipped function.

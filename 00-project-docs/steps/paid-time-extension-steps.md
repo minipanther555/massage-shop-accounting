@@ -110,6 +110,7 @@ Isolated as its own gated step because it is a **shared-contract change**. Nothi
 - [x] Upgrade **commission** follows the same difference rule — the 90-minute fee minus the fee already earned on the parent — because the masseuse performs one longer session, not two. This was derived from AC-PTE-005's no-double-counting requirement rather than stated outright in the spec; recorded here as a design decision, see D-10.
 - [x] `ADDITIONAL_SERVICE` charges full price and full commission and may name a different masseuse.
 - **RED:** 12 failing of 14. **GREEN:** 14/14.
+- **Found by the checkpoint quality pass (2026-07-23), fixed:** `ADDITIONAL_SERVICE` accepted any `masseuse_name` with no validation. An unknown name still created the add-on row, while `UPDATE staff ... WHERE name = ?` matched zero rows — losing the commission with **no error anywhere**. Spec PTE-009 requires availability rules for a different performer and this implemented none of it. Now rejects a name that is not an active staff member (`400`), guarded by a regression test. The per-step tests missed it because they only asserted the happy path for a different masseuse.
 - **Found during implementation:** `payment_method` is `NOT NULL`, so a pending add-on cannot store a null method. It is recorded as an empty string and filled in at settlement. Documented inline at the insert.
 
 ### STEP_ID: PTE-API-002 — Settle a pending add-on — ✅ DONE (2026-07-23)

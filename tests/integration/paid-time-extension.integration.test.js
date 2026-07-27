@@ -292,6 +292,29 @@ describe('PTE-API-001 — create a paid add-on', () => {
     expect(response.status).toBe(400);
   });
 
+  test('an unknown masseuse is rejected, so commission cannot be silently lost', async () => {
+    // UPDATE staff ... WHERE name = ? silently matches zero rows for a bogus name,
+    // which would create the add-on row and lose the commission with no error.
+    const parentId = await seedParent({ duration: 90, paid: 700, fee: 300 });
+
+    const response = await createAddOn({
+      parent_transaction_id: parentId,
+      add_on_kind: 'ADDITIONAL_SERVICE',
+      service_type: 'Foot Massage',
+      location: 'In-Shop',
+      duration: 60,
+      masseuse_name: 'ไม่มีคนนี้',
+      payment_method: 'Cash',
+      payment_status: 'PAID',
+    });
+
+    expect(response.status).toBe(400);
+    const orphan = await database.get(
+      "SELECT * FROM transactions WHERE masseuse_name = 'ไม่มีคนนี้'"
+    );
+    expect(orphan).toBeUndefined();
+  });
+
   test('an invalid add_on_kind is rejected', async () => {
     const parentId = await seedParent();
 

@@ -39,6 +39,25 @@
     *   **Logic:** Loads the target by `transaction_id`, rejects missing rows with `404`, and rejects historical, booking-backed, edited, corrected, or already cancelled rows with `409`. Eligible cancellation runs inside `BEGIN IMMEDIATE TRANSACTION`: subtracts the original base commission from `staff.total_fees_earned`, reverses any active linked booking credit through the shared credit reversal helper, and updates the row to `CANCELLED (Customer left before service)`. The update must affect exactly one active row before commit.
     *   **Raises / Throws:** Responds `500` and rolls back if any atomic write fails.
 
+*   **`POST /add-ons`**
+    *   **Purpose:** Creates a paid add-on (extra time, or an extra service) linked to an original sale, charging only the additional amount owed. Paid Time Extension `PTE-API-001`.
+    *   **Parameters (Body):** `parent_transaction_id` and `add_on_kind` (`DURATION_UPGRADE` | `ADDITIONAL_SERVICE`) required; `service_type`, `location`, `duration` required; `payment_status` (`PAID` | `PENDING`, default `PAID`); `payment_method` required only when `PAID`; optional `masseuse_name` (honoured for `ADDITIONAL_SERVICE` only), `customer_contact`, `start_datetime`, `end_datetime`, `time_window_promotion_override`.
+    *   **Returns:** `{ amount_due, add_on, parent }` with `201`.
+    *   **Logic:** Rejects an unknown parent (`404`), a non-`ACTIVE` parent (`409`), and a parent that is itself an add-on (`400`, add-ons never nest). Pricing comes from `getTimeWindowQuote()` and is never taken from the client. A `DURATION_UPGRADE` must keep the same service and a strictly longer duration; its amount due is today's price for the longer duration **minus the parent's `payment_amount` actually paid** (not the parent's catalog price, so a promotional original sale is not overcharged), and its commission is the equivalent fee difference so the original commission is not paid twice. An `ADDITIONAL_SERVICE` charges the full current price and full commission. Both are clamped at zero — the route never emits a refund. The window is derived from the parent (`deriveAddOnWindow`) unless supplied. Staff pay is credited only when `payment_status = 'PAID'`. No booking credit is ever created.
+    *   **Raises / Throws:** `500` with rollback if the atomic write fails.
+
+*   **`POST /add-ons/:transactionId/settle`**
+    *   **Purpose:** Records payment for a `PENDING` add-on, moving it into revenue and payable commission. `PTE-API-002`.
+    *   **Parameters:** Route `transactionId`; body `payment_method` required.
+    *   **Returns:** The updated add-on row.
+    *   **Logic:** Rejects a non-add-on row (`400`), a cancelled add-on (`409`), and an already-settled add-on (`409`). Settlement uses a **guarded** `UPDATE ... WHERE payment_status = 'PENDING' AND status = 'ACTIVE'` and re-checks the affected row count before crediting commission, so two concurrent submits cannot both book the same money. The parent row is never touched.
+
+*   **`POST /add-ons/:transactionId/cancel`**
+    *   **Purpose:** Cancels an add-on entered in error, restoring the staff member's earlier free-at time. `PTE-API-003`.
+    *   **Parameters (Route):** `transactionId`, required.
+    *   **Returns:** The cancelled add-on row.
+    *   **Logic:** Rejects a non-add-on row (`400`) and an already-cancelled add-on (`409`), using the same guarded-update pattern. Commission is reversed only when the add-on was `PAID`. The occupied window restores itself with no extra logic, because `GET /api/staff/current-status` selects the latest-ending `ACTIVE` row and a cancelled add-on is no longer `ACTIVE`. Distinct from `POST /:transactionId/cancel`, which cancels an original walk-in; the differing path-segment counts mean the two routes cannot shadow each other.
+
 *   **`POST /quote`**
     *   **Purpose:** Returns the current server-calculated customer price for an active service selection before reception saves the transaction.
     *   **Parameters (Body):** `service_type`, `location`, `duration`, and optional boolean `time_window_promotion_override`.
@@ -167,3 +186,6 @@
 * **Validated Hypothesis:** Cancellation needed to be a server-side status transition with atomic reversal of active staff effects, not a delete or a frontend-only hide.
 * **Invalidated Hypotheses:** Deleting the transaction would preserve audit history; zeroing price/fee fields would be enough for reports; booking-backed cancellations could safely reuse normal walk-in semantics without a separate booking-state decision.
 * **Resolution:** Added `POST /api/transactions/:transactionId/cancel`, kept the row with `CANCELLED (Customer left before service)`, reversed base commission and active linked booking credit, rejected ineligible targets, and relied on existing active-status report/status filters to exclude cancelled rows from active revenue, workload, busy state, and payday totals.
+
+### Add-On API Client Double-Stringified Its Body (2026-07-23)
+`createAddOn`, `settleAddOn`, and `cancelAddOn` in `web-app/api.js` originally passed `body: JSON.stringify(payload)`, but `APIClient.request()` already stringifies `config.body`. The browser would therefore have sent a double-encoded string and the server would have rejected every add-on call. Integration tests did not catch it because Supertest posts to the route directly, bypassing the API client. Found while integrating the walk-in cancellation branch, whose `cancelTransaction` used the correct raw-object convention. All three now pass raw objects, matching every other client method.
