@@ -137,9 +137,9 @@
                                 <div class="form-group transaction-field transaction-field-large">
                                     <label for="service">บริการ</label>
                                     <div id="service-category-buttons" class="transaction-choice-grid transaction-category-grid" aria-label="เลือกประเภทบริการ"></div>
-                                    <div id="combo-service-panel" class="transaction-subchoice-panel" hidden>
-                                        <div class="transaction-subchoice-title">เลือกคอมโบ</div>
-                                        <div id="combo-service-buttons" class="transaction-choice-grid transaction-combo-grid"></div>
+                                    <div id="variant-service-panel" class="transaction-subchoice-panel" hidden>
+                                        <div id="variant-service-title" class="transaction-subchoice-title">เลือกบริการ</div>
+                                        <div id="variant-service-buttons" class="transaction-choice-grid transaction-combo-grid"></div>
                                     </div>
                                     <select id="service" name="service" class="transaction-native-select-hidden" aria-hidden="true" tabindex="-1">
                                         <option value="">เลือกบริการ...</option>
@@ -836,6 +836,8 @@
                 'Body Scrub + oil massage': 'ขัดผิว + ออยล์',
                 'Body scrub + Aroma massage': 'ขัดผิว + อโรม่า',
                 'Coconut lovers - coconut oil massage': 'น้ำมันมะพร้าว',
+                'Deep oil': 'ออยล์ดีพ',
+                'Deep aroma': 'อโรม่าดีพ',
                 'Foot + Aroma Massage': 'เท้า + อโรม่า',
                 'Foot + Thai Massage': 'เท้า + ไทย',
                 'Foot + back, neck & shoulder': 'เท้า + หลังคอไหล่',
@@ -858,13 +860,17 @@
             return match ? match[1] : serviceName;
         }
 
+        // NOTE: order is load-bearing. getServiceCategory() below uses .find(), so the
+        // first matching definition wins. "Coconut lovers - coconut oil massage" contains
+        // both 'coconut' and 'oil', so 'coconut' MUST come before 'oil' to keep it out of
+        // the Oil sub-panel. Reordered 2026-08-09 as part of ISVSB-UI-001.
         const serviceCategoryDefinitions = [
             { key: 'thai', label: 'นวดไทย', sublabel: 'Thai', match: name => name.includes('thai') },
             { key: 'foot', label: 'นวดเท้า', sublabel: 'Foot', match: name => name.includes('foot') },
+            { key: 'coconut', label: 'มะพร้าว', sublabel: 'Coconut', match: name => name.includes('coconut') },
             { key: 'oil', label: 'ออยล์', sublabel: 'Oil', match: name => name.includes('oil') },
             { key: 'shoulder', label: 'หลัง คอ ไหล่', sublabel: 'Shoulder', match: name => name.includes('back') || name.includes('shoulder') || name.includes('neck') },
             { key: 'aroma', label: 'อโรม่า', sublabel: 'Aroma', match: name => name.includes('aroma') },
-            { key: 'coconut', label: 'มะพร้าว', sublabel: 'Coconut', match: name => name.includes('coconut') },
             { key: 'scrub', label: 'ขัดผิว', sublabel: 'Scrub', match: name => name.includes('scrub') },
             { key: 'combo', label: 'คอมโบ', sublabel: 'Combo', match: () => true }
         ];
@@ -895,14 +901,13 @@
             });
         }
 
-        function getPreferredCategoryService(categoryKey, serviceNames) {
-            const preferredServiceNames = {
-                oil: 'Oil massage'
-            };
-            const preferredServiceName = preferredServiceNames[categoryKey];
-            return preferredServiceName && serviceNames.includes(preferredServiceName)
-                ? preferredServiceName
-                : serviceNames[0];
+        function sortVariantServices(serviceNames) {
+            return [...serviceNames].sort((a, b) => {
+                const aDeep = a.startsWith('Deep ');
+                const bDeep = b.startsWith('Deep ');
+                if (aDeep !== bDeep) return aDeep ? 1 : -1;
+                return a.localeCompare(b);
+            });
         }
 
         function getAvailableServiceNames() {
@@ -963,16 +968,43 @@
             container.appendChild(button);
         }
 
+        function openVariantPanel(definition, services) {
+            const variantPanel = document.getElementById('variant-service-panel');
+            const variantTitle = document.getElementById('variant-service-title');
+            const variantContainer = document.getElementById('variant-service-buttons');
+            if (!variantPanel || !variantTitle || !variantContainer) return;
+
+            variantPanel.hidden = false;
+            variantTitle.textContent = definition.key === 'combo' ? 'เลือกคอมโบ' : `เลือก${definition.label}`;
+            variantContainer.innerHTML = '';
+
+            const sorted = definition.key === 'combo'
+                ? sortComboServices(services)
+                : sortVariantServices(services);
+
+            sorted.forEach(serviceName => {
+                renderButton(
+                    variantContainer,
+                    'transaction-choice-button transaction-combo-button',
+                    { 'data-service-value': serviceName },
+                    definition.key === 'combo' ? getServiceThaiHint(serviceName) : getServiceDisplayName(serviceName),
+                    serviceName,
+                    () => selectServiceValue(serviceName)
+                );
+            });
+        }
+
         function renderServiceButtons() {
             const categoryContainer = document.getElementById('service-category-buttons');
-            const comboPanel = document.getElementById('combo-service-panel');
-            const comboContainer = document.getElementById('combo-service-buttons');
+            const variantPanel = document.getElementById('variant-service-panel');
+            const variantContainer = document.getElementById('variant-service-buttons');
             const durationPanel = document.getElementById('duration-button-panel');
-            if (!categoryContainer || !comboPanel || !comboContainer) return;
+            if (!categoryContainer || !variantPanel || !variantContainer) return;
 
             const serviceNames = getAvailableServiceNames();
             categoryContainer.innerHTML = '';
-            comboContainer.innerHTML = '';
+            variantContainer.innerHTML = '';
+            variantPanel.hidden = true;
             if (durationPanel && !document.getElementById('duration').value) {
                 durationPanel.innerHTML = '<div class="transaction-button-empty">เลือกบริการก่อน</div>';
             }
@@ -985,7 +1017,8 @@
             }, {});
 
             serviceCategoryDefinitions.forEach(definition => {
-                if (!servicesByCategory[definition.key]?.length) return;
+                const services = servicesByCategory[definition.key];
+                if (!services?.length) return;
                 renderButton(
                     categoryContainer,
                     'transaction-choice-button transaction-category-button',
@@ -993,26 +1026,15 @@
                     definition.label,
                     definition.sublabel,
                     () => {
-                        if (definition.key === 'combo') {
-                            comboPanel.hidden = false;
+                        if (services.length >= 2) {
+                            openVariantPanel(definition, services);
                             setActiveChoice(categoryContainer, 'data-service-category', definition.key);
-                            renderDurationButtons();
+                            if (definition.key === 'combo') renderDurationButtons();
                             return;
                         }
-                        comboPanel.hidden = true;
-                        selectServiceValue(getPreferredCategoryService(definition.key, servicesByCategory[definition.key]));
+                        variantPanel.hidden = true;
+                        selectServiceValue(services[0]);
                     }
-                );
-            });
-
-            sortComboServices(servicesByCategory.combo || []).forEach(serviceName => {
-                renderButton(
-                    comboContainer,
-                    'transaction-choice-button transaction-combo-button',
-                    { 'data-service-value': serviceName },
-                    getServiceThaiHint(serviceName),
-                    serviceName,
-                    () => selectServiceValue(serviceName)
                 );
             });
 
@@ -1022,15 +1044,18 @@
         function updateServiceButtonState() {
             const serviceSelect = document.getElementById('service');
             const categoryContainer = document.getElementById('service-category-buttons');
-            const comboPanel = document.getElementById('combo-service-panel');
-            const comboContainer = document.getElementById('combo-service-buttons');
-            if (!serviceSelect || !categoryContainer || !comboPanel || !comboContainer) return;
+            const variantPanel = document.getElementById('variant-service-panel');
+            const variantContainer = document.getElementById('variant-service-buttons');
+            if (!serviceSelect || !categoryContainer || !variantPanel || !variantContainer) return;
 
             const selectedService = serviceSelect.value;
             const selectedCategory = selectedService ? getServiceCategory(selectedService) : '';
             setActiveChoice(categoryContainer, 'data-service-category', selectedCategory);
-            setActiveChoice(comboContainer, 'data-service-value', selectedService);
-            comboPanel.hidden = selectedCategory !== 'combo';
+            setActiveChoice(variantContainer, 'data-service-value', selectedService);
+
+            const serviceNames = getAvailableServiceNames();
+            const servicesForCategory = serviceNames.filter(name => getServiceCategory(name) === selectedCategory);
+            variantPanel.hidden = !selectedCategory || servicesForCategory.length < 2;
         }
 
         function renderDurationButtons() {
