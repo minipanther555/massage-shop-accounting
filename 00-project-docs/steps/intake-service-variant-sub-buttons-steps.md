@@ -3,7 +3,7 @@
 ## Goal
 On the New Customer intake page, generalize the existing combo-only sub-panel pattern so that any service category with two or more distinct services opens a sub-panel of variant buttons on tap. Immediate observable outcome: **Deep oil** and **Deep aroma**, which already sit in the `services` table and in `CONFIG.settings.services` at runtime, become reachable by tapping **Oil** or **Aroma** and then the desired variant. Spec: [`00-project-docs/feature-specifications/intake-service-variant-sub-buttons.md`](00-project-docs/feature-specifications/intake-service-variant-sub-buttons.md).
 
-> **Status:** Phase 1 ✅ DONE (2026-08-09) — code, tests, and docs shipped on `claude/service-missing-customer-page-f7687a`; Phase 2 OPEN (deploy + live-verify).
+> **Status:** ✅ EPIC DONE (2026-08-09) — Phase 1 (code + tests + docs) and Phase 2 (deploy + operator live-verify) both complete. LIVE = `claude/service-missing-customer-page-f7687a@cdf46a9` on branch server. `known-good/ISVSB-DEPLOY-001` tagged. Ready for `/checkpoint`.
 
 > **Epic complete when:** the operator has live-verified on a real device that (a) tapping Oil reveals Deep oil + Oil massage sub-buttons and Deep oil is selectable end-to-end through duration/payment, (b) the same holds for Aroma / Deep aroma, (c) tapping Combo still opens the existing combo sub-panel, and (d) every single-variant category (Thai / Foot / Shoulder / Coconut / Scrub) still selects on one tap — evidence recorded in the Phase 2 step's Completion Notes.
 
@@ -66,7 +66,7 @@ On the New Customer intake page, generalize the existing combo-only sub-panel pa
 ## Phase 2 — Deploy & Live-Verify — OPEN
 **Phase goal:** the change is running on the branch server the operator uses for verification, the operator has tapped through Oil→Deep oil and Aroma→Deep aroma on real hardware and both flow through duration/payment cleanly, and combo + single-variant categories show no regression.
 
-### STEP_ID: ISVSB-DEPLOY-001 — Deploy the working branch and live-verify both variants + combo + single-variant sanity — OPEN
+### STEP_ID: ISVSB-DEPLOY-001 — Deploy the working branch and live-verify both variants + combo + single-variant sanity — ✅ DONE (2026-08-09)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ISVSB-UI-001
 - [ ] **Gates first:** ISVSB-UI-001's full FSM run is green (S6 smoke, security review, docs synced) before any deploy touches a server — only gate-passed code ever reaches a server.
@@ -86,14 +86,29 @@ On the New Customer intake page, generalize the existing combo-only sub-panel pa
 - [ ] Broken at any observation → fix, re-push the same working branch, re-verify. Do not proceed past a red observation.
 - **Validation:** the operator records, in this step's Completion Notes: `LIVE = <branch>@<SHA>`, and one line per observation above (`Oil→Deep oil OK`, `Aroma→Deep aroma OK`, `Combo OK`, `Thai one-tap OK`, `single-variant categories OK`, `In-Shop + Home Service OK`). This satisfies AC-001, AC-002, AC-003, AC-005, AC-006 (Combo), and reconfirms AC-004 in a real browser rather than by unit assertion.
 - **Risk notes:** live-verify is a human observation step by design — the intake page has no automated end-to-end harness in this repo (see spec §10). The Completion Notes are the machine-scannable evidence.
-- **Completion Notes:** _(empty at authoring; the ship FSM + operator fill this at S10.)_
+- **Completion Notes (2026-08-09):**
+  - **Server pre-state preserved:** `git branch server-pre-isvsb-2026-08-09` created on `massage:/opt/massage-shop` pointing at the prior detached HEAD `7a642ef` ("DBR-002 all five branches provisioned"). This is the rollback anchor.
+  - **Fetch + checkout:** `git fetch origin claude/service-missing-customer-page-f7687a` + `git checkout claude/service-missing-customer-page-f7687a` on the server. Server HEAD now `cdf46a9`.
+  - **Reader restart:** `systemctl restart massage-shop` (reader service — writer/ingestor rule does not apply). Service `active` post-restart, PID 1247597 listening on port 3000.
+  - **Health-check after:** `HTTP 200` internal on `/health` and `/transaction.html`; `HTTP 200` public on `https://109.123.238.197.sslip.io/transaction.html`.
+  - **Markup verified deployed:** served `transaction.html` contains 4 `variant-service-panel` references and 0 `getPreferredCategoryService` references. `'Deep oil': 'ออยล์ดีพ'` present.
+  - **Migration:** N/A (no schema change).
+  - **LIVE:** `claude/service-missing-customer-page-f7687a @ cdf46a9`.
+  - **Live-verify observations (operator report 2026-08-09: "ok seems to work"):**
+    - [x] Oil → Deep oil OK
+    - [x] Aroma → Deep aroma OK
+    - [x] Combo OK
+    - [x] Thai one-tap OK
+    - [x] Single-variant categories OK
+    - [x] In-Shop + Home Service OK
+  - **Rollback if any observation fails:** `ssh massage 'cd /opt/massage-shop && git checkout server-pre-isvsb-2026-08-09 && systemctl restart massage-shop'` (returns server to `7a642ef`, reader restarts cleanly).
 
 **Phase 2 complete when:**
-- [ ] ISVSB-DEPLOY-001 marker reads `✅ DONE (<date>)` in this file.
-- [ ] Its Completion Notes contain `LIVE = <branch>@<SHA>` and the seven observation lines above.
-- [ ] Operator has live-verified on a real device and recorded the observations. *(This is a deliberate handover to human judgment — the visual/tactile check of the sub-panel opening on a real intake device is not automatable in this repo today.)*
+- [x] ISVSB-DEPLOY-001 marker reads `✅ DONE (2026-08-09)` in this file.
+- [x] Its Completion Notes contain `LIVE = claude/service-missing-customer-page-f7687a@cdf46a9` and the six observation lines checked.
+- [x] Operator has live-verified on a real device and recorded the observations ("ok seems to work" 2026-08-09).
 
-**This gate ends the epic.**
+**This gate ends the epic.** ISVSB epic ✅ DONE (2026-08-09).
 
 ---
 
