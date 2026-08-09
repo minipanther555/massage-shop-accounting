@@ -28,7 +28,7 @@ On the New Customer intake page, generalize the existing combo-only sub-panel pa
 ## Phase 1 — Implementation — OPEN
 **Phase goal:** [web-app/transaction.html](web-app/transaction.html) renders a sub-panel for every category with ≥2 distinct services, preserves single-tap behavior for single-variant categories, and preserves the existing combo behavior.
 
-### STEP_ID: ISVSB-UI-001 — Generalize the category sub-panel from combo-only to any multi-variant category — OPEN
+### STEP_ID: ISVSB-UI-001 — Generalize the category sub-panel from combo-only to any multi-variant category — 🔄 IN PROGRESS (ISVSB-UI-001 started 2026-08-09)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** none
 - [ ] In [web-app/transaction.html](web-app/transaction.html), when a category button is tapped and its resolved service list has length ≥ 2, a sub-panel is revealed containing one button per service in that category (label via `getServiceDisplayName`), and no service is selected until a sub-button is tapped — FR-001.
@@ -39,13 +39,16 @@ On the New Customer intake page, generalize the existing combo-only sub-panel pa
 - [ ] The sub-panel carries a short Thai title (either the existing "เลือกคอมโบ" for combo plus a generic "เลือกบริการ" for other categories, or a per-category label such as "เลือกออยล์" / "เลือกอโรม่า") — FR-004. Implementer's choice between the two forms; both are acceptable Thai UX.
 - [ ] Sub-buttons within a multi-variant category are ordered: regular first, "Deep " variants last, tie-broken alphabetically — FR-005.
 - [ ] Dead code removed: `getPreferredCategoryService` and its `preferredServiceNames` map at [transaction.html:898-906](web-app/transaction.html:898) are deleted if no longer referenced after the change; the single-variant path inlines `servicesByCategory[key][0]`.
-- **Validation:** `git diff --name-only main..HEAD` returns exactly `web-app/transaction.html` and nothing else (AC-007). Loading the intake page in a real browser and grouping services by category: every `servicesByCategory[key].length >= 2` category renders a visible sub-panel on tap (asserted by DOM inspection: `#combo-service-panel` or its generalized equivalent has `hidden=false` and contains one child button per service in that category); every `length === 1` category leaves the sub-panel hidden and populates `document.getElementById('service').value` on the single tap. Tapping the Deep oil sub-button leaves `document.getElementById('service').value === 'Deep oil'` and the duration `<select>` populated with the durations Deep oil offers at the current location. Combo flow: at least one combo service selectable end-to-end.
+- [ ] **Parallel mirror synced:** [web-app/transaction.ejs](web-app/transaction.ejs) receives the identical change (the two files differ only in the CSRF-token placeholder syntax; the existing `test.each(templates)` contract test enforces they stay in sync).
+- [ ] **Contract test rewritten:** [__tests__/transaction.oil-category-promotion.present.test.js](__tests__/transaction.oil-category-promotion.present.test.js) is rewritten to pin the NEW behavior (no `preferredServiceNames`, no `getPreferredCategoryService`, sub-panel branch present) — the current three `expect(source).toContain(...)` assertions all pin the old bug and must go. The `test.each([html, ejs])` loop stays, still enforcing html/ejs parity. Its co-located doc [__tests__/transaction.oil-category-promotion.present.test.md](__tests__/transaction.oil-category-promotion.present.test.md) updates in the same commit — AC-008.
+- [ ] **Co-located doc synced (S9):** [web-app/transaction.html.md](web-app/transaction.html.md) is updated to describe the sub-panel behavior for multi-variant categories.
+- **Validation:** `git diff --name-only main..HEAD` shows EXACTLY these files and nothing else: `web-app/transaction.html`, `web-app/transaction.ejs`, `web-app/transaction.html.md`, `__tests__/transaction.oil-category-promotion.present.test.js`, `__tests__/transaction.oil-category-promotion.present.test.md` (AC-007, updated scope). The rewritten contract test passes (`npx jest __tests__/transaction.oil-category-promotion.present.test.js` — AC-008). Loading the intake page in a real browser and grouping services by category: every `servicesByCategory[key].length >= 2` category renders a visible sub-panel on tap (asserted by DOM inspection: `#combo-service-panel` or its generalized equivalent has `hidden=false` and contains one child button per service in that category); every `length === 1` category leaves the sub-panel hidden and populates `document.getElementById('service').value` on the single tap. Tapping the Deep oil sub-button leaves `document.getElementById('service').value === 'Deep oil'` and the duration `<select>` populated with the durations Deep oil offers at the current location. Combo flow: at least one combo service selectable end-to-end.
 - **Risk notes:** the combo sub-panel is the sole existing consumer of this DOM element; the highest regression risk is breaking combo. Either keep the `#combo-service-panel` element and drive it by the general rule, or add a sibling `#variant-service-panel` and keep combo untouched — implementer's call at S4_Design. Live-verify (ISVSB-DEPLOY-001) explicitly re-exercises combo.
 - **Completion Notes:** _(empty at authoring; the ship FSM fills this at S10 with Exit-Criteria evidence, the commit SHA, the `known-good/ISVSB-UI-001` tag if this becomes the rollback anchor, and any route that diverged from the action items above.)_
 
 **Phase 1 complete when:**
 - [ ] ISVSB-UI-001 marker reads `✅ DONE (<date>)` in this file.
-- [ ] `git diff --name-only main..HEAD` on the working branch shows `web-app/transaction.html` and no other file changed (guards AC-007).
+- [ ] `git diff --name-only main..HEAD` on the working branch shows exactly `web-app/transaction.html`, `web-app/transaction.ejs`, `web-app/transaction.html.md`, `__tests__/transaction.oil-category-promotion.present.test.js`, `__tests__/transaction.oil-category-promotion.present.test.md` and no other file (guards AC-007).
 - [ ] The ship FSM's S6 smoke gate passed and its evidence is recorded in ISVSB-UI-001's Completion Notes.
 
 **This gate authorizes Phase 2.**
@@ -97,7 +100,7 @@ On the New Customer intake page, generalize the existing combo-only sub-panel pa
 - **Q-02 — blocks: none in this feature** — Thai-hint dictionary entries for "Deep oil" / "Deep aroma" in `thaiHints` at [transaction.html:832](web-app/transaction.html:832). Nice-to-have cosmetic; the buttons render legible English if omitted. Optional inclusion at implementer's discretion within ISVSB-UI-001 (one-line addition per entry) — not a blocking concern.
 
 ## Discoveries
-_(append-only; empty at authoring; written by the ship FSM as execution reveals what the plan had wrong.)_
+- **ISVSB-UI-001 (2026-08-09):** S1 touches-chain grep surfaced two artifacts the spec's initial CFEP missed — (1) `web-app/transaction.ejs`, a parallel mirror of `transaction.html` differing only in CSRF-token syntax; and (2) `__tests__/transaction.oil-category-promotion.present.test.js`, an existing contract test whose three `expect(source).toContain(...)` assertions **pin the CURRENT buggy behavior** (auto-select of `Oil massage` on Oil tap). Both must be updated in the same commit. AC-007 rewritten to reflect the true 5-file scope; AC-008 added to pin the new contract-test behavior. Action items and validation on ISVSB-UI-001 updated accordingly. No change to FR-001..FR-005 or to any other AC — the design is unchanged; only the file set is enlarged.
 
 ## Coverage
 - **FR-001** (sub-panel opens on click for multi-variant categories) → ISVSB-UI-001
@@ -111,5 +114,6 @@ _(append-only; empty at authoring; written by the ship FSM as execution reveals 
 - **AC-004** (single-variant categories remain one-tap) → ISVSB-UI-001 (DOM assertion) + ISVSB-DEPLOY-001 (live)
 - **AC-005** (active state on category + sub-button) → ISVSB-UI-001 (DOM assertion) + ISVSB-DEPLOY-001 (live)
 - **AC-006** (Combo sub-panel unchanged) → ISVSB-UI-001 (DOM assertion) + ISVSB-DEPLOY-001 (live)
-- **AC-007** (only `web-app/transaction.html` changed) → ISVSB-UI-001 (`git diff --name-only`)
+- **AC-007** (permitted change surface: 5 files listed; all others byte-identical) → ISVSB-UI-001 (`git diff --name-only`)
+- **AC-008** (rewritten contract test passes and pins the new behavior) → ISVSB-UI-001 (`npx jest __tests__/transaction.oil-category-promotion.present.test.js`)
 - **UNCOVERED:** none.
