@@ -307,7 +307,7 @@ while every superseded row still counts for neither — and both rows stay in th
   the two steps above and may run concurrently with them — it shares no file with `ETSC-CORE-001`.
 - **Completion Notes:**
 
-### STEP_ID: ETSC-CORE-002b — correction picks a replacement who is actually free — OPEN
+### STEP_ID: ETSC-CORE-002b — correction picks a replacement who is actually free — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-002
 - **Touches:** `backend/routes/transactions.js`, `tests/`
@@ -341,7 +341,78 @@ while every superseded row still counts for neither — and both rows stay in th
 - **Risk notes:** the eligibility guards elsewhere in this file are about a row's own lifecycle state,
   not workload — do not widen into them. The audit-repair tool at `:790` and `:799` belongs to
   ETSC-CORE-002a.
-- **Completion Notes:**
+- [x] The correction flow's workload count and busy scan recognise a correction replacement as live
+      work, using the same shared predicate, with superseded and cancelled rows still excluded.
+- [x] No inline live-row filter remains in `getCorrectionEligibleStaff()`.
+- **Completion Notes:** Shipped 2026-08-18.
+
+  **What changed.** Both live-row filters in `getCorrectionEligibleStaff()` now call
+  `countsAsLiveWork()` from the existing shared module: the workload subquery at `:21` and the busy
+  scan at `:29`, each yielding `status IN ('ACTIVE', 'CORRECTED')`. No second predicate, no inlined
+  SQL, and **no new import** — `:8` already carried it from `ETSC-CORE-002`, so **this diff shifts no
+  line numbers in any file**, which is why `ETSC-CORE-002a` could follow immediately without
+  re-deriving its own cited sites. Production diff: 12 insertions / 2 deletions in
+  `backend/routes/transactions.js`, of which 10 insertions are the comment explaining the test export
+  below.
+
+  **RED observed before either filter changed** —
+  `tests/integration/correction-replacement-picker.integration.test.js`, 5 failed / 2 passed, every
+  value as predicted: the eligible list came back `["Busy", "Free", "Wrong"]` with the mid-massage
+  masseuse ranked first; the override naming her returned **201 instead of 409**; the
+  finished-massage masseuse's `today_massages` read `0` where `1` was required; the picker and the
+  roster disagreed `0` against `1` for the same masseuse on the same day; and the function's source
+  contained `countsAsLiveWork(` zero times. GREEN after: **7 of 7**. The two that passed in both
+  states are declared guards, not symptom reproductions — the two-successive-edits count-once guard,
+  which exists to fail a denylist rather than the current code, and the cancelled-row guard on
+  behaviour that was already correct.
+
+  **🔴 The defect was worse than the ledger described: she was wrongly ACCEPTED, not merely wrongly
+  suggested.** `getCorrectionEligibleStaff()` feeds two decisions at `:650-655` — the default
+  replacement (`eligibleStaff[0]`) and the FR-007 availability guard (`.some(...)`). Reception
+  overriding to a masseuse who was mid-massage on a correction replacement got a **201 and a saved
+  correction**, where FR-007 requires a refusal. That is the live half of this defect and it is now
+  covered end to end through the real handler and database.
+
+  **🔴 The default-suggestion half is unreachable over HTTP, and that is a spec-level finding.**
+  `validateInput` is mounted globally at `backend/server.js:86`, and
+  `backend/middleware/input-validation.js:105-108` rejects any `POST /api/transactions` carrying no
+  `masseuse_name` — correction or not — measured, returning `400 "Masseuse name must be between 1 and
+  100 characters"`. So `:652` never executes and the sort at `:45` has no HTTP-visible effect. The
+  route's own field check at `:588` deliberately exempts corrections, so the route and the middleware
+  contradict each other. **The workload filter was fixed regardless** — it is wrong either way and is
+  a live trap for whoever makes the default reachable — and is asserted directly against the
+  function, which is exported as `router.getCorrectionEligibleStaff` for that purpose only. That
+  export changes no runtime behaviour and leaves `module.exports = router` intact. Without it,
+  Validation clause (b) has no observable and would have collapsed into clause (c), which is the
+  same class of hole this lane has now hit three times, in a new disguise. See Discoveries.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to the recorded baseline, the
+  single failure being `__tests__/nav.bilingual.present.test.js`, unrelated. Ten integration suites
+  including this step's = 88 passed / 0 failed; the nine pre-existing ones were 81 passed before, so
+  the delta is exactly the 7 new tests and zero regressions. In particular
+  `tests/integration/transaction-correction.integration.test.js`'s existing "rejects a busy manual
+  replacement" test still passes — it uses an `ACTIVE` busy row, which the allowlist still admits.
+  Security: all fourteen `countsAsLiveWork()` call sites across the three route files pass hardcoded
+  literals (`'t'`, `''`), verified by grep; no user input reaches the interpolated alias; no new
+  endpoint, no new input, no new write. The change **narrows** who may be assigned a correction, the
+  safe direction for FR-007. Performance: `EXPLAIN QUERY PLAN` before and after is byte-identical on
+  both queries — the workload subquery keeps `SEARCH t USING INDEX
+  idx_transactions_business_day_staff (business_day=? AND masseuse_name=? AND status=?)`, SQLite
+  serving `IN` as an index seek exactly as it served `=`.
+
+  **Not touched, deliberately.** The edit write path (`:693-697`, `:714`), mandated by
+  `transaction-correction-operational-reversal.md` FR-003 and §6. The audit-repair tool (`:791`,
+  `:800`) — `ETSC-CORE-002a`. The eight money sites in `backend/routes/reports.js` and this file.
+  The lifecycle guards at `:291`, `:437`, `:452`, `:494`, `:504`, `:878`, `:893`, and the
+  `booking_credits` status filters at `:65`, `:94`, `:762`, `:907`, none of which aggregate work.
+  `getCorrectionCandidates()` at `:54` and `/recent` at `:153`, both already correct — the latter
+  includes `EDITED%` on purpose so the audit trail stays visible. `backend/routes/staff.js`,
+  `backend/routes/admin.js`, `backend/middleware/input-validation.js`, and every `web-app` file.
+
+  **Docs.** New bug record in `backend/routes/transactions.js.md` covering the picker defect, the
+  wrongly-accepted override, and the unreachable-default finding.
+  `backend/services/transaction-status-sql.js.md` moved `:21` and `:29` out of §5 Known
+  Non-Consumers and into §3 Dependency Mapping, which now names fourteen consumer sites.
 
 ### STEP_ID: ETSC-CORE-003 — an edit is all-or-nothing — OPEN
 - **Protocol:** `/fsm-ship-ntc`
@@ -542,6 +613,28 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **ETSC-CORE-002b shipping (2026-08-18):** 🔴 **the correction endpoint cannot accept a request that
+  omits the masseuse, so FR-004's default-replacement rule has no reachable code path.**
+  `backend/routes/transactions.js:588` deliberately exempts a correction from the required-field check
+  (`!masseuseName && !originalTransactionId`), so the handler is written to fall back to
+  `eligibleStaff[0]` at `:652`. But `validateInput` is mounted globally at `backend/server.js:86` and
+  `backend/middleware/input-validation.js:105-108` rejects **every** `POST /api/transactions` with no
+  `masseuse_name`, correction or not — measured, `400 "Masseuse name must be between 1 and 100
+  characters"`. The route and the middleware contradict each other, and the middleware wins. So
+  `transaction-correction-operational-reversal.md` FR-004 — *"The default is the next eligible staff
+  member after the original incorrect assignment is excluded from active workload"* — is implemented
+  but never executed; reception's page always sends a name (`web-app/shared.js:344`). The workload
+  filter was fixed anyway, because it is wrong either way and is a trap for whoever makes the default
+  reachable, and it is asserted directly against the function rather than through the endpoint.
+  **Not fixed here:** relaxing an input-validation contract is outside this step's Touches and changes
+  what the API accepts. **Operator decision — schedule or decline.** The two ways out are opposite
+  answers to a product question, not a code one: exempt corrections in the middleware so reception can
+  let the system choose, or delete the dead fallback at `:652` and make the name genuinely required.
+- **ETSC-CORE-002b shipping (2026-08-18):** the defect was worse than this step described. The picker
+  feeds the FR-007 availability guard as well as the default suggestion (`:650-655`), so a masseuse
+  mid-massage on a correction replacement was not merely offered first — an override naming her was
+  **accepted with a 201** where FR-007 requires a refusal. That half is live and is now covered end to
+  end. The suggestion half is not reachable, per the Discovery above.
 - **ETSC-CORE-002b planning (2026-08-18):** the correction picker's workload rule and the roster's are
   not the same rule, and this step does not make them the same. The roster ANDs the live-row predicate
   with the counts-as-a-massage predicate (`backend/routes/staff.js:42-43`); the picker has no

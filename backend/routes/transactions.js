@@ -18,7 +18,7 @@ async function getCorrectionEligibleStaff(businessDay, excludedTransactionId, no
     `SELECT ts.display_name AS masseuse_name, ts.position,
        (SELECT COUNT(*) FROM transactions t
         WHERE t.business_day = ts.business_day AND t.masseuse_name = ts.display_name
-          AND t.status = 'ACTIVE' AND t.transaction_id != ?) AS today_massages
+          AND ${countsAsLiveWork('t')} AND t.transaction_id != ?) AS today_massages
      FROM today_staff ts
      WHERE ts.business_day = ? AND ts.removed_at IS NULL`,
     [excludedTransactionId, businessDay]
@@ -26,7 +26,7 @@ async function getCorrectionEligibleStaff(businessDay, excludedTransactionId, no
   const activeTransactions = await database.all(
     `SELECT masseuse_name, timestamp, end_datetime, duration
      FROM transactions
-     WHERE business_day = ? AND status = 'ACTIVE' AND transaction_id != ?`,
+     WHERE business_day = ? AND ${countsAsLiveWork('')} AND transaction_id != ?`,
     [businessDay, excludedTransactionId]
   );
   const bookings = await database.all(
@@ -959,5 +959,15 @@ router.get('/summary/today', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch daily summary' });
   }
 });
+
+// Exposed for test only. `getCorrectionEligibleStaff()` decides two things — the
+// default replacement (`eligibleStaff[0]`) and the availability guard (`.some(...)`)
+// at :650-655 — but only the guard is reachable over HTTP: `validateInput`
+// (backend/server.js:86, backend/middleware/input-validation.js:105-108) rejects a
+// POST /api/transactions carrying no `masseuse_name`, correction or not, so the
+// default branch never runs and the workload ordering has no HTTP-visible effect.
+// The workload filter is still wrong and still has to be right, so it is asserted
+// directly. Attaching to the router leaves `module.exports = router` intact.
+router.getCorrectionEligibleStaff = getCorrectionEligibleStaff;
 
 module.exports = router;
