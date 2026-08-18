@@ -99,7 +99,7 @@ corrected — it now writes the staff and reports routes rather than the transac
 **Phase goal:** after an edit, the replacement counts for availability, workload and the day's money,
 while every superseded row still counts for neither — and both rows stay in the ledger.
 
-### STEP_ID: ETSC-CORE-001 — availability and workload recognise a corrected row as live — OPEN
+### STEP_ID: ETSC-CORE-001 — availability and workload recognise a corrected row as live — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** none
 - **Touches:** `backend/routes/staff.js`, `backend/services/transaction-status-sql.js` (new — the
@@ -110,18 +110,18 @@ while every superseded row still counts for neither — and both rows stay in th
   audit-integrity repair tool at `backend/routes/transactions.js:782-825`, which finds superseded rows
   by looking for the `CORRECTED` status at `:799`. The audit trail is a fraud control; degrading it is
   not an acceptable cost. So the readers are corrected, not the writer.
-- [ ] A masseuse's busy window derives from her live massage whether that massage is an original or a
+- [x] A masseuse's busy window derives from her live massage whether that massage is an original or a
       correction replacement.
-- [ ] Her workload count includes a correction replacement, so an edit does not reset her queue
+- [x] Her workload count includes a correction replacement, so an edit does not reset her queue
       position — this is `transaction-correction-operational-reversal.md` AC-003, which requires the
       replacement's workload effect to apply exactly once and which the current code does not honour.
-- [ ] Superseded rows and cancelled rows remain excluded from both.
-- [ ] The two other workload-fairness readers in the same file are corrected with the same predicate:
+- [x] Superseded rows and cancelled rows remain excluded from both.
+- [x] The two other workload-fairness readers in the same file are corrected with the same predicate:
       today's per-masseuse performance (`backend/routes/staff.js:711`) and yesterday's commission
       (`backend/routes/staff.js:755`), which orders tomorrow's roster via
       `ORDER BY previous_day_commission ASC` at `:773` — so an edit today must not change who gets
       customers tomorrow.
-- [ ] The predicate lives in one shared helper, not inline at each site, following the reason
+- [x] The predicate lives in one shared helper, not inline at each site, following the reason
       `backend/services/add-on-sql.js:5-8` gives for existing: so the aggregation sites cannot drift.
 - **Validation:** after editing a one-hour massage to two hours, the masseuse reads as busy for the
   edited duration, is not offered as next in line, and keeps the workload count she had before the
@@ -131,7 +131,54 @@ while every superseded row still counts for neither — and both rows stay in th
   one. Superseded rows carry a status beginning `EDITED`; cancelled rows one beginning `CANCELLED`.
   An implementation that widens to "not cancelled" would wrongly count superseded rows and double a
   masseuse's workload for every edit.
-- **Completion Notes:**
+- **Completion Notes:** Shipped 2026-08-18.
+
+  **What changed.** New shared module `backend/services/transaction-status-sql.js` exporting
+  `countsAsLiveWork(alias)`, returning `status IN ('ACTIVE', 'CORRECTED')` — an allowlist of exactly
+  two values, matching the reference implementation at `backend/routes/reports.js:239` and the unique
+  booking index at `backend/models/database.js:359` verbatim. No new status vocabulary. Applied at all
+  four transaction-status filters in `backend/routes/staff.js`: the workload count at `:42`, the busy
+  window at `:202`, today's per-masseuse performance at `:712`, and yesterday's commission at `:756`.
+  `grep -n "status = 'ACTIVE'" backend/routes/staff.js` now returns nothing, so no inline copy
+  survived. `countsAsMassage('t')` at `:43` is untouched and still ANDed.
+
+  **RED observed before any production line changed** —
+  `tests/integration/edited-transaction-live-state.integration.test.js`, 8 of 9 failing, with the
+  values the ledger predicted: `current_state` `"available"` not `"busy"`, `walk_in_priority` `true`
+  not `false`, `today_massages` `0` not `1`, two-successive-edits count `0` not `1`,
+  `previous_day_commission` `0` not `300`, and the per-masseuse performance row `undefined`. GREEN
+  after: 9 of 9. The ninth test — a cancelled row counting for nothing — passed in both states by
+  design; it is a regression guard on behaviour that was already correct, not a symptom reproduction.
+
+  **The Validation line was too weak and was strengthened rather than relaxed.** As quoted it exercises
+  only busy state, next-in-line and workload, which is `:42` and `:202`. An implementation changing
+  only those two sites would have satisfied it in full while failing this step's fourth objective
+  outright. Three supplementary assertions close the gap, all approved at the plan audit: yesterday's
+  commission through `GET /staff/today/helper` covering `:756`; a two-successive-edits fixture
+  asserting a workload of one, not three, which fails a denylist predicate directly rather than
+  incidentally; and a source assertion that the predicate is imported from the shared module and no
+  inline filter remains, which is what makes the fifth objective checkable at all.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to the recorded baseline, the
+  single failure being `__tests__/nav.bilingual.present.test.js`, unrelated. Six integration suites
+  reading the changed queries — walk-in queue refresh, transaction correction, paid time extension,
+  booking reservation, time-window promotion, promotion settings manager — 56 passed, 0 failed.
+  Security: all four call sites pass hardcoded literals (`'t'`, `''`), verified by grep; no user input
+  reaches the interpolated alias; no new endpoint, no new input, and the change widens what is read
+  while writing nothing. Performance: `EXPLAIN QUERY PLAN` before and after is byte-identical — the
+  workload count keeps `SEARCH t USING COVERING INDEX idx_transactions_business_day_staff`, and the
+  busy query's plan never depended on the status column.
+
+  **Not touched, deliberately.** `backend/routes/transactions.js` (the edit write path, whose status
+  values are mandated by `transaction-correction-operational-reversal.md` FR-003 and §6); every
+  `web-app` file; `backend/routes/reports.js` (owned by ETSC-CORE-002); `backend/routes/admin.js` (see
+  Discoveries — display-only, and payouts accrue correctly through the edit path itself);
+  `backend/routes/staff.js:702`'s UTC date derivation (see Discoveries — owned by the freshness lane,
+  and the reason the `:712` test pins a fixture to the real UTC date instead of `?at=`).
+
+  **Docs.** New `backend/services/transaction-status-sql.js.md`. `backend/routes/staff.js.md` had three
+  stale lines asserting the counts came from `ACTIVE` rows — corrected at `:29`, `:41` and `:137` — plus
+  a new bug-record section covering the symptom, the two rejected hypotheses and the resolution.
 
 ### STEP_ID: ETSC-CORE-002 — the day's money counts a corrected row — OPEN
 - **Protocol:** `/fsm-ship-ntc`

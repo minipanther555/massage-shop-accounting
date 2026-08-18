@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 const { countsAsMassage } = require('../services/add-on-sql');
+const { countsAsLiveWork } = require('../services/transaction-status-sql');
 const { BOOKING_BUFFER_MINUTES } = require('../services/booking-service');
 const { getBusinessDayParts, getNextBusinessDay } = require('../utils/business-day');
 
@@ -38,7 +39,7 @@ async function getActiveTodayStaff(businessDay) {
          FROM transactions t
          WHERE t.business_day = ts.business_day
            AND t.masseuse_name = ts.display_name
-           AND t.status = 'ACTIVE'
+           AND ${countsAsLiveWork('t')}
            AND ${countsAsMassage('t')}
        ), 0) AS today_massages,
        ts.added_at AS last_updated,
@@ -198,7 +199,7 @@ async function getActiveTransactionByStaff(businessDay) {
        service_type
      FROM transactions
      WHERE business_day = ?
-       AND status = 'ACTIVE'
+       AND ${countsAsLiveWork('')}
      ORDER BY timestamp DESC`,
     [businessDay]
   );
@@ -708,7 +709,7 @@ router.get('/performance/today', async (req, res) => {
         SUM(masseuse_fee) as total_fees,
         SUM(payment_amount) as total_revenue
        FROM transactions 
-       WHERE date = ? AND status = 'ACTIVE'
+       WHERE date = ? AND ${countsAsLiveWork('')}
        GROUP BY masseuse_name
        ORDER BY total_fees DESC`,
       [today]
@@ -752,7 +753,7 @@ router.get('/today/helper', async (req, res) => {
          s.name AS display_name,
          ? AS previous_business_day,
          COALESCE(SUM(CASE
-           WHEN t.status = 'ACTIVE' THEN t.masseuse_fee
+           WHEN ${countsAsLiveWork('t')} THEN t.masseuse_fee
            ELSE 0
          END), 0) AS previous_day_commission,
          COALESCE(p.planning_status, 'available_to_add') AS today_planning_status,

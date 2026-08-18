@@ -26,7 +26,7 @@
 - **Logic:** 
   1. Calls `resetExpiredBusyStatuses()` to clear expired statuses
   2. Fetches updated roster from database
-  3. Calculates today's completed massage counts from `ACTIVE` `transactions.business_day` rows for each staff member
+  3. Calculates today's completed massage counts from live `transactions.business_day` rows for each staff member — `ACTIVE` originals and `CORRECTED` correction replacements alike, via `countsAsLiveWork('t')`
   4. Returns complete roster data
 
 #### `router.get('/current-status')`
@@ -38,7 +38,7 @@
 - **Logic:**
   1. Computes the current Bangkok business day with `getCurrentBusinessDay(req)`.
   2. Reads active visible Today Staff rows with `getActiveTodayStaff()`.
-  3. Reads current-day `ACTIVE` transactions and treats rows whose canonical `end_datetime` is still in the future as busy windows. If a legacy row has no canonical datetime fields, it falls back to `timestamp + duration`.
+  3. Reads current-day live transactions — `ACTIVE` originals and `CORRECTED` correction replacements, via `countsAsLiveWork('')` — and treats rows whose canonical `end_datetime` is still in the future as busy windows. If a legacy row has no canonical datetime fields, it falls back to `timestamp + duration`.
   4. Reads `BOOKED` reservations whose scheduled end is still in the future, including reservations already in progress, and attaches the next booking per staff member.
   5. Reads every unreleased `BOOKED` requested-staff booking for the current Bangkok business day, including late bookings that reception has not marked `NO_SHOW`; historical bookings cannot constrain today. Staff with less than one 60-minute service slot before that booking, or with a late booking, are `booking_buffer`, and all remaining rows are `available`.
   6. Sorts the snapshot by operational state: busy first, booking-constrained rows next, free rows last.
@@ -134,7 +134,7 @@
 #### `router.get('/today/state')`
 - **Purpose:** Returns active Today Staff rows, planning rows, visible day-off-today rows, and dropdown-eligible staff for the current business day.
 - **Returns:** `{ business_day, today_staff, planning, day_off_today, dropdown_staff }`
-- **Logic:** Reads `today_staff` where `removed_at IS NULL`, including `today_massages` from completed `ACTIVE` transactions on the current Bangkok business day, `today_staff_planning`, and active All Staff not already added.
+- **Logic:** Reads `today_staff` where `removed_at IS NULL`, including `today_massages` from completed live transactions on the current Bangkok business day (`ACTIVE` and `CORRECTED`), `today_staff_planning`, and active All Staff not already added.
 
 #### `router.post('/today/add')`
 - **Purpose:** Adds an All Staff member to the visible Today Staff list for the current business day.
@@ -275,3 +275,21 @@ The status endpoint and queue endpoint were applying different concepts of "next
 The `today_massages` projection in `getActiveTodayStaff()` now applies `countsAsMassage('t')` from `backend/services/add-on-sql.js`. Extending one customer from 60 to 90 minutes is one massage, not two, so a `DURATION_UPGRADE` add-on does not increment the count; an `ADDITIONAL_SERVICE` does. This figure feeds both the Daily Summary `นวดวันนี้` display and the walk-in workload ranking, so the rule directly affects who is offered the next customer.
 
 `getActiveTransactionByStaff()` required **no change** for Paid Time Extension: it already keeps the `ACTIVE` row with the latest end time per staff member, so an add-on extends the occupied window automatically and a cancelled add-on releases it. This was verified by test rather than rebuilt.
+
+### An edited transaction stayed invisible to availability and workload (2026-08-18)
+
+A masseuse recorded as a one-hour Thai massage, then edited to two hours, kept showing as first in the queue for the next customer although she was mid-massage.
+
+#### Validated Hypothesis
+
+An edit does not update a transaction in place. It relabels the original `EDITED (Corrected by <id>)` (`backend/routes/transactions.js:693-696`) and inserts a replacement carrying status `CORRECTED` (`:713`), so **after an edit neither row is `ACTIVE`**. All four transaction-status filters in this module read `status = 'ACTIVE'` only. The busy derivation found nothing, `busyUntilIso` fell to null, `currentState` fell to `available`, and the workload count fell to zero — which sorts to the **front** of walk-in priority, making her more likely to be offered a customer, not less.
+
+#### Invalidated Hypotheses
+
+- The replacement row should be written `ACTIVE` instead. Rejected: `00-project-docs/feature-specifications/transaction-correction-operational-reversal.md` FR-003 and §6 mandate the `CORRECTED` status, and the audit-integrity repair tool at `backend/routes/transactions.js:782-825` matches on it at `:799`. The audit trail is a fraud control; writing replacements live would silently disable its repair tool. The readers were the defect, not the writer.
+- The legacy `staff_roster.busy_until` path explained the symptom. It writes a record nothing reads — the roster query hardcodes `NULL AS busy_until` at `:35` — so it could not have produced the observed state either way.
+- Widening to "any status not `CANCELLED`" would fix it. That would admit the superseded `EDITED` row alongside its replacement and **double** the workload on every edit, a worse failure than the original.
+
+#### Resolution
+
+All four sites now apply `countsAsLiveWork()` from `backend/services/transaction-status-sql.js`, an allowlist of exactly `ACTIVE` and `CORRECTED` matching the treatment `backend/routes/reports.js:239` already used: the workload count at `:42`, the busy window at `:202`, today's per-masseuse performance at `:712`, and yesterday's commission at `:756`. That last one matters beyond the day of the edit — it feeds `ORDER BY previous_day_commission ASC` at `:773`, so before this fix an edit today silently reordered **tomorrow's** roster. `countsAsMassage('t')` at `:43` is unchanged and still ANDed, so a duration-upgrade add-on still does not double-count. Query plans are unchanged: the workload count keeps its covering-index seek on `idx_transactions_business_day_staff`. Locked by `tests/integration/edited-transaction-live-state.integration.test.js`.
