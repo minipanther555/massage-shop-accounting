@@ -100,7 +100,8 @@ while every superseded row still counts for neither — and both rows stay in th
 ### STEP_ID: ETSC-CORE-001 — availability and workload recognise a corrected row as live — OPEN
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** none
-- **Touches:** `backend/routes/staff.js`, `__tests__/`
+- **Touches:** `backend/routes/staff.js`, `backend/services/transaction-status-sql.js` (new — the
+  shared predicate's home, following the pattern of `backend/services/add-on-sql.js`), `tests/`
 - **Why the fix goes here and not in the write path:** the correction spec mandates that the
   replacement row is marked `CORRECTED` — `transaction-correction-operational-reversal.md` FR-003 and
   §6. Writing it live instead would contradict that governed contract **and** silently disable the
@@ -113,6 +114,13 @@ while every superseded row still counts for neither — and both rows stay in th
       position — this is `transaction-correction-operational-reversal.md` AC-003, which requires the
       replacement's workload effect to apply exactly once and which the current code does not honour.
 - [ ] Superseded rows and cancelled rows remain excluded from both.
+- [ ] The two other workload-fairness readers in the same file are corrected with the same predicate:
+      today's per-masseuse performance (`backend/routes/staff.js:711`) and yesterday's commission
+      (`backend/routes/staff.js:755`), which orders tomorrow's roster via
+      `ORDER BY previous_day_commission ASC` at `:773` — so an edit today must not change who gets
+      customers tomorrow.
+- [ ] The predicate lives in one shared helper, not inline at each site, following the reason
+      `backend/services/add-on-sql.js:5-8` gives for existing: so the aggregation sites cannot drift.
 - **Validation:** after editing a one-hour massage to two hours, the masseuse reads as busy for the
   edited duration, is not offered as next in line, and keeps the workload count she had before the
   edit — satisfies AC-001, AC-002 and AC-003. All three observed failing on the pre-change build;
@@ -126,7 +134,7 @@ while every superseded row still counts for neither — and both rows stay in th
 ### STEP_ID: ETSC-CORE-002 — the day's money counts a corrected row — OPEN
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-001
-- **Touches:** `backend/routes/reports.js`, `backend/routes/transactions.js`, `__tests__/`
+- **Touches:** `backend/routes/reports.js`, `backend/routes/transactions.js`, `tests/`
 - **Why this matters beyond tidiness:** an edited transaction currently contributes nothing to the
   day's revenue, because today's summary counts live rows only and after an edit neither row is live.
   A customer edited from 798 to 399 shows as **0** in the day's takings, so the cash the manager
@@ -135,9 +143,18 @@ while every superseded row still counts for neither — and both rows stay in th
 - [ ] Today's revenue, fee and payment-method totals count a correction replacement as live money,
       matching what the date-range financial report already does at `backend/routes/reports.js:239`.
 - [ ] Superseded and cancelled rows stay excluded, so an edit never double-counts.
+- [ ] 🔴 **The permanent archive is corrected too.** `POST /reports/end-day`
+      (`backend/routes/reports.js:456`) writes the day's row into `daily_summaries` counting live rows
+      only, so every edited transaction is missing from the archived record **forever**. It is live —
+      called from `web-app/api.js:499` via `web-app/shared.js:586-597` and `web-app/summary.html:515`.
+      Fixing the screen and leaving the archive wrong moves the defect into the books a manager would
+      audit months later.
+- [ ] The daily per-masseuse report (`backend/routes/reports.js:63`) is corrected with the same
+      predicate.
 - **Validation:** for a day containing a transaction edited from 399 to 798, today's summary reports
-  798, excludes 399, and returns the same total as the date-range report for that day — satisfies
-  AC-004 and AC-005. Both observed failing beforehand, where the day reports zero for that customer.
+  798 and excludes 399; **and** closing the day archives 798 into `daily_summaries`, not zero —
+  satisfies AC-004. Both observed failing beforehand, where the day reports zero for that customer.
+  The cross-report agreement assertion lives in ETSC-MONEY-001, scoped there.
 - **Risk notes:** the same admit-corrected-but-not-superseded care as the previous step. The existing
   date-range report is the reference implementation — match its treatment rather than inventing one.
 - **Completion Notes:**
@@ -161,7 +178,10 @@ while every superseded row still counts for neither — and both rows stay in th
 ### STEP_ID: ETSC-CORE-003 — an edit is all-or-nothing — OPEN
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-002
-- **Touches:** `backend/routes/transactions.js`, `__tests__/`
+- **Touches:** `tests/` — **expected to be test-only.** The edit path already wraps its work in one
+  database transaction (`BEGIN IMMEDIATE` at `backend/routes/transactions.js:658`, `COMMIT` at `:754`,
+  `ROLLBACK` at `:771`), with both the relabel and the insert inside that span. If the implementer
+  finds a real escape path, this step gains production code and records the divergence.
 - [ ] The relabel of the superseded row and the insert of the replacement either both happen or
       neither does.
 - [ ] After any number of successive edits, exactly one row in the chain counts as live work and live
@@ -172,7 +192,11 @@ while every superseded row still counts for neither — and both rows stay in th
 
 **Phase 1 complete when:**
 - [ ] ETSC-CORE-001, ETSC-CORE-002, ETSC-CORE-002a and ETSC-CORE-003 are all `✅ DONE`
-- [ ] `npx jest` passes with no failures
+- [ ] `npx jest __tests__ tests/integration` shows **no new failures against the baseline recorded
+      below**. Repo-root `npx jest` is NOT a usable gate: measured 2026-08-18 it is 67 failed / 41
+      passed suites, because it sweeps Playwright specs that abort under Jest. Baseline for the
+      usable subset, same date: `npx jest __tests__` = 1 failed / 169 passed tests, the single
+      failure being `__tests__/nav.bilingual.present.test.js`, unrelated to this epic.
 - [ ] A test asserting a superseded row is excluded from workload while its replacement is counted
       exists and passes — the double-count guard
 
@@ -207,8 +231,12 @@ while every superseded row still counts for neither — and both rows stay in th
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-002
 - **Touches:** `__tests__/`
-- [ ] For a day containing an edited transaction, today's summary and the date-range financial report
-      return the same revenue total.
+- [ ] For a day containing an edited transaction **and no part-paid add-on**, today's summary and the
+      date-range financial report return the same revenue total. The fixture must exclude part-paid
+      add-ons: today's summary filters them out (`backend/routes/reports.js:204` applies the settled
+      predicate) and the date-range report does not (`:239` has no such filter), so the two endpoints
+      disagree by the value of any pending money for reasons that have nothing to do with editing.
+      That divergence is a separate pre-existing defect — record it in Discoveries, do not fix it here.
 - [ ] An edited transaction is counted once, not twice — the superseded row adds nothing.
 - [ ] The masseuse's payday balance after an edit equals the edited fee, with the original reversed
       exactly once.
@@ -250,7 +278,11 @@ while every superseded row still counts for neither — and both rows stay in th
 
 **Phase 3 complete when:**
 - [ ] ETSC-CLEAN-001 is `✅ DONE`, or is explicitly marked cut with the reason recorded
-- [ ] `npx jest` passes with no failures
+- [ ] `npx jest __tests__ tests/integration` shows **no new failures against the baseline recorded
+      below**. Repo-root `npx jest` is NOT a usable gate: measured 2026-08-18 it is 67 failed / 41
+      passed suites, because it sweeps Playwright specs that abort under Jest. Baseline for the
+      usable subset, same date: `npx jest __tests__` = 1 failed / 169 passed tests, the single
+      failure being `__tests__/nav.bilingual.present.test.js`, unrelated to this epic.
 - [ ] `web-app/transaction.html` and `web-app/transaction.ejs` remain in parity under the existing
       contract test
 
@@ -307,7 +339,11 @@ the live branch server.
 
 **Phase 4 complete when:**
 - [ ] ETSC-VERIFY-001 and ETSC-DEPLOY-001 are `✅ DONE`
-- [ ] `npx jest` passes with no failures
+- [ ] `npx jest __tests__ tests/integration` shows **no new failures against the baseline recorded
+      below**. Repo-root `npx jest` is NOT a usable gate: measured 2026-08-18 it is 67 failed / 41
+      passed suites, because it sweeps Playwright specs that abort under Jest. Baseline for the
+      usable subset, same date: `npx jest __tests__` = 1 failed / 169 passed tests, the single
+      failure being `__tests__/nav.bilingual.present.test.js`, unrelated to this epic.
 - [ ] **The operator has live-verified the edit behaviour on the branch server** — this condition
       requires human judgement and is a deliberate handover
 - [ ] `LIVE = <branch>@<sha>` is recorded in ETSC-DEPLOY-001's Completion Notes
@@ -338,6 +374,30 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **Epic planning (2026-08-18):** the permanent daily archive is affected, not just the live screen.
+  `POST /reports/end-day` (`backend/routes/reports.js:456`) writes `daily_summaries` counting live
+  rows only, and it is live (`web-app/api.js:499`, `web-app/shared.js:586-597`,
+  `web-app/summary.html:515`). Added to ETSC-CORE-002. Without it the epic would fix the screen and
+  leave every edited transaction missing from the archived record permanently.
+- **Epic planning (2026-08-18):** an edit distorts the NEXT day's queue order.
+  `backend/routes/staff.js:755` computes `previous_day_commission` from live rows only and
+  `:773` orders the roster by it. Added to ETSC-CORE-001.
+- **Epic planning (2026-08-18):** two further money/fairness readers excluded corrected rows and were
+  in no step — today's per-masseuse performance (`backend/routes/staff.js:711`) and the daily report
+  (`backend/routes/reports.js:63`). Added to ETSC-CORE-001 and ETSC-CORE-002 respectively.
+- **Epic planning (2026-08-18):** repo-root `npx jest` has no green baseline — 67 failed / 41 passed
+  suites, all pre-existing, because it sweeps Playwright specs that abort under Jest. Every phase gate
+  demanding "no failures" was unsatisfiable as authored and has been rewritten to a named subset plus
+  a recorded baseline.
+- **Epic planning (2026-08-18):** today's summary and the date-range financial report disagree by the
+  value of any part-paid add-on, independently of editing — `backend/routes/reports.js:204` applies
+  the settled-money filter and `:239` does not. **Pre-existing defect, out of scope here.** The
+  cross-report assertion in ETSC-MONEY-001 is scoped around it rather than fixing it.
+- **Epic planning (2026-08-18):** the edit path is already atomic (`BEGIN IMMEDIATE` at
+  `backend/routes/transactions.js:658`), so ETSC-CORE-003 is expected to be test-only.
+- **Epic planning (2026-08-18):** no test anywhere in the repo mentions the `CORRECTED` status. The
+  status this whole epic turns on has zero coverage today, so every red-then-green observation here is
+  genuinely new coverage rather than a modified assertion.
 
 ## Coverage
 - **ETSC-001 (the live version is what counts) → ETSC-CORE-001** (availability and workload) and
