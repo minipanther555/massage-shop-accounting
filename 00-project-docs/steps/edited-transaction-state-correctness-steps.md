@@ -7,8 +7,16 @@ writes a status that half the system does not recognise, so she reads as free mi
 money vanishes from the daily summary. Spec:
 `00-project-docs/feature-specifications/edited-transaction-state-correctness.md`. Planning map: none.
 
-> **Status:** IN PROGRESS — `ETSC-CORE-001` (availability and workload) and `ETSC-CORE-002` (the
-> day's money) are `✅ DONE`. Fix direction REVERSED on 2026-08-18 after reading the governing
+> **Status:** IN PROGRESS — **Phase 1 is complete and its gate is met.** All seven steps of Phases 1
+> and 2 are `✅ DONE`: `ETSC-CORE-001` (availability and workload), `ETSC-CORE-002` (the day's money),
+> `ETSC-CORE-002a` (the audit-repair tool keys on the link), `ETSC-CORE-002b` (correction picks a
+> replacement who is actually free), `ETSC-CORE-003` (an edit is all-or-nothing), `ETSC-QUEUE-001`
+> (a superseded row never counts) and `ETSC-MONEY-001` (the money is right and counted once).
+> **Phase 2's gate is NOT met on one condition** — it demands a red-then-green observation for every
+> assertion in two steps that are guards on already-shipped behaviour, which no correct
+> implementation can produce. Mutation evidence was recorded instead. **Operator ruling needed; see
+> Phase 2's gate and Discoveries. Phase 3 has not been entered.**
+> Fix direction REVERSED on 2026-08-18 after reading the governing
 > correction spec and the audit-repair tool; see D-01 in Open Decisions. Ship this epic FIRST of the
 > three: until `ETSC-CORE-002` shipped, an edited transaction reported **zero** revenue for that
 > customer, which was an open theft window.
@@ -556,16 +564,31 @@ while every superseded row still counts for neither — and both rows stay in th
   check that proves the guards bite.
 
 **Phase 1 complete when:**
-- [ ] ETSC-CORE-001, ETSC-CORE-002, ETSC-CORE-002a, ETSC-CORE-002b and ETSC-CORE-003 are all `✅ DONE`
-- [ ] `npx jest __tests__ tests/integration` shows **no new failures against the baseline recorded
+- [x] ETSC-CORE-001, ETSC-CORE-002, ETSC-CORE-002a, ETSC-CORE-002b and ETSC-CORE-003 are all `✅ DONE`
+      — **met 2026-08-18.** All five carry Completion Notes.
+- [x] `npx jest __tests__ tests/integration` shows **no new failures against the baseline recorded
       below**. Repo-root `npx jest` is NOT a usable gate: measured 2026-08-18 it is 67 failed / 41
       passed suites, because it sweeps Playwright specs that abort under Jest. Baseline for the
       usable subset, same date: `npx jest __tests__` = 1 failed / 169 passed tests, the single
       failure being `__tests__/nav.bilingual.present.test.js`, unrelated to this epic.
-- [ ] A test asserting a superseded row is excluded from workload while its replacement is counted
-      exists and passes — the double-count guard
+      **Met 2026-08-18 on the usable subset: `npx jest __tests__` = 1 failed / 169 passed,
+      baseline-identical; `npx jest --testMatch '**/tests/integration/**/*.test.js'` = 4 failed / 164
+      passed, the four being the pre-existing `revenue.card.regression`, `nav.bilingual.present`,
+      `nav.bilingual.keys-coverage` and `csrf-auth-flow`. No failure beyond those.
+      🔴 **The command this condition names is itself unusable, for the same reason it already
+      rejects for repo-root `npx jest`** — see Discoveries. Measured: 33 failed / 43 passed suites,
+      because `tests/integration/` also holds 29 Playwright `.spec.js` files that abort under Jest
+      with *"Playwright Test needs to be invoked via `npx playwright test`"*. The usable subset is
+      `__tests__` plus the `**/tests/integration/**/*.test.js` match, which is what was measured.**
+- [x] A test asserting a superseded row is excluded from workload while its replacement is counted
+      exists and passes — the double-count guard. **Met by three independent specs:**
+      `edited-transaction-live-state.integration.test.js` ("two successive edits leave a workload of
+      one, not three"), `superseded-row-never-counts.integration.test.js` (a masseuse holding only a
+      superseded row reads available with zero workload while the colleague who took the work reads
+      busy), and `edit-is-all-or-nothing.integration.test.js` (a chain built by the real endpoint
+      reports one massage, not three).
 
-**This gate authorizes Phase 2.**
+**This gate authorizes Phase 2.** ✅ **MET 2026-08-18 — Phase 2 authorized.**
 
 ---
 
@@ -649,32 +672,118 @@ while every superseded row still counts for neither — and both rows stay in th
   **Docs.** `backend/services/transaction-status-sql.js.md` §4 now records this spec, why it is not a
   copy of the two that came before it, and the denylist mutation result.
 
-### STEP_ID: ETSC-MONEY-001 — the money is right and counted once — OPEN
+### STEP_ID: ETSC-MONEY-001 — the money is right and counted once — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-002
 - **Touches:** `__tests__/`
-- [ ] For a day containing an edited transaction **and no part-paid add-on**, today's summary and the
+- [x] For a day containing an edited transaction **and no part-paid add-on**, today's summary and the
       date-range financial report return the same revenue total. The fixture must exclude part-paid
       add-ons: today's summary filters them out (`backend/routes/reports.js:204` applies the settled
       predicate) and the date-range report does not (`:239` has no such filter), so the two endpoints
       disagree by the value of any pending money for reasons that have nothing to do with editing.
       That divergence is a separate pre-existing defect — record it in Discoveries, do not fix it here.
-- [ ] An edited transaction is counted once, not twice — the superseded row adds nothing.
-- [ ] The masseuse's payday balance after an edit equals the edited fee, with the original reversed
+- [x] An edited transaction is counted once, not twice — the superseded row adds nothing.
+- [x] The masseuse's payday balance after an edit equals the edited fee, with the original reversed
       exactly once.
 - **Validation:** all three assertions pass — satisfies AC-005 and AC-007, each seen failing
   beforehand. The count-once assertion is the money-side twin of the double-count guard in the
   previous step.
+  **Strengthened at S4 (2026-08-18) — the seventh too-weak-criterion finding in this lane.** Two holes,
+  both of which a passing implementation could have walked through:
+  **(a)** objective 1 as written asks the two reports to return **the same** revenue total. Two
+  reports that are equally wrong agree, and so does an empty day — the criterion is satisfied by a
+  fixture containing no edit at all. It now names the expected figure, names the superseded figure
+  and the both-rows-counted figure as forbidden, and proves the chain exists before comparing.
+  **(b)** "each seen failing beforehand" was **not achievable and the criterion was not relaxed to
+  hide it.** `ETSC-CORE-002` already fixed the readers and the fee logic was never broken, so nothing
+  here can go red against this tree. Every assertion is declared a GUARD and the RED count is zero;
+  the guards were instead proven capable of failing by two independent mutations, recorded below.
 - **Risk notes:** this is the step that closes the theft window described at `ETSC-CORE-002`. A day
   containing an edit must never again report less than it took.
-- **Completion Notes:**
+- **Completion Notes:** Shipped 2026-08-18. **No production code.**
+
+  **New spec: `tests/integration/edited-transaction-money-agrees.integration.test.js`, 8 of 8 green.**
+  Isolated by `mkdtempSync` plus `process.env.DB_PATH` at module scope, with the transaction table and
+  the staff balances cleared between tests.
+
+  **This spec drives the REAL edit endpoint, unlike the reader-isolating specs in this lane.**
+  `staff.total_fees_earned` is written by the edit path itself — `backend/routes/transactions.js:681-684`
+  reverses the original fee, `:719-725` accrues the replacement's — so a hand-built two-row fixture
+  would assert its own arithmetic and nothing about objective 3. Every chain here is created by real
+  `POST /api/transactions` calls.
+
+  **The part-paid add-on exclusion is asserted, not merely intended.** The fixture creates no add-on
+  and no unsettled row, and a guard proves it: `payment_status != 'PAID'` returns nothing and
+  `add_on_kind IS NOT NULL` returns nothing. With every row settled, `isSettled()` at
+  `backend/routes/reports.js:205` and its absence at `:239` cannot produce a difference, so whatever
+  the agreement assertion measures is about editing. **The divergence itself is untouched** — it was
+  already recorded in this file's Discoveries and is now recorded in `backend/routes/reports.js.md`
+  as well, with the reason it is out of scope.
+
+  **Objective 3 got four assertions, because "reversed exactly once" has more than one way to fail.**
+  One edit leaves the edited fee — not 450 (never reversed), not 150 (reversed twice), not zero. Two
+  successive edits leave the last fee only. **Correcting the masseuse** — reception recorded the wrong
+  woman — leaves the wrongly-credited one at zero and the replacement holding the whole fee, which is
+  the sharpest form of the rule. And the accrued balances reconcile against the fees on the day's live
+  rows **and** against the day's reported `base_fee_total`, so the payroll ledger and the money report
+  cannot drift apart silently.
+
+  **Verified by two independent mutations, and they partition the spec cleanly.** Narrowing
+  `countsAsLiveWork()` back to `status = 'ACTIVE'` — the pre-epic state — fails **4 of 8**: both
+  reports, the payment breakdown and the reconciliation. Removing the fee reversal fails **4 of 8**:
+  the three payday assertions and the reconciliation. No report assertion fires on the fee mutation
+  and no payday assertion fires on the reader mutation, so neither objective is riding on the other's
+  coverage; the reconciliation assertion is the only one that catches both, which is what it is for.
+  Both mutations reverted; `git status` confirms no production file modified.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to the recorded baseline.
+  `npx jest --testMatch '**/tests/integration/**/*.test.js'` = 4 failed / 164 passed — the four
+  recorded pre-existing failures, and 164 = 156 plus this step's 8. Zero regressions. **One flaky run
+  observed and not reproduced:** a single sweep immediately after a mutation revert reported 5 failed
+  suites / 7 failed tests; seven consecutive sweeps since have all reported exactly 4 failed / 164
+  passed, and the extra failure was not captured. Recorded rather than dropped. Security and
+  performance: no production change.
+
+  **Touches divergence, the same one `ETSC-CORE-002a` and `ETSC-QUEUE-001` recorded.** The step names
+  `__tests__/`; that directory holds only static contract tests with no server or database and its
+  count is this epic's phase-gate baseline, so the spec went to `tests/integration/`.
+
+  **Docs.** New section in `backend/routes/reports.js.md` §4 recording what the agreement is worth
+  pinning, the settled-money divergence that is deliberately unfixed, the payday assertions, and the
+  two mutation results.
 
 **Phase 2 complete when:**
-- [ ] ETSC-QUEUE-001 and ETSC-MONEY-001 are `✅ DONE`
+- [x] ETSC-QUEUE-001 and ETSC-MONEY-001 are `✅ DONE` — **met 2026-08-18.**
 - [ ] Every assertion in both steps has a recorded red-then-green observation
-- [ ] A two-successive-edits fixture exists, matching the shape the operator reported
+      🔴 **NOT MET, AND NOT MEETABLE AS WRITTEN — this condition contradicts the two steps it gates,
+      and the contradiction is in the gate, not the steps.** Both steps were authored as guards on
+      behaviour Phase 1 had already shipped: `ETSC-QUEUE-001`'s own Risk notes say *"no production
+      code is expected here"*, and `ETSC-MONEY-001` depends on `ETSC-CORE-002`, which fixed the money
+      readers before this phase began. An assertion that goes red against this tree would mean a
+      Phase 1 step shipped broken. So the red observation this condition demands is unobtainable for
+      **every** assertion in both steps, and the only ways to obtain one would be to weaken a Phase 1
+      fix or to write assertions that test something other than the objectives.
+      **What was done instead, and it is stronger than the wording asks for:** each guard was proven
+      capable of failing by mutating the production code it guards, then reverting.
+      `ETSC-QUEUE-001` — `countsAsLiveWork()` turned into the denylist its doc warns about
+      (`status NOT LIKE 'CANCELLED%'`) turns 7 of its 8 red, with `today_massages` reading 3 for one
+      massage. `ETSC-MONEY-001` — narrowing the same helper back to `status = 'ACTIVE'` turns 4 of 8
+      red, and removing the fee reversal at `backend/routes/transactions.js:681-684` turns the other
+      4 red, so the report half and the payday half are proven independent rather than one riding on
+      the other. `ETSC-CORE-003` in Phase 1 has the same shape and the same treatment: removing
+      `BEGIN IMMEDIATE` and `COMMIT` turns 3 of its 9 red.
+      **This is an operator ruling, not an implementer's to make.** Either the condition is amended
+      to accept a recorded mutation observation where the guarded behaviour already ships, or Phase 2
+      stands open. Phase 3 was **not** entered.
+- [x] A two-successive-edits fixture exists, matching the shape the operator reported — **met, in
+      four specs.** `edited-transaction-live-state`, `superseded-row-never-counts` and
+      `edited-transaction-day-money` hand-build the three rows; `edit-is-all-or-nothing` and
+      `edited-transaction-money-agrees` create them through the real `POST /api/transactions`
+      endpoint, so the shape is confirmed to be what the writer actually produces and not only what
+      the fixtures assume.
 
-**This gate authorizes Phase 3.**
+**This gate authorizes Phase 3.** 🔴 **NOT MET — one condition open, pending the operator ruling
+above. Phase 3 not entered.**
 
 ---
 
@@ -796,6 +905,42 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **ETSC-MONEY-001 shipping (2026-08-18):** 🔴 **Phase 2's second gate condition — "every assertion in
+  both steps has a recorded red-then-green observation" — cannot be met by any correct implementation
+  of the two steps it gates.** Both are guards on behaviour Phase 1 already shipped, and
+  `ETSC-QUEUE-001`'s own Risk notes say no production code is expected. An assertion that went red
+  against this tree would mean a Phase 1 step shipped broken. Substituted with per-step mutation
+  evidence, recorded in each step's Completion Notes. **Operator ruling needed:** amend the condition
+  to accept a recorded mutation observation where the guarded behaviour already ships, or leave Phase
+  2 open. Phase 3 was not entered.
+- **ETSC-MONEY-001 shipping (2026-08-18):** every phase gate in this file names the command
+  `npx jest __tests__ tests/integration`, and that command is unusable for **exactly the reason the
+  same bullet already gives for rejecting repo-root `npx jest`**. Measured: 33 failed / 43 passed
+  suites, because `tests/integration/` holds 29 Playwright `.spec.js` files alongside the Jest
+  `.test.js` ones, and each aborts with *"Playwright Test needs to be invoked via `npx playwright
+  test`"*. The recorded baseline in the same bullet is stated for `npx jest __tests__` alone, so the
+  intended subset is `__tests__` plus `npx jest --testMatch '**/tests/integration/**/*.test.js'` —
+  4 failed / 164 passed as of this step, the four pre-existing. **Pre-existing wording defect,
+  affects all four phase gates, not fixed here** because amending a gate is not an implementer's
+  call. Phase 1 and Phase 2 were evaluated on the usable subset and that is recorded inline.
+- **ETSC-MONEY-001 shipping (2026-08-18):** one integration sweep out of eight reported 5 failed
+  suites / 7 failed tests instead of the stable 4 failed / 164 passed. It came immediately after a
+  mutation revert and the extra failure was not captured; seven consecutive sweeps since have been
+  identical at 4 / 164. Recorded rather than dropped, in case it recurs.
+- **ETSC-CORE-003 shipping (2026-08-18):** the step's Touches cited `BEGIN IMMEDIATE` at
+  `backend/routes/transactions.js:658`, `COMMIT` at `:754` and `ROLLBACK` at `:771`. All three were
+  one line low — the wrapper is at `:659`, `:755` and `:772`. Corrected in the step. The atomicity
+  claim itself held: the whole handler was read and no escape path exists.
+- **ETSC-QUEUE-001 planning (2026-08-18):** the guard step's three objectives were **all already
+  passing** against `edited-transaction-live-state.integration.test.js`'s fixtures, so a spec that
+  reused them would have satisfied the criterion while proving nothing. Two blind spots in those
+  fixtures were the reason, and both are general lessons for this lane. **(a)** Their edit LENGTHENS
+  the massage, and the busy window is the MAX end across live rows (`backend/routes/staff.js:208-213`),
+  so a wrongly admitted superseded row is the shorter one and changes no answer — a shortening edit
+  is the only fixture that can see it. **(b)** Every superseded row there sits beside a live
+  replacement for the SAME masseuse, so excluding it is invisible in busy state; only a masseuse
+  holding a superseded row ALONE — the reassignment case, where reception corrected the wrong
+  masseuse — can distinguish the two.
 - **ETSC-CORE-002a shipping (2026-08-18):** 🔴 **this epic converted a dormant gap in the fraud
   control into a live double-count.** The audit-repair tool's scan took `corrected_from_id IS NOT NULL`
   plus a live status, so a superseded row left marked `CORRECTED` was invisible to it. Before
