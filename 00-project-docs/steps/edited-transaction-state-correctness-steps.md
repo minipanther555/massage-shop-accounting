@@ -291,21 +291,79 @@ while every superseded row still counts for neither — and both rows stay in th
   silently absorbed two filters this step never covered. Each is now attributed to the step that owns
   it.
 
-### STEP_ID: ETSC-CORE-002a — the audit-repair tool keys on the link — OPEN
+### STEP_ID: ETSC-CORE-002a — the audit-repair tool keys on the link — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** none
 - **Touches:** `backend/routes/transactions.js`, `__tests__/`
-- [ ] The audit-integrity repair tool at `backend/routes/transactions.js:782-825` finds a superseding
+- [x] The audit-integrity repair tool at `backend/routes/transactions.js:782-825` finds a superseding
       row by its link to the row it replaces, rather than by that row's status, so it keeps working if
       the status vocabulary is ever extended.
-- [ ] A full backend search has been run for every other reader of the `CORRECTED` status, and each is
+- [x] A full backend search has been run for every other reader of the `CORRECTED` status, and each is
       either converted the same way or recorded as deliberately left alone with a reason.
 - **Validation:** the repair tool relabels a superseded row that was wrongly left live, and leaves a
   correctly-formed chain untouched — satisfies AC-009. Observed failing on a fixture where the
   superseding row carries a status the current query does not match.
+  **Strengthened at S4 (2026-08-18) — the fourth too-few-readers hole in this lane.** As written the
+  line reaches only the INNER lookup: "the superseding row carries a status the current query does not
+  match" is `:800`, and "wrongly left live" is satisfied by the `ACTIVE` case the OUTER scan at `:791`
+  already caught. A change to `:800` alone passes it verbatim. Two real defects survive that:
+  **(a)** the original of a **first** edit has a null `corrected_from_id`, which the outer scan
+  required to be non-null, so the most basic case the tool exists for was unreachable; **(b)** a
+  superseded row left `CORRECTED` was invisible to the outer scan — and **this epic made that one
+  dangerous**, because `countsAsLiveWork()` now admits `CORRECTED` at fourteen sites, so such a row
+  double-counts the masseuse's workload and the day's money in the very tool meant to catch
+  double-counting. Both filters now carry their own assertion; the criterion was not relaxed.
 - **Risk notes:** this hardens the fraud control rather than changing behaviour. It is independent of
   the two steps above and may run concurrently with them — it shares no file with `ETSC-CORE-001`.
-- **Completion Notes:**
+  **Correction:** it does share `backend/routes/transactions.js` with `ETSC-CORE-002` and
+  `ETSC-CORE-002b`, which is why it ran after them, not beside them.
+- **Completion Notes:** Shipped 2026-08-18.
+
+  **What changed.** One join replaces both status-keyed matches in
+  `POST /transactions/fix-edited-status`. A row is superseded **iff another row points at it through
+  `corrected_from_id`**, so the query joins successors to predecessors on that link and filters the
+  predecessor with `countsAsLiveWork('t')` — an allowlist choosing *which* rows may be relabelled,
+  which is what stops a `CANCELLED (…)` row's own reason string being overwritten with an edit label.
+  `ORDER BY s.id ASC` into a `Map` keeps the choice deterministic if a chain ever forked. Production
+  diff confined to `backend/routes/transactions.js`.
+
+  **RED observed before the handler changed** — `tests/integration/audit-repair-keys-on-link.integration.test.js`,
+  4 failed / 3 passed. `TX-B` stayed `ACTIVE` where `EDITED (Corrected by TX-C)` was required (the
+  twice-edited chain); the stray row stayed `CORRECTED`; the original of a first edit stayed `ACTIVE`;
+  and the handler source still carried both status matches. **The double-count was reproduced, not
+  argued:** the roster reported `today_massages: 2` for a single massage before the repair ran, and 1
+  after. GREEN: **7 of 7.** The three that passed in both states are declared guards — a
+  correctly-formed chain untouched with `fixedCount` 0, a cancelled row keeping its reason string, and
+  the live tail of a three-row chain surviving two consecutive repair runs.
+
+  **Objective 2 — the full `CORRECTED` reader search, with a disposition for each.** Backend:
+  `backend/models/database.js:359` (unique booking index) and `backend/routes/transactions.js:54`
+  (`getCorrectionCandidates`) are correct allowlists — spec §6 makes an `ACTIVE` **or** `CORRECTED`
+  row correctable. `backend/routes/transactions.js:153` (`/recent`) includes `EDITED%` deliberately so
+  the audit trail stays visible. `:714` is the write path, mandated by FR-003. `backend/routes/reports.js:109`,
+  `:148`, `:169`, `:240` are the date-range reports, the reference implementation the whole epic was
+  matched to. All left alone. `web-app/shared.js:198`, `:672`, `:678`, `:706`, `:717`, `:755`,
+  `web-app/summary.html:385` and `web-app/summary.ejs:385` use `status.includes('CORRECTED')` for
+  display filtering — out of this step's Touches and display-only, left alone.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to baseline, the single failure
+  `__tests__/nav.bilingual.present.test.js`, unrelated. Eleven integration suites = 95 passed / 0
+  failed (81 before this session's two steps, plus 7 and 7). Security: the handler takes no user
+  input, adds no endpoint, and the one interpolated value is the hardcoded alias `'t'`; the UPDATE is
+  still parameterised. Performance **improved**: the old scan planned as `SCAN transactions`, the new
+  join as `SCAN s | SEARCH t USING INDEX sqlite_autoindex_transactions_1 (transaction_id=?)`. An
+  intermediate `EXISTS` + correlated-subquery form was measured at `SCAN t | SCAN s | SCAN s` and
+  **rejected for the join** rather than shipped.
+
+  **Not touched, deliberately.** Everything in the reader search above; `backend/routes/staff.js`;
+  `backend/routes/admin.js`; every `web-app` file; and `getCorrectionEligibleStaff()` at `:21`/`:29`,
+  shipped by `ETSC-CORE-002b` earlier in this session.
+
+  **Touches divergence, recorded rather than silent:** this step's Touches names `__tests__/`, but
+  `__tests__` holds only static contract tests with no server or database, and its test count is the
+  phase gate's baseline. The spec needs the real handler and a real database, so it went to
+  `tests/integration/` with the rest of the lane. Putting it in `__tests__` would have moved the
+  baseline this epic checks against.
 
 ### STEP_ID: ETSC-CORE-002b — correction picks a replacement who is actually free — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
@@ -613,6 +671,20 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **ETSC-CORE-002a shipping (2026-08-18):** 🔴 **this epic converted a dormant gap in the fraud
+  control into a live double-count.** The audit-repair tool's scan took `corrected_from_id IS NOT NULL`
+  plus a live status, so a superseded row left marked `CORRECTED` was invisible to it. Before
+  `ETSC-CORE-001` and `ETSC-CORE-002` that row counted for nothing anywhere and was inert. Now
+  `countsAsLiveWork()` admits `CORRECTED` at fourteen sites, so it adds a second massage to the
+  masseuse's workload and a second fare to the day's takings — reproduced as `today_massages: 2` for
+  one massage. **Fixed in this step.** The general lesson for the remaining steps: widening what
+  counts as live makes every *stale* live row newly expensive, so anything that can leave one behind
+  is now load-bearing.
+- **ETSC-CORE-002a shipping (2026-08-18):** the repair tool could never fix the most basic case it
+  exists for. Its scan required a non-null `corrected_from_id`, but the original of a **first** edit
+  has none by definition, so an original wrongly left live after a failed relabel was unreachable. The
+  tool only ever matched rows that were themselves replacements — a state the current writer cannot
+  even produce, since it always inserts a replacement as `CORRECTED`. Fixed by keying on the link.
 - **ETSC-CORE-002b shipping (2026-08-18):** 🔴 **the correction endpoint cannot accept a request that
   omits the masseuse, so FR-004's default-replacement rule has no reachable code path.**
   `backend/routes/transactions.js:588` deliberately exempts a correction from the required-field check

@@ -785,32 +785,54 @@ router.post('/fix-edited-status', async (req, res) => {
   try {
     console.log('🔧 [TX FIX] === FIXING EDITED STATUS ===');
     
-    // Find all transactions with corrected_from_id that are still ACTIVE
-    const transactionsToFix = await database.all(
-      `SELECT transaction_id, corrected_from_id FROM transactions 
-       WHERE corrected_from_id IS NOT NULL AND status = 'ACTIVE'`
+    // A row is superseded if and only if ANOTHER ROW POINTS AT IT through
+    // `corrected_from_id`. Key on that link, never on either row's status.
+    //
+    // Both status-keyed matches this query replaced were too narrow. The old scan
+    // required a non-null `corrected_from_id` and a live status, which missed the
+    // original of a first edit (its `corrected_from_id` is null by definition — the
+    // most basic case this tool exists for) and missed a superseded row left as a
+    // correction replacement. The old inner lookup then required the superseding row
+    // to still be labelled a correction replacement, so a chain edited twice was
+    // unrepairable.
+    //
+    // The `CORRECTED` miss became a live double-count when ETSC-CORE-001 and
+    // ETSC-CORE-002 made `countsAsLiveWork()` admit `CORRECTED` at fourteen sites:
+    // a stray superseded row that used to be inert now adds a second massage to the
+    // masseuse's workload and a second fare to the day's takings. This tool is the
+    // fraud control meant to catch exactly that, so it must see those rows.
+    //
+    // `countsAsLiveWork()` is the right filter for WHICH rows to repair: relabel
+    // anything that still counts as live work but has been superseded. It is an
+    // allowlist, so a `CANCELLED (…)` row keeps its own reason string rather than
+    // being overwritten with an edit label.
+    // The join walks the successors once and seeks each predecessor on the unique
+    // `transaction_id` index, so this stays cheaper than the full table scan it
+    // replaced. `ORDER BY s.id ASC` plus a Map makes the choice deterministic if a
+    // chain ever forked: the newest successor wins.
+    const supersededRows = await database.all(
+      `SELECT t.transaction_id AS transaction_id, s.transaction_id AS superseded_by
+       FROM transactions t
+       JOIN transactions s ON s.corrected_from_id = t.transaction_id
+       WHERE ${countsAsLiveWork('t')}
+       ORDER BY s.id ASC`
     );
-    
-    console.log('🔧 [TX FIX] Found transactions to fix:', transactionsToFix.length);
-    
+    const transactionsToFix = new Map(
+      supersededRows.map((row) => [row.transaction_id, row.superseded_by])
+    );
+
+    console.log('🔧 [TX FIX] Found transactions to fix:', transactionsToFix.size);
+
     let fixedCount = 0;
-    for (const tx of transactionsToFix) {
-      // Find the CORRECTED transaction that references this one
-      const correctedTx = await database.get(
-        'SELECT transaction_id FROM transactions WHERE corrected_from_id = ? AND status = "CORRECTED"',
-        [tx.transaction_id]
+    for (const [transactionId, supersededBy] of transactionsToFix) {
+      console.log(`🔧 [TX FIX] Fixing transaction ${transactionId} -> EDITED (Corrected by ${supersededBy})`);
+
+      await database.run(
+        'UPDATE transactions SET status = ? WHERE transaction_id = ?',
+        [`EDITED (Corrected by ${supersededBy})`, transactionId]
       );
-      
-      if (correctedTx) {
-        console.log(`🔧 [TX FIX] Fixing transaction ${tx.transaction_id} -> EDITED (Corrected by ${correctedTx.transaction_id})`);
-        
-        await database.run(
-          'UPDATE transactions SET status = ? WHERE transaction_id = ?',
-          [`EDITED (Corrected by ${correctedTx.transaction_id})`, tx.transaction_id]
-        );
-        
-        fixedCount++;
-      }
+
+      fixedCount++;
     }
     
     console.log(`🔧 [TX FIX] Fixed ${fixedCount} transactions`);
