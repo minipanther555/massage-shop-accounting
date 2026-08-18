@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 const { countsAsMassage, isSettled } = require('../services/add-on-sql');
+const { countsAsLiveWork } = require('../services/transaction-status-sql');
 
 // Daily summary report
 router.get('/daily/:date?', async (req, res) => {
@@ -21,7 +22,7 @@ router.get('/daily/:date?', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE' AND ${isSettled('t')}`,
+       WHERE t.date = ? AND ${countsAsLiveWork('t')} AND ${isSettled('t')}`,
       [date]
     );
 
@@ -42,7 +43,7 @@ router.get('/daily/:date?', async (req, res) => {
         COUNT(*) as count,
         SUM(payment_amount) as revenue
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE' AND ${isSettled('')}
+       WHERE date = ? AND ${countsAsLiveWork('')} AND ${isSettled('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
       [date]
@@ -60,7 +61,7 @@ router.get('/daily/:date?', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE'
+       WHERE t.date = ? AND ${countsAsLiveWork('t')}
        GROUP BY t.masseuse_name
        ORDER BY totalStaffPay DESC`,
       [date]
@@ -201,7 +202,7 @@ router.get('/summary/today', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE' AND ${isSettled('t')}`,
+       WHERE t.date = ? AND ${countsAsLiveWork('t')} AND ${isSettled('t')}`,
       [today]
     );
 
@@ -212,7 +213,7 @@ router.get('/summary/today', async (req, res) => {
         COUNT(*) as count,
         SUM(payment_amount) as revenue
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE' AND ${isSettled('')}
+       WHERE date = ? AND ${countsAsLiveWork('')} AND ${isSettled('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
       [today]
@@ -453,7 +454,7 @@ router.post('/end-day', async (req, res) => {
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'`,
+       WHERE date = ? AND ${countsAsLiveWork('')}`,
       [today]
     );
 

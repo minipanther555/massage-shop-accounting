@@ -5,6 +5,7 @@ const router = express.Router();
 const database = require('../models/database');
 const { getBusinessDay } = require('../utils/business-day');
 const { getTimeWindowQuote } = require('../services/time-window-promotion-service');
+const { countsAsLiveWork } = require('../services/transaction-status-sql');
 const {
   BOOKING_CREDIT_AMOUNT,
   BOOKING_BUFFER_MINUTES,
@@ -931,8 +932,8 @@ router.get('/summary/today', async (req, res) => {
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions 
-       WHERE date = ? AND status = 'ACTIVE'`,
+       FROM transactions
+       WHERE date = ? AND ${countsAsLiveWork('')}`,
       [today]
     );
 
@@ -942,8 +943,8 @@ router.get('/summary/today', async (req, res) => {
         payment_method,
         COUNT(*) as count,
         SUM(payment_amount) as revenue
-       FROM transactions 
-       WHERE date = ? AND status = 'ACTIVE'
+       FROM transactions
+       WHERE date = ? AND ${countsAsLiveWork('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
       [today]

@@ -7,10 +7,18 @@ writes a status that half the system does not recognise, so she reads as free mi
 money vanishes from the daily summary. Spec:
 `00-project-docs/feature-specifications/edited-transaction-state-correctness.md`. Planning map: none.
 
-> **Status:** OPEN — no steps started. Fix direction REVERSED on 2026-08-18 after reading the
-> governing correction spec and the audit-repair tool; see D-01 in Open Decisions. Ship this epic
-> FIRST of the three: an edited transaction currently reports **zero** revenue for that customer,
-> which is an open theft window.
+> **Status:** IN PROGRESS — `ETSC-CORE-001` (availability and workload) and `ETSC-CORE-002` (the
+> day's money) are `✅ DONE`. Fix direction REVERSED on 2026-08-18 after reading the governing
+> correction spec and the audit-repair tool; see D-01 in Open Decisions. Ship this epic FIRST of the
+> three: until `ETSC-CORE-002` shipped, an edited transaction reported **zero** revenue for that
+> customer, which was an open theft window.
+
+> **⚠️ Operator advisory issued 2026-08-18, now DISCHARGED by `ETSC-CORE-002`:** the operator was
+> told not to close a business day until this step shipped, because closing a day archived the wrong
+> total **and then deleted the source rows**, making the loss permanent. That is fixed. Any day
+> closed *before* this ship still carries an understated `daily_summaries` row whose source rows are
+> gone — unrecoverable, and outside the no-backfill reasoning in D-02, which assumed only the
+> transient on-screen summary was affected. Flagged for the operator; blocks nothing here.
 
 > **Epic complete when:** Phase 4's gate is met — the verification journeys pass and the operator has
 > live-verified an edit on the branch server.
@@ -180,7 +188,7 @@ while every superseded row still counts for neither — and both rows stay in th
   stale lines asserting the counts came from `ACTIVE` rows — corrected at `:29`, `:41` and `:137` — plus
   a new bug-record section covering the symptom, the two rejected hypotheses and the resolution.
 
-### STEP_ID: ETSC-CORE-002 — the day's money counts a corrected row — OPEN
+### STEP_ID: ETSC-CORE-002 — the day's money counts a corrected row — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-001
 - **Touches:** `backend/routes/reports.js`, `backend/routes/transactions.js`, `tests/`
@@ -189,16 +197,16 @@ while every superseded row still counts for neither — and both rows stay in th
   A customer edited from 798 to 399 shows as **0** in the day's takings, so the cash the manager
   expects for that customer drops to nothing. The audit trail still shows the edit, but the headline
   number does not. **This is an open theft window, and it is the reason this step exists.**
-- [ ] Today's revenue, fee and payment-method totals count a correction replacement as live money,
+- [x] Today's revenue, fee and payment-method totals count a correction replacement as live money,
       matching what the date-range financial report already does at `backend/routes/reports.js:239`.
-- [ ] Superseded and cancelled rows stay excluded, so an edit never double-counts.
-- [ ] 🔴 **The permanent archive is corrected too.** `POST /reports/end-day`
+- [x] Superseded and cancelled rows stay excluded, so an edit never double-counts.
+- [x] 🔴 **The permanent archive is corrected too.** `POST /reports/end-day`
       (`backend/routes/reports.js:456`) writes the day's row into `daily_summaries` counting live rows
       only, so every edited transaction is missing from the archived record **forever**. It is live —
       called from `web-app/api.js:499` via `web-app/shared.js:586-597` and `web-app/summary.html:515`.
       Fixing the screen and leaving the archive wrong moves the defect into the books a manager would
       audit months later.
-- [ ] The daily per-masseuse report (`backend/routes/reports.js:63`) is corrected with the same
+- [x] The daily per-masseuse report (`backend/routes/reports.js:63`) is corrected with the same
       predicate.
 - **Validation:** for a day containing a transaction edited from 399 to 798, today's summary reports
   798 and excludes 399; **and** closing the day archives 798 into `daily_summaries`, not zero;
@@ -211,7 +219,77 @@ while every superseded row still counts for neither — and both rows stay in th
   The cross-report agreement assertion lives in ETSC-MONEY-001, scoped there.
 - **Risk notes:** the same admit-corrected-but-not-superseded care as the previous step. The existing
   date-range report is the reference implementation — match its treatment rather than inventing one.
-- **Completion Notes:**
+- **Completion Notes:** Shipped 2026-08-18.
+
+  **What changed.** Eight money filters converted to `countsAsLiveWork()` from the existing shared
+  module `backend/services/transaction-status-sql.js`, yielding `status IN ('ACTIVE', 'CORRECTED')`
+  at every site. No second predicate was written and no SQL was inlined. Six sites in
+  `backend/routes/reports.js`: the daily report's transaction summary (`:25`), payment breakdown
+  (`:46`) and per-masseuse performance (`:64`); today's summary (`:205`) and its payment breakdown
+  (`:216`); and the permanent end-day archive (`:457`). Two in `backend/routes/transactions.js`: the
+  today-summary totals (`:936`) and its payment breakdown (`:947`). Line numbers shifted by one in
+  each file because of the added import. The whole production diff is 12 insertions / 10 deletions
+  across those two files and nothing else.
+
+  **RED observed before any production line changed** — 12 failed / 4 passed across the two new
+  specs, every money reader returning the predicted zero: `total_revenue` 0 where 1596 was required
+  on all three read endpoints, the Cash and Transfer payment-breakdown rows `undefined` rather than
+  798 each, no `masseuse_performance` row for สา at all, and the archived `daily_summaries` row
+  carrying `total_revenue` 0 rather than 798. GREEN after: 16 of 16. The four that passed in both
+  states are guards by design, not symptom reproductions — the allowlist shape of the already-shipped
+  predicate, `end-day` returning 200, the not-1197/1298/1697 double-count guard which can only fail
+  if the fix over-widens, and the assertion that end-day leaves no surviving source rows.
+
+  **The Validation line was strengthened twice, and the second time was necessary.** As it stood at
+  `511fd28` it named three of the eight readers, so an implementation touching only `reports.js:204`,
+  `:63` and `:456` would have satisfied it verbatim while leaving four money readers broken —
+  including the whole of `GET /transactions/summary/today`, a second endpoint whose informal name is
+  also "today's summary" and which an implementer reading the criterion had no way to know existed.
+  The plan audit rewrote the criterion to name all eight with an assertion each. That is now the
+  shipped test shape: one assertion per reader, plus two source-pattern assertions proving both
+  routes import the shared module and that no `WHERE ... status = 'ACTIVE'` money clause survives in
+  either file.
+
+  **Test topology.** Two spec files, not one. `POST /reports/end-day` archives the day and then
+  DELETEs the day's transaction rows (`backend/routes/reports.js:480-492`), so any fixture sharing
+  its database is destroyed. Each Jest spec file calls `mkdtempSync` and sets `process.env.DB_PATH`
+  at module scope before requiring the server, and Jest runs spec files in separate workers, so a
+  separate file is the only thing that guarantees isolation by construction rather than by
+  declaration order. In the archive spec, end-day fires once in `beforeAll` and every test then reads
+  `daily_summaries`, so no test there depends on running before or after another. Both fixtures pin
+  rows to the real current UTC calendar date, because all three endpoints derive their day from
+  `new Date().toISOString().split('T')[0]` and honour no clock pin.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to the recorded baseline, the
+  single failure being `__tests__/nav.bilingual.present.test.js`, unrelated. Integration regression
+  measured by stashing the production diff and re-running: 7 suites / 65 tests passed before, 9
+  suites / 81 tests passed after — the difference is exactly the 16 new tests, zero regressions.
+  Security: all twelve `countsAsLiveWork()` call sites across the three route files pass hardcoded
+  literals (`'t'`, `''`), verified by grep; no user input reaches the interpolated alias; no new
+  endpoint, no new input. The change widens what is read; the only write it affects is the end-day
+  archive, which now stores the correct larger total, and that handler's DELETE predicate is
+  untouched. Performance: `EXPLAIN QUERY PLAN` before and after is identical — both the archive sum
+  and the payment breakdown keep `SEARCH transactions USING INDEX
+  idx_transactions_recent_date_timestamp (date=?)`; the status column never drove these plans.
+
+  **Not touched, deliberately.** The edit write path (`backend/routes/transactions.js:694-697`,
+  `:714`), whose status values are mandated by `transaction-correction-operational-reversal.md`
+  FR-003 and §6. The audit-repair tool (`:791`, `:800`) — `ETSC-CORE-002a`.
+  `getCorrectionEligibleStaff()` (`:21`, `:29`) — `ETSC-CORE-002b`, escalated from this step's
+  planning and now a step of its own. The date-range reports (`backend/routes/reports.js:109`,
+  `:148`, `:169`, `:240`), the reference implementation this step was matched to. The pending-add-on
+  preservation subquery (`:485`, `:488`), which selects rows to rescue from deletion rather than rows
+  to count. `isSettled()` at all four sites that carry it — orthogonal to the live-row rule, and the
+  source test pins its call count at four so it cannot be dropped silently. `backend/routes/staff.js`,
+  `backend/routes/admin.js`, and every `web-app` file.
+
+  **Docs.** New bug records in `backend/routes/reports.js.md` (the money defect plus a dedicated
+  section on the archive being the irreversible one) and `backend/routes/transactions.js.md` (the
+  second today-summary endpoint, plus an explicit list of what was left alone and who owns each).
+  `backend/services/transaction-status-sql.js.md` §3 now names all twelve consumer sites, and §5 was
+  corrected: it had claimed all `transactions.js` live-row filters belonged to this step, which
+  silently absorbed two filters this step never covered. Each is now attributed to the step that owns
+  it.
 
 ### STEP_ID: ETSC-CORE-002a — the audit-repair tool keys on the link — OPEN
 - **Protocol:** `/fsm-ship-ntc`
@@ -481,6 +559,27 @@ the live branch server.
   pass it while failing objective 4 verbatim. **The test was strengthened rather than the criterion
   relaxed**: three assertions were added covering yesterday's commission, a two-successive-edits
   workload count, and that the predicate is imported rather than inlined.
+- **ETSC-CORE-002 planning (2026-08-18):** the correction flow picks a replacement masseuse using
+  live-row-only filters of its own — `getCorrectionEligibleStaff()` at
+  `backend/routes/transactions.js:21` (workload) and `:29` (busy scan). Same defect class as
+  `ETSC-CORE-001`, different file, and it is **not money**, so it fell outside `ETSC-CORE-002`'s
+  objectives. Escalated rather than absorbed; **now `ETSC-CORE-002b`**, sequenced after
+  `ETSC-CORE-002` because both write that file.
+- **ETSC-CORE-002 planning (2026-08-18):** the step's Validation line reached only three of its eight
+  money readers, so an implementation touching `reports.js:204`, `:63` and `:456` alone would have
+  passed it verbatim while leaving four readers broken — including the whole of
+  `GET /transactions/summary/today`, a second endpoint sharing the informal name "today's summary"
+  that an implementer had no way to discover from the criterion. **The criterion was rewritten to
+  name all eight, one assertion each**, rather than the test being quietly widened past it. This is
+  the second step in a row where a partially-scoped Validation line would have passed a partial fix;
+  the rule now applied throughout this lane is one assertion per named reader.
+- **ETSC-CORE-002 shipping (2026-08-18):** `POST /reports/end-day` is destructive in a way the epic
+  had not fully priced. It archives the day into `daily_summaries` and **then deletes the day's
+  transaction rows** (`backend/routes/reports.js:480-492`), and nothing writes
+  `archived_transactions` — verified by reading the handler and searching the route files. So a day
+  closed before this step shipped lost the edited money from the books *and* lost the rows that would
+  let anyone reconstruct it. This is why the archive assertion was treated as the load-bearing one,
+  and why it lives in its own database: the handler empties any fixture it shares.
 - **Epic planning (2026-08-18):** the permanent daily archive is affected, not just the live screen.
   `POST /reports/end-day` (`backend/routes/reports.js:456`) writes `daily_summaries` counting live
   rows only, and it is live (`web-app/api.js:499`, `web-app/shared.js:586-597`,
