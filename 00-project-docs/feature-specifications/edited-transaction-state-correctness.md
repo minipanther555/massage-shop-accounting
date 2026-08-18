@@ -45,6 +45,10 @@ mid-massage. Three rows appeared in the transaction list for one customer.
 
 ### Requirement Sources
 - Operator report, 2026-08-18, with the observed three-row transaction list.
+- Operator ruling, 2026-08-18: the audit trail is a fraud control and both rows stay as they are.
+- **Governing neighbour spec:** `00-project-docs/feature-specifications/transaction-correction-operational-reversal.md`
+  — fixes the status vocabulary this epic must not change, and carries the acceptance criterion this
+  epic implements.
 - Source reading this session, cited below. Every claim here was read, not grepped.
 
 ---
@@ -114,7 +118,8 @@ badged — is what **two** successive edits produce, not one.
 
 | Cause | Impact | Mitigation |
 |---|---|---|
-| Making the replacement row `ACTIVE` while a query elsewhere assumes `CORRECTED` | A lookup silently returns nothing | One known site depends on it — `transactions.js:799` selects `WHERE corrected_from_id = ? AND status = "CORRECTED"`. It must be changed to key on the link, not the status. Verified by search; any further site must be found before implementation |
+| Widening the busy/workload predicate too far | A superseded row counts alongside its replacement, doubling a masseuse's workload on every edit — worse than the bug being fixed | ETSC-QUEUE-001 in the steps file is a dedicated guard step with a two-successive-edits fixture |
+| Changing the replacement's status instead of the readers | Contradicts the governed correction spec and silently disables the audit-repair tool that protects the fraud trail | Rejected; rationale recorded in ETSC-001 above and in the steps file's D-01 |
 | Date-range reports double-counting | Money overstated | The superseded row keeps its `EDITED` status and is excluded from both report families, exactly as today |
 | The unique booking index | An edit could violate it | `idx_transactions_one_active_booking` covers `status IN ('ACTIVE','CORRECTED')` (`database.js:359`); with the original relabelled `EDITED`, only one row remains in the index, so the constraint still holds |
 
@@ -139,46 +144,79 @@ badged — is what **two** successive edits produce, not one.
 
 ## 5. Functional Requirements
 
-### ETSC-001: The live row after an edit is `ACTIVE`
+### ETSC-001: Availability and workload recognise a correction replacement
 
-**Description.** The replacement row an edit inserts must carry status `ACTIVE`, because it *is* the
-live transaction. The superseded row keeps `EDITED (Corrected by …)`.
+**Description.** A masseuse's busy state and her workload count must derive from her live massage,
+whether that massage is an original or a correction replacement.
 
-**Rationale for choosing this over the alternative.** The other repair is to widen roughly fifteen
-query sites to accept `CORRECTED`. That is rejected: it is more code, it must be repeated in every
-future query, and the project already learned this lesson — `backend/services/add-on-sql.js:1-12`
-exists specifically so that "the ~20 aggregation sites cannot drift apart." Making the data correct
-at the single point of writing is strictly smaller and cannot drift.
+**Why the fix is here and not in the write path.** The governing correction spec
+(`transaction-correction-operational-reversal.md`) fixes the replacement's status at FR-003 —
+*"the replacement with `CORRECTED` plus `corrected_from_id`"* — and again in its §6 state
+transitions. Two further facts make changing that status actively harmful:
 
-**Trigger.** Any edit of an existing transaction.
+1. **An audit-integrity repair tool depends on it.** `POST /transactions/fix-edited-status`
+   (`backend/routes/transactions.js:782-825`) finds superseded rows that were wrongly left live and
+   relabels them, matching on the `CORRECTED` status at `:799`. Writing replacements live would leave
+   it permanently unable to match anything. **The audit trail is a fraud control — a receptionist
+   previously stole money — so silently disabling its repair tool is not an acceptable cost.**
+2. **The correction spec already requires this behaviour.** Its AC-003 demands that a correction
+   *"applies the replacement fee/workload effect exactly once."* The fee is applied today
+   (`backend/routes/transactions.js:720-726`); the workload effect is not. This requirement
+   **implements** that criterion rather than working around it.
 
-**Processing logic.** At `backend/routes/transactions.js:713`, write `'ACTIVE'` for both the edit and
-the non-edit case. The `corrected_from_id` column continues to record that this row replaced another
-— that link, not the status, is what marks a row as a replacement.
+**Trigger.** Any read of busy state or workload.
 
-**Outputs.** Busy, workload, queue, today's income and the date-range report all see the edited
-transaction, with no change to any of those queries.
+**Processing logic.** The busy derivation (`backend/routes/staff.js:201`) and the workload count
+(`backend/routes/staff.js:41`) admit a correction replacement alongside an ordinary live row.
+Superseded rows (status beginning `EDITED`) and cancelled rows (status beginning `CANCELLED`) remain
+excluded.
 
-**Failure modes.** None new. The write path is otherwise unchanged.
+**Outputs.** A masseuse mid-massage reads as busy after an edit, keeps her workload count, and is not
+offered as next in line.
 
-**Edge cases.** An edit of an edit produces a chain of `corrected_from_id` links; each superseded row
-is `EDITED`, and exactly one row in the chain is `ACTIVE`.
+**Failure modes.** Widening too far. A predicate that admits anything not cancelled would also admit
+superseded rows, doubling her workload on every edit and pushing her further down the queue than
+before. The fix must name what it admits, not what it excludes.
 
-### ETSC-002: Replacement lookups key on the link, not the status
+**Edge cases.** Two successive edits leave two superseded rows and one replacement; the workload
+count must be one.
 
-**Description.** Any query that finds a replacement row by `status = 'CORRECTED'` must instead use
-`corrected_from_id`.
+### ETSC-002: The day's money counts a correction replacement
 
-**Processing logic.** `backend/routes/transactions.js:799` currently reads
-`WHERE corrected_from_id = ? AND status = "CORRECTED"`. Drop the status condition; the link alone
-identifies the replacement. Before implementation, search the whole backend for any other reader of
-the `CORRECTED` status and convert it the same way.
+**Description.** Today's revenue, fee and payment-method totals must count a correction replacement
+as live money.
 
-**Outputs.** Void and reversal flows keep working after ETSC-001 changes the status.
+**Why this is urgent.** After an edit, neither row is live, so today's summary
+(`backend/routes/reports.js:24`, `:45`, `:204`, `:215`) reports **nothing at all** for that customer.
+A transaction edited from 798 to 399 contributes zero to the day's takings, so the cash the manager
+expects for it drops to nothing while the customer really paid. The row list still shows the edit,
+but the headline figure does not. **This is an open theft window and it is the strongest reason to
+ship this epic first.**
+
+**Processing logic.** Match the treatment the date-range financial report already uses —
+`backend/routes/reports.js:239` (`WHERE t.status IN ('ACTIVE', 'CORRECTED')`). That query is the
+reference implementation; today's summary is the outlier.
+
+**Outputs.** Today's summary and the date-range report return the same total for a day containing an
+edit.
+
+**Failure modes.** Double counting, if a superseded row is admitted alongside its replacement.
+
+### ETSC-002a: The audit-repair tool keys on the link
+
+**Description.** The repair tool that protects the audit trail must find a superseding row by its
+link rather than by that row's status, so it cannot be broken by a future status change.
+
+**Processing logic.** `backend/routes/transactions.js:799` matches on `corrected_from_id` **and** the
+`CORRECTED` status. Drop the status condition; the link alone identifies the superseding row. Search
+the whole backend for other readers of that status and convert or document each.
+
+**Outputs.** The repair tool keeps working regardless of how the status vocabulary evolves.
 
 ### ETSC-003: Exactly one live row per edit chain
 
-**Description.** After any number of edits, exactly one row in the chain is `ACTIVE`.
+**Description.** After any number of edits, exactly one row in the chain counts as live work and
+live money.
 
 **Processing logic.** The relabel of the original to `EDITED (Corrected by …)`
 (`transactions.js:693-696`) and the insert of the replacement must happen in one database
@@ -226,22 +264,26 @@ books and is deliberately excluded — see Open Questions.
 
 ## 7. State Transitions
 
-### States
-`ACTIVE` — the live transaction · `EDITED (Corrected by <id>)` — superseded, kept for audit ·
-`CANCELLED` — voided · `CORRECTED` — **retired for new writes** by ETSC-001, still readable on
-historic rows.
+**Unchanged by this epic.** The vocabulary and the transitions stay exactly as
+`transaction-correction-operational-reversal.md` §6 defines them:
 
-### Valid transitions
-`ACTIVE` → `EDITED (Corrected by <id>)` when replaced by an edit.
-`ACTIVE` → `CANCELLED` when voided.
+`ACTIVE` — an ordinary live transaction · `CORRECTED` — a live correction replacement, linked to the
+row it replaced · `EDITED (Corrected by <id>)` — superseded, kept for audit · `CANCELLED (...)` —
+voided, kept for audit.
+
+An eligible live or corrected row may itself be corrected again, producing a further superseded row
+and one new replacement.
+
+**What this epic changes is which of these the readers count**, not which of them the writer
+produces. Both rows of every edit stay in the ledger and stay visible, because that trail is how a
+manager sees what a receptionist did.
 
 ### Invalid states
-Two `ACTIVE` rows in one edit chain. No `ACTIVE` row in an edit chain that has not been voided.
+More than one counting row in a single edit chain. No counting row in a chain that has not been
+cancelled.
 
 ### Recovery
-Both are prevented by the single-transaction write in ETSC-003 rather than repaired afterwards.
-
----
+Prevented by the single-transaction write in ETSC-003 rather than repaired afterwards.
 
 ## 8. Operational Considerations
 
@@ -270,7 +312,10 @@ Both are prevented by the single-transaction write in ETSC-003 rather than repai
 
 ## 10. Testing Requirements
 
-- **Unit:** the edit path writes `ACTIVE` to the replacement and `EDITED (…)` to the original.
+- **Unit:** the busy and workload predicates admit a correction replacement and exclude superseded
+  and cancelled rows.
+- **Unit:** the edit path still writes `CORRECTED` to the replacement and `EDITED (…)` to the
+  original, unchanged — a regression guard on the governed correction contract.
 - **Integration:** after editing 1 hour to 2 hours, the busy window ends 2 hours after the start.
 - **Integration:** after that edit, the masseuse is not returned as next in line while busy.
 - **Integration:** after that edit, her workload count includes the massage.
@@ -289,6 +334,14 @@ Both are prevented by the single-transaction write in ETSC-003 rather than repai
 ### Assumptions
 - **Documented** — the edit path relabels and inserts rather than updating in place
   (`transactions.js:693-717`), read this session.
+- **Documented** — `transaction-correction-operational-reversal.md` FR-003 and §6 mandate the
+  replacement's `CORRECTED` status, and its AC-003 requires the replacement's workload effect to
+  apply exactly once. Read in full 2026-08-18, after the first draft of this spec was written against
+  an incomplete load.
+- **Documented** — the audit-repair tool at `backend/routes/transactions.js:782-825` matches on the
+  `CORRECTED` status at `:799`, read this session.
+- **User Confirmed** — the audit trail exists because a receptionist stole money; both rows must stay
+  in the ledger so a manager can see what was done. Operator, 2026-08-18.
 - **Documented** — busy and workload read only `ACTIVE` rows (`staff.js:41`, `:201`), read this
   session.
 - **Documented** — today's summary reads only `ACTIVE` while date-range reads `ACTIVE` and
