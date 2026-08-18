@@ -201,8 +201,11 @@ while every superseded row still counts for neither — and both rows stay in th
 - [ ] The daily per-masseuse report (`backend/routes/reports.js:63`) is corrected with the same
       predicate.
 - **Validation:** for a day containing a transaction edited from 399 to 798, today's summary reports
-  798 and excludes 399; **and** closing the day archives 798 into `daily_summaries`, not zero —
-  satisfies AC-004. Both observed failing beforehand, where the day reports zero for that customer.
+  798 and excludes 399; **and** closing the day archives 798 into `daily_summaries`, not zero;
+  **and** the daily per-masseuse report (`backend/routes/reports.js:63`) credits her with 798 —
+  satisfies AC-004. The third assertion is here because the previous step proved the danger: its
+  criterion named only two of its four readers, so an implementation could have satisfied it in full
+  while leaving a reader untouched. Every reader named in the objectives gets an assertion. Both observed failing beforehand, where the day reports zero for that customer.
   The cross-report agreement assertion lives in ETSC-MONEY-001, scoped there.
 - **Risk notes:** the same admit-corrected-but-not-superseded care as the previous step. The existing
   date-range report is the reference implementation — match its treatment rather than inventing one.
