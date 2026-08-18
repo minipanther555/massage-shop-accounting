@@ -572,25 +572,82 @@ while every superseded row still counts for neither — and both rows stay in th
 ## Phase 2 — Prove the reported symptom is gone — OPEN
 **Phase goal:** the operator's actual symptom is covered by tests that fail on the old build.
 
-### STEP_ID: ETSC-QUEUE-001 — a superseded row never counts, however many edits — OPEN
+### STEP_ID: ETSC-QUEUE-001 — a superseded row never counts, however many edits — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-001
 - **Touches:** `__tests__/`
 - **Why this is separate from the fix:** widening the readers to admit a correction replacement is
   one edit away from also admitting the superseded row it replaced. That would double a masseuse's
   workload on every edit and make her *less* available rather than more. This step is the guard.
-- [ ] A superseded row contributes nothing to busy state or workload, and a cancelled row contributes
+- [x] A superseded row contributes nothing to busy state or workload, and a cancelled row contributes
       nothing either.
-- [ ] After two successive edits of the same customer, the masseuse's workload count is one, not
+- [x] After two successive edits of the same customer, the masseuse's workload count is one, not
       three.
-- [ ] A masseuse with one live correction replacement reads as busy for its duration, not for the
+- [x] A masseuse with one live correction replacement reads as busy for its duration, not for the
       superseded row's.
 - **Validation:** the three assertions above pass — guards AC-001, AC-002 and AC-003 against the
   double-count failure mode. The two-successive-edits case must be built as a fixture, because it is
   the shape the operator actually reported: three rows for one customer.
+  **Strengthened at S4 (2026-08-18) — the sixth too-weak-criterion finding in this lane, and here the
+  hole is in the FIXTURE rather than the wording.** All three assertions were already passing against
+  the shipped tree using `edited-transaction-live-state.integration.test.js`'s fixtures, so a spec
+  that merely copied them would have satisfied this criterion verbatim while proving nothing this
+  step exists for. Two blind spots in those fixtures were found and closed:
+  **(a)** their edit LENGTHENS the massage — one hour to two — and the busy window is the MAX end
+  across live rows (`backend/routes/staff.js:208-213`), so a wrongly admitted superseded row is the
+  shorter one and changes no answer. Objective 3 is therefore unreachable with a lengthening edit.
+  This spec SHORTENS the massage, so admitting the superseded row moves `busy_until_iso` by an hour.
+  **(b)** in those fixtures every superseded row sits beside a live replacement for the **same**
+  masseuse, so excluding it is invisible in busy state — she reads busy either way. This spec gives
+  a masseuse a superseded row **alone**, the reassignment case where reception corrected the wrong
+  masseuse and the replacement went to a colleague. If the superseded row were admitted she would
+  read busy mid-shift on a massage she is not giving.
 - **Risk notes:** no production code is expected here. If an assertion cannot be made to pass by
   Phase 1's changes alone, the fix admitted too much — stop and narrow it rather than adding code.
-- **Completion Notes:**
+  **None was needed: the step shipped test-only and every assertion passed on Phase 1's changes
+  alone.**
+- **Completion Notes:** Shipped 2026-08-18. **No production code.**
+
+  **New spec: `tests/integration/superseded-row-never-counts.integration.test.js`, 8 of 8 green.**
+  Isolated by `mkdtempSync` plus `process.env.DB_PATH` at module scope. Fixtures are built **per
+  test** rather than shared, because `walk_in_priority` is a single roster-wide flag — exactly one
+  masseuse on a roster carries it — so the next-in-line assertions need rosters of their own.
+
+  **Every assertion is a declared GUARD, and the RED count is zero by design.** The behaviour was
+  already correct after `ETSC-CORE-001`, so nothing could reproduce a symptom against this tree.
+  **The guards were proven capable of failing by mutation:** turning `countsAsLiveWork()` into the
+  denylist its own doc warns about — `status NOT LIKE 'CANCELLED%'` — turned **7 of the 8 red**,
+  with `today_massages` reading **3** for one massage and `busy_until_iso` reading the superseded
+  row's later end. The eighth is the plain cancelled-row assertion, which a denylist still satisfies;
+  it is kept because it is the only one of the eight guarding the cancelled half of the rule. The
+  mutation was reverted immediately and the suite re-measured at 8 of 8; `git status` confirms
+  `backend/services/transaction-status-sql.js` unmodified.
+
+  **What each objective got.** Objective 1, busy state: a masseuse holding **only** a superseded row
+  reads `available` with a null busy window while the colleague who took the work reads `busy` until
+  12:30 — so the exclusion is proven not to be blanket. Objective 1, cancelled rows: a plain
+  cancelled row counts for nothing, **and** a cancelled *correction replacement* counts for nothing
+  either, so voiding an edited transaction really releases her rather than letting the superseded row
+  resurrect the massage. Objective 2: the three-row chain gives `today_massages` 1, and — the
+  operator-visible cost — she still takes the next-in-line slot from a colleague who really did two
+  massages and holds the better queue position, which a count of 3 would have lost her. Objective 3:
+  a shortening edit, asserted both as the replacement's end **and** explicitly not the superseded
+  row's; and the same again mid-chain, where each of two successive edits shortens the massage and
+  neither earlier end may appear.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to the recorded baseline.
+  `npx jest --testMatch '**/tests/integration/**/*.test.js'` = 4 failed / 156 passed, the four being
+  the recorded pre-existing failures and the 156 being 148 plus this step's 8. Zero regressions.
+  Security and performance: no production change.
+
+  **Touches divergence, recorded rather than silent — the same one `ETSC-CORE-002a` recorded.** This
+  step's Touches names `__tests__/`, but `__tests__` holds only static contract tests with no server
+  and no database, and its test count is this epic's phase-gate baseline. These assertions need the
+  real handler and a real database, so the spec went to `tests/integration/` with the rest of the
+  lane. Putting it in `__tests__` would have moved the baseline the gates check against.
+
+  **Docs.** `backend/services/transaction-status-sql.js.md` §4 now records this spec, why it is not a
+  copy of the two that came before it, and the denylist mutation result.
 
 ### STEP_ID: ETSC-MONEY-001 — the money is right and counted once — OPEN
 - **Protocol:** `/fsm-ship-ntc`
