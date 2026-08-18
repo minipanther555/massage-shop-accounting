@@ -472,20 +472,88 @@ while every superseded row still counts for neither — and both rows stay in th
   `backend/services/transaction-status-sql.js.md` moved `:21` and `:29` out of §5 Known
   Non-Consumers and into §3 Dependency Mapping, which now names fourteen consumer sites.
 
-### STEP_ID: ETSC-CORE-003 — an edit is all-or-nothing — OPEN
+### STEP_ID: ETSC-CORE-003 — an edit is all-or-nothing — ✅ DONE
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-002
 - **Touches:** `tests/` — **expected to be test-only.** The edit path already wraps its work in one
   database transaction (`BEGIN IMMEDIATE` at `backend/routes/transactions.js:658`, `COMMIT` at `:754`,
   `ROLLBACK` at `:771`), with both the relabel and the insert inside that span. If the implementer
   finds a real escape path, this step gains production code and records the divergence.
-- [ ] The relabel of the superseded row and the insert of the replacement either both happen or
+  **Verified 2026-08-18, and the cited lines had drifted by one:** the wrapper is at `:659`, `:755`
+  and `:772`. No escape path exists — the fee reversal (`:681-684`), the relabel (`:692-695`) and
+  the insert (`:714`) are all inside the span, and the only exit that skips `COMMIT` runs `ROLLBACK`.
+  **Shipped test-only, as expected.**
+- [x] The relabel of the superseded row and the insert of the replacement either both happen or
       neither does.
-- [ ] After any number of successive edits, exactly one row in the chain counts as live work and live
+- [x] After any number of successive edits, exactly one row in the chain counts as live work and live
       money; every earlier row is superseded and counts for neither.
 - **Validation:** a forced failure part-way through an edit leaves the original live and no
   replacement row present; and two successive edits leave exactly one live row — satisfies AC-008.
-- **Completion Notes:**
+  **Strengthened at S4 (2026-08-18) — the fifth too-weak-criterion finding in this lane, and the
+  first where the weakness is that the criterion is satisfiable by a handler that did nothing.**
+  "The original is still live and no replacement row is present" is equally true of an edit that
+  never started, and of a handler reordered to insert before relabelling — neither of which is
+  atomic. Two assertions close that: the original masseuse's `total_fees_earned` must be **restored**
+  after the forced failure (that write happens before both others, so finding it undone can only be
+  a rollback), and a source-order assertion pinning `BEGIN IMMEDIATE` → fee reversal → relabel →
+  insert → `COMMIT` → `ROLLBACK`. The second clause was also too weak: "exactly one live row" is a
+  raw row count, which says nothing about the objective's actual words, *counts as live work and
+  live money*. Both readers now get their own assertion, through the real endpoints.
+- **Completion Notes:** Shipped 2026-08-18. **No production code — the step is tests only**, which
+  is what its Touches predicted.
+
+  **What was verified before anything was written.** The whole `POST /` handler was read, not
+  grepped. `BEGIN IMMEDIATE` at `:659`, `COMMIT` at `:755`, `ROLLBACK` at `:772` in the single
+  `catch`, guarded by `dbTransactionStarted`. Every write of the edit is inside that span: the
+  original masseuse's fee reversal (`:681-684`), `reverseActiveBookingCredit()` (`:686`), the relabel
+  (`:692-695`), the insert of the replacement (`:714`), the replacement masseuse's fee accrual
+  (`:719-725`), the booking credit and the booking completion. **The three line numbers this step's
+  Touches cited were each one low**; corrected above rather than left to drift further.
+
+  **New spec: `tests/integration/edit-is-all-or-nothing.integration.test.js`, 9 of 9 green.**
+  Isolated by `mkdtempSync` plus `process.env.DB_PATH` at module scope, the pattern the rest of the
+  lane uses.
+
+  **How the failure is forced, without touching production code.** The fixture creates a SQLite
+  trigger that aborts any INSERT into `transactions` carrying a marker `customer_contact`, and drops
+  it in `afterAll`. It fires at STEP 7 — after the fee reversal and after the relabel are already
+  written inside the open transaction. `RAISE(ABORT)` reverts only the offending statement and leaves
+  the enclosing transaction open, so what the test observes is **the handler's own `ROLLBACK`** undoing
+  the two earlier writes, not SQLite undoing the insert.
+
+  **Every assertion here is a GUARD, declared as such, and none is a symptom reproduction.** The
+  behaviour was already correct, so nothing could go red against the shipped tree. **The guards were
+  proven capable of failing by mutation instead:** removing `BEGIN IMMEDIATE` and `COMMIT` from the
+  handler turned 3 of the 9 red, with the exact partial-write state the objective forbids — the
+  original left `EDITED (Corrected by TX-1787039012150-4a9ccb)` while no row with that id exists, a
+  chain with **no** live row at all. The mutation was reverted immediately (`git checkout --`) and
+  the suite re-measured at 9 of 9; `git status` confirms `backend/routes/transactions.js` unmodified.
+
+  **The two-successive-edits chain is driven through the real endpoint**, not assembled by hand as
+  the reader-isolating specs in this lane do — this step is about the writer, so hand-building the
+  rows would assert nothing. Three `POST /api/transactions` calls produce the operator's reported
+  shape: 399 superseded, 798 superseded, 399 live. The chain is then read four ways — the raw
+  live-work predicate returns exactly one row; `/api/staff/roster` reports `today_massages` 1, not 3;
+  `/api/reports/summary/today` and `/api/transactions/summary/today` both report 399 and a count of
+  1, not 1197 or 1596; and `/api/transactions/recent` still lists all three rows, so the audit trail
+  the operator ruling protects is intact.
+
+  **Gates.** `npx jest __tests__` = 1 failed / 169 passed, identical to the recorded baseline, the
+  single failure `__tests__/nav.bilingual.present.test.js`, unrelated.
+  `npx jest --testMatch '**/tests/integration/**/*.test.js'` = 4 failed / 148 passed, the four being
+  the recorded pre-existing failures (`revenue.card.regression`, `nav.bilingual.present`,
+  `nav.bilingual.keys-coverage`, `csrf-auth-flow`) and the 148 being 139 plus this step's 9. Zero
+  regressions. Security: no production change, no new endpoint, no new input; the fixture's trigger
+  is created and dropped inside a `mkdtemp` database that is deleted in `afterAll`. Performance: no
+  production change, so no query plan moved.
+
+  **Not touched.** Nothing outside `tests/`, this ledger and `backend/routes/transactions.js.md`.
+  In particular the edit write path's status values, all fourteen `countsAsLiveWork()` sites,
+  `backend/routes/admin.js` and every `web-app` file are unmodified.
+
+  **Docs.** New section in `backend/routes/transactions.js.md` §5 recording that the atomicity is
+  pre-existing, why it needed covering anyway, how the trigger forces the failure, and the mutation
+  check that proves the guards bite.
 
 **Phase 1 complete when:**
 - [ ] ETSC-CORE-001, ETSC-CORE-002, ETSC-CORE-002a, ETSC-CORE-002b and ETSC-CORE-003 are all `✅ DONE`
