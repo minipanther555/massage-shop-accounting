@@ -312,8 +312,8 @@ while every superseded row still counts for neither — and both rows stay in th
 - **Dependencies:** ETSC-CORE-002
 - **Touches:** `backend/routes/transactions.js`, `tests/`
 - **Why this exists:** found during ETSC-CORE-002's planning. `getCorrectionEligibleStaff()` at
-  `backend/routes/transactions.js:14-33` chooses the default replacement masseuse when reception
-  corrects a transaction. Its workload subquery at `:20` and its busy scan at `:28` both filter live
+  `backend/routes/transactions.js:16-45` chooses the default replacement masseuse when reception
+  corrects a transaction. Its workload subquery at `:21` and its busy scan at `:29` both filter live
   rows only — **the same defect ETSC-CORE-001 fixed in the staff route, in a different file.** So a
   masseuse who is mid-massage on a correction replacement reads as free with zero workload and is
   offered as the replacement for the next correction. That is
@@ -324,9 +324,20 @@ while every superseded row still counts for neither — and both rows stay in th
 - [ ] The correction flow's workload count and busy scan recognise a correction replacement as live
       work, using the same shared predicate, with superseded and cancelled rows still excluded.
 - [ ] No inline live-row filter remains in `getCorrectionEligibleStaff()`.
-- **Validation:** a masseuse mid-massage on a correction replacement is not offered as the default
-  replacement for a further correction, and her workload count there matches her count elsewhere —
-  observed failing beforehand, where she is offered first because her count reads zero.
+- **Validation:** **both** filters are proven fixed, each by an assertion the other cannot satisfy.
+  (a) A masseuse mid-massage on a correction replacement is not offered as the default replacement,
+  **and** an override naming her is refused with a 409 — the picker both suggests and enforces
+  (`backend/routes/transactions.js:650-655`), so today she is wrongly accepted as well as wrongly
+  suggested. (b) With no mid-massage masseuse in play at all, a masseuse whose correction replacement
+  has **already finished** must lose the default slot to a colleague with genuinely no work, on
+  workload rather than queue position. (c) The function's source contains the shared predicate twice
+  and no inline live-row filter. Each observed failing beforehand.
+  **Why (b) exists:** the earlier wording was satisfiable by fixing the busy scan alone — that removes
+  her from the list, so the first clause passes and the second has nothing left to compare. The
+  workload filter would have stayed broken and the finished-massage masseuse would still be handed
+  the next correction. Assertion (b) uses a masseuse the busy filter cannot reach, so a half-fix
+  fails it. This is the third step in this lane whose criterion named fewer readers than its
+  objectives; one assertion per named reader is now the rule.
 - **Risk notes:** the eligibility guards elsewhere in this file are about a row's own lifecycle state,
   not workload — do not widen into them. The audit-repair tool at `:790` and `:799` belongs to
   ETSC-CORE-002a.
@@ -531,6 +542,15 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **ETSC-CORE-002b planning (2026-08-18):** the correction picker's workload rule and the roster's are
+  not the same rule, and this step does not make them the same. The roster ANDs the live-row predicate
+  with the counts-as-a-massage predicate (`backend/routes/staff.js:42-43`); the picker has no
+  counts-as-a-massage term (`backend/routes/transactions.js:21`). So a duration-upgrade add-on
+  increments the picker's count and not the roster's. **Pre-existing, orthogonal to the live-row rule,
+  and outside this step's objectives** — not widened into. Operator schedules or declines.
+- **ETSC-CORE-002b planning (2026-08-18):** this step's own line citations were stale by one, written
+  before the money step added an import, and contradicted this Discoveries section. Corrected to
+  `:16-45`, `:21`, `:29`.
 - **ETSC-CORE-002 planning (2026-08-18):** 🔴 **closing the day destroys the evidence.**
   `POST /reports/end-day` archives totals into `daily_summaries` (`backend/routes/reports.js:466-471`)
   and then **deletes that day's transaction rows** (`:479-491`), keeping only unpaid add-ons and their
