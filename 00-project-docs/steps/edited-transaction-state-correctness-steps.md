@@ -40,9 +40,11 @@ corrected — it now writes the staff and reports routes rather than the transac
 - **Transactions write path (live):** an edit relabels the original and inserts a replacement —
   `backend/routes/transactions.js:693-717`. Must keep the audit trail of superseded rows.
 - **Busy and workload derivation (live):** read only rows whose status is `ACTIVE` —
-  `backend/routes/staff.js:41`, `:201`. **No change required here** once the written status is right.
-- **Today's money (live):** reads only `ACTIVE` — `backend/routes/reports.js:24`, `:45`, `:204`,
-  `:215`. **No change required here** for the same reason.
+  `backend/routes/staff.js:41`, `:201`, `:711`, `:755`. **These are corrected by ETSC-CORE-001** —
+  they are the defect, not a dependency to leave alone.
+- **Today's money (live):** reads only `ACTIVE` — `backend/routes/reports.js:24`, `:45`, `:63`,
+  `:204`, `:215`, `:456`, and `backend/routes/transactions.js:935`, `:946`. **These are corrected by
+  ETSC-CORE-002.**
 - Invariant: superseded rows are never deleted; the transaction list keeps showing them.
 - Invariant: existing rows already carrying the `CORRECTED` status keep reading correctly wherever
   they are already accepted. No historic data is rewritten.
@@ -374,6 +376,24 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **ETSC-CORE-001 planning (2026-08-18):** the manager's staff dashboard has the same defect and is in
+  no step of this epic. `backend/routes/admin.js:147`, `:151`, `:155` compute a staff member's
+  transactions today, fees this week and massages this week filtering live rows only, and `:487` does
+  the same for the performance report. So an edited transaction disappears from the manager's view of
+  what a masseuse earned. **Payouts are unaffected** — those accrue on the staff table, which the edit
+  path updates correctly (`backend/routes/transactions.js:683-686`, `:720-726`) — so this is a display
+  discrepancy on the oversight surface, not a money error. **Not widened into this epic**; the
+  operator schedules or declines it.
+- **ETSC-CORE-001 planning (2026-08-18):** `GET /staff/performance/today` derives its date from UTC at
+  `backend/routes/staff.js:702` and ignores the `?at=` clock pin every other endpoint in that file
+  honours. Pre-existing, and it belongs to `daily-state-freshness-steps.md`, not here. It constrains
+  how `backend/routes/staff.js:711` can be tested.
+- **ETSC-CORE-001 planning (2026-08-18):** the step's Validation line does not reach two of its own
+  objectives — it exercises busy state, next-in-line and workload count only, so an implementation
+  changing `backend/routes/staff.js:41` and `:201` while leaving `:711` and `:755` untouched would
+  pass it while failing objective 4 verbatim. **The test was strengthened rather than the criterion
+  relaxed**: three assertions were added covering yesterday's commission, a two-successive-edits
+  workload count, and that the predicate is imported rather than inlined.
 - **Epic planning (2026-08-18):** the permanent daily archive is affected, not just the live screen.
   `POST /reports/end-day` (`backend/routes/reports.js:456`) writes `daily_summaries` counting live
   rows only, and it is live (`web-app/api.js:499`, `web-app/shared.js:586-597`,
