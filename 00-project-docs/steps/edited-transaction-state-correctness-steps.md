@@ -202,8 +202,10 @@ while every superseded row still counts for neither — and both rows stay in th
       predicate.
 - **Validation:** for a day containing a transaction edited from 399 to 798, today's summary reports
   798 and excludes 399; **and** closing the day archives 798 into `daily_summaries`, not zero;
-  **and** the daily per-masseuse report (`backend/routes/reports.js:63`) credits her with 798 —
-  satisfies AC-004. The third assertion is here because the previous step proved the danger: its
+  **and** every one of the eight money readers returns 798 rather than zero — `reports.js:24`,
+  `:45`, `:63`, `:204`, `:215`, `:456` and `transactions.js:935`, `:946`, each with its own
+  assertion. Naming only some of them is the defect this line was rewritten twice to remove.
+  Satisfies AC-004. The third assertion is here because the previous step proved the danger: its
   criterion named only two of its four readers, so an implementation could have satisfied it in full
   while leaving a reader untouched. Every reader named in the objectives gets an assertion. Both observed failing beforehand, where the day reports zero for that customer.
   The cross-report agreement assertion lives in ETSC-MONEY-001, scoped there.
@@ -227,6 +229,31 @@ while every superseded row still counts for neither — and both rows stay in th
   the two steps above and may run concurrently with them — it shares no file with `ETSC-CORE-001`.
 - **Completion Notes:**
 
+### STEP_ID: ETSC-CORE-002b — correction picks a replacement who is actually free — OPEN
+- **Protocol:** `/fsm-ship-ntc`
+- **Dependencies:** ETSC-CORE-002
+- **Touches:** `backend/routes/transactions.js`, `tests/`
+- **Why this exists:** found during ETSC-CORE-002's planning. `getCorrectionEligibleStaff()` at
+  `backend/routes/transactions.js:14-33` chooses the default replacement masseuse when reception
+  corrects a transaction. Its workload subquery at `:20` and its busy scan at `:28` both filter live
+  rows only — **the same defect ETSC-CORE-001 fixed in the staff route, in a different file.** So a
+  masseuse who is mid-massage on a correction replacement reads as free with zero workload and is
+  offered as the replacement for the next correction. That is
+  `transaction-correction-operational-reversal.md` FR-004 failing in the very flow this epic is
+  about, so shipping without it would leave the bug alive where it is most visible.
+- **Depends on ETSC-CORE-002 for file safety, not for logic** — both write
+  `backend/routes/transactions.js`, so they must not run concurrently.
+- [ ] The correction flow's workload count and busy scan recognise a correction replacement as live
+      work, using the same shared predicate, with superseded and cancelled rows still excluded.
+- [ ] No inline live-row filter remains in `getCorrectionEligibleStaff()`.
+- **Validation:** a masseuse mid-massage on a correction replacement is not offered as the default
+  replacement for a further correction, and her workload count there matches her count elsewhere —
+  observed failing beforehand, where she is offered first because her count reads zero.
+- **Risk notes:** the eligibility guards elsewhere in this file are about a row's own lifecycle state,
+  not workload — do not widen into them. The audit-repair tool at `:790` and `:799` belongs to
+  ETSC-CORE-002a.
+- **Completion Notes:**
+
 ### STEP_ID: ETSC-CORE-003 — an edit is all-or-nothing — OPEN
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** ETSC-CORE-002
@@ -243,7 +270,7 @@ while every superseded row still counts for neither — and both rows stay in th
 - **Completion Notes:**
 
 **Phase 1 complete when:**
-- [ ] ETSC-CORE-001, ETSC-CORE-002, ETSC-CORE-002a and ETSC-CORE-003 are all `✅ DONE`
+- [ ] ETSC-CORE-001, ETSC-CORE-002, ETSC-CORE-002a, ETSC-CORE-002b and ETSC-CORE-003 are all `✅ DONE`
 - [ ] `npx jest __tests__ tests/integration` shows **no new failures against the baseline recorded
       below**. Repo-root `npx jest` is NOT a usable gate: measured 2026-08-18 it is 67 failed / 41
       passed suites, because it sweeps Playwright specs that abort under Jest. Baseline for the
@@ -426,6 +453,16 @@ the live branch server.
   persist. No backfill, no operator decision needed.
 
 ## Discoveries
+- **ETSC-CORE-002 planning (2026-08-18):** 🔴 **closing the day destroys the evidence.**
+  `POST /reports/end-day` archives totals into `daily_summaries` (`backend/routes/reports.js:466-471`)
+  and then **deletes that day's transaction rows** (`:479-491`), keeping only unpaid add-ons and their
+  parents. No route file writes `archived_transactions`. So on any closed day containing an edit, the
+  archived total omits that money **and** the source rows are gone — permanently unrecoverable. This
+  raises ETSC-CORE-002 from important to urgent, and it means days already closed with edits have
+  already lost that revenue from the books. Operator advised 2026-08-18 not to close a day until this
+  step ships.
+- **ETSC-CORE-002 planning (2026-08-18):** the correction flow's own replacement picker has the same
+  defect — now owned by ETSC-CORE-002b rather than left as a note.
 - **ETSC-CORE-001 planning (2026-08-18):** the manager's staff dashboard has the same defect and is in
   no step of this epic. `backend/routes/admin.js:147`, `:151`, `:155` compute a staff member's
   transactions today, fees this week and massages this week filtering live rows only, and `:487` does
