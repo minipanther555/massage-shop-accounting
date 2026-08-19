@@ -214,9 +214,15 @@ class APIClient {
     return this.request(`/bookings/availability?${query.toString()}`);
   }
 
-  // Paid Time Extension add-ons.
-  // The server derives the amount due and the commission; anything money-shaped
-  // sent from here is ignored, so callers never compute a price.
+  // Add-ons: the two SERVICE kinds (DURATION_UPGRADE, ADDITIONAL_SERVICE) and the
+  // two MONEY kinds (TIP, MISC_INCOME). One client path for all four.
+  //
+  // For a service kind the server derives the amount due and the commission, so
+  // anything money-shaped sent from here is ignored and callers never compute a
+  // price. For a money kind there is no catalog service to price, so `amount` is
+  // REQUIRED and is the value the ledger records (RIT-MONEY-001). A TIP also
+  // requires `parent_transaction_id`, and a MISC_INCOME requires a non-blank
+  // `description` — the server answers either omission with a 400.
   async createAddOn(payload) {
     return this.request('/transactions/add-ons', {
       method: 'POST',

@@ -70,6 +70,10 @@
                                     เพิ่มเวลา/บริการ
                                     <small>Extend</small>
                                 </button>
+                                <button type="button" id="money-mode-button" class="transaction-mode-button" onclick="setTransactionMode('money')">
+                                    ทิป/รายรับอื่น
+                                    <small>Tip / extra</small>
+                                </button>
                             </div>
                             <div id="booking-mode-note" class="transaction-booking-note" hidden>
                                 เลือกพนักงานเมื่อลูกค้าระบุชื่อ หรือปล่อยว่างเพื่อจัดตามคิวตอนลูกค้ามาถึง
@@ -115,6 +119,40 @@
                                     <div id="extend-error" class="transaction-extend-error" hidden></div>
                                     <button type="button" id="extend-submit-button" class="btn btn-primary" onclick="submitAddOn()">บันทึกการเพิ่ม</button>
                                 </div>
+                            </div>
+                            <div id="money-mode-panel" class="transaction-extend-panel" hidden>
+                                <p class="helper-text">บันทึกทิปที่ลูกค้าจ่ายผ่านบัตรหรือแอป แล้วร้านจ่ายเงินสดให้พนักงาน · หรือค่าใช้จ่ายเพิ่ม เช่น ยาหม่อง · ไม่กระทบคิวและยอดค่าพนักงาน</p>
+                                <div class="transaction-extend-kind" role="group" aria-label="เลือกประเภทรายรับ">
+                                    <button type="button" id="money-kind-tip" class="transaction-extend-kind-button is-active" onclick="setMoneyKind('TIP')">
+                                        ทิป
+                                        <small>Tip</small>
+                                    </button>
+                                    <button type="button" id="money-kind-misc" class="transaction-extend-kind-button" onclick="setMoneyKind('MISC_INCOME')">
+                                        รายรับอื่น
+                                        <small>Extra charge</small>
+                                    </button>
+                                </div>
+                                <div class="transaction-field-grid">
+                                    <div class="form-group transaction-field transaction-field-large">
+                                        <label for="money-parent">รายการที่เกี่ยวข้อง</label>
+                                        <select id="money-parent" onchange="updateMoneySubmitState()"></select>
+                                        <div id="money-parent-hint" class="helper-text"></div>
+                                    </div>
+                                    <div class="form-group transaction-field">
+                                        <label for="money-amount">จำนวนเงิน (บาท)</label>
+                                        <input type="number" id="money-amount" min="1" step="1" inputmode="numeric" oninput="updateMoneySubmitState()">
+                                    </div>
+                                    <div class="form-group transaction-field">
+                                        <label for="money-payment">การชำระเงิน</label>
+                                        <select id="money-payment" onchange="updateMoneySubmitState()"></select>
+                                    </div>
+                                    <div class="form-group transaction-field transaction-field-large">
+                                        <label for="money-description" id="money-description-label">รายละเอียด</label>
+                                        <input type="text" id="money-description" maxlength="120" oninput="updateMoneySubmitState()">
+                                    </div>
+                                </div>
+                                <div id="money-error" class="transaction-extend-error" hidden></div>
+                                <button type="button" id="money-submit-button" class="btn btn-primary" onclick="submitMoneyEntry()" disabled><span class="label-th">บันทึกรายการ</span><span class="label-en">Save entry</span></button>
                             </div>
                             <div class="transaction-field-grid">
                                 <div class="form-group transaction-field transaction-field-large">
@@ -497,16 +535,25 @@
             const isBooking = mode === 'booking';
             const isArrival = mode === 'arrival';
             const isExtend = mode === 'extend';
+            const isMoney = mode === 'money';
 
             const extendPanel = document.getElementById('extend-mode-panel');
             const extendButton = document.getElementById('extend-mode-button');
             if (extendPanel) extendPanel.hidden = !isExtend;
             if (extendButton) extendButton.classList.toggle('is-active', isExtend);
-            // Extend uses its own panel, so the normal intake form steps aside.
+            const moneyPanel = document.getElementById('money-mode-panel');
+            const moneyButton = document.getElementById('money-mode-button');
+            if (moneyPanel) moneyPanel.hidden = !isMoney;
+            if (moneyButton) moneyButton.classList.toggle('is-active', isMoney);
+            // Extend hides the intake form, exactly as before. Money mode does NOT: the mode
+            // switch and both panels live INSIDE #transaction-form, so hiding it takes the
+            // panel and the mode buttons with it. The money panel therefore sits above a
+            // visible form. (Recorded as a Discovery — the extend panel has this defect today.)
             const intakeForm = document.getElementById('transaction-form');
             if (intakeForm) intakeForm.hidden = isExtend;
-            if (isExtend) {
-                renderExtendCandidates();
+            if (isExtend || isMoney) {
+                if (isExtend) renderExtendCandidates();
+                if (isMoney) renderMoneyPanel();
                 document.getElementById('walk-in-mode-button').classList.remove('is-active');
                 document.getElementById('booking-mode-button').classList.remove('is-active');
                 return;
@@ -631,11 +678,17 @@
             updateExtendSummary();
         }
 
-        function populateExtendPaymentOptions() {
-            const select = document.getElementById('extend-payment');
+        // One list of payment methods, one renderer — the extend panel and the money panel
+        // both need it, and a second copy would drift the moment either changed. (RIT-UI-003 S8.)
+        function populatePaymentMethodOptions(selectId) {
+            const select = document.getElementById(selectId);
             if (!select) return;
             select.innerHTML = (CONFIG.settings.paymentMethods || [])
                 .map(m => `<option value="${escapeBookingText(m)}">${escapeBookingText(m)}</option>`).join('');
+        }
+
+        function populateExtendPaymentOptions() {
+            populatePaymentMethodOptions('extend-payment');
         }
 
         function populateExtendMasseuseOptions() {
@@ -726,6 +779,129 @@
                 showExtendError(error.message || 'บันทึกไม่สำเร็จ');
             } finally {
                 button.disabled = false;
+            }
+        }
+
+        // ---- RIT-UI-003 — money that is not massage revenue ----------------------
+        // A tip and a miscellaneous charge are the two `add_on_kind` values whose amount
+        // comes from the request rather than the price list. Both POST to the SAME
+        // /transactions/add-ons endpoint through api.createAddOn(); this page never invents
+        // a second client path and never computes a service price.
+        let moneyState = { kind: 'TIP' };
+
+        // A tip's parent must be LIVE WORK, not merely ACTIVE. The live row of a correction
+        // chain is `CORRECTED`, and FR-005's edge case says a tip on a transaction later
+        // edited follows that chain — the server's isLiveWork() accepts exactly that pair.
+        // Offering only ACTIVE rows here would hide transactions the ledger would accept.
+        function tippableTransactions() {
+            const today = new Date().toISOString().split('T')[0];
+            return (appData.transactions || []).filter(t =>
+                (t.status === 'ACTIVE' || t.status === 'CORRECTED')
+                && !t.parent_transaction_id
+                && (t.business_day === today || t.date === today)
+            );
+        }
+
+        function renderMoneyPanel() {
+            populateMoneyParentOptions();
+            populateMoneyPaymentOptions();
+            setMoneyKind(moneyState.kind);
+        }
+
+        function populateMoneyParentOptions() {
+            const select = document.getElementById('money-parent');
+            if (!select) return;
+            const options = tippableTransactions().map(row => `<option value="${escapeBookingText(row.transaction_id)}">`
+                + `${escapeBookingText(row.masseuse_name || '')} · ${escapeBookingText(row.service_type || '')}`
+                + ` · ฿${Number(row.payment_amount || 0).toFixed(2)}</option>`).join('');
+            // A tip must name its transaction; a miscellaneous charge may stand alone (FR-006).
+            select.innerHTML = `<option value="">ไม่ผูกกับรายการใด</option>${options}`;
+        }
+
+        function populateMoneyPaymentOptions() {
+            populatePaymentMethodOptions('money-payment');
+        }
+
+        function setMoneyKind(kind) {
+            moneyState.kind = kind;
+            document.getElementById('money-kind-tip').classList.toggle('is-active', kind === 'TIP');
+            document.getElementById('money-kind-misc').classList.toggle('is-active', kind === 'MISC_INCOME');
+            document.getElementById('money-parent-hint').textContent = kind === 'TIP'
+                ? 'ทิปต้องเลือกรายการนวดที่ลูกค้าให้ทิป'
+                : 'เลือกรายการที่เกี่ยวข้อง หรือปล่อยว่างไว้ได้';
+            document.getElementById('money-description-label').textContent = kind === 'MISC_INCOME'
+                ? 'รายละเอียด (จำเป็น)'
+                : 'รายละเอียด (ไม่บังคับ)';
+            showMoneyError('');
+            updateMoneySubmitState();
+        }
+
+        // The server REQUIRES a non-blank description for MISC_INCOME (RIT-MONEY-003) and a
+        // parent for TIP (RIT-MONEY-001), answering either omission with a 400 reception
+        // cannot interpret. The button stays disabled until the entry can actually be saved.
+        function updateMoneySubmitState() {
+            const button = document.getElementById('money-submit-button');
+            if (!button) return;
+            const amount = Number(document.getElementById('money-amount').value);
+            const description = (document.getElementById('money-description').value || '').trim();
+            const parentId = document.getElementById('money-parent').value;
+            const paymentMethod = document.getElementById('money-payment').value;
+            button.disabled = !Number.isFinite(amount) || amount <= 0
+                || !paymentMethod
+                || (moneyState.kind === 'TIP' && !parentId)
+                || (moneyState.kind === 'MISC_INCOME' && !description);
+        }
+
+        function showMoneyError(message) {
+            const box = document.getElementById('money-error');
+            if (!box) return;
+            box.textContent = message || '';
+            box.hidden = !message;
+        }
+
+        async function submitMoneyEntry() {
+            const button = document.getElementById('money-submit-button');
+            const amount = Number(document.getElementById('money-amount').value);
+            const description = (document.getElementById('money-description').value || '').trim();
+            const parentId = document.getElementById('money-parent').value;
+            // Second guard, behind the disabled button: a blank charge description must never
+            // reach the server, because the 400 it answers with is not reception's language.
+            if (moneyState.kind === 'MISC_INCOME' && !description) {
+                showMoneyError('กรุณาระบุรายละเอียดของรายการ');
+                return;
+            }
+            if (moneyState.kind === 'TIP' && !parentId) {
+                showMoneyError('กรุณาเลือกรายการนวดที่ลูกค้าให้ทิป');
+                return;
+            }
+            if (!Number.isFinite(amount) || amount <= 0) {
+                showMoneyError('กรุณาระบุจำนวนเงิน');
+                return;
+            }
+            showMoneyError('');
+            button.disabled = true;
+            try {
+                const payload = {
+                    add_on_kind: moneyState.kind,
+                    amount,
+                    description,
+                    payment_status: 'PAID',
+                    payment_method: document.getElementById('money-payment').value
+                };
+                if (parentId) payload.parent_transaction_id = parentId;
+                await api.createAddOn(payload);
+                showToast(moneyState.kind === 'TIP' ? 'บันทึกทิปเรียบร้อย' : 'บันทึกรายรับอื่นเรียบร้อย', 'success');
+                document.getElementById('money-amount').value = '';
+                document.getElementById('money-description').value = '';
+                // The day figures redraw through the page's existing path. Nothing here touches
+                // the roster, the queue or a masseuse's fee — AC-009.
+                await loadTodayData();
+                await updateAllDisplays();
+                populateMoneyParentOptions();
+            } catch (error) {
+                showMoneyError(error.message || 'บันทึกไม่สำเร็จ');
+            } finally {
+                updateMoneySubmitState();
             }
         }
 
