@@ -326,6 +326,26 @@ async function createMoneyOnlyAddOn(req, res) {
       return res.status(400).json({ error: 'A tip must name the transaction it was given for' });
     }
 
+    // RIT-MONEY-003 — a miscellaneous charge MUST say what it was for.
+    //
+    // FR-006's Failure Modes: "An entry with no amount or no description is
+    // rejected before any write." The rule is scoped to MISC_INCOME and NOT to
+    // TIP, deliberately: FR-005 states no such failure mode, a tip is
+    // self-describing, and RIT-MONEY-002 ships an explicit `ทิป (tip)` fallback
+    // for the tip's expense description — a tip with no description is a
+    // supported case, not an omission.
+    //
+    // `transactions` has no `description` column, so the description is the
+    // MISC_INCOME row's `service_type` (RIT-MONEY-001's Discovery). Falling back
+    // to the literal `MISC_INCOME` there would put the enum name in front of the
+    // operator wherever a day's ledger is displayed, which is exactly the
+    // "no description" case FR-006 rejects. Whitespace is trimmed first so a
+    // blank string cannot satisfy the check.
+    const descriptionText = String(description).trim();
+    if (addOnKind === 'MISC_INCOME' && !descriptionText) {
+      return res.status(400).json({ error: 'A miscellaneous charge must say what it was for' });
+    }
+
     let parent = null;
     if (parentTransactionId) {
       // The liveness verdict is computed by the SAME lookup rather than a second
@@ -384,7 +404,7 @@ async function createMoneyOnlyAddOn(req, res) {
       [
         transactionId, timestampIso, calendarDate,
         masseuseName,
-        description || addOnKind,
+        descriptionText || addOnKind,
         (parent && parent.location) || '',
         0, amountDue, paymentMethod || '', 0,
         timestampIso, timestampIso, customerContact, businessDay,
@@ -417,7 +437,7 @@ async function createMoneyOnlyAddOn(req, res) {
         'INSERT INTO expenses (date, description, amount, masseuse_name, business_day) VALUES (?, ?, ?, ?, ?)',
         [
           calendarDate,
-          `${description || 'ทิป (tip)'} — ${transactionId}`,
+          `${descriptionText || 'ทิป (tip)'} — ${transactionId}`,
           amountDue,
           masseuseName,
           businessDay,
