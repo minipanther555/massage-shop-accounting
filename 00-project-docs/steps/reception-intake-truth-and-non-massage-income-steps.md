@@ -95,7 +95,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 
 **Phase 1 complete when:**
 - [ ] `RIT-LIVE-001` and `RIT-LIVE-002` are both `✅ DONE`
-- [ ] `npx jest --testMatch '**/tests/integration/**/*.test.js'` shows no new failures against the pre-epic baseline of 4 failed / 139 passed
+- [ ] `npx jest --testMatch '**/tests/integration/**/*.test.js'` shows no new failures against the pre-epic baseline of 4 failed / 100 passed / 104 total (16 suites: 4 failed, 12 passed). Measured at `1d2f304` on 2026-08-19; the four failing suites are `csrf-auth-flow`, `nav.bilingual.keys-coverage`, `nav.bilingual.present`, `revenue.card.regression`.
 - [ ] The date-range regression test is green
 
 **This gate authorizes Phase 2.**
