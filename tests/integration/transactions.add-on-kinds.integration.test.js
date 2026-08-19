@@ -158,6 +158,8 @@ describe('RIT-MONEY-001 — the add-on validator admits money that is not a serv
   });
 
   test('a parentless MISC_INCOME row fills every NOT NULL column without inventing data', async () => {
+    const expensesBefore = await database.get('SELECT COUNT(*) AS n FROM expenses');
+
     const response = await createAddOn({
       add_on_kind: 'MISC_INCOME',
       amount: 50,
@@ -186,9 +188,17 @@ describe('RIT-MONEY-001 — the add-on validator admits money that is not a serv
     // A zero-length window: a charge occupies nobody's time.
     expect(row.start_time).toBe(row.end_time);
 
-    // FR-006: no expense row is written by this route.
-    const expenses = await database.get('SELECT COUNT(*) AS n FROM expenses');
-    expect(expenses.n).toBe(0);
+    // FR-006: a MISC_INCOME entry writes no expense row.
+    //
+    // Asserted as a DELTA across this one request, not as a whole-table count.
+    // It was `COUNT(*) === 0` until RIT-MONEY-002 — a tip is income, expense,
+    // and attributed — gave a TIP a paired expense row, and the first test in
+    // this file records a tip into the same shared database. A whole-table count
+    // silently encodes "nothing else in this file writes here", which stopped
+    // being true. The delta form is what FR-006 actually guarantees, and it
+    // survives any later step that writes an expense elsewhere in this file.
+    const expensesAfter = await database.get('SELECT COUNT(*) AS n FROM expenses');
+    expect(Number(expensesAfter.n)).toBe(Number(expensesBefore.n));
   });
 
   test('a TIP inherits the parent masseuse and business day, and earns no commission', async () => {

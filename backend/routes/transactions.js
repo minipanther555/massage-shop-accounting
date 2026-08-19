@@ -284,9 +284,17 @@ function deriveAddOnWindow({ parent, addOnKind, duration, startDateTime, endDate
  * `countsAsMassage()` already excludes both kinds (RIT-CONTRACT-002), so neither
  * row moves a queue position or a workload count — FR-007.
  *
- * The expense side of a tip is NOT written here; that is RIT-MONEY-002.
+ * RIT-MONEY-002 — the tip's EXPENSE side. A tip arrives as cash and is handed
+ * straight to the masseuse, so the book must show both sides: income on the
+ * transaction row above, and a matching `expenses` row of the same amount
+ * carrying her name and the business day. Operator, verbatim: "It's a net
+ * neutral book, but we are able to track what happened because it comes in as
+ * cash into the bank account and then it goes out as cash." The two writes are
+ * one database transaction — FR-005's Failure Modes: "a failure writes neither."
+ * `MISC_INCOME` writes NO expense row (FR-006 processing logic 3).
  */
 async function createMoneyOnlyAddOn(req, res) {
+  let dbTransactionStarted = false;
   try {
     const {
       parent_transaction_id: parentTransactionId = null,
@@ -352,8 +360,19 @@ async function createMoneyOnlyAddOn(req, res) {
     const transactionId = `TX-${timestamp.getTime()}-${crypto.randomBytes(3).toString('hex')}`;
     const businessDay = (parent && parent.business_day) || getBusinessDay(timestamp);
 
-    // One statement, so no explicit database transaction is needed here. The
-    // paired expense write that DOES need one arrives with RIT-MONEY-002.
+    // Both rows below need these, so they are derived once. `calendarDate` is the
+    // UTC calendar day and is NOT the business day — see the expense comment.
+    const calendarDate = timestampIso.split('T')[0];
+    const masseuseName = requestedMasseuseName || (parent && parent.masseuse_name) || '';
+
+    // RIT-MONEY-002 — a TIP is two rows or none. `BEGIN IMMEDIATE TRANSACTION`
+    // matches the correction workflow's own pattern in this file (`:508`,
+    // `:612`, `:664`); this project has no ORM transaction helper. The branch at
+    // `/add-ons` reaches here BEFORE that handler opens its own transaction, so
+    // nothing is nested on the shared connection.
+    await database.run('BEGIN IMMEDIATE TRANSACTION');
+    dbTransactionStarted = true;
+
     await database.run(
       `INSERT INTO transactions (
         transaction_id, timestamp, date, masseuse_name, service_type,
@@ -363,8 +382,8 @@ async function createMoneyOnlyAddOn(req, res) {
         parent_transaction_id, add_on_kind, payment_status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?, ?, ?)`,
       [
-        transactionId, timestampIso, timestampIso.split('T')[0],
-        requestedMasseuseName || (parent && parent.masseuse_name) || '',
+        transactionId, timestampIso, calendarDate,
+        masseuseName,
         description || addOnKind,
         (parent && parent.location) || '',
         0, amountDue, paymentMethod || '', 0,
@@ -373,6 +392,41 @@ async function createMoneyOnlyAddOn(req, res) {
         parentTransactionId, addOnKind, paymentStatus,
       ]
     );
+
+    // RIT-MONEY-002 — the expense side, for a TIP only.
+    //
+    // `expenses.date`, `description` and `amount` are all NOT NULL
+    // (`backend/models/database.js:102-109`).
+    //
+    // `date` carries the **UTC calendar day**, exactly as
+    // `backend/routes/expenses.js:33` fills it for an ordinary expense. It is a
+    // different fact from the business day, not a synonym (RIT-LIVE-002's
+    // Discovery), and every existing reader of the expense table keys on it —
+    // `/daily`, `/weekly`, `/monthly`, `/financial`, and the end-day handler's
+    // archive total and its `DELETE FROM expenses WHERE date = ?`. Writing the
+    // business day into `date` would silently move a tip out of the day those
+    // untouched consumers put every other expense in. `business_day` carries the
+    // business day alongside it, which is the column RIT-DB-001 added and the
+    // one a later step will move the day-scoped readers onto.
+    //
+    // `description` carries the tip's own transaction id: `expenses` has no
+    // foreign key to `transactions`, so this string is the only link between the
+    // two halves of a net-neutral pair.
+    if (addOnKind === 'TIP') {
+      await database.run(
+        'INSERT INTO expenses (date, description, amount, masseuse_name, business_day) VALUES (?, ?, ?, ?, ?)',
+        [
+          calendarDate,
+          `${description || 'ทิป (tip)'} — ${transactionId}`,
+          amountDue,
+          masseuseName,
+          businessDay,
+        ]
+      );
+    }
+
+    await database.run('COMMIT');
+    dbTransactionStarted = false;
 
     const addOn = await database.get(
       'SELECT * FROM transactions WHERE transaction_id = ?',
@@ -385,6 +439,11 @@ async function createMoneyOnlyAddOn(req, res) {
 
     return res.status(201).json({ amount_due: amountDue, add_on: addOn, parent });
   } catch (error) {
+    if (dbTransactionStarted) {
+      try { await database.run('ROLLBACK'); } catch (rollbackError) {
+        console.error('Failed to roll back non-service transaction entry:', rollbackError);
+      }
+    }
     console.error('Error creating non-service transaction entry:', error);
     return res.status(500).json({ error: 'Failed to create add-on' });
   }

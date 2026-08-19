@@ -6,6 +6,18 @@ This router owns same-day expense persistence for staff-facing pages. New Custom
 ## End-to-End Data Flow
 A staff user enters an expense on the New Customer page. `web-app/shared.js#addExpense()` calls `api.createExpense()`, which posts to `POST /api/expenses`; the route inserts an `expenses` row and returns it. `loadTodayData()` later reads `GET /api/expenses?date=YYYY-MM-DD` and maps each database row, including `id`, into `appData.expenses`. When the user deletes an expense, `shared.js#removeExpense()` calls `api.deleteExpense(expense.id)`, which sends `DELETE /api/expenses/:id`; the route deletes the database row and the UI reloads from the API.
 
+## Other Writers of This Table
+This router is no longer the only writer. `POST /api/transactions/add-ons` with `add_on_kind = 'TIP'`
+inserts an `expenses` row as the second half of a tip — `backend/routes/transactions.js`,
+`createMoneyOnlyAddOn()`, `RIT-MONEY-002`. A tip is income and expense in the same amount, so the book
+stays net neutral while recording that the cash passed through the shop to a masseuse (feature spec
+`reception-intake-truth-and-non-massage-income.md`, `FR-005`). Those rows differ from the ones this
+router writes in two ways: they populate `masseuse_name` and `business_day` (both `NULL` on every row
+this router creates), and their `description` ends with the paired transaction's id, which is the only
+link between the two halves — `expenses` has no foreign key to `transactions`. Their `date` is the UTC
+calendar day, exactly as `POST /` fills it, so every reader keyed on `date` treats a tip like any other
+expense.
+
 ## Module API & Logic Breakdown
 
 ### `GET /`
