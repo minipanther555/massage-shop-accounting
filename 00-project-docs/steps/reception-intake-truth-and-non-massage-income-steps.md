@@ -416,7 +416,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
   - **Suite baselines held.** `npx jest --testMatch '**/tests/integration/**/*.test.js'` → 4 failed / 122 passed / 126 total across 24 suites; the baseline before this step was 4 failed / 119 passed / 123 total across 22 suites, so this step added 2 suites and 3 passing tests and moved no failure. The four failures are the same four as before — `csrf-auth-flow`, `nav.bilingual.keys-coverage`, `nav.bilingual.present`, `revenue.card.regression`. `npx jest __tests__` → 1 failed / 199 passed / 200 total, byte-for-byte the pre-existing `__tests__/nav.bilingual.present.test.js` baseline; nothing was added there.
   - **Gates.** Security: `npm audit --audit-level=high` reports 38 pre-existing advisories and this step adds no dependency; `npm run lint` (the repo's actual gate, `scripts/pre-commit-hook.sh`) passes. Perf gate: not triggered — no query, index or migration changed; the only production edit was the temporary mutation, reverted. Smoke gate: the browser run above is the UI wiring proof.
 
-### STEP_ID: RIT-DEPLOY-001 — live on the branch server and operator-verified — OPEN
+### STEP_ID: RIT-DEPLOY-001 — live on the branch server and operator-verified — 🔄 DEPLOYED, AWAITING OPERATOR LIVE-VERIFY (2026-08-19)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** RIT-VERIFY-001
 - **Touches:** the branch server checkout at `massage:/opt/massage-shop` (deploy only; no repo files)
@@ -429,6 +429,20 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 - [ ] **Live-verify — look, don't touch:** the operator works one real shift covering a new customer, an edit, and the 2am rollover.
 - **Validation:** the health check returns 200, `LIVE = <branch>` is recorded, and the operator's verdict on the shift is recorded verbatim in the Completion Notes. *(AC-011, SC-6)*
 - **Risk notes:** broken at the live-verify → fix, re-push the same working branch, re-verify. This step stays loudly OPEN if the operator defers it.
+- **Completion Notes:**
+- **Deploy evidence (2026-08-19), recorded by the driver. The live-verify verdict is NOT yet recorded — that half of this step remains open.**
+  - **Gates first:** every prior step's gates green. Phase 0, 1, 2 and 3 gates all met and re-run by the driver. Phase 4's first criterion (five journeys green, one observed failing first) met at `RIT-VERIFY-001`.
+  - **Verify-push:** `claude/rehydrate-protocol-setup-bb00cb` @ `10ee074`, commit subject flagged `live-verify test`. **No `testingNN` minted.**
+  - **ROLLBACK, stated before anything was touched:** branch server returns to `testing3421` @ `bedcb7e` plus a `massage-shop.service` restart. The two expenses columns and the index stay behind deliberately — they are nullable, nothing reads them, and dropping a column on a financial table is destructive and forbidden by the correction spec's line 119.
+  - **Restart:** `massage-shop.service` restarted — a reader, so no operator OK was required. `systemctl is-active` → `active`.
+  - **Health check:** `curl` on the read root → **HTTP 200**.
+  - **`LIVE = claude/rehydrate-protocol-setup-bb00cb @ 10ee074`**
+  - **Migration applied and verified on TWO databases, not one.** The server routes per branch (`backend/models/database.js:515`, `getBranchPath`), and a branch database is upgraded lazily on first connection because `getConnection()` calls `connect()` → `initializeTables()` → `addMissingColumns()`. The restart upgraded only the default `massage_shop.db`. The driver therefore opened `massage_shop.branch-43.db` through the app's own `getConnection()` path so the schema landed under observation rather than under the manager's first click.
+    - `massage_shop.db` — `masseuse_name` and `business_day` present, `idx_expenses_business_day` present.
+    - `massage_shop.branch-43.db` — backed up first to `massage_shop.branch-43.pre-rit-20260819-104157.db`; both columns and the index added; **expense rows unchanged at 3 rows / ฿510 before and after**, which is this epic's schema-step data-integrity criterion proven on the live database.
+  - **Operator test material prepared:** `to-questionnaire-reception-intake-test-EN.md` and `to-questionnaire-reception-intake-test-TH.md` — a per-change test script for the shop manager, English and Thai, naming the two known-broken controls to avoid (extend mode and End Day).
+  - **STILL OPEN:** the operator's live-verify verdict, to be recorded here verbatim. This step is not `✅ DONE` until it is.
+
 
 **Phase 4 complete when:**
 - [x] All five journey tests are green and one was observed failing first — `RIT-VERIFY-001`, 2026-08-19
