@@ -10,7 +10,7 @@ Spec: `00-project-docs/feature-specifications/reception-intake-truth-and-non-mas
 Planning map: none — the one-session test was run against all five reported items and returned no fog.
 Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18-operator-reported-batch.md`.
 
-> **Status:** IN PROGRESS — Phase 0 ✅ COMPLETE (2026-08-19), Phase 1 ✅ COMPLETE (2026-08-19), Phase 2 ✅ COMPLETE (2026-08-19) and Phase 3 ✅ COMPLETE (2026-08-19). Every build step in the epic is ✅ DONE: `RIT-CONTRACT-001`, `RIT-CONTRACT-002`, `RIT-LIVE-001`, `RIT-LIVE-002`, `RIT-UI-001`, `RIT-UI-002`, `RIT-DB-001`, `RIT-MONEY-001`, `RIT-MONEY-002`, `RIT-MONEY-003` and `RIT-UI-003`. Only Phase 4 remains — verification and hardening. The next OPEN step with satisfied dependencies is `RIT-VERIFY-001` — the five journeys hold end to end — whose three dependencies (`RIT-LIVE-002`, `RIT-UI-002`, `RIT-UI-003`) are now all ✅ DONE.
+> **Status:** IN PROGRESS — Phase 0 ✅ COMPLETE (2026-08-19), Phase 1 ✅ COMPLETE (2026-08-19), Phase 2 ✅ COMPLETE (2026-08-19) and Phase 3 ✅ COMPLETE (2026-08-19). Every build step in the epic is ✅ DONE: `RIT-CONTRACT-001`, `RIT-CONTRACT-002`, `RIT-LIVE-001`, `RIT-LIVE-002`, `RIT-UI-001`, `RIT-UI-002`, `RIT-DB-001`, `RIT-MONEY-001`, `RIT-MONEY-002`, `RIT-MONEY-003` and `RIT-UI-003`. Phase 4 — verification and hardening — is now half done: `RIT-VERIFY-001` — the five journeys hold end to end — is ✅ DONE (2026-08-19), with all five journeys green and two of them observed failing first against a deliberately reverted production line. **One step remains in the whole epic:** `RIT-DEPLOY-001` — live on the branch server and operator-verified — whose single dependency is now satisfied. It is the only thing standing between here and the epic's end gate, and its live-verify is the operator's, not an agent's.
 
 > **Epic complete when:** Phase 4's gate is met — every journey check green, at least one check observed
 > failing before its fix, and the operator's live-verify recorded in `RIT-DEPLOY-001`'s Completion Notes.
@@ -364,18 +364,57 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 ## Phase 4 — Verification and hardening — OPEN
 **Phase goal:** the steps integrate, the checks are proven capable of failing, and the operator has used the result on real hardware.
 
-### STEP_ID: RIT-VERIFY-001 — the five journeys hold end to end — OPEN
+### STEP_ID: RIT-VERIFY-001 — the five journeys hold end to end — ✅ DONE (2026-08-19)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** RIT-LIVE-002, RIT-UI-002, RIT-UI-003
-- **Touches:** `tests/integration/` · `__tests__/`
-- [ ] Journey 1 — a walk-in is submitted and the dropdown, queue and day figures update with no reload.
-- [ ] Journey 2 — a transaction is edited and the masseuse stays busy, counted once, and off the front of the queue.
-- [ ] Journey 3 — the clock crosses 02:00 and the money panel and the staff panel report the same business day.
-- [ ] Journey 4 — a tip is recorded and the book shows both sides while the queue is untouched.
-- [ ] Journey 5 — a refresh fails and reception sees the stale marker rather than a frozen page that looks current.
-- [ ] At least one of the five is observed **failing before its fix** and the failing output is recorded in the Completion Notes.
+- **Touches:** `tests/integration/` · `__tests__/` — **plus `tests/e2e/`, a recorded divergence.** Journeys 1 and 5 claim things about the PAGE ("with no reload", "rather than a frozen page") which no server-side test can observe, so they are browser specs. Nothing was added under `__tests__/`; the two static-contract assertions those journeys would duplicate already ship there.
+- [x] Journey 1 — a walk-in is submitted and the dropdown, queue and day figures update with no reload.
+- [x] Journey 2 — a transaction is edited and the masseuse stays busy, counted once, and off the front of the queue.
+- [x] Journey 3 — the clock crosses 02:00 and the money panel and the staff panel report the same business day.
+- [x] Journey 4 — a tip is recorded and the book shows both sides while the queue is untouched.
+- [x] Journey 5 — a refresh fails and reception sees the stale marker rather than a frozen page that looks current.
+- [x] At least one of the five is observed **failing before its fix** and the failing output is recorded in the Completion Notes.
 - **Validation:** all five journey tests green, and the Completion Notes carry the terminal output of the one observed failing beforehand. *(AC-011 partially, §10 Regression Tests)*
 - **Risk notes:** a verification phase that goes green on its first run has demonstrated nothing. The observed failure is what makes the other four believable.
+- **Completion Notes:**
+  - **Where the five journeys live.** Journeys 2 and 4 → `tests/integration/rit-verify.journeys.integration.test.js`. Journey 3 → `tests/integration/rit-verify.rollover.integration.test.js` (clock pinned to 02:33 Bangkok with `mockdate`). Journeys 1 and 5 → `tests/e2e/rit-verify.journeys.spec.js`.
+  - **All five green.** `npx jest tests/integration/rit-verify.journeys.integration.test.js tests/integration/rit-verify.rollover.integration.test.js` → `Test Suites: 2 passed, 2 total · Tests: 3 passed, 3 total`. `PWTEST=1 npx playwright test tests/e2e/rit-verify.journeys.spec.js tests/e2e/transaction.stale-marker.spec.js tests/e2e/transaction.dropdown-empty-state.spec.js tests/e2e/transaction.money-entry.spec.js --workers=1 --retries=0` → `5 passed`, which is this step's two browser journeys plus the three sibling specs of this epic, all green together.
+  - **All five passed on their FIRST run**, exactly as `RIT-MONEY-003`'s Discovery predicted for this step. Every behaviour they exercise had already shipped in Phases 0-3. That is why the observed failure below is a deliberate mutation and not a weakened assertion: manufacturing a failure by asserting something false would have proved the opposite of what this action item asks.
+  - **The observed failure — one production line, reverted on purpose, then restored.** `backend/routes/staff.js:42` was changed from `AND ${isLiveWork('t')}` back to `AND t.status = 'ACTIVE'` — the exact line `RIT-LIVE-001` introduced. Terminal output, verbatim:
+
+    ```
+      ● RIT-VERIFY-001 Journey 2 — a transaction is edited and the masseuse stays busy, counted once, and off the front of the queue › two consecutive edits leave her busy, at exactly one massage, out of the queue, and the day counted once
+
+        expect(received).toBe(expected) // Object.is equality
+
+        Expected: 1
+        Received: 0
+
+          168 |     const afterOneEdit = await readStatus();
+          169 |     expect(afterOneEdit.byName.get(WORKING).current_state).toBe('busy');
+        > 170 |     expect(afterOneEdit.byName.get(WORKING).today_massages).toBe(1);
+              |                                                             ^
+
+      ● RIT-VERIFY-001 Journey 3 — the clock crosses 02:00 and both panels report the same business day › a massage taken at 02:33 Bangkok, then edited, lands on the Bangkok business day in both the money panel and the staff panel
+
+        expect(received).toBe(expected) // Object.is equality
+
+        Expected: 1
+        Received: 0
+
+          140 |     expect(Number(money.body.transaction_count)).toBe(1);
+          141 |     const byName = new Map(staff.body.staff.map((entry) => [entry.masseuse_name, entry]));
+        > 142 |     expect(byName.get(WORKING).today_massages).toBe(1);
+              |                                                ^
+
+      Test Suites: 2 failed, 2 total
+      Tests:       2 failed, 1 passed, 3 total
+    ```
+
+    **Two of the five caught it, not one** — Journey 2 on the first edit and Journey 3 on the overnight edit. Journey 4 stayed green, correctly: a tip must not move a massage count either way.
+  - **Restoration proved, not asserted.** After restoring the line, `git diff backend/routes/staff.js` printed nothing, and `git status --short` listed no production file at all — only the steps ledger and the three new test files. The same jest command then returned `Test Suites: 2 passed, 2 total · Tests: 3 passed, 3 total`.
+  - **Suite baselines held.** `npx jest --testMatch '**/tests/integration/**/*.test.js'` → 4 failed / 122 passed / 126 total across 24 suites; the baseline before this step was 4 failed / 119 passed / 123 total across 22 suites, so this step added 2 suites and 3 passing tests and moved no failure. The four failures are the same four as before — `csrf-auth-flow`, `nav.bilingual.keys-coverage`, `nav.bilingual.present`, `revenue.card.regression`. `npx jest __tests__` → 1 failed / 199 passed / 200 total, byte-for-byte the pre-existing `__tests__/nav.bilingual.present.test.js` baseline; nothing was added there.
+  - **Gates.** Security: `npm audit --audit-level=high` reports 38 pre-existing advisories and this step adds no dependency; `npm run lint` (the repo's actual gate, `scripts/pre-commit-hook.sh`) passes. Perf gate: not triggered — no query, index or migration changed; the only production edit was the temporary mutation, reverted. Smoke gate: the browser run above is the UI wiring proof.
 
 ### STEP_ID: RIT-DEPLOY-001 — live on the branch server and operator-verified — OPEN
 - **Protocol:** `/fsm-ship-ntc`
@@ -392,7 +431,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 - **Risk notes:** broken at the live-verify → fix, re-push the same working branch, re-verify. This step stays loudly OPEN if the operator defers it.
 
 **Phase 4 complete when:**
-- [ ] All five journey tests are green and one was observed failing first
+- [x] All five journey tests are green and one was observed failing first — `RIT-VERIFY-001`, 2026-08-19
 - [ ] `LIVE = <branch>` is recorded and the health check returned 200
 - [ ] The operator's live-verify verdict is recorded verbatim
 
@@ -446,6 +485,10 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 - **2026-08-19, `RIT-UI-003`: the extend panel and the mode-switch buttons live INSIDE `#transaction-form`, so `intakeForm.hidden = true` hides the control it is meant to reveal.** `setTransactionMode('extend')` sets `document.getElementById('transaction-form').hidden = true` (`web-app/transaction.html:505`), and `#transaction-form` opens at `:49` — above both `.transaction-mode-switch` (`:60`) and `#extend-mode-panel` (`:77`). Measured in a real browser: with extend mode selected, `#transaction-form` computes `display: none` while `#extend-mode-panel` computes `display: block` under it, so the panel renders nowhere and the mode buttons that would switch back go with it. **This is a pre-existing defect in the extend control, not something this step introduced** — no e2e spec covers extend mode. `RIT-UI-003` avoided it rather than inheriting it: money mode leaves the intake form visible and renders its panel above it. **Fixing extend is a separate bug, not a fold-in** — it needs its own reproduction and its own decision about where the panels should live.
 - **2026-08-19, `RIT-UI-003`: `tests/integration/nav.bilingual.keys-coverage.test.js` polices every `class="btn…"` button on the page through an allow-list of ~40 literal substrings, and one existing button passes only by accident.** The test demands `label-th` / `label-en` spans on any matched button unless its HTML contains a skip word. `#extend-submit-button` is skipped because `onclick="submitAddOn()"` contains `Add`. **Any new button on an intake page will turn that suite redder unless it carries the two spans** — which is what the test is actually asking for, so give it the spans rather than extend the allow-list. `RIT-UI-003`'s `#money-submit-button` carries `บันทึกรายการ` / `Save entry`.
 - **2026-08-19, `RIT-UI-003`: a UI assertion about the queue is worthless against a mocked status endpoint.** The two sibling browser specs (`RIT-UI-001`, `RIT-UI-002`) route `/api/staff/current-status` to a fixture, which is right for testing how the page reacts to a given snapshot. `AC-009` asks the opposite question — whether **the server's** queue moved — so mocking it makes the assertion true by construction. This spec seeds through the real HTTP API and re-reads the real endpoint after each entry. **`RIT-VERIFY-001`'s Journey 4 must do the same**, and must assert somebody is labelled next **before** the entry, or the comparison is between two empty strings.
+
+- **2026-08-19, `RIT-VERIFY-001`: the intake browser specs are NOT parallel-safe, and Playwright's default worker count is what breaks them.** `playwright.config.ts` sets no `workers`, so Playwright uses the machine's default — four here. All four intake specs drive ONE app server holding ONE Today Staff list, and they seed it, clear it and read next-in-queue off it. Measured on a freshly created scratch database, same code, same five tests, back to back: at the default worker count **2 failed / 3 passed**, at `--workers=1` **5 passed**, repeated three times each. The two failures were `transaction.money-entry.spec.js` reading this step's masseuse as next in queue, and this step's Journey 1 reading a day total that another spec's tip had already moved. **Neither is a regression and neither is fixable inside a spec file** — the shared roster is server state, and a spec cannot serialise a sibling running in another worker. **Any later step or any deploy gate that runs more than one intake spec must pass `--workers=1`.** The durable fix is `workers: 1` (or `fullyParallel: false`) in `playwright.config.ts`, which this step deliberately did not make: the config was out of its Touches list, and the change deserves its own decision about whether the whole suite pays that cost or only the intake project.
+- **2026-08-19, `RIT-VERIFY-001`: `networkidle` does not mean the money panel has caught up, and a baseline read from the screen can be silently behind the ledger.** Journey 1 first read its "revenue before" straight off `#today-revenue` after `page.goto(..., { waitUntil: 'networkidle' })`. The figure was ฿100 behind the server, so the post-submit assertion failed against a delta that was in fact correct — the test was wrong, the code was not. The journey now takes the baseline from `GET /api/reports/summary/today` and **polls the page until the screen agrees with the ledger** before touching the form. That is not merely a wait: screen-agrees-with-ledger is this epic's stated goal, so the fixture and the assertion are the same claim. **Any later UI step comparing an on-screen money figure across an action must anchor the baseline in the ledger, not in the DOM.**
+- **2026-08-19, `RIT-VERIFY-001`: a walk-in books a live multi-hour window, so a browser journey that submits one is single-use unless it seeds fresh staff.** Journey 1's first draft put two fixed masseuses on Today Staff. Its first run passed; its second had nobody free to be labelled next, because the masseuse from run 1 was still mid-massage, and the third had neither free. The journey now clears Today Staff, adds two masseuses named with a per-run timestamp, and **restores the list it found in an `afterEach`** — the restore being what stopped it corrupting `transaction.money-entry.spec.js` in the same run. The cost is two `staff` rows per run; deleting them afterwards is refused by `backend/routes/admin.js:299` once a masseuse has earned a fee. **A browser journey that creates live work is not re-runnable against fixed fixtures.**
 
 ## Coverage
 - **FR-001 → RIT-CONTRACT-001, RIT-LIVE-001, RIT-LIVE-002** · **FR-002 → RIT-LIVE-002** · **FR-003 → RIT-UI-001** · **FR-004 → RIT-UI-002** · **FR-005 → RIT-DB-001, RIT-MONEY-001, RIT-MONEY-002, RIT-UI-003** · **FR-006 → RIT-MONEY-001, RIT-MONEY-003, RIT-UI-003** · **FR-007 → RIT-CONTRACT-002, RIT-MONEY-003**
