@@ -317,7 +317,17 @@ class Database {
       ...[
         { name: 'location', definition: 'TEXT' },
         { name: 'duration', definition: 'INTEGER' }
-      ].map(c => ({ table: 'archived_transactions', ...c }))
+      ].map(c => ({ table: 'archived_transactions', ...c })),
+
+      // Expenses table columns (RIT-DB-001): a tip passes through the shop to a
+      // masseuse, so an expense row needs to say whose it was and which shop day
+      // it belongs to. Both nullable — every pre-existing expense row stays valid
+      // and nothing is backfilled. `business_day` is the shop day from
+      // getBusinessDay(), which is NOT the UTC calendar day already in `date`.
+      ...[
+        { name: 'masseuse_name', definition: 'TEXT' },
+        { name: 'business_day', definition: 'DATE' }
+      ].map(c => ({ table: 'expenses', ...c }))
     ];
 
     for (const task of columnTasks) {
@@ -357,7 +367,11 @@ class Database {
       'CREATE INDEX IF NOT EXISTS idx_bookings_status_start ON bookings (status, scheduled_start)',
       'CREATE INDEX IF NOT EXISTS idx_bookings_staff_status_start ON bookings (requested_masseuse_name, status, scheduled_start)',
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_one_active_booking ON transactions (booking_id) WHERE booking_id IS NOT NULL AND status IN ('ACTIVE', 'CORRECTED')",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_credits_one_active ON booking_credits (booking_id) WHERE status = 'ACTIVE'"
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_credits_one_active ON booking_credits (booking_id) WHERE status = 'ACTIVE'",
+      // RIT-DB-001: day-scoped expense totals. This runs after addMissingColumns()
+      // has added expenses.business_day, which is why it lives here — the
+      // columnTasks applier only ever emits ALTER TABLE ... ADD COLUMN.
+      'CREATE INDEX IF NOT EXISTS idx_expenses_business_day ON expenses (business_day)'
     ];
 
     for (const indexSql of indexes) {
