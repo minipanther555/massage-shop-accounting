@@ -215,6 +215,18 @@ router.post('/quote', async (req, res) => {
 });
 
 const ADD_ON_KINDS = new Set(['DURATION_UPGRADE', 'ADDITIONAL_SERVICE']);
+
+// RIT-MONEY-001 — money that passes through the book without being a service.
+// A TIP is handed straight to a masseuse; MISC_INCOME is an extra charge, the
+// operator's example being tiger balm at ฿50. Neither has a catalog service, so
+// neither can be priced by `getTimeWindowQuote()` — the amount comes from the
+// request instead, which is why these two take their own path below rather than
+// widening the service path's checks. See feature spec
+// `reception-intake-truth-and-non-massage-income.md` FR-005 / FR-006 and its
+// "Contract: add-on kinds (EXTENDED)" block.
+const MONEY_ONLY_ADD_ON_KINDS = new Set(['TIP', 'MISC_INCOME']);
+const ALL_ADD_ON_KINDS = new Set([...ADD_ON_KINDS, ...MONEY_ONLY_ADD_ON_KINDS]);
+
 const PAYMENT_STATUSES = new Set(['PAID', 'PENDING']);
 
 function addMinutesIso(iso, minutes) {
@@ -245,6 +257,139 @@ function deriveAddOnWindow({ parent, addOnKind, duration, startDateTime, endDate
   };
 }
 
+/**
+ * RIT-MONEY-001 — record a TIP or MISC_INCOME row.
+ *
+ * These are ledger rows, not sales. `transactions` declares thirteen NOT NULL
+ * columns and none of them can be skipped, so the values below are chosen
+ * deliberately:
+ *
+ * - `service_type` carries the operator's own description ("ยาหม่อง"). The spec
+ *   fixes "Migration Requirements: None. No column change" (§6, Transaction
+ *   Ledger), and `service_type` is the only NOT NULL free-text column that means
+ *   "what was sold". It falls back to the kind when no description is given.
+ * - `masseuse_name` and `location` are the EMPTY STRING when nobody performed
+ *   the work and no place applies — the same "genuinely absent" convention this
+ *   file already uses for a pending add-on's `payment_method`. A placeholder
+ *   name would read as data later; an empty string matches no `staff.name`, so
+ *   no commission can ever attach to it by accident.
+ * - `duration` is 0 and `start_time` = `end_time` = now, a zero-length window.
+ *   The busy lookup (`backend/routes/staff.js:212-248`) keeps the latest-ending
+ *   live row per masseuse and only calls her busy while that end is in the
+ *   future, so a zero-length window at "now" can never make her read busy.
+ * - `masseuse_fee` is 0 and `staff.total_fees_earned` is deliberately NOT
+ *   updated. The operator, verbatim: the tips "get handed to the masseuses
+ *   immediately they dont get added to their payday balance."
+ *
+ * `countsAsMassage()` already excludes both kinds (RIT-CONTRACT-002), so neither
+ * row moves a queue position or a workload count — FR-007.
+ *
+ * The expense side of a tip is NOT written here; that is RIT-MONEY-002.
+ */
+async function createMoneyOnlyAddOn(req, res) {
+  try {
+    const {
+      parent_transaction_id: parentTransactionId = null,
+      add_on_kind: addOnKind,
+      amount,
+      description = '',
+      payment_method: paymentMethod = null,
+      payment_status: paymentStatus = 'PAID',
+      masseuse_name: requestedMasseuseName = null,
+      customer_contact: customerContact = '',
+    } = req.body;
+
+    if (!PAYMENT_STATUSES.has(paymentStatus)) {
+      return res.status(400).json({ error: 'payment_status must be PAID or PENDING' });
+    }
+    if (paymentStatus === 'PAID' && !paymentMethod) {
+      return res.status(400).json({ error: 'payment_method is required when the entry is paid now' });
+    }
+
+    // The amount cannot be derived from a price list, so it must be present and
+    // sane before anything is written — `payment_amount` is NOT NULL.
+    const amountDue = Number(amount);
+    if (!Number.isFinite(amountDue) || amountDue <= 0) {
+      return res.status(400).json({ error: 'amount must be a positive number' });
+    }
+
+    // Spec §6: "A `TIP` row carries a parent. A `MISC_INCOME` row may or may not."
+    if (addOnKind === 'TIP' && !parentTransactionId) {
+      return res.status(400).json({ error: 'A tip must name the transaction it was given for' });
+    }
+
+    let parent = null;
+    if (parentTransactionId) {
+      // The liveness verdict is computed by the SAME lookup rather than a second
+      // query, and by the shared predicate rather than a status literal spelled
+      // here — `status` is free TEXT with no fixed vocabulary, so a local test
+      // would drift the moment a new cancelled wording is written.
+      parent = await database.get(
+        `SELECT *, (${isLiveWork()}) AS is_live_work FROM transactions WHERE transaction_id = ?`,
+        [parentTransactionId]
+      );
+      if (!parent) return res.status(404).json({ error: 'Original transaction not found' });
+      if (parent.parent_transaction_id) {
+        return res.status(400).json({
+          error: 'An add-on cannot carry a tip or a charge; attach it to the original transaction instead',
+        });
+      }
+      // The service path requires an ACTIVE parent, which would refuse a tip on a
+      // transaction that has since been edited — the parent of a correction chain
+      // is `CORRECTED`, not `ACTIVE`. FR-005's edge case requires the opposite:
+      // "A tip on a transaction later edited follows the parent's correction chain
+      // and is counted once." The shared live-work predicate is what accepts
+      // `CORRECTED` while still refusing the superseded `EDITED (Corrected by …)`
+      // original and every cancelled row. The service path's own rule is left
+      // exactly as it was.
+      if (!parent.is_live_work) {
+        return res.status(409).json({ error: 'Only a live transaction can carry a tip or a charge' });
+      }
+    }
+
+    const timestamp = new Date();
+    const timestampIso = timestamp.toISOString();
+    const transactionId = `TX-${timestamp.getTime()}-${crypto.randomBytes(3).toString('hex')}`;
+    const businessDay = (parent && parent.business_day) || getBusinessDay(timestamp);
+
+    // One statement, so no explicit database transaction is needed here. The
+    // paired expense write that DOES need one arrives with RIT-MONEY-002.
+    await database.run(
+      `INSERT INTO transactions (
+        transaction_id, timestamp, date, masseuse_name, service_type,
+        location, duration, payment_amount, payment_method, masseuse_fee,
+        start_time, end_time, customer_contact, status, business_day,
+        start_datetime, end_datetime,
+        parent_transaction_id, add_on_kind, payment_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?, ?, ?)`,
+      [
+        transactionId, timestampIso, timestampIso.split('T')[0],
+        requestedMasseuseName || (parent && parent.masseuse_name) || '',
+        description || addOnKind,
+        (parent && parent.location) || '',
+        0, amountDue, paymentMethod || '', 0,
+        timestampIso, timestampIso, customerContact, businessDay,
+        timestampIso, timestampIso,
+        parentTransactionId, addOnKind, paymentStatus,
+      ]
+    );
+
+    const addOn = await database.get(
+      'SELECT * FROM transactions WHERE transaction_id = ?',
+      [transactionId]
+    );
+
+    // `is_live_work` is a lookup detail, not part of the parent row's shape. It
+    // is stripped so this route's `parent` matches the service path's exactly.
+    if (parent) delete parent.is_live_work;
+
+    return res.status(201).json({ amount_due: amountDue, add_on: addOn, parent });
+  } catch (error) {
+    console.error('Error creating non-service transaction entry:', error);
+    return res.status(500).json({ error: 'Failed to create add-on' });
+  }
+}
+
 // PTE-API-001 — create a paid add-on linked to an original sale.
 // The original transaction is never modified; money is always derived server-side.
 router.post('/add-ons', async (req, res) => {
@@ -265,8 +410,18 @@ router.post('/add-ons', async (req, res) => {
       time_window_promotion_override: manualOverride = false,
     } = req.body;
 
-    if (!ADD_ON_KINDS.has(addOnKind)) {
-      return res.status(400).json({ error: 'add_on_kind must be DURATION_UPGRADE or ADDITIONAL_SERVICE' });
+    if (!ALL_ADD_ON_KINDS.has(addOnKind)) {
+      return res.status(400).json({
+        error: 'add_on_kind must be DURATION_UPGRADE, ADDITIONAL_SERVICE, TIP or MISC_INCOME',
+      });
+    }
+    // A tip and a miscellaneous charge have no service, no catalog price and no
+    // occupied time, so every check below this line — required service fields, a
+    // mandatory parent, an ACTIVE-only parent, and the catalog quote — is wrong
+    // for them. They branch out here so the two service kinds keep byte-identical
+    // behaviour. RIT-MONEY-001.
+    if (MONEY_ONLY_ADD_ON_KINDS.has(addOnKind)) {
+      return createMoneyOnlyAddOn(req, res);
     }
     if (!parentTransactionId || !serviceType || !location || !duration) {
       return res.status(400).json({
