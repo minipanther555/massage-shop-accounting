@@ -13,16 +13,25 @@
 /**
  * Counts as a massage performed?
  *
- * An ordinary transaction does. A DURATION_UPGRADE does NOT — extending one
- * customer from 60 to 90 minutes is one massage, not two. An ADDITIONAL_SERVICE
- * does, because a second service is a second piece of work and must affect
- * walk-in queue fairness.
+ * The rule is kind-driven, not parent-driven: a row is a massage unless its
+ * `add_on_kind` says otherwise. An ordinary transaction has no kind and counts.
+ * A DURATION_UPGRADE does NOT — extending one customer from 60 to 90 minutes is
+ * one massage, not two. An ADDITIONAL_SERVICE does, because a second service is
+ * a second piece of work and must affect walk-in queue fairness.
+ *
+ * The parent test this predicate used to lead with was dropped deliberately. It
+ * made any parentless non-massage row — a miscellaneous-income charge, a tip
+ * recorded without a parent — count as a massage and inflate a masseuse's
+ * workload and queue position. Kind is the thing that actually decides.
+ *
+ * See feature spec `reception-intake-truth-and-non-massage-income.md` FR-007 /
+ * AC-009 and its "Contract: countable massage (AMENDED)" block.
  *
  * @param {string} alias table alias, or '' when the query has none
  */
 function countsAsMassage(alias = '') {
   const prefix = alias ? `${alias}.` : '';
-  return `(${prefix}parent_transaction_id IS NULL OR ${prefix}add_on_kind = 'ADDITIONAL_SERVICE')`;
+  return `(${prefix}add_on_kind IS NULL OR ${prefix}add_on_kind = 'ADDITIONAL_SERVICE')`;
 }
 
 /**

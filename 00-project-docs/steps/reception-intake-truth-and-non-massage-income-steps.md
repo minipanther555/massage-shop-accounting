@@ -10,7 +10,7 @@ Spec: `00-project-docs/feature-specifications/reception-intake-truth-and-non-mas
 Planning map: none — the one-session test was run against all five reported items and returned no fog.
 Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18-operator-reported-batch.md`.
 
-> **Status:** IN PROGRESS — Phase 0 part-done: `RIT-CONTRACT-001` ✅ DONE (2026-08-19). `RIT-CONTRACT-002` still OPEN, so the Phase 0 gate is not yet met.
+> **Status:** IN PROGRESS — Phase 0 ✅ COMPLETE (2026-08-19): `RIT-CONTRACT-001` and `RIT-CONTRACT-002` are both ✅ DONE and the Phase 0 gate is met. Phase 1 and Phase 3 are authorized.
 
 > **Epic complete when:** Phase 4's gate is met — every journey check green, at least one check observed
 > failing before its fix, and the operator's live-verify recorded in `RIT-DEPLOY-001`'s Completion Notes.
@@ -27,7 +27,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 ## Verified source status (read the code, 2026-08-18 CFEP)
 - The busy lookup filters `status = 'ACTIVE'` at `backend/routes/staff.js:201-202`; the massage count does the same at `:38-44`. Independently confirmed against real rows on the branch database.
 - Today's money filters the **UTC calendar date** at `backend/routes/reports.js:10`, not the business day.
-- `countsAsMassage()` at `backend/services/add-on-sql.js:23` reads `(parent_transaction_id IS NULL OR add_on_kind = 'ADDITIONAL_SERVICE')` and is consumed at eight call sites: `staff.js:42`, `reports.js:55`, `reports.js:101`, `admin.js:144`, `:152`, `:479`, `:505`, `:508`.
+- `countsAsMassage()` at `backend/services/add-on-sql.js:23` reads `(parent_transaction_id IS NULL OR add_on_kind = 'ADDITIONAL_SERVICE')` and is consumed at eight call sites: `staff.js:42`, `reports.js:55`, `reports.js:101`, `admin.js:144`, `:152`, `:479`, `:505`, `:508`. **Superseded 2026-08-19 by `RIT-CONTRACT-002`:** the predicate now reads `(add_on_kind IS NULL OR add_on_kind = 'ADDITIONAL_SERVICE')`. The eight call sites are unchanged and still correct.
 - 🔴 `backend/routes/transactions.js:268` rejects any `add_on_kind` outside two values. A tip cannot be created without this changing.
 - 🔴 `expenses` (`backend/models/database.js:102-109`) has no masseuse column and no business day.
 - The dropdown redraw sits inside the fetches' `try` block at `web-app/transaction.html:1502-1519`; the stale name list is assigned at `web-app/shared.js:251` and used at `web-app/transaction.html:1804`.
@@ -41,7 +41,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 
 ---
 
-## Phase 0 — The shared contract — IN PROGRESS
+## Phase 0 — The shared contract — ✅ COMPLETE (2026-08-19)
 **Phase goal:** the two definitions every later step depends on are settled and gated, so no dependent step redefines them.
 
 ### STEP_ID: RIT-CONTRACT-001 — one shared definition of live work — ✅ DONE (2026-08-19)
@@ -61,19 +61,28 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
   - **Zero consumers on the day it ships**, by design — the adopting steps are `RIT-LIVE-001` and `RIT-LIVE-002`. The date-range reports at `reports.js:108`, `:147`, `:168`, `:239` were deliberately left alone (steps file line 92, spec line 152).
   - Anchor tag: `known-good/RIT-CONTRACT-001`.
 
-### STEP_ID: RIT-CONTRACT-002 — the counting rule stops counting non-massage money — OPEN
+### STEP_ID: RIT-CONTRACT-002 — the counting rule stops counting non-massage money — ✅ DONE (2026-08-19)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** none
 - **Touches:** `backend/services/add-on-sql.js` · its co-located `.md`
-- [ ] `countsAsMassage()` becomes kind-driven rather than parent-driven, so a row is a massage unless its `add_on_kind` says otherwise.
-- [ ] A `TIP` row and a `MISC_INCOME` row do not count as massages, with or without a parent.
+- [x] `countsAsMassage()` becomes kind-driven rather than parent-driven, so a row is a massage unless its `add_on_kind` says otherwise.
+- [x] A `TIP` row and a `MISC_INCOME` row do not count as massages, with or without a parent.
 - **Validation:** one test asserts all five verdicts together — an ordinary massage counts, an `ADDITIONAL_SERVICE` counts, a `DURATION_UPGRADE` does not, a `TIP` does not, and a parentless `MISC_INCOME` does not. *(AC-009, FR-007)*
 - **Risk notes:** eight consumers inherit this — `staff.js:42`, `reports.js:55`, `reports.js:101`, `admin.js:144`, `:152`, `:479`, `:505`, `:508`. **Both capabilities depend on it**, which is why it is isolated here rather than buried in a feature step. The three preserved verdicts are in the same test as the two new ones precisely so a change that only satisfies the new cases fails.
+- **Completion Notes:**
+  - `countsAsMassage(alias = '')` in `backend/services/add-on-sql.js:34` now returns `(add_on_kind IS NULL OR add_on_kind = 'ADDITIONAL_SERVICE')` — the exact predicate the spec's "Contract: countable massage (AMENDED)" block fixes at line 267. Co-located `.md` updated with the amended verdict table, the reason the parent test was dropped, and the equivalence argument below.
+  - **Validation evidence:** `__tests__/add-on-sql.counts-as-massage.test.js` — 3 passed. It evaluates the fragment through SQLite against seeded rows rather than asserting on the SQL text. All five contract verdicts are asserted in **one** test: ordinary massage ✓, `ADDITIONAL_SERVICE` ✓, `DURATION_UPGRADE` ✗, `TIP` ✗, parentless `MISC_INCOME` ✗ — plus a parentless `TIP` and a parented `MISC_INCOME`, covering the action item's "with or without a parent" in both directions.
+  - **RED was a real `AssertionError` against the existing module**, not an import error: received `[TX-ADDITIONAL, TX-MASSAGE, TX-MISC, TX-TIP-NO-PARENT]`, expected `[TX-ADDITIONAL, TX-MASSAGE]`. The old parent-driven predicate counted the parentless tip and the miscellaneous-income row as massages — the exact defect FR-007 names, observed rather than argued.
+  - **Blast radius is provably zero on the day it ships.** `backend/routes/transactions.js:267-270` rejects any `add_on_kind` outside `DURATION_UPGRADE` and `ADDITIONAL_SERVICE` and requires a parent, and the ordinary-massage insert at `:702` never writes `add_on_kind` at all. So every row a database can hold today is one of three shapes — parent `NULL` + kind `NULL`, parent + `ADDITIONAL_SERVICE`, parent + `DURATION_UPGRADE` — and the old and new predicates return the same verdict on all three. The eight consumers are therefore mathematically unchanged until `RIT-MONEY-001` widens that validator. **No consumer was edited**; `backend/routes/admin.js` read paths are Out of Scope at spec line 112.
+  - **Consumer smoke:** `tests/integration/paid-time-extension.integration.test.js` — 35 passed before the change and 35 passed after, unchanged. This is where the duration-upgrade and additional-service verdicts are actually proven through consumers.
+  - **Suites:** `npx jest __tests__` → 1 failed / 175 passed / 176 total (25 suites), against the pre-step 1 failed / 172 passed / 173 (24 suites); the delta is exactly this step's three tests. `npx jest --testMatch '**/tests/integration/**/*.test.js'` → 4 failed / 100 passed / 104 total, byte-identical to the baseline. The single `__tests__` failure is the known pre-existing `nav.bilingual.present`; the four integration failures are the known `csrf-auth-flow`, `nav.bilingual.keys-coverage`, `nav.bilingual.present`, `revenue.card.regression`.
+  - **No query plan moves.** Neither `parent_transaction_id` nor `add_on_kind` is indexed (`backend/models/database.js:349-358`); both the old and the new fragment are residual filters applied after the same `idx_transactions_business_day_staff` selection.
+  - Anchor tag: `known-good/RIT-CONTRACT-002`.
 
 **Phase 0 complete when:**
 - [x] `RIT-CONTRACT-001` is `✅ DONE` and its unit test is green — `__tests__/transaction-status-sql.live-work.test.js`, 3 passed
-- [ ] `RIT-CONTRACT-002` is `✅ DONE` and its unit test is green
-- [ ] `npx jest __tests__` shows no new failures against the pre-epic baseline of 1 failed / 169 passed
+- [x] `RIT-CONTRACT-002` is `✅ DONE` and its unit test is green — `__tests__/add-on-sql.counts-as-massage.test.js`, 3 passed
+- [x] `npx jest __tests__` shows no new failures against the pre-epic baseline of 1 failed / 169 passed — now 1 failed / 175 passed / 176 (25 suites); the only failure is the same pre-existing `nav.bilingual.present`, and the six extra passes are the two contract steps' own tests
 
 **This gate authorizes Phase 1 and Phase 3.**
 
