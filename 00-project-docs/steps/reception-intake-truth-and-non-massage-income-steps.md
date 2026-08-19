@@ -32,6 +32,12 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 - 🔴 `expenses` (`backend/models/database.js:102-109`) has no masseuse column and no business day.
 - The dropdown redraw sits inside the fetches' `try` block at `web-app/transaction.html:1502-1519`; the stale name list is assigned at `web-app/shared.js:251` and used at `web-app/transaction.html:1804`.
 - `web-app/transaction.ejs` is a byte-identical mirror; parity is enforced by a contract test. Every client step lands in both files.
+- This project has **no Alembic** — `find` returns no Alembic files and no reference to it outside `node_modules`. Schema changes are made by the declarative `columnTasks` list at `backend/models/database.js:296-321`, applied idempotently at `:322-333`. See `RIT-DB-001` — the expenses columns — for how the database protocol's laws resolve against that.
+- **All 42 files in `00-project-docs/known-bugs/` were classified.** Four carry an explicit open or in-progress status; thirteen carry no status line; the rest are marked resolved. Every one of the seventeen unresolved-looking files was opened. **None describes an open defect in this epic's code**, and the two closest calls are recorded below rather than assumed away. *(Recorded here, not in `## Discoveries`, which the canonical format reserves for findings written during execution.)*
+  - 🔴 **`staff-dropdown-data-issue.md` contradicts this epic's reproduction.** It is marked *"✅ RESOLVED - Confirmed Working as Designed"* and claims at line 24 that *"The system correctly handles cases where no staff data is available."* That is false as of `bedcb7e`: with Today Staff empty the dropdown substitutes the page-load name list (`web-app/transaction.html:1804`), reproduced headlessly. `RIT-UI-002` — the dropdown never shows a stale name list — is what makes that file's claim true. The file should be reopened or amended when that step lands.
+  - `staff-roster-ui-clarity-issue.md` carries no status line but has a completed `## Resolution` and `## Verification` section. It concerns the Today Staff page's layout, not the intake dropdown. Closed; out of this epic's scope.
+  - `critical-database-schema-mismatch.md` claimed `transactions` lacked `duration` and `location`. Both exist at `backend/models/database.js:42-43`. Settled — history, not an open defect.
+  - `staff-busy-time-reset-issue.md` describes staff reading perpetually busy via `staff_roster.busy_until`. That table holds zero rows and nothing the intake page reads consults it. Out of this epic's scope.
 
 ---
 
@@ -135,11 +141,19 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 - **Protocol:** `/db-ops-regular`
 - **Dependencies:** none
 - **Touches:** `backend/models/database.js` · its co-located `.md`
-- [ ] `expenses` gains `masseuse_name TEXT NULL` and `business_day DATE NULL`, additively, with no backfill.
+- **Mode declarations (fill `S0_Plan` from these — the resolver is mechanical and must not stall):**
+  - `DB_VALUE: EPHEMERAL` — the operator, verbatim: *"all the data in the database is fake right now. We're still testing this shit."*
+  - `HAS_DOCKER_TEST_DB: NO` · `HAS_BYTEBASE: NO`
+  - ⇒ **MODE A (MVP Core).** Core laws only. Do not run the heavy apply / verify / hash / canary machinery; the protocol states at line 93 that its absence in Mode A is deliberate, not a gap.
+- **🔴 This project has no Alembic, and none is to be invented.** `find` returns no Alembic files and no `.js` / `.json` / `.py` reference to it outside `node_modules`. The protocol's own rule at line 200 — *"You MUST NOT invent infra"* — governs. Therefore:
+  - The **Deterministic Deploy Artifact Law** (§4.3) is satisfied by this repo's own mechanism, not by generated SQL: the declarative `columnTasks` list at `backend/models/database.js:296-321`, applied idempotently at `:322-333`, which catches `duplicate column name` and rethrows anything else. It is committed source, repeatable from source, and additive — which is what the Prime Directive asks for.
+  - The **Revision Graph** and **Single Stamp Row** laws (§4.1, §4.2) are **vacuous here**: there is no `alembic_version` table to hold multiple heads or duplicate rows. State that as the finding rather than treating an absent table as a failed gate.
+  - `STATE_CERTAINTY` is therefore established by the schema itself — the two columns are absent before and present after — not by a revision probe.
+- [ ] `expenses` gains `masseuse_name TEXT NULL` and `business_day DATE NULL` as entries in the existing `columnTasks` list, additively, with no backfill.
 - [ ] An index exists on `expenses(business_day)`.
 - [ ] The rollback is stated before anything is applied, and recorded in this step's evidence.
-- **Validation:** a schema query confirms both columns and the index exist, **and** a query confirms the pre-existing expense rows are unchanged in number and amount. *(FR-005, §6 Data Model)*
-- **Risk notes:** this is the only schema change in the epic. It routes to the database protocol and is never inlined in a feature step.
+- **Validation:** a schema query confirms both columns and the index exist, **and** a query confirms the pre-existing expense rows are unchanged in number and total amount, **and** a second startup adds nothing further (proving idempotence). *(FR-005, §6 Data Model)*
+- **Risk notes:** this is the only schema change in the epic. It routes to the database protocol and is never inlined in a feature step. The mode declarations above exist so the protocol's `S0_Plan` and `S2_DriftCheck` resolve mechanically instead of stopping on Alembic gates this repo cannot satisfy.
 
 ### STEP_ID: RIT-MONEY-001 — the ledger accepts tips and miscellaneous income — OPEN
 - **Protocol:** `/fsm-ship-ntc`
