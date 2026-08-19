@@ -123,6 +123,7 @@
                                         <option value="">เลือกพนักงาน...</option>
                                     </select>
                                     <div id="masseuse-availability-message" class="transaction-availability-message" hidden></div>
+                                    <div id="staff-stale-marker" class="transaction-stale-marker" hidden></div>
                                 </div>
 
                                 <div class="form-group transaction-field" id="payment-field">
@@ -1499,23 +1500,57 @@
             }
         }
 
+        // RIT-UI-001 (FR-003): shows reception which part of the staff information could not be
+        // refreshed. Called on every refresh — an empty list clears the marker, so the marker can
+        // never be stuck on after a recovery.
+        function setStaffStaleMarker(staleParts) {
+            const staleMarker = document.getElementById('staff-stale-marker');
+            if (!staleMarker) return;
+            if (!staleParts || staleParts.length === 0) {
+                staleMarker.textContent = '';
+                staleMarker.hidden = true;
+                return;
+            }
+            staleMarker.textContent = `⚠️ ข้อมูลพนักงานอาจไม่เป็นปัจจุบัน — โหลดไม่สำเร็จ: ${staleParts.join(', ')}`;
+            staleMarker.hidden = false;
+        }
+
         async function refreshRosterForDropdown() {
-            try {
-                const [roster] = await Promise.all([
-                    api.getStaffRoster(),
-                    loadCurrentShopStatus()
-                ]);
-                appData.roster = roster.map(r => ({
+            // allSettled, not all: the redraw below must run even when a fetch rejects, so data
+            // that DID arrive is still rendered (FR-003 processing logic 1). The two calls stay
+            // parallel — awaiting them in sequence would serialise the 30-second poll.
+            const [rosterResult, statusResult] = await Promise.allSettled([
+                api.getStaffRoster(),
+                loadCurrentShopStatus()
+            ]);
+
+            const staleParts = [];
+
+            if (rosterResult.status === 'fulfilled') {
+                appData.roster = rosterResult.value.map(r => ({
                     position: r.position,
                     name: r.masseuse_name || '',
                     status: r.status || null,
                     busy_until: r.busy_until || null,
                     todayCount: r.today_massages || 0
                 }));
-                renderMasseuseDropdown();
-            } catch (error) {
-                console.error('Error refreshing Today Staff roster:', error);
+            } else {
+                // The previous roster is retained rather than blanked (FR-003 Failure Modes).
+                console.error('Error refreshing Today Staff roster:', rosterResult.reason);
+                staleParts.push('รายชื่อพนักงานวันนี้');
             }
+
+            // loadCurrentShopStatus() never rejects — it catches its own failure and resolves a
+            // degraded snapshot carrying an .error field (web-app/shared.js). So a live-status
+            // failure is read off that field, not caught.
+            if (statusResult.status !== 'fulfilled' || (statusResult.value && statusResult.value.error)) {
+                console.error('Error refreshing live staff status:',
+                    statusResult.status === 'fulfilled' ? statusResult.value.error : statusResult.reason);
+                staleParts.push('สถานะพนักงานล่าสุด');
+            }
+
+            setStaffStaleMarker(staleParts);
+            renderMasseuseDropdown();
         }
 
         function clearForm() {

@@ -2057,6 +2057,20 @@ body {
     padding: 9px 11px;
 }
 
+/* RIT-UI-001 (FR-003): the staff information may be out of date. Same visual family as the
+   availability message, one notch louder — it reports a failure, not a schedule. */
+.transaction-stale-marker {
+    background: #fdecea;
+    border: 1px solid #e4a49d;
+    border-radius: 6px;
+    color: #8a1c10;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.4;
+    margin-top: 8px;
+    padding: 9px 11px;
+}
+
 .transaction-side-section .summary-grid {
     align-items: center;
     border-bottom: 1px solid #eaecf0;

@@ -11,7 +11,7 @@
     4.  **Reservation Submission:** Booking mode saves the future schedule, service, duration, location, customer contact, and optional requested staff through `POST /api/bookings`. It hides payment and creates no transaction or earnings.
     5.  **Arrival Conversion:** The upcoming-bookings panel offers `ลูกค้ามาถึง`. It restores saved details, requests payment, and submits the booking ID through the existing transaction path.
     6.  **Backend Processing:** Walk-ins create transactions normally. Booking arrivals atomically create one linked transaction, mark the booking `COMPLETED`, and add a separate `฿50` credit only for requested-staff bookings. The credit is backend payroll state and is intentionally not displayed in the receptionist intake form.
-    7.  **UI Refresh:** A successful walk-in action refreshes the workload/status snapshot and Today Staff roster, re-renders the staff dropdown, then clears the form. The original Today Staff positions remain fixed; counts and booking eligibility determine the next walk-in. A successful action also refreshes transactions, summaries, and upcoming bookings as applicable.
+    7.  **UI Refresh:** A successful walk-in action refreshes the workload/status snapshot and Today Staff roster, re-renders the staff dropdown, then clears the form. A *failed* refresh no longer silently freezes the page: the dropdown is still re-rendered from whatever data did arrive, and `#staff-stale-marker` tells reception which part is out of date (see §2, `refreshRosterForDropdown()` / `setStaffStaleMarker()`). The original Today Staff positions remain fixed; counts and booking eligibility determine the next walk-in. A successful action also refreshes transactions, summaries, and upcoming bookings as applicable.
 
 ## 2. Module API & Logic Breakdown
 
@@ -70,6 +70,18 @@ This module consists of an HTML structure and a large inline `<script>` block th
 *   **`escapeBookingText(value)`:**
     *   **Purpose:** Escapes server-provided booking text before upcoming rows are rendered with `innerHTML`.
     *   **Returns:** HTML-safe text.
+
+### `refreshRosterForDropdown()` and `setStaffStaleMarker()` (RIT-UI-001, 2026-08-19)
+
+- **Purpose:** Reload the Today Staff roster and the live status snapshot together, redraw the staff dropdown, and tell reception when either source could not be refreshed.
+- **Returns / Renders:** Rewrites `appData.roster` (only when the roster call succeeded), sets or clears `#staff-stale-marker`, then calls `renderMasseuseDropdown()`.
+- **Usage & Logic Notes:**
+  - The two calls run through `Promise.allSettled`, not `Promise.all`. **The redraw sits after both, outside either error path** — this is the whole point of the change. Previously `renderMasseuseDropdown()` sat inside the same `try` as the two fetches, so one rejection skipped the redraw entirely and wrote only to the browser console; reception saw a frozen page that looked current. (Spec `FR-003` processing logic 1.)
+  - A rejected roster call leaves the **previous** `appData.roster` in place rather than blanking it (`FR-003` Failure Modes), and pushes `รายชื่อพนักงานวันนี้` onto the stale list.
+  - **`loadCurrentShopStatus()` never rejects.** It catches its own failure in `web-app/shared.js` and resolves a degraded snapshot carrying an `error` field. A live-status failure is therefore detected by reading `statusResult.value.error`, not by catching. Anything that later makes that helper throw must keep both branches — the code checks `statusResult.status !== 'fulfilled' || statusResult.value.error`.
+  - `setStaffStaleMarker()` is called on **every** refresh, with an empty list on full success. That is what clears the marker; there is no separate clear path, so the marker cannot get stuck on after a recovery.
+  - The marker writes through `textContent` and interpolates only two hard-coded Thai literals — never a server string — so it carries no injection surface.
+  - The page-load name-list fallback in `renderMasseuseDropdown()` (`CONFIG.settings.masseuses`) is **untouched** by this change and remains a known defect owned by `RIT-UI-002`.
 
 ## 3. Dependency Mapping
 
@@ -354,3 +366,14 @@ appData.originalTransactionId = transaction.id;
 A third reception mode (`เพิ่มเวลา/บริการ`) sits alongside `ลูกค้ามาแล้ว` (walk-in) and `จองเวลา` (booking). Selecting it hides the normal intake form and shows `#extend-mode-panel`, which lists the massages currently in progress. Reception picks one, chooses `เพิ่มเวลา` (`DURATION_UPGRADE`) or `เพิ่มบริการ` (`ADDITIONAL_SERVICE`), and sees `จ่ายแล้ว` / `ต้องจ่ายเพิ่ม` / `เสร็จเวลา` priced live through `api.quoteTransactionPromotion()`. A zero amount renders `ไม่ต้องจ่ายเพิ่ม ฿0.00` rather than a blank or `NaN`. Ticking `ยังไม่ชำระ` records the add-on as pending; the recent-activity row then shows a `ยังไม่ชำระ` badge with `เก็บเงิน` and `ยกเลิก` buttons.
 
 **Busy-guard exemption (PTE-009):** `isMasseuseUnavailableForWalkIn()` returns `false` early when `transactionMode === 'extend'`. The masseuse being extended is necessarily mid-massage, so the walk-in availability guard would otherwise make the feature unreachable. The exemption is deliberately scoped to extend mode only — leaking it into walk-in would undo the QUEUE-002 protection — and `__tests__/staff-availability.surface-equivalence.test.js` asserts both halves of that boundary against the real shipped function.
+
+### RIT-UI-001: A Failed Refresh Was Invisible to Reception (2026-08-19)
+**Bug Summary:** `refreshRosterForDropdown()` held `renderMasseuseDropdown()` inside the same `try` block as its two fetches, and its `catch` wrote only to `console.error`. If either fetch rejected, the redraw never ran and nothing on screen changed — reception saw a staff list that looked current and was not.
+
+**Validated Hypothesis:** The redraw's position, not the fetches, was the defect. Moving it out of the error path renders whatever data did arrive, and a visible marker is needed because a receptionist never opens the browser console.
+
+**Invalidated Hypotheses:**
+- Both fetches can reject, so both need catching. `loadCurrentShopStatus()` catches its own error and resolves a degraded object; only `api.getStaffRoster()` rejects. The live-status failure had to be read off the returned `error` field instead.
+- Asserting the dropdown still has options proves the redraw ran. It does not — options from the previous successful render survive a redraw that never happened. The browser test counts `renderMasseuseDropdown()` calls instead.
+
+**Resolution:** `Promise.allSettled` replaces `Promise.all`; the redraw and `setStaffStaleMarker()` both sit after it, outside either error path. Verified by `tests/e2e/transaction.stale-marker.spec.js` (real browser: fails one fetch, asserts the marker appears, then asserts a good refresh clears it) and by the mirror contract `__tests__/transaction.stale-marker.present.test.js`. Spec: `FR-003`, `AC-004`, `SC-2`.
