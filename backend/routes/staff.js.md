@@ -26,7 +26,7 @@
 - **Logic:** 
   1. Calls `resetExpiredBusyStatuses()` to clear expired statuses
   2. Fetches updated roster from database
-  3. Calculates today's completed massage counts from `ACTIVE` `transactions.business_day` rows for each staff member
+  3. Calculates today's completed massage counts from **live-work** `transactions.business_day` rows for each staff member — `isLiveWork()` from `backend/services/transaction-status-sql.js`, which accepts `ACTIVE` and `CORRECTED`, so a massage that arrived by correction is counted
   4. Returns complete roster data
 
 #### `router.get('/current-status')`
@@ -38,7 +38,7 @@
 - **Logic:**
   1. Computes the current Bangkok business day with `getCurrentBusinessDay(req)`.
   2. Reads active visible Today Staff rows with `getActiveTodayStaff()`.
-  3. Reads current-day `ACTIVE` transactions and treats rows whose canonical `end_datetime` is still in the future as busy windows. If a legacy row has no canonical datetime fields, it falls back to `timestamp + duration`.
+  3. Reads current-day **live-work** transactions — `isLiveWork()` from `backend/services/transaction-status-sql.js`, accepting `ACTIVE` and `CORRECTED` — and treats rows whose canonical `end_datetime` is still in the future as busy windows. If a legacy row has no canonical datetime fields, it falls back to `timestamp + duration`. A masseuse whose live massage arrived by correction therefore reads `busy`; the superseded `EDITED (Corrected by …)` original and every cancelled row are excluded.
   4. Reads `BOOKED` reservations whose scheduled end is still in the future, including reservations already in progress, and attaches the next booking per staff member.
   5. Reads every unreleased `BOOKED` requested-staff booking for the current Bangkok business day, including late bookings that reception has not marked `NO_SHOW`; historical bookings cannot constrain today. Staff with less than one 60-minute service slot before that booking, or with a late booking, are `booking_buffer`, and all remaining rows are `available`.
   6. Sorts the snapshot by operational state: busy first, booking-constrained rows next, free rows last.
@@ -134,7 +134,7 @@
 #### `router.get('/today/state')`
 - **Purpose:** Returns active Today Staff rows, planning rows, visible day-off-today rows, and dropdown-eligible staff for the current business day.
 - **Returns:** `{ business_day, today_staff, planning, day_off_today, dropdown_staff }`
-- **Logic:** Reads `today_staff` where `removed_at IS NULL`, including `today_massages` from completed `ACTIVE` transactions on the current Bangkok business day, `today_staff_planning`, and active All Staff not already added.
+- **Logic:** Reads `today_staff` where `removed_at IS NULL`, including `today_massages` from completed live-work transactions (`ACTIVE` or `CORRECTED`) on the current Bangkok business day, `today_staff_planning`, and active All Staff not already added.
 
 #### `router.post('/today/add')`
 - **Purpose:** Adds an All Staff member to the visible Today Staff list for the current business day.
@@ -181,7 +181,7 @@
   - Current status query: optional `{ at: ISO-8601 string }`
 
 ### Downstream Dependencies (Outputs)
-- **Called Modules/Services:** Database operations via `../models/database.js`
+- **Called Modules/Services:** Database operations via `../models/database.js`; the shared SQL predicates `isLiveWork()` (`../services/transaction-status-sql.js`) and `countsAsMassage()` (`../services/add-on-sql.js`). **Availability and workload only.** The two commission aggregations in this file — `/performance/today` and the `previous_day_commission` column of `/today/helper` — deliberately keep their own inline `status = 'ACTIVE'` test. They are the payday path, which this epic's invariant places out of scope; widening the live-work rule onto them would change what masseuses are paid.
 - **Output Data Contracts / Schemas:** 
   - Staff roster / Today Staff: `[{id, position, masseuse_name, status, busy_until, today_massages, last_updated, staff_id, business_day}]`
   - Current status: `{ business_day: string, generated_at: string, buffer_minutes: number, staff: [{ staff_id: number, today_staff_id: number, position: number, masseuse_name: string, queue_status: string|null, current_state: 'busy'|'available'|'booking_buffer', busy_started: string|null, busy_started_iso: string|null, busy_until: string|null, busy_until_iso: string|null, free_at: string|null, free_at_iso: string|null, remaining_minutes: number, today_massages: number, assigned_today: number, next_booking: object|null, usable_minutes_before_booking: number|null, walk_in_priority: boolean }] }`

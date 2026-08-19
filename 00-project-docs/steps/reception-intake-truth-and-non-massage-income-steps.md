@@ -10,7 +10,7 @@ Spec: `00-project-docs/feature-specifications/reception-intake-truth-and-non-mas
 Planning map: none — the one-session test was run against all five reported items and returned no fog.
 Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18-operator-reported-batch.md`.
 
-> **Status:** IN PROGRESS — Phase 0 ✅ COMPLETE (2026-08-19): `RIT-CONTRACT-001` and `RIT-CONTRACT-002` are both ✅ DONE and the Phase 0 gate is met. Phase 1 and Phase 3 are authorized.
+> **Status:** IN PROGRESS — Phase 0 ✅ COMPLETE (2026-08-19): `RIT-CONTRACT-001` and `RIT-CONTRACT-002` are both ✅ DONE and the Phase 0 gate is met. Phase 1 and Phase 3 are authorized. Phase 1 is OPEN: `RIT-LIVE-001` is ✅ DONE (2026-08-19); `RIT-LIVE-002` remains OPEN, so the Phase 1 gate is not yet met.
 
 > **Epic complete when:** Phase 4's gate is met — every journey check green, at least one check observed
 > failing before its fix, and the operator's live-verify recorded in `RIT-DEPLOY-001`'s Completion Notes.
@@ -91,14 +91,23 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 ## Phase 1 — The server tells the truth — OPEN
 **Phase goal:** every server-side reader of availability, workload and today's money agrees with the ledger.
 
-### STEP_ID: RIT-LIVE-001 — availability and workload recognise a corrected row — OPEN
+### STEP_ID: RIT-LIVE-001 — availability and workload recognise a corrected row — ✅ DONE (2026-08-19)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** RIT-CONTRACT-001
 - **Touches:** `backend/routes/staff.js` · its co-located `.md`
-- [ ] The busy lookup and the massage count both use the shared live-work predicate instead of testing status inline.
-- [ ] A masseuse whose live massage arrived by correction reads busy, carries a workload of one, and is not marked next for a walk-in.
+- [x] The busy lookup and the massage count both use the shared live-work predicate instead of testing status inline.
+- [x] A masseuse whose live massage arrived by correction reads busy, carries a workload of one, and is not marked next for a walk-in.
 - **Validation:** an integration test seeds three masseuses, edits one masseuse's transaction twice, then asserts in one pass that she reads `busy` with `today_massages` of exactly **1**, that a masseuse with no transaction reads `available`, and that walk-in priority sits on a different masseuse. *(AC-002, FR-001)*
 - **Risk notes:** asserting only "she is busy" would pass an implementation that marks everyone busy; the available-masseuse assertion in the same test is what closes that.
+- **Completion Notes:**
+  - Two sites in `backend/routes/staff.js` now call `isLiveWork()` instead of testing status inline: the massage-count subquery at `:42` (aliased, `isLiveWork('t')`, sitting directly above `countsAsMassage('t')`) and the busy lookup inside `getActiveTransactionByStaff()` at `:202` (unaliased, `isLiveWork()` — the first consumer to exercise the predicate's `alias = ''` default path). Both feed `GET /api/staff/current-status`, which is the single endpoint returning `current_state`, `today_massages` and `walk_in_priority`.
+  - **Validation evidence:** `tests/integration/staff-availability.corrected-row.integration.test.js` — 1 passed. It **drives the real correction route twice** (`POST /api/transactions` with `corrected_transaction_id`) rather than seeding the chain, so the status literals under test are the ones production writes. The test asserts the chain it produced before reading availability: `EDITED (Corrected by …)`, `EDITED (Corrected by …)`, `CORRECTED`. All five verdicts are in **one** test — `ขวัญ` is `busy`, her `today_massages` is exactly `1`, `นา` (no transaction) is `available` with `0`, `ขวัญ` has `walk_in_priority: false`, and the priority row is `มิน`.
+  - **RED was a real `AssertionError` against the existing module**, not an import error: `Expected: "busy" / Received: "available"`. The chain assertion passed in the same RED run, which is what proves the two edits really happened and that the defect was the reader, not the writer.
+  - **The payday path was checked and deliberately left alone.** `staff.js:712` (`/performance/today`, `SUM(masseuse_fee) … WHERE date = ? AND status = 'ACTIVE'`) and `staff.js:756` (`previous_day_commission` in `/today/helper`) are commission aggregations, not availability. This file's invariant at line 23 forbids this epic writing to the payday tables and the spec's "Components Explicitly Unaffected" excludes them; widening the shared predicate onto them would change what masseuses are paid. Both verified unchanged in the final diff — `grep` on the shipped file returns `status = 'ACTIVE'` at exactly those two lines and nowhere else.
+  - **Suites:** `npx jest --testMatch '**/tests/integration/**/*.test.js'` → 4 failed / 101 passed / 105 total (17 suites), against the baseline 4 failed / 100 passed / 104 (16 suites); the delta is exactly this step's one test. The four failing suites are the same known `csrf-auth-flow`, `nav.bilingual.keys-coverage`, `nav.bilingual.present`, `revenue.card.regression`. `npx jest __tests__` → 1 failed / 175 passed / 176 total (25 suites), byte-identical to the baseline.
+  - **No query plan moves.** `EXPLAIN QUERY PLAN` run against the real `idx_transactions_business_day_staff` definition returns identical plans for the old and new form of both queries: the count still resolves `SEARCH t USING INDEX idx_transactions_business_day_staff (business_day=? AND masseuse_name=? AND status=?)`, and the busy lookup still resolves `SEARCH … (business_day=?)` plus `USE TEMP B-TREE FOR ORDER BY`.
+  - **Lint is unchanged:** `npx eslint backend/routes/staff.js` reports 39 problems both before and after the change — the new test file is clean.
+  - Anchor tag: `known-good/RIT-LIVE-001`.
 
 ### STEP_ID: RIT-LIVE-002 — today's money counts a corrected row, on the right day — OPEN
 - **Protocol:** `/fsm-ship-ntc`
@@ -270,6 +279,8 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 ## Discoveries
 *(append-only; written during execution, empty at authoring)*
 - **2026-08-19, `RIT-CONTRACT-001`: cancellation writes two different status literals, not one.** `backend/routes/transactions.js:502` writes `'CANCELLED'`; `:893` writes `'CANCELLED (Customer left before service)'`. The spec's contract block says only "and any cancelled status" (line 252) and the correction spec says only "marked cancelled/audit-preserved" (line 96), so neither fixes the string. This settled the allow-list-versus-deny-list call for the live-work predicate: a deny-list would have to enumerate a vocabulary that is not fixed, and would silently admit any cancelled form invented later. **Any later step tempted to test a cancelled status inline should call `isLiveWork()` instead of matching either literal.**
+- **2026-08-19, `RIT-LIVE-001`: a third inline `status = 'ACTIVE'` test sits in the correction route itself, and it is NOT this epic's to change.** `getCorrectionEligibleStaff()` at `backend/routes/transactions.js:20` and `:28` tests `status = 'ACTIVE'` inline when deciding which masseuse may take a replacement. `FR-001` enumerates the readers that must adopt the shared predicate — the busy lookup, the massage count, the priority pick, today's revenue, today's customer count — and this is none of them; it is the correction workflow's own eligibility rule, governed by `transaction-correction-operational-reversal.md`. **Recorded, not changed.** Left as is, a masseuse mid-massage on a *corrected* row still reads eligible to take a replacement, which is arguably wrong — but deciding that is the correction spec's call, not this epic's. Raise it as a separate spec question rather than folding it into a Phase 1 step.
+- **2026-08-19, `RIT-LIVE-001`: the busy lookup was the first unaliased consumer of the shared predicate.** `getActiveTransactionByStaff()` queries `FROM transactions` with no alias, so it calls `isLiveWork()` with no argument. `RIT-CONTRACT-001`'s `alias = ''` default is therefore load-bearing in production, not just a convenience — the unit test covered it, and this step is what actually exercises it through a route.
 
 ## Coverage
 - **FR-001 → RIT-CONTRACT-001, RIT-LIVE-001, RIT-LIVE-002** · **FR-002 → RIT-LIVE-002** · **FR-003 → RIT-UI-001** · **FR-004 → RIT-UI-002** · **FR-005 → RIT-DB-001, RIT-MONEY-001, RIT-MONEY-002, RIT-UI-003** · **FR-006 → RIT-MONEY-001, RIT-MONEY-003, RIT-UI-003** · **FR-007 → RIT-CONTRACT-002, RIT-MONEY-003**

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 const { countsAsMassage } = require('../services/add-on-sql');
+const { isLiveWork } = require('../services/transaction-status-sql');
 const { BOOKING_BUFFER_MINUTES } = require('../services/booking-service');
 const { getBusinessDayParts, getNextBusinessDay } = require('../utils/business-day');
 
@@ -38,7 +39,7 @@ async function getActiveTodayStaff(businessDay) {
          FROM transactions t
          WHERE t.business_day = ts.business_day
            AND t.masseuse_name = ts.display_name
-           AND t.status = 'ACTIVE'
+           AND ${isLiveWork('t')}
            AND ${countsAsMassage('t')}
        ), 0) AS today_massages,
        ts.added_at AS last_updated,
@@ -198,7 +199,7 @@ async function getActiveTransactionByStaff(businessDay) {
        service_type
      FROM transactions
      WHERE business_day = ?
-       AND status = 'ACTIVE'
+       AND ${isLiveWork()}
      ORDER BY timestamp DESC`,
     [businessDay]
   );
