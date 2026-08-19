@@ -10,7 +10,7 @@ Spec: `00-project-docs/feature-specifications/reception-intake-truth-and-non-mas
 Planning map: none — the one-session test was run against all five reported items and returned no fog.
 Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18-operator-reported-batch.md`.
 
-> **Status:** OPEN — no steps started.
+> **Status:** IN PROGRESS — Phase 0 part-done: `RIT-CONTRACT-001` ✅ DONE (2026-08-19). `RIT-CONTRACT-002` still OPEN, so the Phase 0 gate is not yet met.
 
 > **Epic complete when:** Phase 4's gate is met — every journey check green, at least one check observed
 > failing before its fix, and the operator's live-verify recorded in `RIT-DEPLOY-001`'s Completion Notes.
@@ -41,17 +41,25 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 
 ---
 
-## Phase 0 — The shared contract — OPEN
+## Phase 0 — The shared contract — IN PROGRESS
 **Phase goal:** the two definitions every later step depends on are settled and gated, so no dependent step redefines them.
 
-### STEP_ID: RIT-CONTRACT-001 — one shared definition of live work — OPEN
+### STEP_ID: RIT-CONTRACT-001 — one shared definition of live work — ✅ DONE (2026-08-19)
 - **Protocol:** `/fsm-ship-ntc`
 - **Dependencies:** none
 - **Touches:** `backend/services/transaction-status-sql.js` · its co-located `.md`
-- [ ] A single SQL predicate answers "is this transaction live work", accepting `ACTIVE` and `CORRECTED` and rejecting the superseded original of an edit.
-- [ ] It takes a table alias, matching the convention of the existing add-on predicates.
+- [x] A single SQL predicate answers "is this transaction live work", accepting `ACTIVE` and `CORRECTED` and rejecting the superseded original of an edit.
+- [x] It takes a table alias, matching the convention of the existing add-on predicates.
 - **Validation:** a unit test asserts the predicate is true for `ACTIVE` and for `CORRECTED`, **and false for `EDITED (Corrected by TX-1)`** — all three in one test, so a predicate returning a constant fails. *(AC-001, FR-001)*
 - **Risk notes:** this is the definition every Phase 1 step consumes. Shipping it wrong reads green everywhere downstream.
+- **Completion Notes:**
+  - `isLiveWork(alias = '')` ships in `backend/services/transaction-status-sql.js`, returning `status IN ('ACTIVE', 'CORRECTED')` with the alias prefix. Co-located doc written.
+  - **Allow-list, not deny-list — the one design call this step held.** `status` is free `TEXT` (`backend/models/database.js:50`) and the correction workflow composes literals into it: `EDITED (Corrected by TX-…)` at `transactions.js:695`, and *two different* cancelled strings — `'CANCELLED'` at `:502` and `'CANCELLED (Customer left before service)'` at `:893`. A deny-list would have to enumerate a vocabulary that is not fixed; the allow-list excludes both cancelled forms without naming either, satisfying the spec's "and any cancelled status" (line 252) as written. It also matches the live set already spelled at `backend/models/database.js:359`.
+  - **Validation evidence:** `__tests__/transaction-status-sql.live-work.test.js` — 3 passed. It evaluates the fragment through SQLite against seeded rows rather than asserting on the SQL text, so a plausible-but-wrong predicate cannot pass. Verdicts asserted in one test: `ACTIVE` ✓, `CORRECTED` ✓, `EDITED (Corrected by TX-1)` ✗, `CANCELLED` ✗, `CANCELLED (Customer left before service)` ✗. Two further tests cover the aliased form and the two-consecutive-edits chain (exactly one live row).
+  - **RED was observed twice.** First `Cannot find module '../backend/services/transaction-status-sql'`; then, against a deliberate constant `1 = 1` stub, a real `AssertionError` — received `[TX-ACTIVE, TX-CANCELLED, TX-CANCELLED-LEFT, TX-CORRECTED, TX-EDITED]`, expected `[TX-ACTIVE, TX-CORRECTED]`. The constant-predicate trap in the `Validation:` line is therefore demonstrated, not asserted.
+  - **Suite:** `npx jest __tests__` → 1 failed / 172 passed / 173 total (24 suites). The pre-epic baseline was 1 failed / 169 passed / 170 (23 suites); the delta is exactly this step's suite. The single failure is the known pre-existing `nav.bilingual.present`, untouched by this step.
+  - **Zero consumers on the day it ships**, by design — the adopting steps are `RIT-LIVE-001` and `RIT-LIVE-002`. The date-range reports at `reports.js:108`, `:147`, `:168`, `:239` were deliberately left alone (steps file line 92, spec line 152).
+  - Anchor tag: `known-good/RIT-CONTRACT-001`.
 
 ### STEP_ID: RIT-CONTRACT-002 — the counting rule stops counting non-massage money — OPEN
 - **Protocol:** `/fsm-ship-ntc`
@@ -63,7 +71,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 - **Risk notes:** eight consumers inherit this — `staff.js:42`, `reports.js:55`, `reports.js:101`, `admin.js:144`, `:152`, `:479`, `:505`, `:508`. **Both capabilities depend on it**, which is why it is isolated here rather than buried in a feature step. The three preserved verdicts are in the same test as the two new ones precisely so a change that only satisfies the new cases fails.
 
 **Phase 0 complete when:**
-- [ ] `RIT-CONTRACT-001` is `✅ DONE` and its unit test is green
+- [x] `RIT-CONTRACT-001` is `✅ DONE` and its unit test is green — `__tests__/transaction-status-sql.live-work.test.js`, 3 passed
 - [ ] `RIT-CONTRACT-002` is `✅ DONE` and its unit test is green
 - [ ] `npx jest __tests__` shows no new failures against the pre-epic baseline of 1 failed / 169 passed
 
@@ -252,6 +260,7 @@ Operator's reported items, verbatim: `00-project-docs/reported-issues/2026-08-18
 
 ## Discoveries
 *(append-only; written during execution, empty at authoring)*
+- **2026-08-19, `RIT-CONTRACT-001`: cancellation writes two different status literals, not one.** `backend/routes/transactions.js:502` writes `'CANCELLED'`; `:893` writes `'CANCELLED (Customer left before service)'`. The spec's contract block says only "and any cancelled status" (line 252) and the correction spec says only "marked cancelled/audit-preserved" (line 96), so neither fixes the string. This settled the allow-list-versus-deny-list call for the live-work predicate: a deny-list would have to enumerate a vocabulary that is not fixed, and would silently admit any cancelled form invented later. **Any later step tempted to test a cancelled status inline should call `isLiveWork()` instead of matching either literal.**
 
 ## Coverage
 - **FR-001 → RIT-CONTRACT-001, RIT-LIVE-001, RIT-LIVE-002** · **FR-002 → RIT-LIVE-002** · **FR-003 → RIT-UI-001** · **FR-004 → RIT-UI-002** · **FR-005 → RIT-DB-001, RIT-MONEY-001, RIT-MONEY-002, RIT-UI-003** · **FR-006 → RIT-MONEY-001, RIT-MONEY-003, RIT-UI-003** · **FR-007 → RIT-CONTRACT-002, RIT-MONEY-003**
