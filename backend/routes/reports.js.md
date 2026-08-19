@@ -10,10 +10,11 @@
 
 ### `GET /daily/:date?`
 
-- **Purpose:** Return a daily summary for one date.
-- **Parameters / Props:** Optional `date` path parameter.
-- **Returns / Renders:** Transaction summary, expense summary, payment breakdown, masseuse performance, and net profit.
+- **Purpose:** Return a daily summary for one **Bangkok business day**.
+- **Parameters / Props:** Optional `date` path parameter, interpreted as a business day. With no parameter the current Bangkok business day is derived from `backend/utils/business-day.js`.
+- **Returns / Renders:** `date`, `business_day` (the same value, named explicitly), transaction summary, expense summary, payment breakdown, masseuse performance, and net profit.
 - **Raises / Throws:** Returns 500 on database failure.
+- **Usage & Logic Notes:** The three transaction queries filter `transactions.business_day` and the shared `isLiveWork()` predicate, so a correction replacement (`CORRECTED`) is counted and its superseded original (`EDITED (Corrected by …)`) is not. The expense query still filters `expenses.date`, because `expenses` has no business-day column until `RIT-DB-001` adds one; it is given the same day string so the report stays about one day rather than two.
 
 ### `GET /weekly`
 
@@ -31,10 +32,11 @@
 
 ### `GET /summary/today`
 
-- **Purpose:** Return today's compact report summary.
+- **Purpose:** Return the current **Bangkok business day's** compact report summary.
 - **Parameters / Props:** None.
-- **Returns / Renders:** Transaction summary plus payment breakdown.
+- **Returns / Renders:** `business_day`, transaction summary, and payment breakdown.
 - **Raises / Throws:** Returns 500 on database failure.
+- **Usage & Logic Notes:** Both queries filter `transactions.business_day` and `isLiveWork()`. `business_day` is returned so this panel and `GET /api/staff/current-status` can be compared directly instead of assumed equal — between 02:00 and 07:00 Bangkok they previously reported two different days.
 
 ### `GET /financial`
 
@@ -100,3 +102,12 @@ The `transaction_count` figures are deliberately **not** filtered by the massage
 
 ### End-day preserves outstanding add-ons (2026-07-23)
 `POST /end-day` summarises the day and then deletes the day's transaction rows. The delete now excludes any `PENDING` add-on **and the parent it points at**, as a linked pair in one predicate, so neither can be orphaned and an outstanding payment cannot silently vanish. Ordinary settled transactions are still cleared as before. The wider correctness of this deletion (no status filter; UTC rather than Bangkok business day) is tracked separately as item 22 in `00-project-docs/steps/current-steps.md`.
+
+### Today's figures moved onto the Bangkok business day and the shared live-work rule (2026-08-19, `RIT-LIVE-002`)
+Two defects sat in the same queries. Today's figures filtered `status = 'ACTIVE'` inline, so a correction replacement — the row that records the massage that actually happened — was invisible to the money panel while the staff panel counted it. And "today" was the **UTC calendar date**, so between 02:00 and 07:00 Bangkok the money panel and the staff panel were keyed to two different days.
+
+- **`GET /daily/:date?` and `GET /summary/today`** now filter `transactions.business_day` and the shared `isLiveWork()` predicate from `backend/services/transaction-status-sql.js`. Both return `business_day` explicitly. Spec: `reception-intake-truth-and-non-massage-income.md` FR-001, FR-002, AC-002, AC-003.
+- **`POST /end-day`** adopted `isLiveWork()` for its archive totals only. Its **day basis is deliberately unchanged**: the two `DELETE` statements in the same handler share that value, and moving it would change which rows are removed. That wider question stays tracked as item 22 in `00-project-docs/steps/current-steps.md`.
+- **The date-range reports at `/weekly`, `/monthly` and `/financial` were not touched.** They already read `status IN ('ACTIVE','CORRECTED')` and filter `transactions.date`, and they still do. `tests/integration/reports.date-range.regression.integration.test.js` locks their figures: it was written and run GREEN **before** this change and again after, with a fixture whose `business_day` values deliberately differ from its `date` values so a column swap fails loudly.
+- **A row with a NULL `business_day` is excluded from today's figures**, per FR-002's Failure Modes — never coalesced onto the current day. It stays in the ledger and a data-integrity query still finds it; that assertion is in `tests/integration/reports.today-business-day.corrected-row.integration.test.js`.
+- **Query plans improved.** `EXPLAIN QUERY PLAN` on the old and new forms: the today-scoped queries went from `SCAN transactions` to `SEARCH transactions USING INDEX idx_transactions_business_day_staff (business_day=?)`. `transactions.date` is not indexed; `business_day` is.

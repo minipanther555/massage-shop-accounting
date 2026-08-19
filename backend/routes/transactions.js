@@ -11,6 +11,7 @@ const {
   hasBookingConflict,
   isBookingCreditEligible,
 } = require('../services/booking-service');
+const { isLiveWork } = require('../services/transaction-status-sql');
 
 async function getCorrectionEligibleStaff(businessDay, excludedTransactionId, now = new Date()) {
   const todayStaff = await database.all(
@@ -921,35 +922,41 @@ router.post('/:transactionId/cancel', async (req, res) => {
   }
 });
 
-// Get today's summary
+// Get today's summary.
+//
+// RIT-LIVE-002 / FR-001 / FR-002: "today" is the current Bangkok business day,
+// and a correction replacement (`CORRECTED`) is live work. Both queries adopt
+// the shared live-work predicate and `transactions.business_day`, so this
+// endpoint agrees with `GET /api/reports/summary/today` and the staff panel.
 router.get('/summary/today', async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const businessDay = getBusinessDay();
 
     const summary = await database.get(
-      `SELECT 
+      `SELECT
         COUNT(*) as transaction_count,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
-       FROM transactions 
-       WHERE date = ? AND status = 'ACTIVE'`,
-      [today]
+       FROM transactions
+       WHERE business_day = ? AND ${isLiveWork('')}`,
+      [businessDay]
     );
 
     // Get payment method breakdown
     const paymentBreakdown = await database.all(
-      `SELECT 
+      `SELECT
         payment_method,
         COUNT(*) as count,
         SUM(payment_amount) as revenue
-       FROM transactions 
-       WHERE date = ? AND status = 'ACTIVE'
+       FROM transactions
+       WHERE business_day = ? AND ${isLiveWork('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
-      [today]
+      [businessDay]
     );
 
     res.json({
+      business_day: businessDay,
       ...summary,
       payment_breakdown: paymentBreakdown
     });

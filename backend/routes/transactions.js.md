@@ -80,6 +80,11 @@
     *   **Correction Availability:** Before the write transaction starts, a correction derives eligible replacement staff from the current Bangkok business day's active Today Staff roster, excluding the original transaction from workload and busy-state calculations. A missing replacement defaults to the least-workloaded eligible staff member with stable Today Staff position as the tie-break; a stale/busy manual replacement is rejected with `409` before audit or financial rows change.
     *   **Returns:** The newly created transaction object, including `business_day` when the schema column is present.
 
+*   **`GET /summary/today`**
+    *   **Purpose:** The current **Bangkok business day's** transaction count, revenue, masseuse fees, and payment-method breakdown.
+    *   **Returns:** `business_day`, the summary fields, and `payment_breakdown`.
+    *   **Logic:** Both queries filter `transactions.business_day` — derived from `backend/utils/business-day.js` — and the shared `isLiveWork()` predicate from `backend/services/transaction-status-sql.js`. A correction replacement (`CORRECTED`) is therefore counted as the real massage it is, and the superseded original (`EDITED (Corrected by …)`) is not. Filtering `business_day` rather than the legacy UTC-derived `date` is what makes this endpoint agree with `GET /api/staff/current-status` between 02:00 and 07:00 Bangkok. Spec: `reception-intake-truth-and-non-massage-income.md` FR-001, FR-002 (`RIT-LIVE-002`).
+
 ## 3. Dependency Mapping
 
 *   **Upstream Dependencies:**

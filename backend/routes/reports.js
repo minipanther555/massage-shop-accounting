@@ -3,11 +3,23 @@ const express = require('express');
 const router = express.Router();
 const database = require('../models/database');
 const { countsAsMassage, isSettled } = require('../services/add-on-sql');
+const { isLiveWork } = require('../services/transaction-status-sql');
+const { getBusinessDay } = require('../utils/business-day');
 
-// Daily summary report
+// Daily summary report.
+//
+// RIT-LIVE-002 / FR-002: this is a BUSINESS-DAY report, not a UTC-calendar-date
+// report. With no path parameter it covers the current Bangkok business day;
+// with one it covers that business day. Transaction figures therefore filter
+// `transactions.business_day`. Date-range reports below are untouched and still
+// filter `transactions.date`.
+//
+// `expenses` has no `business_day` column yet — RIT-DB-001 adds it — so the
+// expense side is still keyed on `expenses.date`, given the same day string so
+// the report stays about one day rather than two.
 router.get('/daily/:date?', async (req, res) => {
   try {
-    const date = req.params.date || new Date().toISOString().split('T')[0];
+    const businessDay = req.params.date || getBusinessDay();
 
     // Transaction summary
     const transactionSummary = await database.get(
@@ -21,8 +33,8 @@ router.get('/daily/:date?', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE' AND ${isSettled('t')}`,
-      [date]
+       WHERE t.business_day = ? AND ${isLiveWork('t')} AND ${isSettled('t')}`,
+      [businessDay]
     );
 
     // Expense summary
@@ -32,7 +44,7 @@ router.get('/daily/:date?', async (req, res) => {
         COALESCE(SUM(amount), 0) as total_expenses
        FROM expenses
        WHERE date = ?`,
-      [date]
+      [businessDay]
     );
 
     // Payment method breakdown
@@ -42,10 +54,10 @@ router.get('/daily/:date?', async (req, res) => {
         COUNT(*) as count,
         SUM(payment_amount) as revenue
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE' AND ${isSettled('')}
+       WHERE business_day = ? AND ${isLiveWork('')} AND ${isSettled('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
-      [date]
+      [businessDay]
     );
 
     // Masseuse performance
@@ -60,17 +72,18 @@ router.get('/daily/:date?', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE'
+       WHERE t.business_day = ? AND ${isLiveWork('t')}
        GROUP BY t.masseuse_name
        ORDER BY totalStaffPay DESC`,
-      [date]
+      [businessDay]
     );
 
     // Calculate net profit
     const netProfit = transactionSummary.total_revenue - transactionSummary.total_staff_pay - expenseSummary.total_expenses;
 
     res.json({
-      date,
+      date: businessDay,
+      business_day: businessDay,
       transaction_summary: transactionSummary,
       expense_summary: expenseSummary,
       payment_breakdown: paymentBreakdown,
@@ -185,10 +198,15 @@ router.get('/monthly/:year?/:month?', async (req, res) => {
   }
 });
 
-// Today's summary endpoint (for frontend API client)
+// Today's summary endpoint (for frontend API client).
+//
+// RIT-LIVE-002 / FR-002 / AC-003: "today" is the current Bangkok business day,
+// so between 02:00 and 07:00 Bangkok this panel and the staff panel agree.
+// `business_day` is returned so the two are comparable rather than merely
+// assumed equal.
 router.get('/summary/today', async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const businessDay = getBusinessDay();
 
     const transactionSummary = await database.get(
       `SELECT
@@ -201,8 +219,8 @@ router.get('/summary/today', async (req, res) => {
        FROM transactions t
        LEFT JOIN booking_credits bc
          ON bc.transaction_id = t.transaction_id AND bc.status = 'ACTIVE'
-       WHERE t.date = ? AND t.status = 'ACTIVE' AND ${isSettled('t')}`,
-      [today]
+       WHERE t.business_day = ? AND ${isLiveWork('t')} AND ${isSettled('t')}`,
+      [businessDay]
     );
 
     // Payment method breakdown
@@ -212,13 +230,14 @@ router.get('/summary/today', async (req, res) => {
         COUNT(*) as count,
         SUM(payment_amount) as revenue
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE' AND ${isSettled('')}
+       WHERE business_day = ? AND ${isLiveWork('')} AND ${isSettled('')}
        GROUP BY payment_method
        ORDER BY revenue DESC`,
-      [today]
+      [businessDay]
     );
 
     res.json({
+      business_day: businessDay,
       ...transactionSummary,
       payment_breakdown: paymentBreakdown
     });
@@ -446,14 +465,22 @@ router.post('/end-day', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Calculate daily totals
+    // Calculate daily totals.
+    //
+    // RIT-LIVE-002 / FR-001: the archived total counts a correction replacement
+    // (`CORRECTED`) as the real massage it is. The DAY BASIS is deliberately NOT
+    // moved to the business day here: the two DELETE statements below share this
+    // same `today` value, and changing which rows they remove is out of this
+    // step's scope and forbidden by the epic's no-deletion invariant. That wider
+    // correctness question is already tracked as item 22 in
+    // `00-project-docs/steps/current-steps.md`.
     const dailyData = await database.get(
       `SELECT
         COUNT(*) as total_transactions,
         COALESCE(SUM(payment_amount), 0) as total_revenue,
         COALESCE(SUM(masseuse_fee), 0) as total_fees
        FROM transactions
-       WHERE date = ? AND status = 'ACTIVE'`,
+       WHERE date = ? AND ${isLiveWork('')}`,
       [today]
     );
 
