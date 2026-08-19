@@ -124,6 +124,7 @@
                                     </select>
                                     <div id="masseuse-availability-message" class="transaction-availability-message" hidden></div>
                                     <div id="staff-stale-marker" class="transaction-stale-marker" hidden></div>
+                                    <div id="staff-empty-state" class="transaction-empty-staff" hidden></div>
                                 </div>
 
                                 <div class="form-group transaction-field" id="payment-field">
@@ -1813,6 +1814,29 @@
             }
         }
 
+        // RIT-UI-002 (FR-004): tells an EMPTY Today Staff list apart from a FAILED fetch.
+        // loadCurrentShopStatus() never rejects (web-app/shared.js:169-183) — it resolves a
+        // degraded snapshot { staff: [], error: <message> }. So "no staff" and "we could not
+        // find out" look identical unless .error is read. Sending reception to go build a
+        // roster that is fine is the failure this distinguishes; that case is RIT-UI-001's
+        // stale marker, not this one.
+        function staffInformationFailedToLoad() {
+            if (appData.currentShopStatus && appData.currentShopStatus.error) return true;
+            const staleMarker = document.getElementById('staff-stale-marker');
+            return Boolean(staleMarker && !staleMarker.hidden);
+        }
+
+        // RIT-UI-002 (FR-004 processing logic 2): the dropdown holds only the placeholder, and
+        // a message points reception at the Today Staff page.
+        function setStaffEmptyState(show) {
+            const emptyState = document.getElementById('staff-empty-state');
+            if (!emptyState) return;
+            emptyState.textContent = show
+                ? 'ยังไม่มีพนักงานในรายชื่อวันนี้ — กรุณาไปที่หน้า "พนักงานวันนี้" เพื่อจัดรายชื่อประจำวัน'
+                : '';
+            emptyState.hidden = !show;
+        }
+
         function renderMasseuseDropdown() {
             const masseuseSelect = document.getElementById('masseuse');
             if (!masseuseSelect) return;
@@ -1836,7 +1860,12 @@
                 .filter(r => r.name)
                 .sort((a, b) => (a.position || 999) - (b.position || 999))
                 .map(r => r.name);
-            const masseuseNames = orderedMasseuses.length ? orderedMasseuses : CONFIG.settings.masseuses;
+            // RIT-UI-002 (FR-004 processing logic 1): NO fallback to the page-load name list.
+            // That list is captured once by loadData() at page load (web-app/shared.js:251);
+            // after the 2am reset it is yesterday's names. The producer stays put —
+            // initializeRoster() (shared.js:288) is a separate, unrelated consumer of it.
+            const masseuseNames = orderedMasseuses;
+            setStaffEmptyState(masseuseNames.length === 0 && !staffInformationFailedToLoad());
             masseuseNames.forEach(name => {
                 const option = document.createElement('option');
                 option.value = name;

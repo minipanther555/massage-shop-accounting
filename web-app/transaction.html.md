@@ -81,7 +81,20 @@ This module consists of an HTML structure and a large inline `<script>` block th
   - **`loadCurrentShopStatus()` never rejects.** It catches its own failure in `web-app/shared.js` and resolves a degraded snapshot carrying an `error` field. A live-status failure is therefore detected by reading `statusResult.value.error`, not by catching. Anything that later makes that helper throw must keep both branches — the code checks `statusResult.status !== 'fulfilled' || statusResult.value.error`.
   - `setStaffStaleMarker()` is called on **every** refresh, with an empty list on full success. That is what clears the marker; there is no separate clear path, so the marker cannot get stuck on after a recovery.
   - The marker writes through `textContent` and interpolates only two hard-coded Thai literals — never a server string — so it carries no injection surface.
-  - The page-load name-list fallback in `renderMasseuseDropdown()` (`CONFIG.settings.masseuses`) is **untouched** by this change and remains a known defect owned by `RIT-UI-002`.
+  - The page-load name-list fallback in `renderMasseuseDropdown()` (`CONFIG.settings.masseuses`) was **untouched** by this change. `RIT-UI-002` removed it — see the section directly below.
+
+### `renderMasseuseDropdown()`, `staffInformationFailedToLoad()` and `setStaffEmptyState()` (RIT-UI-002, 2026-08-19)
+
+- **Purpose:** Build the staff dropdown **only** from the current Today Staff list, and — when that list is empty and nothing failed — offer nobody and say why.
+- **Returns / Renders:** Rewrites `#masseuse`'s options; sets or clears `#staff-empty-state`.
+- **Usage & Logic Notes:**
+  - **There is no fallback.** `renderMasseuseDropdown()` previously read `const masseuseNames = orderedMasseuses.length ? orderedMasseuses : CONFIG.settings.masseuses`. That list is captured once by `loadData()` at page load (`web-app/shared.js:251`), so after the 2:00 a.m. business-day reset it is **yesterday's names**, presented as if current. The expression is now `const masseuseNames = orderedMasseuses;` (spec `FR-004` processing logic 1, `SC-3`).
+  - **The producer in `shared.js` was deliberately NOT removed.** `CONFIG.settings.masseuses` has a second, unrelated consumer — `initializeRoster()` at `web-app/shared.js:288` seeds empty roster slots from it. Deleting the assignment at `shared.js:251` would break that. The defect was the consumer, not the producer, and only the fallback was in scope.
+  - **`staffInformationFailedToLoad()` is what keeps the empty state honest.** `loadCurrentShopStatus()` (`web-app/shared.js:169-183`) never rejects — it resolves a degraded snapshot `{ staff: [], error: <message> }`. **An empty staff list and a failed status fetch are therefore indistinguishable unless `.error` is read.** The helper returns true when `appData.currentShopStatus.error` is set **or** when `#staff-stale-marker` is visible (which covers a rejected *roster* fetch). It deliberately reads RIT-UI-001's marker rather than keeping a second flag, so there is one source of truth for "a fetch failed".
+  - **The empty state shows only when nothing failed.** Showing it after a failed fetch would send reception to rebuild a roster that is fine; that case is RIT-UI-001's stale marker instead (spec `FR-004` Failure Modes).
+  - An empty Today Staff list after the 2:00 a.m. reset is **correct**, not a regression — `today-staff-roster-business-day-helper.md` `FR-007` Outputs (line 385) states *"Morning receptionist sees empty Today Staff."*
+  - **Next-in-queue and the busy guard already read one source, so no code changed for that.** A name is labelled `(คิวถัดไป)` only via `getNextInLineFromStaff()`'s live path (requires `current_state === 'available'` in `appData.currentShopStatus.staff`) or its roster fallback, which filters out every roster name appearing in that **same** array with `current_state !== 'available'`. `isMasseuseUnavailableForWalkIn()` tests that same array. So *labelled next ⟹ not disabled*. The browser spec locks this rather than asserting it on faith.
+  - `setStaffEmptyState()` writes through `textContent` and interpolates nothing — the message is one hard-coded Thai literal, never a server string, so it carries no injection surface.
 
 ## 3. Dependency Mapping
 

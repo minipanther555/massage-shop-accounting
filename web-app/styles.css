@@ -2071,6 +2071,21 @@ body {
     padding: 9px 11px;
 }
 
+/* RIT-UI-002 (FR-004): Today Staff is empty and nothing failed. Neutral-informative, not alarm —
+   after the 2am reset an empty roster is the correct state (today-staff spec FR-007 Outputs),
+   so this reads as an instruction, not as an error. */
+.transaction-empty-staff {
+    background: #eef4fb;
+    border: 1px solid #a9c6e6;
+    border-radius: 6px;
+    color: #14416e;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.4;
+    margin-top: 8px;
+    padding: 9px 11px;
+}
+
 .transaction-side-section .summary-grid {
     align-items: center;
     border-bottom: 1px solid #eaecf0;

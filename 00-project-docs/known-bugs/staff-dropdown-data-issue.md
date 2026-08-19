@@ -29,3 +29,30 @@ The issue was investigated and found to be:
 - **Testing Results**: Staff dropdown functionality confirmed to be working correctly. The system properly handles both populated and empty staff lists.
 
 **Note**: This was a false positive during testing. The staff dropdown system is functioning correctly and will display staff members when data is available in the database.
+
+---
+
+## 6. Amendment — 2026-08-19 (`RIT-UI-002`)
+
+**§4.3 and §5 above were wrong when written, and are now true for a different reason.**
+
+This file claimed the system *"correctly handles cases where no staff data is available"*. It did not.
+Until `RIT-UI-002`, `renderMasseuseDropdown()` in `web-app/transaction.html` / `.ejs` read:
+
+```js
+const masseuseNames = orderedMasseuses.length ? orderedMasseuses : CONFIG.settings.masseuses;
+```
+
+`CONFIG.settings.masseuses` is captured once by `loadData()` at page load (`web-app/shared.js:251`) and
+never refreshed. With Today Staff empty the dropdown therefore substituted the page-load name list —
+after the 2:00 a.m. business-day reset, **yesterday's names, presented as if they were today's roster**.
+The 2025-08-16 investigation saw an empty dropdown only because the test environment's page-load list
+was empty too, so the fallback had nothing stale to show.
+
+**Fixed by `RIT-UI-002`** (epic `00-project-docs/steps/reception-intake-truth-and-non-massage-income-steps.md`,
+spec `FR-004` / `AC-005` / `SC-3`): the fallback is removed, and an empty Today Staff list now produces
+a placeholder-only dropdown plus `#staff-empty-state`, which points reception at the Today Staff page.
+An empty list caused by a *failed fetch* shows `RIT-UI-001`'s stale marker instead.
+
+Regression cover: `tests/e2e/transaction.dropdown-empty-state.spec.js` and
+`__tests__/transaction.dropdown-empty-state.present.test.js`.

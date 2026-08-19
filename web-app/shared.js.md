@@ -18,7 +18,7 @@ For navigation labels, pages request or hardcode the bilingual label structure u
 - **Purpose:** Centralized configuration object containing application settings and constants
 - **Properties:**
   - `rosterSize`: Maximum number of staff members (number, required)
-  - `settings.masseuses`: Array of available masseuse names (array, required)
+  - `settings.masseuses`: Array of available masseuse names (array, required). **Captured once, at page load only** — `loadData()` assigns it at `shared.js:251` and nothing refreshes it afterwards, so after the 2:00 a.m. business-day reset it holds **yesterday's** names. It has exactly one remaining consumer: `initializeRoster()` (`shared.js:288`), which seeds empty roster slots from it. **It is not a source of staff availability.** The New Customer dropdown used it as a fallback until `RIT-UI-002` (2026-08-19) removed that; anything tempted to reintroduce a `CONFIG.settings.masseuses` fallback for live staff is reintroducing that defect. Live staff comes from `appData.roster` (the Today Staff fetch) and `appData.currentShopStatus.staff`.
   - `settings.services`: Array of available service configurations (array, required)
   - `settings.paymentMethods`: Array of accepted payment methods (array, required)
 - **Usage & Logic Notes:** Loaded from backend API on application startup, serves as the single source of truth for application configuration
